@@ -6,10 +6,10 @@ TODO:
 
 ## Go ecosystem
 
+- [x] Command line
 - [ ] Logging
 - [ ] Http request
 - [ ] Pretty format
-- [ ] Cromwell interactions
 
 ## Cromwell server interactions
 
