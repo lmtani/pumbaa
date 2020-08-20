@@ -1,14 +1,30 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
+
+func generateTable() {
+	data := [][]string{
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetCenterSeparator("|")
+	table.AppendBulk(data) // Add Bulk Data
+	table.Render()
+}
 
 func main() {
 	app := &cli.App{
@@ -47,7 +63,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					fmt.Println("completed task: ", c.Args().First())
+					generateTable()
 					return nil
 				},
 			},
