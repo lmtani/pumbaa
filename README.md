@@ -6,10 +6,10 @@ TODO:
 
 ## Go ecosystem
 
-- [x] Command line
-- [ ] Logging
-- [ ] Http request
-- [ ] Pretty format
+- [x] Command line  (github.com/urfave/cli/v2)
+- [x] Logging  (github.com/sirupsen/logrus)
+- [x] Http request  (net/http)
+- [ ] Pretty format terminal tables
 
 ## Cromwell server interactions
 

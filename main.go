@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"io/ioutil"
+	"net/http"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
@@ -23,7 +25,17 @@ func main() {
 					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					fmt.Println("added task: ", c.Args().First())
+					resp, err := http.Get("https://httpbin.org/get")
+					if err != nil {
+						log.Fatal(err)
+					}
+					defer resp.Body.Close()
+					body, err := ioutil.ReadAll(resp.Body)
+					if err != nil {
+						log.Fatalln(err)
+					}
+					log.Println(string(body))
+					log.Info("Work in progress")
 					return nil
 				},
 			},
