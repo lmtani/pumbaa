@@ -4,7 +4,7 @@ Command line interface for Cromwell server.
 
 ## Go ecosystem
 
-- [x] Command line [urfave/cli/v2](https://github.com/urfave/cli/v2)
+- [x] Command line [urfave/cli/v2](https://github.com/urfave/cli)
 - [x] Logging  [logrus](https://github.com/sirupsen/logrus)
 - [x] Http request  [net/http](https://golang.org/pkg/net/http/)
 - [x] Pretty format terminal tables [olekukonko/tablewriter](https://github.com/olekukonko/tablewriter)
