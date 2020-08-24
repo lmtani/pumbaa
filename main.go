@@ -1,32 +1,28 @@
 package main
 
 import (
-	"io/ioutil"
-	"net/http"
+	"log"
 	"os"
 
-	"github.com/olekukonko/tablewriter"
-	log "github.com/sirupsen/logrus"
+	"github.com/lmtani/cromwell-cli/commands"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-func generateTable() {
-	data := [][]string{
-		{"1/1/2014", "Domain name", "2233", "$10.98"},
-		{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+func startLogger() (*zap.Logger, error) {
+	config := zap.NewDevelopmentConfig()
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	logger, err := config.Build()
+	if err != nil {
+		return nil, err
 	}
-
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetCenterSeparator("|")
-	table.AppendBulk(data) // Add Bulk Data
-	table.Render()
+	zap.ReplaceGlobals(logger)
+	return logger, nil
 }
 
 func main() {
+	logger, _ := startLogger()
 	app := &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
@@ -41,17 +37,10 @@ func main() {
 					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					resp, err := http.Get("https://httpbin.org/get")
+					err := commands.GetWorkflow()
 					if err != nil {
-						log.Fatal(err)
+						logger.Fatal(err.Error())
 					}
-					defer resp.Body.Close()
-					body, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						log.Fatalln(err)
-					}
-					log.Println(string(body))
-					log.Info("Work in progress")
 					return nil
 				},
 			},
@@ -63,7 +52,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					generateTable()
+					commands.GenerateTable()
 					return nil
 				},
 			},
