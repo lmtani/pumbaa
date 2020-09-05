@@ -43,6 +43,23 @@ func main() {
 					return nil
 				},
 			},
+
+			{
+				Name:    "submit",
+				Aliases: []string{"s"},
+				Usage:   "Submit a workflow and its inputs to Cromwell",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
+					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
+					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
+				},
+				Action: func(c *cli.Context) error {
+					logger.Info("Submitting workflow...")
+					commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"), c.String("dependencies"))
+					return nil
+				},
+			},
+
 			{
 				Name:    "kill",
 				Aliases: []string{"k"},

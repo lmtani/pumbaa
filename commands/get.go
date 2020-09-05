@@ -21,11 +21,11 @@ type QueryResponseWorkflow struct {
 }
 
 func QueryWorkflow(c Client, n string) error {
-	r, err := c.Query("VsaCloud")
+	err := c.Query("VsaCloud")
 	if err != nil {
 		return err
 	}
-	zap.S().Infow(fmt.Sprintf("Found %d workflows", r.totalResultsCount))
+	zap.S().Infow(fmt.Sprintf("Found %d workflows"))
 	return err
 }
 
