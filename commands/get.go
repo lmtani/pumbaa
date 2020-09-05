@@ -6,26 +6,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type QueryResponse struct {
-	results           []QueryResponseWorkflow
-	totalResultsCount int
-}
-
-type QueryResponseWorkflow struct {
-	id         string
-	name       string
-	status     string
-	submission string
-	start      string
-	end        string
-}
-
 func QueryWorkflow(c Client, n string) error {
-	err := c.Query("VsaCloud")
+	resp, err := c.Query("VsaCloud")
 	if err != nil {
 		return err
 	}
-	zap.S().Infow(fmt.Sprintf("Found %d workflows"))
+	zap.S().Infow(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
 	return err
 }
 

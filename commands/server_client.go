@@ -80,18 +80,23 @@ func (c *Client) Outputs(o string) string {
 	return route
 }
 
-func (c *Client) Query(n string) error {
+func (c *Client) Query(n string) (QueryResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/query")
 	r, err := c.get(route)
-	defer r.Body.Close()
 	if err != nil {
-		return err
+		return QueryResponse{}, err
 	}
-	var data map[string]interface{}
+	defer r.Body.Close()
+	resp := QueryResponse{}
+
 	body, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal([]byte(string(body)), &data)
-	fmt.Println(data["totalResultsCount"])
-	return nil
+	fmt.Println(string(body))
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return QueryResponse{}, err
+	}
+	fmt.Println(resp)
+	return resp, nil
 }
 
 func (c *Client) Metadata(o string) string {
@@ -110,13 +115,28 @@ func (c *Client) Submit(w, i, d string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Body.Close()
+	// defer r.Body.Close()
 
 	fmt.Println(r.Status)
 	return nil
 }
 
 type ErrorResponse struct {
-	status  string
-	message string
+	status  string `json: "status"`
+	message string `json: "message"`
+}
+
+type QueryResponse struct {
+	Results           []QueryResponseWorkflow
+	TotalResultsCount int
+}
+
+type QueryResponseWorkflow struct {
+	ID                    string
+	Name                  string
+	Status                string
+	Submission            string
+	Start                 string
+	End                   string
+	MetadataArchiveStatus string
 }
