@@ -23,21 +23,20 @@ func startLogger() (*zap.Logger, error) {
 
 func main() {
 	logger, _ := startLogger()
+	cromwellClient := commands.New("http://localhost:8000")
 	app := &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
 		Commands: []*cli.Command{
 			{
-				Name:    "submit",
-				Aliases: []string{"s"},
-				Usage:   "Submit a new job for Cromwell Server",
+				Name:    "query",
+				Aliases: []string{"q"},
+				Usage:   "Query a workflow by its name",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
-					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
-					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
+					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					err := commands.GetWorkflow()
+					err := commands.QueryWorkflow(cromwellClient, c.String("name"))
 					if err != nil {
 						logger.Fatal(err.Error())
 					}
@@ -52,7 +51,10 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					commands.GenerateTable()
+					err := commands.KillWorkflow(cromwellClient)
+					if err != nil {
+						logger.Fatal(err.Error())
+					}
 					return nil
 				},
 			},

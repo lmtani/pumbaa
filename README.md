@@ -2,6 +2,12 @@
 
 Command line interface for Cromwell server.
 
+## Development environment
+
+1. Download Cromwell from its [GitHub repository](https://github.com/broadinstitute/cromwell/releases/tag/53.1) and start it with `java -jar cromwell-<version>.jar server`
+
+1. Build this CLI (`go build`) and interact with the server (`./cromwell-cli query --name MyBioinfoWorkflow`).
+
 ## Go ecosystem
 
 - [x] Command line [urfave/cli/v2](https://github.com/urfave/cli)
@@ -16,3 +22,4 @@ Command line interface for Cromwell server.
 - [ ] Query job status
 - [ ] Query job outputs
 - [ ] Get jobs by name
+
