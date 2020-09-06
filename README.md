@@ -6,7 +6,9 @@ Command line interface for Cromwell server.
 
 1. Download Cromwell from its [GitHub repository](https://github.com/broadinstitute/cromwell/releases/tag/53.1) and start it with `java -jar cromwell-<version>.jar server`
 
-1. Build this CLI (`go build`) and interact with the server (`./cromwell-cli query --name MyBioinfoWorkflow`).
+1. Build this CLI (`go build`) and interact with the server.
+  1. Submit a job with `./cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json`
+  1. Query jobs with ` ./cromwell-cli q -n <not-implemented>`
 
 ## Go ecosystem
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -51,11 +52,13 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
 					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
-					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
 					logger.Info("Submitting workflow...")
-					commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"), c.String("dependencies"))
+					err := commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"))
+					if err != nil {
+						logger.Fatal(fmt.Sprintf("%s", err))
+					}
 					return nil
 				},
 			},

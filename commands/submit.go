@@ -11,8 +11,8 @@ type SubmitResponse struct {
 	Status string
 }
 
-func SubmitWorkflow(c Client, w, i, d string) error {
-	resp, err := c.Submit(w, i, d)
+func SubmitWorkflow(c Client, w, i string) error {
+	resp, err := c.Submit(w, i)
 	if err != nil {
 		zap.S().Fatalw(fmt.Sprintf("%s", err))
 	}

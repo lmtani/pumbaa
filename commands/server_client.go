@@ -52,7 +52,7 @@ func (c *Client) post(u string, files map[string]string) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println(body)
 	req, err := http.NewRequest("POST", uri, body)
 	if err != nil {
 		return nil, err
@@ -102,12 +102,12 @@ func (c *Client) Metadata(o string) string {
 	return route
 }
 
-func (c *Client) Submit(w, i, d string) (SubmitResponse, error) {
+func (c *Client) Submit(w, i string) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := map[string]string{
-		"workflowSource":       w,
-		"workflowInputs":       i,
-		"workflowDependencies": d,
+		"workflowSource": w,
+		"workflowInputs": i,
+		// "workflowDependencies": d,
 	}
 	r, err := c.post(route, fileParams)
 	if err != nil {
