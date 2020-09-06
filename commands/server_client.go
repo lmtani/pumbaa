@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -28,8 +29,7 @@ func (c *Client) get(u string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	// content, _ := ioutil.ReadAll(r.Body)
-	// print(string(content))
+
 	return r, nil
 }
 
@@ -81,7 +81,7 @@ func (c *Client) Outputs(o string) string {
 }
 
 func (c *Client) Query(n string) (QueryResponse, error) {
-	route := fmt.Sprintf("/api/workflows/v1/query")
+	route := "/api/workflows/v1/query"
 	r, err := c.get(route)
 	if err != nil {
 		return QueryResponse{}, err
@@ -90,12 +90,10 @@ func (c *Client) Query(n string) (QueryResponse, error) {
 	resp := QueryResponse{}
 
 	body, _ := ioutil.ReadAll(r.Body)
-	fmt.Println(string(body))
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		return QueryResponse{}, err
 	}
-	fmt.Println(resp)
 	return resp, nil
 }
 
@@ -104,7 +102,7 @@ func (c *Client) Metadata(o string) string {
 	return route
 }
 
-func (c *Client) Submit(w, i, d string) error {
+func (c *Client) Submit(w, i, d string) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := map[string]string{
 		"workflowSource":       w,
@@ -115,28 +113,23 @@ func (c *Client) Submit(w, i, d string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer r.Body.Close()
+	defer r.Body.Close()
+	resp := SubmitResponse{}
 
-	fmt.Println(r.Status)
-	return nil
+	body, _ := ioutil.ReadAll(r.Body)
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return SubmitResponse{}, err
+	}
+	if r.StatusCode >= 400 {
+		msg := fmt.Sprintf("Submission failed. The server returned %d\n%s", r.StatusCode, body)
+		return SubmitResponse{}, errors.New(msg)
+	}
+
+	return resp, nil
 }
 
 type ErrorResponse struct {
-	status  string `json: "status"`
-	message string `json: "message"`
-}
-
-type QueryResponse struct {
-	Results           []QueryResponseWorkflow
-	TotalResultsCount int
-}
-
-type QueryResponseWorkflow struct {
-	ID                    string
-	Name                  string
-	Status                string
-	Submission            string
-	Start                 string
-	End                   string
-	MetadataArchiveStatus string
+	status  string
+	message string
 }
