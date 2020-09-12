@@ -50,10 +50,11 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
 					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
+					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
 				},
 				Action: func(c *cli.Context) error {
 					logger.Info("Submitting workflow...")
-					err := commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"))
+					err := commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"), c.String("dependencies"))
 					if err != nil {
 						return err
 					}
@@ -69,7 +70,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					err := commands.KillWorkflow(cromwellClient)
+					err := commands.KillWorkflow(cromwellClient, c.String("operation"))
 					if err != nil {
 						return err
 					}

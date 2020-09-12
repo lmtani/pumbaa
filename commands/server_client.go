@@ -52,7 +52,6 @@ func (c *Client) post(u string, files map[string]string) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(body)
 	req, err := http.NewRequest("POST", uri, body)
 	if err != nil {
 		return nil, err
@@ -65,9 +64,25 @@ func (c *Client) post(u string, files map[string]string) (*http.Response, error)
 	return r, nil
 }
 
-func (c *Client) Kill(o string) string {
-	route := fmt.Sprintf("/api/workflow/v1/%s/abort", o)
-	return route
+func (c *Client) Kill(o string) (SubmitResponse, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
+	r, err := c.post(route, map[string]string{})
+	if err != nil {
+		return SubmitResponse{}, err
+	}
+	defer r.Body.Close()
+	body, _ := ioutil.ReadAll(r.Body)
+	if r.StatusCode >= 400 {
+		msg := fmt.Sprintf("Submission failed. The server returned %d\n%s", r.StatusCode, body)
+		return SubmitResponse{}, errors.New(msg)
+	}
+	resp := SubmitResponse{}
+	fmt.Println(string(body))
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return SubmitResponse{}, err
+	}
+	return resp, nil
 }
 
 func (c *Client) Status(o string) string {
@@ -106,20 +121,27 @@ func (c *Client) Metadata(o string) string {
 	return route
 }
 
+func submitPrepare(r SubmitRequest) map[string]string {
+	fileParams := map[string]string{
+		"workflowSource": r.workflowSource,
+		"workflowInputs": r.workflowInputs,
+	}
+	if r.workflowDependencies != "" {
+		fileParams["workflowDependencies"] = r.workflowDependencies
+	}
+	return fileParams
+}
+
 func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
-	fileParams := map[string]string{
-		"workflowSource":       requestFields.workflowSource,
-		"workflowInputs":       requestFields.workflowInputs,
-		"workflowDependencies": requestFields.workflowDependencies,
-	}
+	fileParams := submitPrepare(requestFields)
+
 	r, err := c.post(route, fileParams)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer r.Body.Close()
 	resp := SubmitResponse{}
-
 	body, _ := ioutil.ReadAll(r.Body)
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
@@ -131,9 +153,4 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	}
 
 	return resp, nil
-}
-
-type ErrorResponse struct {
-	status  string
-	message string
 }
