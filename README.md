@@ -8,7 +8,8 @@ Command line interface for Cromwell server.
 
 1. Build this CLI (`go build`) and interact with the server.
   1. Submit a job with `./cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json`
-  1. Query jobs with ` ./cromwell-cli q -n <not-implemented>`
+  1. Query jobs with `./cromwell-cli q`
+  1. Kill running jobs with `./cromwell-cli k -o <operation>`
 
 ## Go ecosystem
 
