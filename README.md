@@ -26,7 +26,7 @@ cromwell-cli k -o <operation>
 ## Go ecosystem
 
 - [x] Command line [urfave/cli/v2](https://github.com/urfave/cli)
-- [x] Logging  [logrus](https://github.com/uber-go/zap)
+- [x] Logging  [Zap](https://github.com/uber-go/zap)
 - [x] Http request  [net/http](https://golang.org/pkg/net/http/)
 - [x] Pretty format terminal tables [olekukonko/tablewriter](https://github.com/olekukonko/tablewriter)
 
