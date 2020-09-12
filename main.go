@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"os"
 
 	"github.com/lmtani/cromwell-cli/commands"
@@ -39,7 +37,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					err := commands.QueryWorkflow(cromwellClient, c.String("name"))
 					if err != nil {
-						logger.Fatal(err.Error())
+						return err
 					}
 					return nil
 				},
@@ -57,7 +55,7 @@ func main() {
 					logger.Info("Submitting workflow...")
 					err := commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"))
 					if err != nil {
-						logger.Fatal(fmt.Sprintf("%s", err))
+						return err
 					}
 					return nil
 				},
@@ -73,7 +71,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					err := commands.KillWorkflow(cromwellClient)
 					if err != nil {
-						logger.Fatal(err.Error())
+						return err
 					}
 					return nil
 				},
@@ -83,6 +81,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error(err.Error())
 	}
 }

@@ -38,7 +38,7 @@ func createQueryTable(workflows QueryResponse) {
 func QueryWorkflow(c Client, n string) error {
 	resp, err := c.Query("VsaCloud")
 	if err != nil {
-		zap.S().Fatalw(fmt.Sprintf("%s", err))
+		return err
 	}
 	zap.S().Infow(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
 	createQueryTable(resp)
