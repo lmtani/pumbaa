@@ -2,14 +2,26 @@
 
 Command line interface for Cromwell server.
 
-## Development environment
+## Quickstart
 
-1. Download Cromwell from its [GitHub repository](https://github.com/broadinstitute/cromwell/releases/tag/53.1) and start it with `java -jar cromwell-<version>.jar server`
+```bash
+# Download
+wget https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-linux-amd64
 
-1. Build this CLI (`go build`) and interact with the server.
-  1. Submit a job with `./cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json`
-  1. Query jobs with `./cromwell-cli q`
-  1. Kill running jobs with `./cromwell-cli k -o <operation>`
+# Put in a directory of your PATH (may require sudo)
+mv cromwell-cli-linux-amd64 /usr/bin/cromwell-cli
+
+# Submit a job
+cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json
+
+# Query jobs history
+cromwell-cli q
+
+# Kill a running job
+cromwell-cli k -o <operation>
+```
+
+> **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
 
 ## Go ecosystem
 
@@ -25,4 +37,5 @@ Command line interface for Cromwell server.
 - [x] Query job status
 - [x] Get jobs by name
 - [ ] Query job outputs
-
+- [ ] Add config for host url
+- [ ] Make binary available for MacOS
