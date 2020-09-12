@@ -32,7 +32,7 @@ func main() {
 				Aliases: []string{"q"},
 				Usage:   "Query a workflow by its name",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: true},
+					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
 				Action: func(c *cli.Context) error {
 					err := commands.QueryWorkflow(cromwellClient, c.String("name"))

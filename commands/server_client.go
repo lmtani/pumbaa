@@ -82,7 +82,11 @@ func (c *Client) Outputs(o string) string {
 
 func (c *Client) Query(n string) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
-	r, err := c.get(route)
+	var urlParams string
+	if n != "" {
+		urlParams = fmt.Sprintf("?name=%s", n)
+	}
+	r, err := c.get(route + urlParams)
 	if err != nil {
 		return QueryResponse{}, err
 	}
@@ -102,12 +106,12 @@ func (c *Client) Metadata(o string) string {
 	return route
 }
 
-func (c *Client) Submit(w, i string) (SubmitResponse, error) {
+func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := map[string]string{
-		"workflowSource": w,
-		"workflowInputs": i,
-		// "workflowDependencies": d,
+		"workflowSource":       requestFields.workflowSource,
+		"workflowInputs":       requestFields.workflowInputs,
+		"workflowDependencies": requestFields.workflowDependencies,
 	}
 	r, err := c.post(route, fileParams)
 	if err != nil {
