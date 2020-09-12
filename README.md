@@ -19,9 +19,9 @@ Command line interface for Cromwell server.
 
 ## Cromwell server interactions
 
-- [ ] Submit a job (with dependencies)
-- [ ] Kill a job
-- [ ] Query job status
+- [x] Submit a job (with dependencies)
+- [x] Kill a job
+- [x] Query job status
+- [x] Get jobs by name
 - [ ] Query job outputs
-- [ ] Get jobs by name
 
