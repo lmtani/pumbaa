@@ -39,3 +39,4 @@ cromwell-cli k -o <operation>
 - [ ] Query job outputs
 - [ ] Add config for host url
 - [ ] Make binary available for MacOS
+- [ ] Allow to pass an Bearer token from the environment

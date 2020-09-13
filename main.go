@@ -77,6 +77,21 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:    "metadata",
+				Aliases: []string{"m"},
+				Usage:   "Inspect workflow details",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+				},
+				Action: func(c *cli.Context) error {
+					err := commands.MetadataWorkflow(cromwellClient, c.String("operation"))
+					if err != nil {
+						return err
+					}
+					return nil
+				},
+			},
 		},
 	}
 

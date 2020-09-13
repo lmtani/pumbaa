@@ -5,7 +5,6 @@ func KillWorkflow(c Client, operation string) error {
 	if err != nil {
 		return err
 	}
-
 	r := []string{resp.ID, resp.Status}
 	CreateTable([]string{"Operation", "Status"}, [][]string{r})
 	return nil

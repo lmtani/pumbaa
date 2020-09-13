@@ -37,7 +37,7 @@ func QueryWorkflow(c Client, n string) error {
 	if err != nil {
 		return err
 	}
-	zap.S().Infow(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
+	zap.S().Debugw(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
 	header, rows := queryResponseToTable(resp)
 	CreateTable(header, rows)
 	return err

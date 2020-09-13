@@ -115,9 +115,16 @@ func (c *Client) Query(n string) (QueryResponse, error) {
 	return resp, nil
 }
 
-func (c *Client) Metadata(o string) string {
-	route := fmt.Sprintf("/api/workflow/v1/%s/status", o)
-	return route
+func (c *Client) Metadata(o string) (string, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
+	r, err := c.get(route)
+	if err != nil {
+		return "", nil
+	}
+	defer r.Body.Close()
+	body, _ := ioutil.ReadAll(r.Body)
+	fmt.Println(string(body)) //TODO: organize important fields to be displayed
+	return route, nil
 }
 
 func submitPrepare(r SubmitRequest) map[string]string {
