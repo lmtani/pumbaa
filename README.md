@@ -36,7 +36,7 @@ cromwell-cli k -o <operation>
 - [x] Kill a job
 - [x] Query job status
 - [x] Get jobs by name
+- [ ] Allow to pass an Bearer token from the environment
 - [ ] Query job outputs
 - [ ] Add config for host url
 - [ ] Make binary available for MacOS
-- [ ] Allow to pass an Bearer token from the environment

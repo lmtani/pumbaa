@@ -14,12 +14,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func New(h string) Client {
-	return Client{host: h}
+func New(h, t string) Client {
+	return Client{host: h, token: t}
 }
 
 type Client struct {
-	host string
+	host  string
+	token string
 }
 
 func (c *Client) get(u string) (*http.Response, error) {
