@@ -1,7 +1,10 @@
 package commands
 
-func KillWorkflow(c Client, operation string) error {
-	resp, err := c.Kill(operation)
+import "github.com/urfave/cli/v2"
+
+func KillWorkflow(c *cli.Context) error {
+	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	resp, err := cromwellClient.Kill(c.String("operation"))
 	if err != nil {
 		return err
 	}

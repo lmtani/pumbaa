@@ -28,10 +28,8 @@ func toClient(i interface{}) commands.Client {
 	return c
 }
 
-type contextKey string
-
 func main() {
-	const keyCromwell contextKey = "cromwellCli"
+	keyCromwell := "cromwell"
 	logger, _ := startLogger()
 
 	app := &cli.App{
@@ -63,14 +61,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
-				Action: func(c *cli.Context) error {
-					cromwellClient := toClient(c.Context.Value(keyCromwell))
-					err := commands.QueryWorkflow(cromwellClient, c.String("name"))
-					if err != nil {
-						return err
-					}
-					return nil
-				},
+				Action: commands.QueryWorkflow,
 			},
 
 			{
@@ -82,14 +73,7 @@ func main() {
 					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
 					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
 				},
-				Action: func(c *cli.Context) error {
-					cromwellClient := toClient(c.Context.Value(keyCromwell))
-					err := commands.SubmitWorkflow(cromwellClient, c.String("wdl"), c.String("inputs"), c.String("dependencies"))
-					if err != nil {
-						return err
-					}
-					return nil
-				},
+				Action: commands.SubmitWorkflow,
 			},
 
 			{
@@ -99,14 +83,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: func(c *cli.Context) error {
-					cromwellClient := toClient(c.Context.Value(keyCromwell))
-					err := commands.KillWorkflow(cromwellClient, c.String("operation"))
-					if err != nil {
-						return err
-					}
-					return nil
-				},
+				Action: commands.KillWorkflow,
 			},
 			{
 				Name:    "metadata",
@@ -115,14 +92,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: func(c *cli.Context) error {
-					cromwellClient := toClient(c.Context.Value(keyCromwell))
-					err := commands.MetadataWorkflow(cromwellClient, c.String("operation"))
-					if err != nil {
-						return err
-					}
-					return nil
-				},
+				Action: commands.MetadataWorkflow,
 			},
 		},
 	}

@@ -1,9 +1,14 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
 
-func MetadataWorkflow(c Client, o string) error {
-	resp, err := c.Metadata(o)
+	"github.com/urfave/cli/v2"
+)
+
+func MetadataWorkflow(c *cli.Context) error {
+	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	resp, err := cromwellClient.Metadata(c.String("operation"))
 	if err != nil {
 		return err
 	}

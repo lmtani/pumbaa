@@ -11,11 +11,18 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
 )
 
 func New(h, t string) Client {
 	return Client{host: h, token: t}
+}
+
+func FromInterface(i interface{}) Client {
+	c := Client{}
+	mapstructure.Decode(i, &c)
+	return c
 }
 
 type Client struct {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
@@ -32,8 +33,9 @@ func queryResponseToTable(workflows QueryResponse) ([]string, [][]string) {
 	return header, rows
 }
 
-func QueryWorkflow(c Client, n string) error {
-	resp, err := c.Query(n)
+func QueryWorkflow(c *cli.Context) error {
+	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	resp, err := cromwellClient.Query(c.String("name"))
 	if err != nil {
 		return err
 	}
