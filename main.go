@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/lmtani/cromwell-cli/commands"
-	"github.com/mitchellh/mapstructure"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -20,12 +19,6 @@ func startLogger() (*zap.Logger, error) {
 	}
 	zap.ReplaceGlobals(logger)
 	return logger, nil
-}
-
-func toClient(i interface{}) commands.Client {
-	c := commands.Client{}
-	mapstructure.Decode(i, &c)
-	return c
 }
 
 func main() {
