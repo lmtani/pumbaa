@@ -77,7 +77,6 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 		return SubmitResponse{}, errors.New(msg)
 	}
 	resp := SubmitResponse{}
-	fmt.Println(string(body))
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		return SubmitResponse{}, err
