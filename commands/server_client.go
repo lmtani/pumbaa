@@ -23,15 +23,19 @@ type Client struct {
 	token string
 }
 
+func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
+	if c.token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	}
+	zap.S().Debugw(fmt.Sprintf("%s request to: %s", req.Method, req.URL))
+	client := &http.Client{}
+	return client.Do(req)
+}
+
 func (c *Client) get(u string) (*http.Response, error) {
 	uri := fmt.Sprintf("%s%s", c.host, u)
-	zap.S().Debugw(fmt.Sprintf("Request to: %s", uri))
-	r, err := http.Get(uri)
-	if err != nil {
-		return nil, err
-	}
-
-	return r, nil
+	req, _ := http.NewRequest("GET", uri, nil)
+	return c.makeRequest(req)
 }
 
 func (c *Client) post(u string, files map[string]string) (*http.Response, error) {
@@ -53,16 +57,9 @@ func (c *Client) post(u string, files map[string]string) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", uri, body)
-	if err != nil {
-		return nil, err
-	}
+	req, _ := http.NewRequest("POST", uri, body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	r, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+	return c.makeRequest(req)
 }
 
 func (c *Client) Kill(o string) (SubmitResponse, error) {
