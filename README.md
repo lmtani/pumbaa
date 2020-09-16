@@ -6,10 +6,12 @@ Command line interface for Cromwell server.
 
 ```bash
 # Download
-wget https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-linux-amd64
+OS=linux
+#change to OS=windows  or OS=darwin (macos)
+wget https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-${OS}-amd64
 
 # Put in a directory of your PATH (may require sudo)
-mv cromwell-cli-linux-amd64 /usr/bin/cromwell-cli
+mv cromwell-cli-${OS}-amd64 /usr/bin/cromwell-cli
 
 # Submit a job
 cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json
@@ -38,5 +40,5 @@ cromwell-cli k -o <operation>
 - [x] Get jobs by name
 - [x] Allow to pass an Bearer token from the environment
 - [x] Make binary available for MacOS and Windows
+- [x] Add config for host url
 - [ ] Query job outputs
-- [ ] Add config for host url
