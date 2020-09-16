@@ -111,11 +111,10 @@ func (c *Client) Query(n string) (QueryResponse, error) {
 	}
 	defer r.Body.Close()
 	resp := QueryResponse{}
-
 	body, _ := ioutil.ReadAll(r.Body)
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
-		return QueryResponse{}, err
+		return QueryResponse{}, errors.New(string(body))
 	}
 	return resp, nil
 }
