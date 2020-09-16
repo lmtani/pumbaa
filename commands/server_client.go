@@ -120,16 +120,20 @@ func (c *Client) Query(n string) (QueryResponse, error) {
 	return resp, nil
 }
 
-func (c *Client) Metadata(o string) (string, error) {
+func (c *Client) Metadata(o string) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
 	r, err := c.get(route)
 	if err != nil {
-		return "", nil
+		return MetadataResponse{}, nil
 	}
 	defer r.Body.Close()
 	body, _ := ioutil.ReadAll(r.Body)
-	fmt.Println(string(body)) //TODO: organize important fields to be displayed
-	return route, nil
+	resp := MetadataResponse{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return MetadataResponse{}, err
+	}
+	return resp, nil
 }
 
 func submitPrepare(r SubmitRequest) map[string]string {

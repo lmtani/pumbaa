@@ -37,6 +37,6 @@ cromwell-cli k -o <operation>
 - [x] Query job status
 - [x] Get jobs by name
 - [x] Allow to pass an Bearer token from the environment
+- [x] Make binary available for MacOS and Windows
 - [ ] Query job outputs
 - [ ] Add config for host url
-- [ ] Make binary available for MacOS
