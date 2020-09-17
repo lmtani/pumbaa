@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 
 	"github.com/lmtani/cromwell-cli/commands"
@@ -23,7 +24,10 @@ func startLogger() (*zap.Logger, error) {
 
 func main() {
 	keyCromwell := "cromwell"
-	logger, _ := startLogger()
+	logger, err := startLogger()
+	if err != nil {
+		log.Fatalf("could not initialize custom logger; got %v", err)
+	}
 
 	app := &cli.App{
 		Name:  "cromwell-cli",
@@ -90,8 +94,9 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("cromwell.command.error",
+			zap.NamedError("err", err))
 	}
 }

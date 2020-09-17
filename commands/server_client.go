@@ -3,13 +3,13 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
@@ -30,6 +30,12 @@ type Client struct {
 	token string
 }
 
+type ErrorResponse struct {
+	HTTPStatus string
+	Status     string
+	Message    string
+}
+
 func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.token != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
@@ -46,47 +52,72 @@ func (c *Client) get(u string) (*http.Response, error) {
 }
 
 func (c *Client) post(u string, files map[string]string) (*http.Response, error) {
-	uri := fmt.Sprintf("%s%s", c.host, u)
-	body := new(bytes.Buffer)
-	writer := multipart.NewWriter(body)
-	for k, v := range files {
-		file, _ := os.Open(v)
-		content, _ := ioutil.ReadAll(file)
-		fi, _ := file.Stat()
-		part, _ := writer.CreateFormFile(k, fi.Name())
-		_, err := part.Write(content)
+	var (
+		uri    = fmt.Sprintf("%s%s", c.host, u)
+		body   = new(bytes.Buffer)
+		writer = multipart.NewWriter(body)
+	)
+
+	for field, path := range files {
+		// gets file name from file path
+		filename := filepath.Base(path)
+		// creates a new form file writer
+		fw, err := writer.CreateFormFile(field, filename)
 		if err != nil {
+			return nil, err
+		}
+
+		// prepare the file to be read
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+
+		// copies the file content to the form file writer
+		if _, err := io.Copy(fw, file); err != nil {
 			return nil, err
 		}
 	}
 
-	err := writer.Close()
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", uri, body)
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequest("POST", uri, body)
+
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	return c.makeRequest(req)
 }
 
 func (c *Client) Kill(o string) (SubmitResponse, error) {
+	var sr SubmitResponse
+
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
 	r, err := c.post(route, map[string]string{})
 	if err != nil {
-		return SubmitResponse{}, err
+		return sr, err
 	}
 	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
+
 	if r.StatusCode >= 400 {
-		msg := fmt.Sprintf("Submission failed. The server returned %d\n%s", r.StatusCode, body)
-		return SubmitResponse{}, errors.New(msg)
+		var er = ErrorResponse{
+			HTTPStatus: r.Status,
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+			return sr, err
+		}
+
+		return sr, fmt.Errorf("Submission failed. The server returned %#v", er)
 	}
-	resp := SubmitResponse{}
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return SubmitResponse{}, err
+
+	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
+		return sr, err
 	}
-	return resp, nil
+	return sr, nil
 }
 
 func (c *Client) Status(o string) string {
@@ -105,34 +136,38 @@ func (c *Client) Query(n string) (QueryResponse, error) {
 	if n != "" {
 		urlParams = fmt.Sprintf("?name=%s", n)
 	}
+	var qr QueryResponse
 	r, err := c.get(route + urlParams)
 	if err != nil {
-		return QueryResponse{}, err
+		return qr, err
 	}
 	defer r.Body.Close()
-	resp := QueryResponse{}
-	body, _ := ioutil.ReadAll(r.Body)
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return QueryResponse{}, errors.New(string(body))
+	if err := json.NewDecoder(r.Body).Decode(&qr); err != nil {
+		return qr, err
 	}
-	return resp, nil
+
+	if r.StatusCode >= 400 {
+		return qr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, qr)
+	}
+	return qr, nil
 }
 
 func (c *Client) Metadata(o string) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
+	var mr MetadataResponse
 	r, err := c.get(route)
 	if err != nil {
-		return MetadataResponse{}, nil
+		return mr, nil
 	}
 	defer r.Body.Close()
-	body, _ := ioutil.ReadAll(r.Body)
-	resp := MetadataResponse{}
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return MetadataResponse{}, err
+	if err := json.NewDecoder(r.Body).Decode(&mr); err != nil {
+		return mr, err
 	}
-	return resp, nil
+
+	if r.StatusCode >= 400 {
+		return mr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, mr)
+	}
+	return mr, nil
 }
 
 func submitPrepare(r SubmitRequest) map[string]string {
@@ -149,22 +184,19 @@ func submitPrepare(r SubmitRequest) map[string]string {
 func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := submitPrepare(requestFields)
-
+	var sr SubmitResponse
 	r, err := c.post(route, fileParams)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer r.Body.Close()
-	resp := SubmitResponse{}
-	body, _ := ioutil.ReadAll(r.Body)
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return SubmitResponse{}, err
-	}
-	if r.StatusCode >= 400 {
-		msg := fmt.Sprintf("Submission failed. The server returned %d\n%s", r.StatusCode, body)
-		return SubmitResponse{}, errors.New(msg)
+	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
+		return sr, err
 	}
 
-	return resp, nil
+	if r.StatusCode >= 400 {
+		return sr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, sr)
+	}
+
+	return sr, nil
 }
