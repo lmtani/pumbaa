@@ -10,7 +10,8 @@ OS=linux
 #change to OS=windows  or OS=darwin (macos)
 wget https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-${OS}-amd64
 
-# Put in a directory of your PATH (may require sudo)
+# Make it executable and move to a directory of your PATH (may require sudo)
+chmod +x cromwell-cli-${OS}-amd64
 mv cromwell-cli-${OS}-amd64 /usr/bin/cromwell-cli
 
 # Submit a job
@@ -21,6 +22,9 @@ cromwell-cli q
 
 # Kill a running job
 cromwell-cli k -o <operation>
+
+# Consulting metadata
+cromwell-cli m -o <operation>
 ```
 
 > **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
