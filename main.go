@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -22,28 +23,56 @@ func startLogger() (*zap.Logger, error) {
 }
 
 func main() {
-	logger, _ := startLogger()
+	keyCromwell := "cromwell"
+	logger, err := startLogger()
+	if err != nil {
+		log.Fatalf("could not initialize custom logger; got %v", err)
+	}
+
 	app := &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "token",
+				Aliases:  []string{"t"},
+				Required: false,
+				Usage:    "Bearer token to be included in HTTP requsts",
+			},
+			&cli.StringFlag{
+				Name:  "host",
+				Value: "http://127.0.0.1:8000",
+				Usage: "Url for your Cromwell Server",
+			},
+		},
+		Before: func(c *cli.Context) error {
+			cromwellClient := commands.New(c.String("host"), c.String("token"))
+			c.Context = context.WithValue(c.Context, keyCromwell, cromwellClient)
+			return nil
+		},
 		Commands: []*cli.Command{
+			{
+				Name:    "query",
+				Aliases: []string{"q"},
+				Usage:   "Query a workflow by its name",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
+				},
+				Action: commands.QueryWorkflow,
+			},
+
 			{
 				Name:    "submit",
 				Aliases: []string{"s"},
-				Usage:   "Submit a new job for Cromwell Server",
+				Usage:   "Submit a workflow and its inputs to Cromwell",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
 					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
-					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: true},
+					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
 				},
-				Action: func(c *cli.Context) error {
-					err := commands.GetWorkflow()
-					if err != nil {
-						logger.Fatal(err.Error())
-					}
-					return nil
-				},
+				Action: commands.SubmitWorkflow,
 			},
+
 			{
 				Name:    "kill",
 				Aliases: []string{"k"},
@@ -51,16 +80,23 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: func(c *cli.Context) error {
-					commands.GenerateTable()
-					return nil
+				Action: commands.KillWorkflow,
+			},
+			{
+				Name:    "metadata",
+				Aliases: []string{"m"},
+				Usage:   "Inspect workflow details",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
+				Action: commands.MetadataWorkflow,
 			},
 		},
 	}
 
-	err := app.Run(os.Args)
+	err = app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("cromwell.command.error",
+			zap.NamedError("err", err))
 	}
 }

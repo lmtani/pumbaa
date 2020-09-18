@@ -1,25 +1,14 @@
 package commands
 
-import (
-	"os"
+import "github.com/urfave/cli/v2"
 
-	"github.com/olekukonko/tablewriter"
-	"go.uber.org/zap"
-)
-
-func GenerateTable() {
-	data := [][]string{
-		{"1/1/2014", "Domain name", "2233", "$10.98"},
-		{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+func KillWorkflow(c *cli.Context) error {
+	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	resp, err := cromwellClient.Kill(c.String("operation"))
+	if err != nil {
+		return err
 	}
-
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetCenterSeparator("|")
-	table.AppendBulk(data) // Add Bulk Data
-	table.Render()
-	zap.S().Infow("Tabela gerada")
+	r := []string{resp.ID, resp.Status}
+	CreateTable([]string{"Operation", "Status"}, [][]string{r})
+	return nil
 }
