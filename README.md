@@ -1,6 +1,9 @@
 # Cromwell CLI
 
-Command line interface for Cromwell server.
+Command line interface for Cromwell Server. Check these other repositories if you don't need Bearer token:
+
+- https://github.com/broadinstitute/cromshell
+- https://github.com/stjudecloud/oliver
 
 ## Quickstart
 
