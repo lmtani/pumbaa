@@ -25,6 +25,9 @@ cromwell-cli k -o <operation>
 
 # Consulting metadata
 cromwell-cli m -o <operation>
+
+# Outputs information
+cromwell-cli o -o <operation>
 ```
 
 > **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
@@ -45,4 +48,5 @@ cromwell-cli m -o <operation>
 - [x] Allow to pass an Bearer token from the environment
 - [x] Make binary available for MacOS and Windows
 - [x] Add config for host url
-- [ ] Query job outputs
+- [x] Query job outputs
+

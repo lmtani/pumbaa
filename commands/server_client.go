@@ -125,9 +125,22 @@ func (c *Client) Status(o string) string {
 	return route
 }
 
-func (c *Client) Outputs(o string) string {
-	route := fmt.Sprintf("/api/workflow/v1/%s/status", o)
-	return route
+func (c *Client) Outputs(o string) (OutputsResponse, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
+	r, err := c.get(route)
+	var or = OutputsResponse{}
+	if err != nil {
+		return or, err
+	}
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&or); err != nil {
+		return or, err
+	}
+	if r.StatusCode >= 400 {
+		return or, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, or)
+	}
+	return or, nil
 }
 
 func (c *Client) Query(n string) (QueryResponse, error) {

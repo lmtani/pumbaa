@@ -91,6 +91,15 @@ func main() {
 				},
 				Action: commands.MetadataWorkflow,
 			},
+			{
+				Name:    "outputs",
+				Aliases: []string{"o"},
+				Usage:   "Query workflow outputs",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+				},
+				Action: commands.OutputsWorkflow,
+			},
 		},
 	}
 
