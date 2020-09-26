@@ -2,9 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 )
 
@@ -25,10 +27,21 @@ type CallItem struct {
 	End             time.Time
 }
 
-func prepareTableInput(resp MetadataResponse) ([]string, [][]string) {
-	header := []string{"task", "attempt", "elapsed", "status"}
-	rows := [][]string{}
-	for call, elements := range resp.Calls {
+type MetadataTableResponse struct {
+	WorkflowName string
+	Calls        map[string][]CallItem
+	Outputs      map[string]interface{}
+	Start        time.Time
+	End          time.Time
+}
+
+func (mtr MetadataTableResponse) Header() []string {
+	return []string{"task", "attempt", "elapsed", "status"}
+}
+
+func (mtr MetadataTableResponse) Rows() [][]string {
+	rows := make([][]string, len(mtr.Calls))
+	for call, elements := range mtr.Calls {
 		substrings := strings.Split(call, ".")
 		for _, elem := range elements {
 			elapsedTime := elem.End.Sub(elem.Start)
@@ -36,7 +49,7 @@ func prepareTableInput(resp MetadataResponse) ([]string, [][]string) {
 			rows = append(rows, row)
 		}
 	}
-	return header, rows
+	return rows
 }
 
 func MetadataWorkflow(c *cli.Context) error {
@@ -45,8 +58,7 @@ func MetadataWorkflow(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("\n======" + resp.WorkflowName + "======")
-	header, rows := prepareTableInput(resp)
-	CreateTable(header, rows)
+	var mtr = MetadataTableResponse(resp)
+	output.NewTable(os.Stdout).Render(mtr)
 	return err
 }

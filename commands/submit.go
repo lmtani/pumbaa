@@ -1,6 +1,11 @@
 package commands
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+
+	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
+)
 
 type SubmitResponse struct {
 	ID     string
@@ -20,7 +25,6 @@ func SubmitWorkflow(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	rows := []string{resp.ID, resp.Status}
-	CreateTable([]string{"Operation", "Status"}, [][]string{rows})
+	zap.S().Info(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
 	return nil
 }

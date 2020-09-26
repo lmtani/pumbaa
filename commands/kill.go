@@ -1,6 +1,11 @@
 package commands
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+
+	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
+)
 
 func KillWorkflow(c *cli.Context) error {
 	cromwellClient := FromInterface(c.Context.Value("cromwell"))
@@ -8,7 +13,6 @@ func KillWorkflow(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	r := []string{resp.ID, resp.Status}
-	CreateTable([]string{"Operation", "Status"}, [][]string{r})
+	zap.S().Info(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
 	return nil
 }

@@ -2,8 +2,10 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
@@ -23,14 +25,28 @@ type QueryResponseWorkflow struct {
 	MetadataArchiveStatus string
 }
 
-func queryResponseToTable(workflows QueryResponse) ([]string, [][]string) {
-	header := []string{"Operation", "Name", "Start", "End", "Status"}
-	rows := [][]string{}
+type QueryTableResponse struct {
+	Results           []QueryResponseWorkflow
+	TotalResultsCount int
+}
+
+func (qtr QueryTableResponse) Header() []string {
+	return []string{"Operation", "Name", "Start", "End", "Status"}
+}
+
+func (qtr QueryTableResponse) Rows() [][]string {
+	rows := make([][]string, len(qtr.Results))
 	timePattern := "2006-01-02 15h04m"
-	for _, elem := range workflows.Results {
-		rows = append(rows, []string{elem.ID, elem.Name, elem.Start.Format(timePattern), elem.End.Format(timePattern), elem.Status})
+	for _, r := range qtr.Results {
+		rows = append(rows, []string{
+			r.ID,
+			r.Name,
+			r.Start.Format(timePattern),
+			r.End.Format(timePattern),
+			r.Status,
+		})
 	}
-	return header, rows
+	return rows
 }
 
 func QueryWorkflow(c *cli.Context) error {
@@ -39,8 +55,8 @@ func QueryWorkflow(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	zap.S().Debugw(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
-	header, rows := queryResponseToTable(resp)
-	CreateTable(header, rows)
+	var qtr = QueryTableResponse(resp)
+	output.NewTable(os.Stdout).Render(qtr)
+	zap.S().Info(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
 	return err
 }
