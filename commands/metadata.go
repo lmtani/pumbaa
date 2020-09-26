@@ -11,7 +11,7 @@ import (
 type MetadataResponse struct {
 	WorkflowName string
 	Calls        map[string][]CallItem
-	Outputs      map[string]string
+	Outputs      map[string]interface{}
 	Start        time.Time
 	End          time.Time
 }
