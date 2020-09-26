@@ -5,14 +5,8 @@ Command line interface for Cromwell server.
 ## Quickstart
 
 ```bash
-# Download
-OS=linux
-#change to OS=windows  or OS=darwin (macos)
-wget https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-${OS}-amd64
-
-# Make it executable and move to a directory of your PATH (may require sudo)
-chmod +x cromwell-cli-${OS}-amd64
-mv cromwell-cli-${OS}-amd64 /usr/bin/cromwell-cli
+# Install
+curl https://raw.githubusercontent.com/lmtani/cromwell-cli/master/install.sh | bash
 
 # Submit a job
 cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json
@@ -23,14 +17,22 @@ cromwell-cli q
 # Kill a running job
 cromwell-cli k -o <operation>
 
-# Consulting metadata
+# Check metadata
 cromwell-cli m -o <operation>
 
-# Outputs information
+# Check outputs
 cromwell-cli o -o <operation>
 ```
 
 > **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
+
+### Example: Cromwell behind Google Indentity Aware Proxy
+
+```bash
+TOKEN=$(gcloud auth print-identity-token --impersonate-service-account <your@service-account.iam.gserviceaccount.com> --audiences <oauth-client-id.googleusercontent.com> --include-email)
+HOST="https://your-cromwell.dev"
+cromwell-cli --host "${HOST}" --token "${TOKEN}" query
+```
 
 ## Go ecosystem
 
