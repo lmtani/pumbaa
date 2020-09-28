@@ -177,10 +177,6 @@ main() {
         exit 1
     fi
 
-    case "${cli_os}" in
-        "Darwin"  ) cli_os="macOS";;
-    esac
-
     cli_arch="amd64"
     cli_file=$(echo "cromwell-cli-${cli_os}-${cli_arch}" | tr '[:upper:]' '[:lower:]')
     uri="${cli_base_url}/${version}/${cli_file}"
