@@ -180,7 +180,7 @@ main() {
     cli_arch="amd64"
     cli_file=$(echo "cromwell-cli-${cli_os}-${cli_arch}" | tr '[:upper:]' '[:lower:]')
     uri="${cli_base_url}/${version}/${cli_file}"
-    tempdir=$(mktemp -d -t)
+    tempdir=$(mktemp -d)
     print_message "== Downloading binary file from github: ${cli_file}" "info"
     wget $uri -P $tempdir 1>$tempdir/wget.stdout 2>$tempdir/wget.stderr
     print_message "== Installing" "info"
