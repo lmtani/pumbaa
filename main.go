@@ -54,7 +54,7 @@ func main() {
 			{
 				Name:    "query",
 				Aliases: []string{"q"},
-				Usage:   "Query a workflow by its name",
+				Usage:   "Query workflows",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
@@ -72,7 +72,15 @@ func main() {
 				},
 				Action: commands.SubmitWorkflow,
 			},
-
+			{
+				Name:    "inputs",
+				Aliases: []string{"i"},
+				Usage:   "Recover inputs from the specified workflow (JSON)",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+				},
+				Action: commands.Inputs,
+			},
 			{
 				Name:    "kill",
 				Aliases: []string{"k"},
@@ -85,7 +93,7 @@ func main() {
 			{
 				Name:    "metadata",
 				Aliases: []string{"m"},
-				Usage:   "Inspect workflow details",
+				Usage:   "Inspect workflow details (table)",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
@@ -94,7 +102,7 @@ func main() {
 			{
 				Name:    "outputs",
 				Aliases: []string{"o"},
-				Usage:   "Query workflow outputs",
+				Usage:   "Query workflow outputs (JSON)",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
