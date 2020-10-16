@@ -8,6 +8,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -143,14 +144,10 @@ func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	return or, nil
 }
 
-func (c *Client) Query(n string) (QueryResponse, error) {
+func (c *Client) Query(p url.Values) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
-	var urlParams string
-	if n != "" {
-		urlParams = fmt.Sprintf("?name=%s", n)
-	}
 	var qr QueryResponse
-	r, err := c.get(route + urlParams)
+	r, err := c.get(route + "?" + p.Encode())
 	if err != nil {
 		return qr, err
 	}

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -51,7 +52,12 @@ func (qtr QueryTableResponse) Rows() [][]string {
 
 func QueryWorkflow(c *cli.Context) error {
 	cromwellClient := FromInterface(c.Context.Value("cromwell"))
-	resp, err := cromwellClient.Query(c.String("name"))
+	params := url.Values{}
+	if c.String("name") != "" {
+		params.Add("name", c.String("name"))
+	}
+	params.Add("includeSubworkflows", "false")
+	resp, err := cromwellClient.Query(params)
 	if err != nil {
 		return err
 	}
