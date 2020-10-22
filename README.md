@@ -1,4 +1,4 @@
-# Cromwell CLI
+# :pig2: Cromwell CLI :rocket: 
 
 Command line interface for Cromwell Server. Check these other repositories if you don't need Bearer token:
 
