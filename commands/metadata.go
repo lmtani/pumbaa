@@ -46,6 +46,9 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 	for call, elements := range mtr.Calls {
 		substrings := strings.Split(call, ".")
 		for _, elem := range elements {
+			if elem.End.IsZero() {
+				elem.End = time.Now()
+			}
 			elapsedTime := elem.End.Sub(elem.Start)
 			row := []string{substrings[len(substrings)-1], fmt.Sprintf("%d", elem.Attempt), elapsedTime.String(), elem.ExecutionStatus}
 			rows = append(rows, row)
