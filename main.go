@@ -69,6 +69,7 @@ func main() {
 					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
 					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
 					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
+					&cli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false},
 				},
 				Action: commands.SubmitWorkflow,
 			},

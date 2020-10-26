@@ -188,6 +188,9 @@ func submitPrepare(r SubmitRequest) map[string]string {
 	if r.workflowDependencies != "" {
 		fileParams["workflowDependencies"] = r.workflowDependencies
 	}
+	if r.workflowOptions != "" {
+		fileParams["workflowOptions"] = r.workflowOptions
+	}
 	return fileParams
 }
 
