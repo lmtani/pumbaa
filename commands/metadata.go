@@ -20,12 +20,30 @@ type MetadataResponse struct {
 }
 
 type CallItem struct {
-	ExecutionStatus string
-	Stdout          string
-	Stderr          string
-	Attempt         int
-	Start           time.Time
-	End             time.Time
+	ExecutionStatus   string
+	Stdout            string
+	Stderr            string
+	Attempt           int
+	Start             time.Time
+	End               time.Time
+	Labels            Label
+	MonitoringLog     string
+	CommandLine       string
+	DockerImageUsed   string
+	RuntimeAttributes RuntimeAttributes
+}
+
+type RuntimeAttributes struct {
+	BootDiskSizeGb string
+	CPU            string
+	Disks          string
+	Docker         string
+	Memory         string
+}
+
+type Label struct {
+	CromwellWorkflowID string `json:"cromwell-workflow-id"`
+	WdlTaskName        string `json:"wdl-task-name"`
 }
 
 type MetadataTableResponse struct {

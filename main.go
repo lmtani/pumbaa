@@ -109,6 +109,15 @@ func main() {
 				},
 				Action: commands.OutputsWorkflow,
 			},
+			{
+				Name:    "navigate",
+				Aliases: []string{"n"},
+				Usage:   "Navigate through metadata data",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+				},
+				Action: commands.Navigate,
+			},
 		},
 	}
 
