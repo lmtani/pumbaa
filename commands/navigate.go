@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
@@ -21,9 +22,10 @@ func contains(s []string, e string) bool {
 
 func selectDesiredTask(c map[string][]CallItem) (string, error) {
 	taskOptions := []string{}
-	for _, elements := range c {
-		if !contains(taskOptions, elements[0].Labels.WdlTaskName) {
-			taskOptions = append(taskOptions, elements[0].Labels.WdlTaskName)
+	for key := range c {
+		taskName := strings.Split(key, ".")[1]
+		if !contains(taskOptions, taskName) {
+			taskOptions = append(taskOptions, taskName)
 		}
 	}
 	prompt := promptui.Select{
@@ -75,7 +77,7 @@ func Navigate(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println(resp.Calls)
 	task, err := selectDesiredTask(resp.Calls)
 	if err != nil {
 		return err
