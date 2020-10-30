@@ -42,6 +42,9 @@ func selectDesiredTask(c map[string][]CallItem) (string, error) {
 
 func selectDesiredShard(s []CallItem) (CallItem, error) {
 	maxValue := len(s)
+	if maxValue == 1 {
+		return s[0], nil
+	}
 	validate := func(input string) error {
 		v, err := strconv.ParseFloat(input, 64)
 		if err != nil {

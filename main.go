@@ -118,6 +118,21 @@ func main() {
 				},
 				Action: commands.Navigate,
 			},
+			{
+				Name:    "gce",
+				Aliases: []string{"g"},
+				Usage:   "Use commands specific for Google backend",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "monitoring",
+						Usage: "View resource usage data",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "logfile", Aliases: []string{"f"}, Required: true},
+						},
+						Action: commands.Monitoring,
+					},
+				},
+			},
 		},
 	}
 
