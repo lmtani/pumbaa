@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -40,40 +39,38 @@ func selectDesiredTask(c map[string][]CallItem) (string, error) {
 	return result, nil
 }
 
-func selectDesiredShard(s []CallItem) (CallItem, error) {
-	maxValue := len(s)
-	if maxValue == 1 {
-		return s[0], nil
+func selectDesiredShard(shards []CallItem) (CallItem, error) {
+	if len(shards) == 1 {
+		return shards[0], nil
 	}
-	validate := func(input string) error {
-		v, err := strconv.ParseFloat(input, 64)
-		if err != nil {
-			return errors.New("Invalid number")
-		}
-		if int(v) > maxValue {
-			return errors.New("You do not have shard with this value")
-		}
-		return nil
+	templates := &promptui.SelectTemplates{
+		Label:    "{{ . }}?",
+		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | red }}) CallCaching: {{ .CallCaching.Hit}}",
+		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }})",
+		Selected: "✔ {{ .ShardIndex | green }}",
 	}
-	label := "Select the desired shard number (max: %d)\n"
-	for idx, e := range s {
-		label += fmt.Sprintf("[%v] Attempt: %v, Status: %v\n", e.ShardIndex, e.Attempt, e.ExecutionStatus)
-		if idx > 20 {
-			label += "More than 20 shards, omitting remaining ones."
-		}
+
+	searcher := func(input string, index int) bool {
+		shard := shards[index]
+		name := strconv.Itoa(shard.ShardIndex)
+		return name == input
 	}
-	// fmt.Println(label)
-	prompt2 := promptui.Prompt{
-		Label:    label,
-		Validate: validate,
+
+	prompt := promptui.Select{
+		Label:     "Witch shard?",
+		Items:     shards,
+		Templates: templates,
+		Size:      6,
+		Searcher:  searcher,
 	}
-	result, err := prompt2.Run()
+
+	i, _, err := prompt.Run()
 
 	if err != nil {
 		return CallItem{}, err
 	}
-	v, _ := strconv.Atoi(result)
-	return s[v], nil
+
+	return shards[i], err
 }
 
 func Navigate(c *cli.Context) error {
@@ -92,7 +89,7 @@ func Navigate(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Printf("🐖 Command status: %s\n", item.ExecutionStatus)
+	fmt.Printf("Command status: %s\n", item.ExecutionStatus)
 	if item.ExecutionStatus == "QueuedInCromwell" {
 		return nil
 	}
@@ -102,7 +99,7 @@ func Navigate(c *cli.Context) error {
 		color.Cyan(item.CommandLine)
 	}
 
-	fmt.Printf("🐖 Logs:\n")
+	fmt.Printf("Logs:\n")
 	color.Cyan("%s\n%s\n", item.Stderr, item.Stdout)
 	if item.MonitoringLog != "" {
 		color.Cyan("%s\n", item.MonitoringLog)

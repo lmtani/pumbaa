@@ -33,6 +33,13 @@ type CallItem struct {
 	DockerImageUsed   string
 	RuntimeAttributes RuntimeAttributes
 	CallCaching       CallCachingData
+	ExecutionEvents   []ExecutionEvents
+}
+
+type ExecutionEvents struct {
+	StartTime   time.Time
+	Description string
+	EndTime     time.Time
 }
 
 type RuntimeAttributes struct {
