@@ -24,6 +24,7 @@ type CallItem struct {
 	Stdout            string
 	Stderr            string
 	Attempt           int
+	ShardIndex        int
 	Start             time.Time
 	End               time.Time
 	Labels            Label
@@ -31,6 +32,7 @@ type CallItem struct {
 	CommandLine       string
 	DockerImageUsed   string
 	RuntimeAttributes RuntimeAttributes
+	CallCaching       CallCachingData
 }
 
 type RuntimeAttributes struct {
@@ -39,6 +41,11 @@ type RuntimeAttributes struct {
 	Disks          string
 	Docker         string
 	Memory         string
+}
+
+type CallCachingData struct {
+	Result string
+	Hit    bool
 }
 
 type Label struct {

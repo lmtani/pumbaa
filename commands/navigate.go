@@ -37,8 +37,6 @@ func selectDesiredTask(c map[string][]CallItem) (string, error) {
 		fmt.Printf("Prompt failed %v\n", err)
 		return "", err
 	}
-	fmt.Printf("You choose %q\n", result)
-
 	return result, nil
 }
 
@@ -57,9 +55,16 @@ func selectDesiredShard(s []CallItem) (CallItem, error) {
 		}
 		return nil
 	}
-
+	label := "Select the desired shard number (max: %d)\n"
+	for idx, e := range s {
+		label += fmt.Sprintf("[%v] Attempt: %v, Status: %v\n", e.ShardIndex, e.Attempt, e.ExecutionStatus)
+		if idx > 20 {
+			label += "More than 20 shards, omitting remaining ones."
+		}
+	}
+	// fmt.Println(label)
 	prompt2 := promptui.Prompt{
-		Label:    fmt.Sprintf("Select the desired shard number (max: %d)", maxValue-1),
+		Label:    label,
 		Validate: validate,
 	}
 	result, err := prompt2.Run()
@@ -77,7 +82,6 @@ func Navigate(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(resp.Calls)
 	task, err := selectDesiredTask(resp.Calls)
 	if err != nil {
 		return err
@@ -89,9 +93,21 @@ func Navigate(c *cli.Context) error {
 	}
 
 	fmt.Printf("🐖 Command status: %s\n", item.ExecutionStatus)
-	color.Cyan(item.CommandLine)
+	if item.ExecutionStatus == "QueuedInCromwell" {
+		return nil
+	}
+	if item.CallCaching.Hit {
+		color.Cyan(item.CallCaching.Result)
+	} else {
+		color.Cyan(item.CommandLine)
+	}
+
 	fmt.Printf("🐖 Logs:\n")
-	color.Cyan("%s\n%s\n%s\n", item.Stderr, item.Stdout, item.MonitoringLog)
+	color.Cyan("%s\n%s\n", item.Stderr, item.Stdout)
+	if item.MonitoringLog != "" {
+		color.Cyan("%s\n", item.MonitoringLog)
+	}
+
 	fmt.Printf("🐋 Docker image:\n")
 	color.Cyan("%s\n", item.RuntimeAttributes.Docker)
 	return nil
