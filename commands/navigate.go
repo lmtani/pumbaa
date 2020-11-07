@@ -19,24 +19,30 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func selectDesiredTask(c map[string][]CallItem) (string, error) {
+func selectDesiredTask(m MetadataResponse) ([]CallItem, error) {
 	taskOptions := []string{}
-	for key := range c {
+	for key := range m.Calls {
 		taskName := strings.Split(key, ".")[1]
 		if !contains(taskOptions, taskName) {
 			taskOptions = append(taskOptions, taskName)
 		}
 	}
+	cat := "Workflow"
+	if m.RootWorkflowID != "" {
+		cat = "SubWorkflow"
+	}
+	color.Green("%s: %s\n", cat, m.WorkflowName)
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
 	}
-	_, result, err := prompt.Run()
+	_, taskName, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return "", err
+		return []CallItem{}, err
 	}
-	return result, nil
+
+	return m.Calls[fmt.Sprintf("%s.%s", m.WorkflowName, taskName)], nil
 }
 
 func selectDesiredShard(shards []CallItem) (CallItem, error) {
@@ -79,14 +85,23 @@ func Navigate(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	task, err := selectDesiredTask(resp.Calls)
-	if err != nil {
-		return err
-	}
-	selectedTask := resp.Calls[fmt.Sprintf("%s.%s", resp.WorkflowName, task)]
-	item, err := selectDesiredShard(selectedTask)
-	if err != nil {
-		return err
+	var item CallItem
+	for {
+		task, err := selectDesiredTask(resp)
+		if err != nil {
+			return err
+		}
+		item, err = selectDesiredShard(task)
+		if err != nil {
+			return err
+		}
+		if item.SubWorkflowID == "" {
+			break
+		}
+		resp, err = cromwellClient.Metadata(item.SubWorkflowID)
+		if err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Command status: %s\n", item.ExecutionStatus)

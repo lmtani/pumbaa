@@ -14,6 +14,7 @@ import (
 func startLogger() (*zap.Logger, error) {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.Level.SetLevel(zap.InfoLevel)
 	logger, err := config.Build()
 	if err != nil {
 		return nil, err
@@ -125,9 +126,9 @@ func main() {
 				Subcommands: []*cli.Command{
 					{
 						Name:  "monitoring",
-						Usage: "View resource usage data",
+						Usage: "View resource usage data using data from monitoring.sh script (cpu, mem or disk)",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "logfile", Aliases: []string{"f"}, Required: true},
+							&cli.StringFlag{Name: "resource", Aliases: []string{"r"}, Required: true},
 						},
 						Action: commands.Monitoring,
 					},

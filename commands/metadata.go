@@ -11,12 +11,13 @@ import (
 )
 
 type MetadataResponse struct {
-	WorkflowName string
-	Calls        map[string][]CallItem
-	Inputs       map[string]interface{}
-	Outputs      map[string]interface{}
-	Start        time.Time
-	End          time.Time
+	WorkflowName   string
+	RootWorkflowID string
+	Calls          map[string][]CallItem
+	Inputs         map[string]interface{}
+	Outputs        map[string]interface{}
+	Start          time.Time
+	End            time.Time
 }
 
 type CallItem struct {
@@ -31,6 +32,7 @@ type CallItem struct {
 	MonitoringLog     string
 	CommandLine       string
 	DockerImageUsed   string
+	SubWorkflowID     string
 	RuntimeAttributes RuntimeAttributes
 	CallCaching       CallCachingData
 	ExecutionEvents   []ExecutionEvents
@@ -61,12 +63,13 @@ type Label struct {
 }
 
 type MetadataTableResponse struct {
-	WorkflowName string
-	Calls        map[string][]CallItem
-	Inputs       map[string]interface{}
-	Outputs      map[string]interface{}
-	Start        time.Time
-	End          time.Time
+	WorkflowName   string
+	RootWorkflowID string
+	Calls          map[string][]CallItem
+	Inputs         map[string]interface{}
+	Outputs        map[string]interface{}
+	Start          time.Time
+	End            time.Time
 }
 
 func (mtr MetadataTableResponse) Header() []string {
