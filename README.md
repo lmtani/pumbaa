@@ -30,7 +30,7 @@ cromwell-cli o -o <operation>
 cromwell-cli n -o <operation>
 
 # View monitoring scripts log. Pipe to "less -S" if it has lot of lines
-cat <monitoring.log> | grep -v "#" | cromwell-cli n -o <operation>
+cat <monitoring.log> | grep -v "#" | cromwell-cli gce monitoring -r <cpu|mem|disk>
 ```
 
 > **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
