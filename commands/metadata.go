@@ -11,30 +11,65 @@ import (
 )
 
 type MetadataResponse struct {
-	WorkflowName string
-	Calls        map[string][]CallItem
-	Inputs       map[string]interface{}
-	Outputs      map[string]interface{}
-	Start        time.Time
-	End          time.Time
+	WorkflowName   string
+	RootWorkflowID string
+	Calls          map[string][]CallItem
+	Inputs         map[string]interface{}
+	Outputs        map[string]interface{}
+	Start          time.Time
+	End            time.Time
 }
 
 type CallItem struct {
-	ExecutionStatus string
-	Stdout          string
-	Stderr          string
-	Attempt         int
-	Start           time.Time
-	End             time.Time
+	ExecutionStatus   string
+	Stdout            string
+	Stderr            string
+	Attempt           int
+	ShardIndex        int
+	Start             time.Time
+	End               time.Time
+	Labels            Label
+	MonitoringLog     string
+	CommandLine       string
+	DockerImageUsed   string
+	SubWorkflowID     string
+	RuntimeAttributes RuntimeAttributes
+	CallCaching       CallCachingData
+	ExecutionEvents   []ExecutionEvents
+}
+
+type ExecutionEvents struct {
+	StartTime   time.Time
+	Description string
+	EndTime     time.Time
+}
+
+type RuntimeAttributes struct {
+	BootDiskSizeGb string
+	CPU            string
+	Disks          string
+	Docker         string
+	Memory         string
+}
+
+type CallCachingData struct {
+	Result string
+	Hit    bool
+}
+
+type Label struct {
+	CromwellWorkflowID string `json:"cromwell-workflow-id"`
+	WdlTaskName        string `json:"wdl-task-name"`
 }
 
 type MetadataTableResponse struct {
-	WorkflowName string
-	Calls        map[string][]CallItem
-	Inputs       map[string]interface{}
-	Outputs      map[string]interface{}
-	Start        time.Time
-	End          time.Time
+	WorkflowName   string
+	RootWorkflowID string
+	Calls          map[string][]CallItem
+	Inputs         map[string]interface{}
+	Outputs        map[string]interface{}
+	Start          time.Time
+	End            time.Time
 }
 
 func (mtr MetadataTableResponse) Header() []string {

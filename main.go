@@ -14,6 +14,7 @@ import (
 func startLogger() (*zap.Logger, error) {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.Level.SetLevel(zap.InfoLevel)
 	logger, err := config.Build()
 	if err != nil {
 		return nil, err
@@ -108,6 +109,30 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: commands.OutputsWorkflow,
+			},
+			{
+				Name:    "navigate",
+				Aliases: []string{"n"},
+				Usage:   "Navigate through metadata data",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+				},
+				Action: commands.Navigate,
+			},
+			{
+				Name:    "gce",
+				Aliases: []string{"g"},
+				Usage:   "Use commands specific for Google backend",
+				Subcommands: []*cli.Command{
+					{
+						Name:  "monitoring",
+						Usage: "View resource usage data using data from monitoring.sh script (cpu, mem or disk)",
+						Flags: []cli.Flag{
+							&cli.StringFlag{Name: "resource", Aliases: []string{"r"}, Required: true},
+						},
+						Action: commands.Monitoring,
+					},
+				},
 			},
 		},
 	}
