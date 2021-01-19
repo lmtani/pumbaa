@@ -63,7 +63,7 @@ func selectDesiredShard(shards []CallItem) (CallItem, error) {
 	}
 
 	prompt := promptui.Select{
-		Label:     "Witch shard?",
+		Label:     "Which shard?",
 		Items:     shards,
 		Templates: templates,
 		Size:      6,
