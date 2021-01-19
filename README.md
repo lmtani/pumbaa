@@ -8,7 +8,7 @@ Command line interface for Cromwell Server. Check these other repositories if yo
 ## Quickstart
 
 ```bash
-# Install
+# Install (wip)
 curl https://raw.githubusercontent.com/lmtani/cromwell-cli/master/install.sh | bash
 
 # Submit a job
