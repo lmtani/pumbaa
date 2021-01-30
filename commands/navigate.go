@@ -21,8 +21,11 @@ func contains(s []string, e string) bool {
 
 func selectDesiredTask(m MetadataResponse) ([]CallItem, error) {
 	taskOptions := []string{}
+	calls := map[string][]CallItem{}
 	for key := range m.Calls {
-		taskName := strings.Split(key, ".")[1]
+		sliceName := strings.Split(key, ".")
+		taskName := sliceName[len(sliceName)-1]
+		calls[taskName] = m.Calls[key]
 		if !contains(taskOptions, taskName) {
 			taskOptions = append(taskOptions, taskName)
 		}
@@ -41,8 +44,7 @@ func selectDesiredTask(m MetadataResponse) ([]CallItem, error) {
 		fmt.Printf("Prompt failed %v\n", err)
 		return []CallItem{}, err
 	}
-
-	return m.Calls[fmt.Sprintf("%s.%s", m.WorkflowName, taskName)], nil
+	return calls[taskName], nil
 }
 
 func selectDesiredShard(shards []CallItem) (CallItem, error) {

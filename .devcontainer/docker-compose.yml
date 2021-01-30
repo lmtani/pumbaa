@@ -2,7 +2,9 @@ version: "3.7"
 
 services:
   vscode:
-    image: qmcgaw/godevcontainer
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ../:/workspace
       - ~/.ssh:/home/vscode/.ssh:ro
