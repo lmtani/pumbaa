@@ -1,45 +1,31 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.137.0/containers/go
 {
-    "name": "Cromwell CLI",
-    "dockerComposeFile": [
-        "docker-compose.yml"
+    "name": "Go",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": {
+            // Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
+            "VARIANT": "1",
+            // Options
+            "INSTALL_NODE": "false",
+            "NODE_VERSION": "lts/*"
+        }
+    },
+    "workspaceMount": "",
+    "runArgs": [
+        "-v",
+        "${localWorkspaceFolder}:/workspaces/cromwell-cli:z",
+        "--cap-add=SYS_PTRACE",
+        "--security-opt",
+        "seccomp=unconfined"
     ],
-    "service": "vscode",
-    "runServices": [
-        "vscode"
-    ],
-    "shutdownAction": "stopCompose",
-    "postCreateCommand": "go mod download",
-    "workspaceFolder": "/workspace",
-    // "overrideCommand": "",
-    "extensions": [
-        // General backend
-        "mohsen1.prettify-json",
-        "bajdzis.vscode-database", // Supports connections to mysql or postgres, over SSL, socked
-        "redhat.vscode-yaml", // Kubernetes and Kedge syntax support
-        // Go
-        "golang.go",
-        // Console
-        "IBM.output-colorizer",
-        // Git
-        "eamodio.gitlens",
-        "mhutchie.git-graph",
-        // Other linters
-        "davidanson.vscode-markdownlint",
-        "ms-azuretools.vscode-docker",
-        // Other helpers
-        "shardulm94.trailing-spaces",
-        "Gruntfuggly.todo-tree",
-        "bierner.emojisense",
-        "stkb.rewrap", // rewrap comments after n characters on one line
-        // Other
-        "jrebocho.vscode-random", // generate random values
-        "alefragnani.Bookmarks",
-        "quicktype.quicktype", // Paste JSON as code
-        "spikespaz.vscode-smoothtype", // smooth cursor animation
-        "vscode-icons-team.vscode-icons",
-        "github.vscode-pull-request-github"
-    ],
+    // Set *default* container specific settings.json values on container create.
     "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "go.useGoProxyToCheckForToolUpdates": false,
+        "go.gopath": "/go",
+        "go.useLanguageServer": true
         // General settings
         "files.eol": "\n",
         // Docker
@@ -47,7 +33,6 @@
             "ms-azuretools.vscode-docker": "workspace"
         },
         // Golang general settings
-        "go.useLanguageServer": true,
         "go.autocompleteUnimportedPackages": true,
         "go.gotoSymbol.includeImports": true,
         "go.gotoSymbol.includeGoroot": true,
@@ -127,5 +112,40 @@
             "-race"
         ],
         "go.testTimeout": "600s"
-    }
+    },
+    // Add the IDs of extensions you want installed when the container is created.
+    "extensions": [
+        // General backend
+        "mohsen1.prettify-json",
+        "bajdzis.vscode-database", // Supports connections to mysql or postgres, over SSL, socked
+        "redhat.vscode-yaml", // Kubernetes and Kedge syntax support
+        // Go
+        "golang.go",
+        // Console
+        "IBM.output-colorizer",
+        // Git
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        // Other linters
+        "davidanson.vscode-markdownlint",
+        "ms-azuretools.vscode-docker",
+        // Other helpers
+        "shardulm94.trailing-spaces",
+        "Gruntfuggly.todo-tree",
+        "bierner.emojisense",
+        "stkb.rewrap", // rewrap comments after n characters on one line
+        // Other
+        "jrebocho.vscode-random", // generate random values
+        "alefragnani.Bookmarks",
+        "quicktype.quicktype", // Paste JSON as code
+        "spikespaz.vscode-smoothtype", // smooth cursor animation
+        "vscode-icons-team.vscode-icons",
+        "github.vscode-pull-request-github"
+    ],
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [9000],
+    // Use 'postCreateCommand' to run commands after the container is created.
+    // "postCreateCommand": "go version",
+    // Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+    // "remoteUser": "vscode"
 }
