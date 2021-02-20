@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Script inspired on https://getcroc.schollz.com/
 set -e
 #-------------------------------------------------------------------------------
@@ -6,8 +7,7 @@ set -e
 PREFIX="${PREFIX:-}"
 ANDROID_ROOT="${ANDROID_ROOT:-}"
 
-# Termux on Android has ${PREFIX} set which already ends with '/usr'
-if [[ -n "${ANDROID_ROOT}" && -n "${PREFIX}" ]]; then
+if [[ -n "${PREFIX}" ]]; then
   INSTALL_PREFIX="${PREFIX}/bin"
 else
   INSTALL_PREFIX="/usr/local/bin"
@@ -143,14 +143,13 @@ install_file_unix() {
   return "${rcode}"
 }
 
-# https://github.com/lmtani/cromwell-cli/releases/download/v0.1/cromwell-cli-darwin-amd64
 
 main() {
     print_banner
 
     prefix="${1}"
     cli_base_url="https://github.com/lmtani/cromwell-cli/releases/download"
-    version="v0.8"
+    version="0.8.1"
     print_message "== Install prefix set to ${prefix}" "info"
 
     cli_arch="$(determine_arch)"
@@ -177,14 +176,16 @@ main() {
         exit 1
     fi
 
-    cli_arch="amd64"
-    cli_file=$(echo "cromwell-cli-${cli_os}-${cli_arch}" | tr '[:upper:]' '[:lower:]')
-    uri="${cli_base_url}/${version}/${cli_file}"
+    asset_name="cromwell-cli_${version}_${cli_os}_${cli_arch}.tar.gz"
+    print_message "== Downloading binary file from github: ${asset_name}" "info"
+    uri="${cli_base_url}/v${version}/${asset_name}"
     tempdir=$(mktemp -d)
-    print_message "== Downloading binary file from github: ${cli_file}" "info"
-    wget $uri -P $tempdir 1>$tempdir/wget.stdout 2>$tempdir/wget.stderr
-    print_message "== Installing" "info"
-    install_file_unix "${tempdir}/${cli_file}" "${prefix}/cromwell-cli"
+    wget "${uri}" -P "$tempdir" 1>"${tempdir}/wget.out" 2>"${tempdir}/wget.err"
+    tar -xf "${tempdir}/${asset_name}" -C "${tempdir}"
+
+    print_message "== Installing in ${prefix}/cromwell-cli" "info"
+    install_file_unix "${tempdir}/cromwell-cli" "${prefix}/cromwell-cli"
+    print_message "Done!" "ok"
 }
 
 
