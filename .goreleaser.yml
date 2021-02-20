@@ -12,6 +12,8 @@ builds:
     goos:
       - linux
       - darwin
+    ldflags:
+      - -X "main.Version={{.Env.CIRCLE_TAG}}"
 archives:
   - replacements:
       darwin: Darwin

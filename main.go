@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -10,6 +11,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+var Version = "development"
 
 func startLogger() (*zap.Logger, error) {
 	config := zap.NewDevelopmentConfig()
@@ -52,6 +55,16 @@ func main() {
 			return nil
 		},
 		Commands: []*cli.Command{
+			{
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "Cromwell-CLI version",
+				Action: func(c *cli.Context) error {
+					fmt.Printf("Version: %s\n", Version)
+					return nil
+				},
+			},
+
 			{
 				Name:    "query",
 				Aliases: []string{"q"},
