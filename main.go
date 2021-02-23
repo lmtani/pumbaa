@@ -38,10 +38,9 @@ func main() {
 		Usage: "Command line interface for Cromwell Server",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:     "token",
-				Aliases:  []string{"t"},
+				Name:     "iap",
 				Required: false,
-				Usage:    "Bearer token to be included in HTTP requsts",
+				Usage:    "Uses your defauld Google Credentials to obtains an access token.",
 			},
 			&cli.StringFlag{
 				Name:  "host",
@@ -50,7 +49,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			cromwellClient := commands.New(c.String("host"), c.String("token"))
+			cromwellClient := commands.New(c.String("host"), c.String("iap"))
 			c.Context = context.WithValue(c.Context, keyCromwell, cromwellClient)
 			return nil
 		},
