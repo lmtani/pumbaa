@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -55,7 +54,10 @@ func getGoogleIapToken(aud string) (string, error) {
 
 func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.iap != "" {
-		token, _ := getGoogleIapToken("1071645522816-a10ri2d13odpeor31u8j1h8q2vcv6343.apps.googleusercontent.com")
+		token, err := getGoogleIapToken(c.iap)
+		if err != nil {
+			return nil, err
+		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 	zap.S().Infow(fmt.Sprintf("%s request to: %s", req.Method, req.URL))
@@ -169,12 +171,10 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 		return qr, err
 	}
 	defer r.Body.Close()
-	bodyBuffer, _ := ioutil.ReadAll(r.Body)
-	fmt.Println(string(bodyBuffer))
-	// if err := json.NewDecoder(r.Body).Decode(&qr); err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return qr, err
-	// }
+
+	if err := json.NewDecoder(r.Body).Decode(&qr); err != nil {
+		return qr, err
+	}
 
 	if r.StatusCode >= 400 {
 		return qr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, qr)

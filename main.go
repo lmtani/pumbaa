@@ -40,7 +40,7 @@ func main() {
 			&cli.StringFlag{
 				Name:     "iap",
 				Required: false,
-				Usage:    "Uses your defauld Google Credentials to obtains an access token.",
+				Usage:    "Uses your defauld Google Credentials to obtains an access token to this audience.",
 			},
 			&cli.StringFlag{
 				Name:  "host",
