@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,10 +15,11 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
+	"google.golang.org/api/idtoken"
 )
 
 func New(h, t string) Client {
-	return Client{host: h, token: t}
+	return Client{host: h, iap: t}
 }
 
 func FromInterface(i interface{}) Client {
@@ -27,8 +29,8 @@ func FromInterface(i interface{}) Client {
 }
 
 type Client struct {
-	host  string
-	token string
+	host string
+	iap  string
 }
 
 type ErrorResponse struct {
@@ -37,11 +39,28 @@ type ErrorResponse struct {
 	Message    string
 }
 
-func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
-	if c.token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+func getGoogleIapToken(aud string) (string, error) {
+	ctx := context.Background()
+	ts, err := idtoken.NewTokenSource(ctx, aud)
+	if err != nil {
+		return "", err
 	}
-	zap.S().Debugw(fmt.Sprintf("%s request to: %s", req.Method, req.URL))
+	token, err := ts.Token()
+	if err != nil {
+		return "", err
+	}
+	return token.AccessToken, nil
+}
+
+func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
+	if c.iap != "" {
+		token, err := getGoogleIapToken(c.iap)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	zap.S().Infow(fmt.Sprintf("%s request to: %s", req.Method, req.URL))
 	client := &http.Client{}
 	return client.Do(req)
 }
@@ -152,6 +171,7 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 		return qr, err
 	}
 	defer r.Body.Close()
+
 	if err := json.NewDecoder(r.Body).Decode(&qr); err != nil {
 		return qr, err
 	}

@@ -38,7 +38,8 @@ cat <monitoring.log> | grep -v "#" | cromwell-cli gce monitoring -r <cpu|mem|dis
 ### Example: Cromwell behind Google Indentity Aware Proxy
 
 ```bash
-TOKEN=$(gcloud auth print-identity-token --impersonate-service-account <your@service-account.iam.gserviceaccount.com> --audiences <oauth-client-id.googleusercontent.com> --include-email)
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google/service-account.json
 HOST="https://your-cromwell.dev"
-cromwell-cli --host "${HOST}" --token "${TOKEN}" query
+AUDIENCE="Expected audience"
+cromwell-cli --host "${HOST}" --iap "${AUDIENCE}" query
 ```
