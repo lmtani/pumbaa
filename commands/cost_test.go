@@ -8,13 +8,27 @@ import (
 )
 
 func TestCost(t *testing.T) {
-	file, _ := ioutil.ReadFile("./metadata.json")
+	file, err := ioutil.ReadFile("../sample/meta.json")
+	if err != nil {
+		t.Fatal(err)
+	}
 	meta := MetadataResponse{}
-	_ = json.Unmarshal(file, &meta)
+	err = json.Unmarshal(file, &meta)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	resp, _ := GetComputeCost(meta.Calls)
-	if resp != 0.1 {
-		t.Errorf("Expected %v, got %v", 0.1, resp)
+	resp, err := GetComputeUsageForPricing(meta.Calls)
+	if err != nil {
+		t.Error(err)
+	}
+	expectedCPU := 0.7311016666666666
+	if resp.PreemptCPU != expectedCPU {
+		t.Errorf("Expected %v, got %v", expectedCPU, resp.PreemptCPU)
+	}
+	expectedMemory := 3.1025910416666664
+	if resp.PreemptMemory != expectedMemory {
+		t.Errorf("Expected %v, got %v", expectedMemory, resp.PreemptMemory)
 	}
 }
 

@@ -1,45 +1,68 @@
 package commands
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func GetComputeCost(data map[string][]CallItem) (float64, error) {
+type ParsedCallAttributes struct {
+	Hdd     float64
+	Preempt bool
+	Ssd     float64
+	Memory  float64
+	CPU     float64
+	Elapsed time.Duration
+}
+
+type TotalResources struct {
+	PreemptHdd    float64
+	PreemptSsd    float64
+	PreemptCPU    float64
+	PreemptMemory float64
+	Hdd           float64
+	Ssd           float64
+	CPU           float64
+	Memory        float64
+}
+
+func GetComputeUsageForPricing(data map[string][]CallItem) (TotalResources, error) {
+	t := TotalResources{}
+	iterateOverTasks(data, &t)
+	return t, nil
+}
+
+func iterateOverTasks(data map[string][]CallItem, t *TotalResources) {
 	for key := range data {
-		iterateOverTasks(data[key])
+		iterateOverElements(data[key], t)
 	}
-
-	return 0.0, nil
 }
 
-func iterateOverTasks(c []CallItem) {
-	totalHdd := 0.0
-	totalSsd := 0.0
-	totalProcessors := 0.0
-	totalMemory := 0.0
-	var timeElapsed time.Duration
+func iterateOverElements(c []CallItem, t *TotalResources) {
 	for idx := range c {
-		preempt, Hdd, Ssd, memory, nproc, _ := iterateOverCalls(c[idx])
-		totalHdd += Hdd
-		totalSsd += Ssd
-		totalMemory += memory
-		totalProcessors += nproc
-		fmt.Printf("Is preempt: %t\n", preempt)
+		if c[idx].SubWorkflowMetadata.RootWorkflowID != "" {
+			iterateOverTasks(c[idx].SubWorkflowMetadata.Calls, t)
+		} else {
+			parsed, _ := iterateOverElement(c[idx])
+			if parsed.Preempt {
+				t.PreemptHdd += parsed.Hdd
+				t.PreemptSsd += parsed.Ssd
+				t.PreemptMemory += parsed.Memory * parsed.Elapsed.Hours()
+				t.PreemptCPU += parsed.CPU * parsed.Elapsed.Hours()
+			} else {
+				t.Hdd += parsed.Hdd
+				t.Ssd += parsed.Ssd
+				t.Memory += parsed.Memory * parsed.Elapsed.Hours()
+				t.CPU += parsed.CPU * parsed.Elapsed.Hours()
+			}
+		}
 	}
-	fmt.Printf("SSD: %f\n", totalSsd)
-	fmt.Printf("HDD: %f\n", totalHdd)
-	fmt.Printf("PROCESSORS: %f\n", totalProcessors)
-	fmt.Printf("MEMMORY: %f\n", totalMemory)
-	fmt.Println(timeElapsed)
 }
 
-func iterateOverCalls(call CallItem) (bool, float64, float64, float64, float64, error) {
+func iterateOverElement(call CallItem) (ParsedCallAttributes, error) {
 	size, diskType, err := parseDisc(call)
 	if err != nil {
-		return false, 0, 0, 0, 0, err
+		return ParsedCallAttributes{}, err
 	}
 	totalSsd := 0.0
 	if diskType == "SSD" {
@@ -52,13 +75,18 @@ func iterateOverCalls(call CallItem) (bool, float64, float64, float64, float64, 
 	nproc, _ := strconv.ParseFloat(call.RuntimeAttributes.CPU, 4)
 	memory, err := parseMemory(call)
 	if err != nil {
-		return false, 0, 0, 0, 0, err
+		return ParsedCallAttributes{}, err
 	}
 	elapsed := call.End.Sub(call.Start)
-	normalizedMem := normalizeUsePerHour(memory, elapsed)
-	normalizedCPU := normalizeUsePerHour(nproc, elapsed)
 	isPreempt := call.RuntimeAttributes.Preemptible != "0"
-	return isPreempt, totalHdd, totalSsd, normalizedMem, normalizedCPU, nil
+	parsed := ParsedCallAttributes{
+		Preempt: isPreempt,
+		Hdd:     totalHdd,
+		Ssd:     totalSsd,
+		Memory:  memory,
+		CPU:     nproc,
+		Elapsed: elapsed}
+	return parsed, nil
 }
 
 func normalizeUsePerHour(a float64, e time.Duration) float64 {

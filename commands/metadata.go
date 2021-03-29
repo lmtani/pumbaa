@@ -21,21 +21,22 @@ type MetadataResponse struct {
 }
 
 type CallItem struct {
-	ExecutionStatus   string
-	Stdout            string
-	Stderr            string
-	Attempt           int
-	ShardIndex        int
-	Start             time.Time
-	End               time.Time
-	Labels            Label
-	MonitoringLog     string
-	CommandLine       string
-	DockerImageUsed   string
-	SubWorkflowID     string
-	RuntimeAttributes RuntimeAttributes
-	CallCaching       CallCachingData
-	ExecutionEvents   []ExecutionEvents
+	ExecutionStatus     string
+	Stdout              string
+	Stderr              string
+	Attempt             int
+	ShardIndex          int
+	Start               time.Time
+	End                 time.Time
+	Labels              Label
+	MonitoringLog       string
+	CommandLine         string
+	DockerImageUsed     string
+	SubWorkflowID       string
+	SubWorkflowMetadata MetadataResponse
+	RuntimeAttributes   RuntimeAttributes
+	CallCaching         CallCachingData
+	ExecutionEvents     []ExecutionEvents
 }
 
 type ExecutionEvents struct {
