@@ -50,6 +50,7 @@ type RuntimeAttributes struct {
 	Disks          string
 	Docker         string
 	Memory         string
+	Preemptible    string
 }
 
 type CallCachingData struct {
