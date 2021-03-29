@@ -132,17 +132,17 @@ func main() {
 				Action: commands.Navigate,
 			},
 			{
-				Name:    "gce",
+				Name:    "gcp",
 				Aliases: []string{"g"},
 				Usage:   "Use commands specific for Google backend",
 				Subcommands: []*cli.Command{
 					{
-						Name:  "monitoring",
-						Usage: "View resource usage data using data from monitoring.sh script (cpu, mem or disk)",
+						Name:  "resources",
+						Usage: "View resource usage (cpu, mem or disk), normalized by hour.",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "resource", Aliases: []string{"r"}, Required: true},
+							&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 						},
-						Action: commands.Monitoring,
+						Action: commands.ResourcesUsed,
 					},
 				},
 			},

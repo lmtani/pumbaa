@@ -1,9 +1,13 @@
 package commands
 
 import (
+	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 type ParsedCallAttributes struct {
@@ -24,6 +28,31 @@ type TotalResources struct {
 	Ssd           float64
 	CPU           float64
 	Memory        float64
+}
+
+func ResourcesUsed(c *cli.Context) error {
+	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	params := url.Values{}
+	params.Add("expandSubWorkflows", "true")
+	resp, err := cromwellClient.Metadata(c.String("operation"), params)
+	if err != nil {
+		return err
+	}
+	total, err := GetComputeUsageForPricing(resp.Calls)
+	if err != nil {
+		return err
+	}
+	fmt.Println("--Preemptive resources:")
+	fmt.Printf("  CPU: %.2f\n", total.PreemptCPU)
+	fmt.Printf("  Memory: %.2f\n", total.PreemptMemory)
+	fmt.Printf("  HDD Disks: %.0f\n", total.PreemptHdd)
+	fmt.Printf("  SSD Disks: %.0f\n", total.PreemptSsd)
+	fmt.Println("--Normal resources:")
+	fmt.Printf("  CPU: %.2f\n", total.CPU)
+	fmt.Printf("  Memory: %.2f\n", total.Memory)
+	fmt.Printf("  HDD Disks: %.0f\n", total.Hdd)
+	fmt.Printf("  SSD Disks: %.0f\n", total.Ssd)
+	return nil
 }
 
 func GetComputeUsageForPricing(data map[string][]CallItem) (TotalResources, error) {

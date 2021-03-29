@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -83,7 +84,8 @@ func selectDesiredShard(shards []CallItem) (CallItem, error) {
 
 func Navigate(c *cli.Context) error {
 	cromwellClient := FromInterface(c.Context.Value("cromwell"))
-	resp, err := cromwellClient.Metadata(c.String("operation"))
+	params := url.Values{}
+	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {
 		return err
 	}
@@ -100,7 +102,7 @@ func Navigate(c *cli.Context) error {
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = cromwellClient.Metadata(item.SubWorkflowID)
+		resp, err = cromwellClient.Metadata(item.SubWorkflowID, params)
 		if err != nil {
 			return err
 		}

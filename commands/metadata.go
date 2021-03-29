@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -96,7 +97,8 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 
 func MetadataWorkflow(c *cli.Context) error {
 	cromwellClient := FromInterface(c.Context.Value("cromwell"))
-	resp, err := cromwellClient.Metadata(c.String("operation"))
+	params := url.Values{}
+	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {
 		return err
 	}

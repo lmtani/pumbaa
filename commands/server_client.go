@@ -182,8 +182,8 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 	return qr, nil
 }
 
-func (c *Client) Metadata(o string) (MetadataResponse, error) {
-	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
+func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/metadata"+"?"+p.Encode(), o)
 	zap.S().Info(fmt.Sprintf("Found %s workflows", route))
 	var mr MetadataResponse
 	r, err := c.get(route)

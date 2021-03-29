@@ -3,13 +3,15 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"github.com/urfave/cli/v2"
 )
 
 func Inputs(c *cli.Context) error {
 	cromwellClient := FromInterface(c.Context.Value("cromwell"))
-	resp, err := cromwellClient.Metadata(c.String("operation"))
+	params := url.Values{}
+	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {
 		return err
 	}
