@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -23,7 +22,6 @@ func TestCost(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Printf("%#v", resp)
 	expectedCPU := 720.0
 	if resp.PreemptCPU != expectedCPU {
 		t.Errorf("Expected %v, got %v", expectedCPU, resp.PreemptCPU)
