@@ -31,33 +31,14 @@
                     "continueOnReturnCode": "0",
                     "docker": "ubuntu:20.04",
                     "maxRetries": "0",
-                    "cpu": "100",
+                    "cpu": "1",
                     "cpuMin": "1",
                     "noAddress": "false",
                     "zones": "us-east1-b,us-east1-c,us-east1-d",
                     "memoryMin": "2 GB",
                     "memory": "2 GB"
                 },
-                "callCaching": {
-                    "allowResultReuse": true,
-                    "hit": false,
-                    "result": "Cache Miss",
-                    "hashes": {
-                        "output count": "C4CA4238A0B923820DCC509A6F75849B",
-                        "runtime attribute": {
-                            "docker": "0954B2A8E7AF20072594A99A1195FCAA",
-                            "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
-                            "failOnStderr": "68934A3E9455FA72420237EB05902327"
-                        },
-                        "output expression": {
-                            "String out": "174A537D0C36799273C5E3539866FDF4"
-                        },
-                        "input count": "CFCD208495D565EF66E7DFF9F98764DA",
-                        "backend name": "39CBA7788E7EE88623DAEB9A0D04CC65",
-                        "command template": "E2FA8E61C23D6FDACF2087AD7A7E1ED8"
-                    },
-                    "effectiveCallCachingMode": "ReadAndWriteCache"
-                },
+                "callCaching": {},
                 "inputs": {},
                 "backendLabels": {
                     "wdl-task-name": "sayhello",
@@ -70,15 +51,15 @@
                 },
                 "jobId": "projects/1071645522816/locations/us-central1/operations/1183553450726682755",
                 "backend": "LifeSciencesV2",
-                "end": "2021-03-22T13:13:45.463Z",
+                "start": "2021-03-01T00:00:00.000Z",
+                "end": "2021-03-31T00:00:00.000Z",
                 "dockerImageUsed": "ubuntu@sha256:e3d7ff9efd8431d9ef39a144c45992df5502c995b9ba3c53ff70c5b52a848d9c",
                 "stderr": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/stderr",
                 "callRoot": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello",
                 "attempt": 1,
                 "backendLogs": {
                     "log": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/SayHello.log"
-                },
-                "start": "2021-03-22T13:06:50.118Z"
+                }
             }
         ]
     },

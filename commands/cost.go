@@ -28,30 +28,38 @@ func (rtr ResourceTableResponse) Rows() [][]string {
 	rows = append(rows, []string{
 		"CPUs",
 		"1 hour",
-		fmt.Sprintf("%.2f", rtr.Total.PreemptCPU),
-		fmt.Sprintf("%.2f", rtr.Total.CPU),
+		dashIfZero(rtr.Total.PreemptCPU),
+		dashIfZero(rtr.Total.CPU),
 	})
 
 	rows = append(rows, []string{
 		"Memory (GB)",
 		"1 hour",
-		fmt.Sprintf("%.2f", rtr.Total.PreemptMemory),
-		fmt.Sprintf("%.2f", rtr.Total.Memory),
+		dashIfZero(rtr.Total.PreemptMemory),
+		dashIfZero(rtr.Total.Memory),
 	})
 
 	rows = append(rows, []string{
 		"HDD disk (GB)",
 		"1 month",
-		fmt.Sprintf("%.2f", rtr.Total.PreemptHdd),
-		fmt.Sprintf("%.2f", rtr.Total.Hdd),
+		dashIfZero(rtr.Total.PreemptHdd),
+		dashIfZero(rtr.Total.Hdd),
 	})
 	rows = append(rows, []string{
 		"SSD disk (GB)",
 		"1 month",
-		fmt.Sprintf("%.2f", rtr.Total.PreemptSsd),
-		fmt.Sprintf("%.2f", rtr.Total.Ssd),
+		dashIfZero(rtr.Total.PreemptSsd),
+		dashIfZero(rtr.Total.Ssd),
 	})
 	return rows
+}
+
+func dashIfZero(v float64) string {
+	s := fmt.Sprintf("%.2f", v)
+	if v == 0.0 {
+		s = "-"
+	}
+	return s
 }
 
 type ParsedCallAttributes struct {
@@ -74,6 +82,7 @@ type TotalResources struct {
 	CPU           float64
 	Memory        float64
 	CachedCalls   int
+	TotalTime     time.Duration
 }
 
 func ResourcesUsed(c *cli.Context) error {
@@ -84,8 +93,8 @@ func ResourcesUsed(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if resp.Status != "Succeeded" {
-		return errors.New("Workflow status is not Succeeded")
+	if resp.Status == "Running" {
+		return errors.New("Workflow status is still running")
 	}
 	total, err := GetComputeUsageForPricing(resp.Calls)
 	if err != nil {
@@ -93,7 +102,8 @@ func ResourcesUsed(c *cli.Context) error {
 	}
 	var rtr = ResourceTableResponse{Total: total}
 	output.NewTable(os.Stdout).Render(rtr)
-	zap.S().Info(fmt.Sprintf("Total of tasks with cache hit: %d", total.CachedCalls))
+	zap.S().Info(fmt.Sprintf("Tasks with cache hit: %d", total.CachedCalls))
+	zap.S().Info(fmt.Sprintf("Total time with running VMs: %.0fh", total.TotalTime.Hours()))
 	return nil
 }
 
@@ -115,7 +125,7 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 			iterateOverTasks(c[idx].SubWorkflowMetadata.Calls, t)
 		} else {
 			parsed, _ := iterateOverElement(c[idx])
-			HoursInMonth := 730.0
+			HoursInMonth := 720.0
 			if parsed.Preempt {
 				t.PreemptHdd += (parsed.Hdd * parsed.Elapsed.Hours()) / HoursInMonth
 				t.PreemptSsd += (parsed.Ssd * parsed.Elapsed.Hours()) / HoursInMonth
@@ -130,6 +140,7 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 			if parsed.HitCache {
 				t.CachedCalls++
 			}
+			t.TotalTime += parsed.Elapsed
 		}
 	}
 }
@@ -172,6 +183,10 @@ func normalizeUsePerHour(a float64, e time.Duration) float64 {
 
 func parseDisc(c CallItem) (float64, string, error) {
 	workDisk := strings.Fields(c.RuntimeAttributes.Disks)
+	if len(workDisk) == 0 {
+		zap.S().Warn(fmt.Sprintf("No disks for: %#v", c.Labels))
+		return 0, "", nil
+	}
 	diskSize := workDisk[1]
 	diskType := workDisk[2]
 	size, err := strconv.ParseFloat(diskSize, 4)
@@ -187,6 +202,10 @@ func parseDisc(c CallItem) (float64, string, error) {
 
 func parseMemory(c CallItem) (float64, error) {
 	memmory := strings.Fields(c.RuntimeAttributes.Memory)
+	if len(memmory) == 0 {
+		zap.S().Warn(fmt.Sprintf("No memory for: %#v", c.Labels))
+		return 0, nil
+	}
 	size, err := strconv.ParseFloat(memmory[0], 4)
 	if err != nil {
 		return 0, err
