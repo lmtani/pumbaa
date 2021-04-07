@@ -63,7 +63,6 @@ func main() {
 					return nil
 				},
 			},
-
 			{
 				Name:    "query",
 				Aliases: []string{"q"},
@@ -73,7 +72,17 @@ func main() {
 				},
 				Action: commands.QueryWorkflow,
 			},
-
+			{
+				Name:    "wait",
+				Aliases: []string{"w"},
+				Usage:   "Wait for operation until it is complete",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60},
+					&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false},
+				},
+				Action: commands.Wait,
+			},
 			{
 				Name:    "submit",
 				Aliases: []string{"s"},

@@ -140,9 +140,30 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 	return sr, nil
 }
 
-func (c *Client) Status(o string) string {
-	route := fmt.Sprintf("/api/workflow/v1/%s/status", o)
-	return route
+func (c *Client) Status(o string) (SubmitResponse, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
+	var sr SubmitResponse
+	r, err := c.get(route)
+	if err != nil {
+		return sr, err
+	}
+	defer r.Body.Close()
+	if r.StatusCode >= 400 {
+		var er = ErrorResponse{
+			HTTPStatus: r.Status,
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+			return sr, err
+		}
+
+		return sr, fmt.Errorf("Submission failed. The server returned %#v", er)
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
+		return sr, err
+	}
+	return sr, nil
 }
 
 func (c *Client) Outputs(o string) (OutputsResponse, error) {
