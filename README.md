@@ -8,8 +8,33 @@ Command line interface for Cromwell Server. Check these other repositories if yo
 ## Quickstart
 
 ```bash
-# Install (wip)
+# Install
 curl https://raw.githubusercontent.com/lmtani/cromwell-cli/master/install.sh | bash
+
+# Commands
+cromwell-cli -h
+# NAME:
+#    cromwell-cli - Command line interface for Cromwell Server
+
+# USAGE:
+#    cromwell-cli [global options] command [command options] [arguments...]
+
+# COMMANDS:
+#    version, v   Cromwell-CLI version
+#    query, q     Query workflows
+#    submit, s    Submit a workflow and its inputs to Cromwell
+#    inputs, i    Recover inputs from the specified workflow (JSON)
+#    kill, k      Kill a running job
+#    metadata, m  Inspect workflow details (table)
+#    outputs, o   Query workflow outputs (JSON)
+#    navigate, n  Navigate through metadata data
+#    gcp, g       Use commands specific for Google backend
+#    help, h      Shows a list of commands or help for one command
+
+# GLOBAL OPTIONS:
+#    --iap value   Uses your defauld Google Credentials to obtains an access token to this audience.
+#    --host value  Url for your Cromwell Server (default: "http://127.0.0.1:8000")
+#    --help, -h    show help (default: false)
 
 # Submit a job
 cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json
@@ -29,8 +54,11 @@ cromwell-cli o -o <operation>
 # Navigate on Workflow metadata
 cromwell-cli n -o <operation>
 
-# View monitoring scripts log. Pipe to "less -S" if it has lot of lines
-cat <monitoring.log> | grep -v "#" | cromwell-cli gce monitoring -r <cpu|mem|disk>
+# Wait until job stop running
+cromwell-cli w -o <operation>
+
+# Check for Google Cloud Platform resource usage.
+cromwell-cli gcp resources -o <operation>
 ```
 
 > **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell/releases/tag/53.1) server in order to make all comands work. E.g.: `java -jar /path/to/cromwell.jar server`
