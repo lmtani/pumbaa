@@ -7,75 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 )
-
-type MetadataResponse struct {
-	WorkflowName   string
-	RootWorkflowID string
-	Calls          map[string][]CallItem
-	Inputs         map[string]interface{}
-	Outputs        map[string]interface{}
-	Start          time.Time
-	End            time.Time
-	Status         string
-}
-
-type CallItem struct {
-	ExecutionStatus     string
-	Stdout              string
-	Stderr              string
-	Attempt             int
-	ShardIndex          int
-	Start               time.Time
-	End                 time.Time
-	Labels              Label
-	MonitoringLog       string
-	CommandLine         string
-	DockerImageUsed     string
-	SubWorkflowID       string
-	SubWorkflowMetadata MetadataResponse
-	RuntimeAttributes   RuntimeAttributes
-	CallCaching         CallCachingData
-	ExecutionEvents     []ExecutionEvents
-}
-
-type ExecutionEvents struct {
-	StartTime   time.Time
-	Description string
-	EndTime     time.Time
-}
-
-type RuntimeAttributes struct {
-	BootDiskSizeGb string
-	CPU            string
-	Disks          string
-	Docker         string
-	Memory         string
-	Preemptible    string
-}
-
-type CallCachingData struct {
-	Result string
-	Hit    bool
-}
-
-type Label struct {
-	CromwellWorkflowID string `json:"cromwell-workflow-id"`
-	WdlTaskName        string `json:"wdl-task-name"`
-}
-
-type MetadataTableResponse struct {
-	WorkflowName   string
-	RootWorkflowID string
-	Calls          map[string][]CallItem
-	Inputs         map[string]interface{}
-	Outputs        map[string]interface{}
-	Start          time.Time
-	End            time.Time
-	Status         string
-}
 
 func (mtr MetadataTableResponse) Header() []string {
 	return []string{"task", "attempt", "elapsed", "status"}
@@ -98,7 +33,7 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 }
 
 func MetadataWorkflow(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {

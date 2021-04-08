@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/urfave/cli/v2"
 )
 
 func Inputs(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {

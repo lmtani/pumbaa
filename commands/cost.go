@@ -9,14 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
-
-type ResourceTableResponse struct {
-	Total TotalResources
-}
 
 func (rtr ResourceTableResponse) Header() []string {
 	return []string{"Resource", "Normalized to", "Preemptive", "Normal"}
@@ -62,31 +59,8 @@ func dashIfZero(v float64) string {
 	return s
 }
 
-type ParsedCallAttributes struct {
-	Hdd      float64
-	Preempt  bool
-	Ssd      float64
-	Memory   float64
-	CPU      float64
-	Elapsed  time.Duration
-	HitCache bool
-}
-
-type TotalResources struct {
-	PreemptHdd    float64
-	PreemptSsd    float64
-	PreemptCPU    float64
-	PreemptMemory float64
-	Hdd           float64
-	Ssd           float64
-	CPU           float64
-	Memory        float64
-	CachedCalls   int
-	TotalTime     time.Duration
-}
-
 func ResourcesUsed(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
 	params := url.Values{}
 	params.Add("expandSubWorkflows", "true")
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
@@ -107,19 +81,19 @@ func ResourcesUsed(c *cli.Context) error {
 	return nil
 }
 
-func GetComputeUsageForPricing(data map[string][]CallItem) (TotalResources, error) {
+func GetComputeUsageForPricing(data map[string][]cromwell.CallItem) (TotalResources, error) {
 	t := TotalResources{}
 	iterateOverTasks(data, &t)
 	return t, nil
 }
 
-func iterateOverTasks(data map[string][]CallItem, t *TotalResources) {
+func iterateOverTasks(data map[string][]cromwell.CallItem, t *TotalResources) {
 	for key := range data {
 		iterateOverElements(data[key], t)
 	}
 }
 
-func iterateOverElements(c []CallItem, t *TotalResources) {
+func iterateOverElements(c []cromwell.CallItem, t *TotalResources) {
 	for idx := range c {
 		if c[idx].SubWorkflowMetadata.RootWorkflowID != "" {
 			iterateOverTasks(c[idx].SubWorkflowMetadata.Calls, t)
@@ -145,7 +119,7 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 	}
 }
 
-func iterateOverElement(call CallItem) (ParsedCallAttributes, error) {
+func iterateOverElement(call cromwell.CallItem) (ParsedCallAttributes, error) {
 	size, diskType, err := parseDisc(call)
 	if err != nil {
 		return ParsedCallAttributes{}, err
@@ -181,7 +155,7 @@ func normalizeUsePerHour(a float64, e time.Duration) float64 {
 	return hoursPerCPU
 }
 
-func parseDisc(c CallItem) (float64, string, error) {
+func parseDisc(c cromwell.CallItem) (float64, string, error) {
 	workDisk := strings.Fields(c.RuntimeAttributes.Disks)
 	if len(workDisk) == 0 {
 		zap.S().Warn(fmt.Sprintf("No disks for: %#v", c.Labels))
@@ -200,7 +174,7 @@ func parseDisc(c CallItem) (float64, string, error) {
 	return size + boot, diskType, nil
 }
 
-func parseMemory(c CallItem) (float64, error) {
+func parseMemory(c cromwell.CallItem) (float64, error) {
 	memmory := strings.Fields(c.RuntimeAttributes.Memory)
 	if len(memmory) == 0 {
 		zap.S().Warn(fmt.Sprintf("No memory for: %#v", c.Labels))

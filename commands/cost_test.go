@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func TestCost(t *testing.T) {
@@ -12,7 +14,7 @@ func TestCost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	meta := MetadataResponse{}
+	meta := cromwell.MetadataResponse{}
 	err = json.Unmarshal(file, &meta)
 	if err != nil {
 		t.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v2"
 )
@@ -20,9 +21,9 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func selectDesiredTask(m MetadataResponse) ([]CallItem, error) {
+func selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
 	taskOptions := []string{}
-	calls := map[string][]CallItem{}
+	calls := map[string][]cromwell.CallItem{}
 	for key := range m.Calls {
 		sliceName := strings.Split(key, ".")
 		taskName := sliceName[len(sliceName)-1]
@@ -43,12 +44,12 @@ func selectDesiredTask(m MetadataResponse) ([]CallItem, error) {
 	_, taskName, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
-		return []CallItem{}, err
+		return []cromwell.CallItem{}, err
 	}
 	return calls[taskName], nil
 }
 
-func selectDesiredShard(shards []CallItem) (CallItem, error) {
+func selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -76,20 +77,20 @@ func selectDesiredShard(shards []CallItem) (CallItem, error) {
 	i, _, err := prompt.Run()
 
 	if err != nil {
-		return CallItem{}, err
+		return cromwell.CallItem{}, err
 	}
 
 	return shards[i], err
 }
 
 func Navigate(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {
 		return err
 	}
-	var item CallItem
+	var item cromwell.CallItem
 	for {
 		task, err := selectDesiredTask(resp)
 		if err != nil {

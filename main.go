@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/lmtani/cromwell-cli/commands"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -49,7 +50,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			cromwellClient := commands.New(c.String("host"), c.String("iap"))
+			cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 			c.Context = context.WithValue(c.Context, keyCromwell, cromwellClient)
 			return nil
 		},

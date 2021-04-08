@@ -1,4 +1,4 @@
-package commands
+package cromwell
 
 import (
 	"bytes"
@@ -18,6 +18,11 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
+type Client struct {
+	host string
+	iap  string
+}
+
 func New(h, t string) Client {
 	return Client{host: h, iap: t}
 }
@@ -26,17 +31,6 @@ func FromInterface(i interface{}) Client {
 	c := Client{}
 	mapstructure.Decode(i, &c)
 	return c
-}
-
-type Client struct {
-	host string
-	iap  string
-}
-
-type ErrorResponse struct {
-	HTTPStatus string
-	Status     string
-	Message    string
 }
 
 func getGoogleIapToken(aud string) (string, error) {
@@ -224,14 +218,14 @@ func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
 
 func submitPrepare(r SubmitRequest) map[string]string {
 	fileParams := map[string]string{
-		"workflowSource": r.workflowSource,
-		"workflowInputs": r.workflowInputs,
+		"workflowSource": r.WorkflowSource,
+		"workflowInputs": r.WorkflowInputs,
 	}
-	if r.workflowDependencies != "" {
-		fileParams["workflowDependencies"] = r.workflowDependencies
+	if r.WorkflowDependencies != "" {
+		fileParams["workflowDependencies"] = r.WorkflowDependencies
 	}
-	if r.workflowOptions != "" {
-		fileParams["workflowOptions"] = r.workflowOptions
+	if r.WorkflowOptions != "" {
+		fileParams["workflowOptions"] = r.WorkflowOptions
 	}
 	return fileParams
 }

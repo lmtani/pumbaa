@@ -6,30 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
-
-type QueryResponse struct {
-	Results           []QueryResponseWorkflow
-	TotalResultsCount int
-}
-
-type QueryResponseWorkflow struct {
-	ID                    string
-	Name                  string
-	Status                string
-	Submission            string
-	Start                 time.Time
-	End                   time.Time
-	MetadataArchiveStatus string
-}
-
-type QueryTableResponse struct {
-	Results           []QueryResponseWorkflow
-	TotalResultsCount int
-}
 
 func (qtr QueryTableResponse) Header() []string {
 	return []string{"Operation", "Name", "Start", "Duration", "Status"}
@@ -55,7 +36,7 @@ func (qtr QueryTableResponse) Rows() [][]string {
 }
 
 func QueryWorkflow(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
 	params := url.Values{}
 	if c.String("name") != "" {
 		params.Add("name", c.String("name"))
