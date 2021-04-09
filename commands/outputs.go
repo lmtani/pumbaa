@@ -9,7 +9,7 @@ import (
 )
 
 func OutputsWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	resp, err := cromwellClient.Outputs(c.String("operation"))
 	if err != nil {
 		return err

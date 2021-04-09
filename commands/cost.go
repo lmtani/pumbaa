@@ -60,7 +60,7 @@ func dashIfZero(v float64) string {
 }
 
 func ResourcesUsed(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	params := url.Values{}
 	params.Add("expandSubWorkflows", "true")
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)

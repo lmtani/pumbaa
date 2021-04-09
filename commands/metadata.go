@@ -33,7 +33,7 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 }
 
 func MetadataWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {

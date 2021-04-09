@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
 	"google.golang.org/api/idtoken"
 )
@@ -25,12 +24,6 @@ type Client struct {
 
 func New(h, t string) Client {
 	return Client{host: h, iap: t}
-}
-
-func FromInterface(i interface{}) Client {
-	c := Client{}
-	mapstructure.Decode(i, &c)
-	return c
 }
 
 func getGoogleIapToken(aud string) (string, error) {

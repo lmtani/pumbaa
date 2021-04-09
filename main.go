@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/lmtani/cromwell-cli/commands"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,7 +26,6 @@ func startLogger() (*zap.Logger, error) {
 }
 
 func main() {
-	keyCromwell := "cromwell"
 	logger, err := startLogger()
 	if err != nil {
 		log.Fatalf("could not initialize custom logger; got %v", err)
@@ -48,11 +45,6 @@ func main() {
 				Value: "http://127.0.0.1:8000",
 				Usage: "Url for your Cromwell Server",
 			},
-		},
-		Before: func(c *cli.Context) error {
-			cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-			c.Context = context.WithValue(c.Context, keyCromwell, cromwellClient)
-			return nil
 		},
 		Commands: []*cli.Command{
 			{

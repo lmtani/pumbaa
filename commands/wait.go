@@ -11,7 +11,7 @@ import (
 )
 
 func Wait(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	resp, err := cromwellClient.Status(c.String("operation"))
 	if err != nil {
 		return err

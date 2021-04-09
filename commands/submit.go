@@ -9,7 +9,7 @@ import (
 )
 
 func SubmitWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	r := cromwell.SubmitRequest{
 		WorkflowSource:       c.String("wdl"),
 		WorkflowInputs:       c.String("inputs"),

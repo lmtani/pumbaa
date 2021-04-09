@@ -84,7 +84,7 @@ func selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 }
 
 func Navigate(c *cli.Context) error {
-	cromwellClient := cromwell.FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(c.String("operation"), params)
 	if err != nil {
