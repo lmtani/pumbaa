@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
@@ -76,8 +77,8 @@ func ResourcesUsed(c *cli.Context) error {
 	}
 	var rtr = ResourceTableResponse{Total: total}
 	output.NewTable(os.Stdout).Render(rtr)
-	zap.S().Info(fmt.Sprintf("Tasks with cache hit: %d", total.CachedCalls))
-	zap.S().Info(fmt.Sprintf("Total time with running VMs: %.0fh", total.TotalTime.Hours()))
+	color.Cyan(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
+	color.Cyan(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
 	return nil
 }
 

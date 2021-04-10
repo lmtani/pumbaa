@@ -2,35 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/google/martian/log"
 	"github.com/lmtani/cromwell-cli/commands"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var Version = "development"
 
-func startLogger() (*zap.Logger, error) {
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	config.Level.SetLevel(zap.InfoLevel)
-	logger, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-	zap.ReplaceGlobals(logger)
-	return logger, nil
-}
-
 func main() {
-	logger, err := startLogger()
-	if err != nil {
-		log.Fatalf("could not initialize custom logger; got %v", err)
-	}
-
 	app := &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
@@ -151,9 +132,8 @@ func main() {
 		},
 	}
 
-	err = app.Run(os.Args)
+	err := app.Run(os.Args)
 	if err != nil {
-		logger.Error("cromwell.command.error",
-			zap.NamedError("err", err))
+		log.Errorf("Error: %s", err)
 	}
 }

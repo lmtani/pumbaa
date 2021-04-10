@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
 )
 
 func (qtr QueryTableResponse) Header() []string {
@@ -48,6 +48,6 @@ func QueryWorkflow(c *cli.Context) error {
 	}
 	var qtr = QueryTableResponse(resp)
 	output.NewTable(os.Stdout).Render(qtr)
-	zap.S().Info(fmt.Sprintf("Found %d workflows", resp.TotalResultsCount))
+	color.Cyan(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }

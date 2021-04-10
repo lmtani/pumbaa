@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
 )
 
 func KillWorkflow(c *cli.Context) error {
@@ -14,6 +14,6 @@ func KillWorkflow(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	zap.S().Info(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
+	color.Cyan(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
 	return nil
 }
