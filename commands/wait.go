@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/martinlindhe/notify"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
 func Wait(c *cli.Context) error {
-	cromwellClient := FromInterface(c.Context.Value("cromwell"))
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	resp, err := cromwellClient.Status(c.String("operation"))
 	if err != nil {
 		return err

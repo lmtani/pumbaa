@@ -1,14 +1,13 @@
-package commands
+package cromwell
 
 import (
 	"encoding/json"
 	"io/ioutil"
 	"testing"
-	"time"
 )
 
 func TestCost(t *testing.T) {
-	file, err := ioutil.ReadFile("../sample/meta.json")
+	file, err := ioutil.ReadFile("mocks/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,16 +36,5 @@ func TestCost(t *testing.T) {
 	expectedHours := 720.0
 	if resp.TotalTime.Hours() != expectedHours {
 		t.Errorf("Expected %v, got %v", expectedHours, resp.TotalTime.Hours())
-	}
-}
-
-func TestNormalizeUsePerHour(t *testing.T) {
-	hoursPerCPU := normalizeUsePerHour(20, 3*time.Hour)
-	if hoursPerCPU != 60.0 {
-		t.Errorf("Expected %v, got %v", 60.0, hoursPerCPU)
-	}
-	hoursPerCPU = normalizeUsePerHour(20, time.Hour/2)
-	if hoursPerCPU != 10.0 {
-		t.Errorf("Expected %v, got %v", 10.0, hoursPerCPU)
 	}
 }
