@@ -2,7 +2,6 @@ package cromwell
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-
-	"google.golang.org/api/idtoken"
 )
 
 type Client struct {
@@ -23,70 +20,6 @@ type Client struct {
 
 func New(h, t string) Client {
 	return Client{host: h, iap: t}
-}
-
-func (c *Client) get(u string) *http.Response {
-	uri := fmt.Sprintf("%s%s", c.host, u)
-	req, _ := http.NewRequest("GET", uri, nil)
-	return c.makeRequest(req)
-}
-
-func (c *Client) post(u string, files map[string]string) *http.Response {
-	var (
-		uri    = fmt.Sprintf("%s%s", c.host, u)
-		body   = new(bytes.Buffer)
-		writer = multipart.NewWriter(body)
-	)
-
-	for field, path := range files {
-		// gets file name from file path
-		filename := filepath.Base(path)
-		// creates a new form file writer
-		fw, err := writer.CreateFormFile(field, filename)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// prepare the file to be read
-		file, err := os.Open(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// copies the file content to the form file writer
-		if _, err := io.Copy(fw, file); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	if err := writer.Close(); err != nil {
-		log.Fatal(err)
-	}
-
-	req, err := http.NewRequest("POST", uri, body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return c.makeRequest(req)
-}
-
-func (c *Client) makeRequest(req *http.Request) *http.Response {
-	if c.iap != "" {
-		token := getGoogleIapToken(c.iap)
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	log.Printf("%s request to: %s\n", req.Method, req.URL)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if resp.StatusCode >= 400 {
-		errorHandler(resp)
-	}
-	return resp
 }
 
 func (c *Client) Kill(o string) (SubmitResponse, error) {
@@ -179,39 +112,66 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	return sr, nil
 }
 
-func submitPrepare(r SubmitRequest) map[string]string {
-	fileParams := map[string]string{
-		"workflowSource": r.WorkflowSource,
-		"workflowInputs": r.WorkflowInputs,
-	}
-	if r.WorkflowDependencies != "" {
-		fileParams["workflowDependencies"] = r.WorkflowDependencies
-	}
-	if r.WorkflowOptions != "" {
-		fileParams["workflowOptions"] = r.WorkflowOptions
-	}
-	return fileParams
+func (c *Client) get(u string) *http.Response {
+	uri := fmt.Sprintf("%s%s", c.host, u)
+	req, _ := http.NewRequest("GET", uri, nil)
+	return c.makeRequest(req)
 }
 
-func errorHandler(r *http.Response) {
-	var er = ErrorResponse{
-		HTTPStatus: r.Status,
+func (c *Client) post(u string, files map[string]string) *http.Response {
+	var (
+		uri    = fmt.Sprintf("%s%s", c.host, u)
+		body   = new(bytes.Buffer)
+		writer = multipart.NewWriter(body)
+	)
+
+	for field, path := range files {
+		// gets file name from file path
+		filename := filepath.Base(path)
+		// creates a new form file writer
+		fw, err := writer.CreateFormFile(field, filename)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// prepare the file to be read
+		file, err := os.Open(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// copies the file content to the form file writer
+		if _, err := io.Copy(fw, file); err != nil {
+			log.Fatal(err)
+		}
 	}
-	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+
+	if err := writer.Close(); err != nil {
 		log.Fatal(err)
 	}
-	log.Fatalf("Submission failed. The server returned %#v", er)
-}
 
-func getGoogleIapToken(aud string) string {
-	ctx := context.Background()
-	ts, err := idtoken.NewTokenSource(ctx, aud)
+	req, err := http.NewRequest("POST", uri, body)
 	if err != nil {
 		log.Fatal(err)
 	}
-	token, err := ts.Token()
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return c.makeRequest(req)
+}
+
+func (c *Client) makeRequest(req *http.Request) *http.Response {
+	if c.iap != "" {
+		token := getGoogleIapToken(c.iap)
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	log.Printf("%s request to: %s\n", req.Method, req.URL)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return token.AccessToken
+	if resp.StatusCode >= 400 {
+		errorHandler(resp)
+	}
+	return resp
 }

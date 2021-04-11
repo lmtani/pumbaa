@@ -36,12 +36,12 @@ func (qtr QueryTableResponse) Rows() [][]string {
 }
 
 func QueryWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	params := url.Values{}
 	if c.String("name") != "" {
 		params.Add("name", c.String("name"))
 	}
 	params.Add("includeSubworkflows", "false")
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
 	resp, err := cromwellClient.Query(params)
 	if err != nil {
 		return err

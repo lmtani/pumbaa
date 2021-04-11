@@ -12,6 +12,53 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func Navigate(c *cli.Context) error {
+	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
+	params := url.Values{}
+	resp, err := cromwellClient.Metadata(c.String("operation"), params)
+	if err != nil {
+		return err
+	}
+	var item cromwell.CallItem
+	for {
+		task, err := selectDesiredTask(resp)
+		if err != nil {
+			return err
+		}
+		item, err = selectDesiredShard(task)
+		if err != nil {
+			return err
+		}
+		if item.SubWorkflowID == "" {
+			break
+		}
+		resp, err = cromwellClient.Metadata(item.SubWorkflowID, params)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("Command status: %s\n", item.ExecutionStatus)
+	if item.ExecutionStatus == "QueuedInCromwell" {
+		return nil
+	}
+	if item.CallCaching.Hit {
+		color.Cyan(item.CallCaching.Result)
+	} else {
+		color.Cyan(item.CommandLine)
+	}
+
+	fmt.Printf("Logs:\n")
+	color.Cyan("%s\n%s\n", item.Stderr, item.Stdout)
+	if item.MonitoringLog != "" {
+		color.Cyan("%s\n", item.MonitoringLog)
+	}
+
+	fmt.Printf("🐋 Docker image:\n")
+	color.Cyan("%s\n", item.RuntimeAttributes.Docker)
+	return nil
+}
+
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -81,51 +128,4 @@ func selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 	}
 
 	return shards[i], err
-}
-
-func Navigate(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	params := url.Values{}
-	resp, err := cromwellClient.Metadata(c.String("operation"), params)
-	if err != nil {
-		return err
-	}
-	var item cromwell.CallItem
-	for {
-		task, err := selectDesiredTask(resp)
-		if err != nil {
-			return err
-		}
-		item, err = selectDesiredShard(task)
-		if err != nil {
-			return err
-		}
-		if item.SubWorkflowID == "" {
-			break
-		}
-		resp, err = cromwellClient.Metadata(item.SubWorkflowID, params)
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Printf("Command status: %s\n", item.ExecutionStatus)
-	if item.ExecutionStatus == "QueuedInCromwell" {
-		return nil
-	}
-	if item.CallCaching.Hit {
-		color.Cyan(item.CallCaching.Result)
-	} else {
-		color.Cyan(item.CommandLine)
-	}
-
-	fmt.Printf("Logs:\n")
-	color.Cyan("%s\n%s\n", item.Stderr, item.Stdout)
-	if item.MonitoringLog != "" {
-		color.Cyan("%s\n", item.MonitoringLog)
-	}
-
-	fmt.Printf("🐋 Docker image:\n")
-	color.Cyan("%s\n", item.RuntimeAttributes.Docker)
-	return nil
 }
