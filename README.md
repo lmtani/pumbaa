@@ -1,5 +1,7 @@
 # :pig2: Cromwell CLI :rocket:
 
+[![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/master/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
+
 Command line interface for Cromwell Server. Check these other repositories if you don't need Bearer token:
 
 - https://github.com/broadinstitute/cromshell
