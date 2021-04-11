@@ -9,7 +9,10 @@ jobs:
     steps:
       - checkout
       - run: go get -v -t -d ./...
-      - run: go test -coverprofile coverage.html -v ./...
+      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - run:
+          name: Upload coverage to Codecov
+          command: bash <(curl -s https://codecov.io/bash)
 
   release:
     docker:
