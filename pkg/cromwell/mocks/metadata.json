@@ -3,9 +3,82 @@
     "metadataSource": "Unarchived",
     "actualWorkflowLanguageVersion": "1.0",
     "calls": {
+        "HelloHere.ScatterSubworkflow": [
+            {
+                "subWorkflowMetadata": {
+                    "workflowName": "ScatterSubworkflow",
+                    "rootWorkflowId": "a1606e3a-611e-4a60-8cac-dcbe90ce3d14",
+                    "calls":{
+                        "HelloHere.SayHelloSubworkflow": [
+                            {
+                                "preemptible": true,
+                                "executionStatus": "Done",
+                                "stdout": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/stdout",
+                                "backendStatus": "Success",
+                                "compressedDockerSize": 28568797,
+                                "commandLine": "echo \"HelloWorld!\"",
+                                "shardIndex": -1,
+                                "jes": {
+                                    "endpointUrl": "https://lifesciences.googleapis.com/",
+                                    "machineType": "custom-1-2048",
+                                    "googleProject": "project",
+                                    "executionBucket": "gs://bucket",
+                                    "zone": "us-east1-b",
+                                    "instanceName": "google-pipelines-worker-55ae0a0389a383b5a9d40413d6b5b8b0"
+                                },
+                                "outputs": {
+                                    "out": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/stdout"
+                                },
+                                "runtimeAttributes": {
+                                    "preemptible": "1",
+                                    "failOnStderr": "false",
+                                    "bootDiskSizeGb": "10",
+                                    "disks": "local-disk 10 SSD",
+                                    "continueOnReturnCode": "0",
+                                    "docker": "ubuntu:20.04",
+                                    "maxRetries": "0",
+                                    "cpu": "1",
+                                    "cpuMin": "1",
+                                    "noAddress": "false",
+                                    "zones": "us-east1-b,us-east1-c,us-east1-d",
+                                    "memoryMin": "2 GB",
+                                    "memory": "2 GB"
+                                },
+                                "callCaching": {},
+                                "inputs": {},
+                                "backendLabels": {
+                                    "wdl-task-name": "sayhello",
+                                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                                },
+                                "returnCode": 0,
+                                "labels": {
+                                    "wdl-task-name": "SayHello",
+                                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                                },
+                                "jobId": "projects/1071645522816/locations/us-central1/operations/1183553450726682755",
+                                "backend": "LifeSciencesV2",
+                                "start": "2021-03-01T00:00:00.000Z",
+                                "end": "2021-03-31T00:00:00.000Z",
+                                "dockerImageUsed": "ubuntu@sha256:e3d7ff9efd8431d9ef39a144c45992df5502c995b9ba3c53ff70c5b52a848d9c",
+                                "stderr": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/stderr",
+                                "callRoot": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello",
+                                "attempt": 1,
+                                "backendLogs": {
+                                    "log": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/SayHello.log"
+                                }
+                            }
+                        ]
+                    },
+                    "inputs": {},
+                    "outputs":{},
+                    "end": "2021-03-22T13:13:47.527Z",
+                    "start": "2021-03-22T13:06:49.019Z"
+                }
+            }
+        ],
         "HelloHere.SayHello": [
             {
-                "preemptible": false,
+                "preemptible": true,
                 "executionStatus": "Done",
                 "stdout": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/stdout",
                 "backendStatus": "Success",
@@ -59,6 +132,130 @@
                 "attempt": 1,
                 "backendLogs": {
                     "log": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayHello/SayHello.log"
+                }
+            }
+        ],
+        "HelloHere.SayGoodbye": [
+            {
+                "preemptible": true,
+                "executionStatus": "Done",
+                "stdout": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout",
+                "backendStatus": "Success",
+                "compressedDockerSize": 28568797,
+                "commandLine": "echo \"HelloWorld!\"",
+                "shardIndex": -1,
+                "jes": {
+                    "endpointUrl": "https://lifesciences.googleapis.com/",
+                    "machineType": "custom-1-2048",
+                    "googleProject": "project",
+                    "executionBucket": "gs://bucket",
+                    "zone": "us-east1-b",
+                    "instanceName": "google-pipelines-worker-55ae0a0389a383b5a9d40413d6b5b8b0"
+                },
+                "outputs": {
+                    "out": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout"
+                },
+                "runtimeAttributes": {
+                    "preemptible": "0",
+                    "failOnStderr": "false",
+                    "bootDiskSizeGb": "10",
+                    "disks": "local-disk 10 SSD",
+                    "continueOnReturnCode": "0",
+                    "docker": "ubuntu:20.04",
+                    "maxRetries": "0",
+                    "cpu": "1",
+                    "cpuMin": "1",
+                    "noAddress": "false",
+                    "zones": "us-east1-b,us-east1-c,us-east1-d",
+                    "memoryMin": "2 GB",
+                    "memory": "2 GB"
+                },
+                "callCaching": {},
+                "inputs": {},
+                "backendLabels": {
+                    "wdl-task-name": "SayGoodbye",
+                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                },
+                "returnCode": 0,
+                "labels": {
+                    "wdl-task-name": "SayGoodbye",
+                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                },
+                "jobId": "projects/1071645522816/locations/us-central1/operations/1183553450726682755",
+                "backend": "LifeSciencesV2",
+                "start": "2021-03-01T00:00:00.000Z",
+                "end": "2021-03-31T00:00:00.000Z",
+                "dockerImageUsed": "ubuntu@sha256:e3d7ff9efd8431d9ef39a144c45992df5502c995b9ba3c53ff70c5b52a848d9c",
+                "stderr": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stderr",
+                "callRoot": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye",
+                "attempt": 1,
+                "backendLogs": {
+                    "log": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/SayGoodbye.log"
+                }
+            }
+        ],
+        "HelloHere.SayHelloCache": [
+            {
+                "preemptible": false,
+                "executionStatus": "Done",
+                "stdout": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout",
+                "backendStatus": "Success",
+                "compressedDockerSize": 28568797,
+                "commandLine": "echo \"HelloWorld!\"",
+                "shardIndex": -1,
+                "jes": {
+                    "endpointUrl": "https://lifesciences.googleapis.com/",
+                    "machineType": "custom-1-2048",
+                    "googleProject": "project",
+                    "executionBucket": "gs://bucket",
+                    "zone": "us-east1-b",
+                    "instanceName": "google-pipelines-worker-55ae0a0389a383b5a9d40413d6b5b8b0"
+                },
+                "outputs": {
+                    "out": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout"
+                },
+                "runtimeAttributes": {
+                    "preemptible": "0",
+                    "failOnStderr": "false",
+                    "bootDiskSizeGb": "10",
+                    "disks": "local-disk 10 SSD",
+                    "continueOnReturnCode": "0",
+                    "docker": "ubuntu:20.04",
+                    "maxRetries": "0",
+                    "cpu": "1",
+                    "cpuMin": "1",
+                    "noAddress": "false",
+                    "zones": "us-east1-b,us-east1-c,us-east1-d",
+                    "memoryMin": "2 GB",
+                    "memory": "2 GB"
+                },
+                "callCaching": {
+                    "allowResultReuse": true,
+                    "hit": true,
+                    "result": "Cache Hit: 75080215-e380-4e9c-9c04-d0f119264d25:ReferencePanelQc.BasicQC:0",
+                    "hashes": {},
+                    "effectiveCallCachingMode": "ReadAndWriteCache"
+                },
+                "inputs": {},
+                "backendLabels": {
+                    "wdl-task-name": "SayGoodbye",
+                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                },
+                "returnCode": 0,
+                "labels": {
+                    "wdl-task-name": "SayGoodbye",
+                    "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
+                },
+                "jobId": "projects/1071645522816/locations/us-central1/operations/1183553450726682755",
+                "backend": "LifeSciencesV2",
+                "start": "2021-03-01T00:00:00.000Z",
+                "end": "2021-03-31T00:00:00.000Z",
+                "dockerImageUsed": "ubuntu@sha256:e3d7ff9efd8431d9ef39a144c45992df5502c995b9ba3c53ff70c5b52a848d9c",
+                "stderr": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stderr",
+                "callRoot": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye",
+                "attempt": 1,
+                "backendLogs": {
+                    "log": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/SayGoodbye.log"
                 }
             }
         ]

@@ -27,6 +27,10 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 		} else {
 			parsed, _ := iterateOverElement(c[idx])
 			HoursInMonth := 720.0
+			if parsed.HitCache {
+				t.CachedCalls++
+				continue
+			}
 			if parsed.Preempt {
 				t.PreemptHdd += (parsed.Hdd * parsed.Elapsed.Hours()) / HoursInMonth
 				t.PreemptSsd += (parsed.Ssd * parsed.Elapsed.Hours()) / HoursInMonth
@@ -37,9 +41,6 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 				t.Ssd += (parsed.Ssd * parsed.Elapsed.Hours()) / HoursInMonth
 				t.Memory += parsed.Memory * parsed.Elapsed.Hours()
 				t.CPU += parsed.CPU * parsed.Elapsed.Hours()
-			}
-			if parsed.HitCache {
-				t.CachedCalls++
 			}
 			t.TotalTime += parsed.Elapsed
 		}
