@@ -21,19 +21,33 @@ func TestCost(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expectedCPU := 720.0
+	// Preemptible setup
+	expectedCPU := 720.0 * 2
 	if resp.PreemptCPU != expectedCPU {
 		t.Errorf("Expected %v, got %v", expectedCPU, resp.PreemptCPU)
 	}
-	expectedMemory := 1440.0
+	expectedMemory := 1440.0 * 2
 	if resp.PreemptMemory != expectedMemory {
 		t.Errorf("Expected %v, got %v", expectedMemory, resp.PreemptMemory)
 	}
-	expectedDisk := 20.0
+	expectedDisk := 20.0 * 2
 	if resp.PreemptSsd != expectedDisk {
 		t.Errorf("Expected %v, got %v", expectedDisk, resp.PreemptSsd)
 	}
-	expectedHours := 720.0
+	// Normal setup
+	expectedCPU = 720.0
+	if resp.CPU != expectedCPU {
+		t.Errorf("Expected %v, got %v", expectedCPU, resp.PreemptCPU)
+	}
+	expectedMemory = 1440.0
+	if resp.Memory != expectedMemory {
+		t.Errorf("Expected %v, got %v", expectedMemory, resp.PreemptMemory)
+	}
+	expectedDisk = 20.0
+	if resp.Ssd != expectedDisk {
+		t.Errorf("Expected %v, got %v", expectedDisk, resp.PreemptSsd)
+	}
+	expectedHours := 1440.0 + 720.0
 	if resp.TotalTime.Hours() != expectedHours {
 		t.Errorf("Expected %v, got %v", expectedHours, resp.TotalTime.Hours())
 	}
