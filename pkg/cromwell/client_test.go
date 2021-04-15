@@ -86,3 +86,30 @@ func TestClientSubmit(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expectedUUID, resp.Status)
 	}
 }
+
+func TestClientOutputs(t *testing.T) {
+	operation := "aaa-bbb-ccc"
+
+	// Mock http server
+	ts := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/workflows/v1/"+operation+"/outputs" {
+				w.Write([]byte(`{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`))
+			}
+		}),
+	)
+	defer ts.Close()
+
+	client := New(ts.URL, "")
+
+	resp, _ := client.Outputs(operation)
+
+	if resp.ID != operation {
+		t.Errorf("Expected %v, got %v", operation, resp.ID)
+	}
+	outputs := map[string]interface{}{"output_path": "/path/to/output.txt"}
+
+	if resp.Outputs["output_path"] != outputs["output_path"] {
+		t.Errorf("Expected %v, got %v", outputs, resp.Outputs)
+	}
+}

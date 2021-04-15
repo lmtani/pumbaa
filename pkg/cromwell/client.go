@@ -72,9 +72,6 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 		return qr, err
 	}
 
-	if r.StatusCode >= 400 {
-		return qr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, qr)
-	}
 	return qr, nil
 }
 
@@ -88,9 +85,6 @@ func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
 		return mr, err
 	}
 
-	if r.StatusCode >= 400 {
-		return mr, fmt.Errorf("Submission failed. The server returned: %d\n%#v", r.StatusCode, mr)
-	}
 	return mr, nil
 }
 
@@ -103,10 +97,6 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
 		return sr, err
-	}
-
-	if r.StatusCode >= 400 {
-		return sr, fmt.Errorf("Submission failed. The server returned %d\n%#v", r.StatusCode, sr)
 	}
 
 	return sr, nil
