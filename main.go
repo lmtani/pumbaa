@@ -134,6 +134,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Errorf("Error: %s", err)
+		log.Errorf("Error %#v", err)
 	}
 }

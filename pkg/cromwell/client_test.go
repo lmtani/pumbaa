@@ -1,7 +1,6 @@
 package cromwell
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -63,7 +62,6 @@ func TestClientSubmit(t *testing.T) {
 	ts := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/workflows/v1" {
-				fmt.Println("entrou")
 				w.Write([]byte(`{"id": "a-new-uuid", "status": "Submitted"}`))
 			}
 		}),
@@ -75,8 +73,8 @@ func TestClientSubmit(t *testing.T) {
 	r := SubmitRequest{
 		WorkflowSource:       "../../sample/wf.wdl",
 		WorkflowInputs:       "../../sample/wf.inputs.json",
-		WorkflowDependencies: "",
-		WorkflowOptions:      ""}
+		WorkflowDependencies: "../../sample/wf.wdl",
+		WorkflowOptions:      "../../sample/wf.inputs.json"}
 	resp, _ := client.Submit(r)
 
 	expected := "Submitted"
