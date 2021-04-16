@@ -1,22 +1,32 @@
 package cromwell
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
-func TestClientStatus(t *testing.T) {
-	operation := "aaa-bbb-ccc"
+const operation string = "aaa-bbb-ccc"
 
-	// Mock http server
+func buildTestServer(url, resp string) *httptest.Server {
 	ts := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/workflows/v1/"+operation+"/status" {
-				w.Write([]byte(`{"id": "aaa-bbb-ccc", "status": "running"}`))
+			if r.URL.Path == url {
+				_, err := w.Write([]byte(resp))
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
-		}),
-	)
+		}))
+	return ts
+}
+
+func TestClientStatus(t *testing.T) {
+	// Mock http server
+	ts := buildTestServer("/api/workflows/v1/"+operation+"/status", `{"id": "aaa-bbb-ccc", "status": "running"}`)
+
 	defer ts.Close()
 
 	client := New(ts.URL, "")
@@ -32,16 +42,8 @@ func TestClientStatus(t *testing.T) {
 }
 
 func TestClientKill(t *testing.T) {
-	operation := "aaa-bbb-ccc"
-
 	// Mock http server
-	ts := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/workflows/v1/"+operation+"/abort" {
-				w.Write([]byte(`{"id": "aaa-bbb-ccc", "status": "aborting"}`))
-			}
-		}),
-	)
+	ts := buildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
 	defer ts.Close()
 
 	client := New(ts.URL, "")
@@ -59,13 +61,7 @@ func TestClientKill(t *testing.T) {
 
 func TestClientSubmit(t *testing.T) {
 	// Mock http server
-	ts := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/workflows/v1" {
-				w.Write([]byte(`{"id": "a-new-uuid", "status": "Submitted"}`))
-			}
-		}),
-	)
+	ts := buildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`)
 	defer ts.Close()
 
 	client := New(ts.URL, "")
@@ -88,16 +84,8 @@ func TestClientSubmit(t *testing.T) {
 }
 
 func TestClientOutputs(t *testing.T) {
-	operation := "aaa-bbb-ccc"
-
 	// Mock http server
-	ts := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/api/workflows/v1/"+operation+"/outputs" {
-				w.Write([]byte(`{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`))
-			}
-		}),
-	)
+	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`)
 	defer ts.Close()
 
 	client := New(ts.URL, "")
@@ -111,5 +99,25 @@ func TestClientOutputs(t *testing.T) {
 
 	if resp.Outputs["output_path"] != outputs["output_path"] {
 		t.Errorf("Expected %v, got %v", outputs, resp.Outputs)
+	}
+}
+
+func TestClientQuery(t *testing.T) {
+	// Mock http server
+	ts := buildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`)
+	defer ts.Close()
+
+	client := New(ts.URL, "")
+
+	resp, _ := client.Query(url.Values{})
+
+	expectedCound := 1
+	if resp.TotalResultsCount != expectedCound {
+		t.Errorf("Expected %v, got %v", expectedCound, resp.TotalResultsCount)
+	}
+
+	totalWorkflows := len(resp.Results)
+	if totalWorkflows != 1 {
+		t.Errorf("Expected %v, got %v", 1, totalWorkflows)
 	}
 }
