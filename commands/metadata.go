@@ -9,8 +9,19 @@ import (
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
-	"github.com/urfave/cli/v2"
 )
+
+func MetadataWorkflow(host, iap, operation string) error {
+	cromwellClient := cromwell.New(host, iap)
+	params := url.Values{}
+	resp, err := cromwellClient.Metadata(operation, params)
+	if err != nil {
+		return err
+	}
+	var mtr = MetadataTableResponse(resp)
+	output.NewTable(os.Stdout).Render(mtr)
+	return err
+}
 
 func (mtr MetadataTableResponse) Header() []string {
 	return []string{"task", "attempt", "elapsed", "status"}
@@ -30,16 +41,4 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 		}
 	}
 	return rows
-}
-
-func MetadataWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	params := url.Values{}
-	resp, err := cromwellClient.Metadata(c.String("operation"), params)
-	if err != nil {
-		return err
-	}
-	var mtr = MetadataTableResponse(resp)
-	output.NewTable(os.Stdout).Render(mtr)
-	return err
 }

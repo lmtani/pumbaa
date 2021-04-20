@@ -9,13 +9,12 @@ import (
 	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/manifoldco/promptui"
-	"github.com/urfave/cli/v2"
 )
 
-func Navigate(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
+func Navigate(host, iap, operation string) error {
+	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
-	resp, err := cromwellClient.Metadata(c.String("operation"), params)
+	resp, err := cromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}

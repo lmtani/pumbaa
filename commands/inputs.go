@@ -6,17 +6,15 @@ import (
 	"net/url"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/urfave/cli/v2"
 )
 
-func Inputs(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
+func Inputs(host, iap, operation string) error {
+	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
-	resp, err := cromwellClient.Metadata(c.String("operation"), params)
+	resp, err := cromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}
-
 	originalInputs := make(map[string]interface{})
 	for k, v := range resp.Inputs {
 		originalInputs[fmt.Sprintf("%s.%s", resp.WorkflowName, k)] = v

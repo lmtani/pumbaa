@@ -12,6 +12,8 @@ require (
 	github.com/martinlindhe/notify v0.0.0-20181008203735-20632c9a275a
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/olekukonko/tablewriter v0.0.4
+	github.com/stretchr/testify v1.4.0
+	github.com/urfave/cli v1.22.5
 	github.com/urfave/cli/v2 v2.2.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/tools v0.1.0 // indirect

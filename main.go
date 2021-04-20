@@ -44,7 +44,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
-				Action: commands.QueryWorkflowCli,
+				Action: func(c *cli.Context) error {
+					return commands.QueryWorkflow(c.String("host"), c.String("iap"), c.String("name"))
+				},
 			},
 			{
 				Name:    "wait",
@@ -67,7 +69,9 @@ func main() {
 					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
 					&cli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false},
 				},
-				Action: commands.SubmitWorkflow,
+				Action: func(c *cli.Context) error {
+					return commands.SubmitWorkflow(c.String("host"), c.String("iap"), c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+				},
 			},
 			{
 				Name:    "inputs",
@@ -76,7 +80,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: commands.Inputs,
+				Action: func(c *cli.Context) error {
+					return commands.Inputs(c.String("host"), c.String("iap"), c.String("operation"))
+				},
 			},
 			{
 				Name:    "kill",
@@ -85,7 +91,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: commands.KillWorkflow,
+				Action: func(c *cli.Context) error {
+					return commands.KillWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+				},
 			},
 			{
 				Name:    "metadata",
@@ -94,7 +102,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: commands.MetadataWorkflow,
+				Action: func(c *cli.Context) error {
+					return commands.MetadataWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+				},
 			},
 			{
 				Name:    "outputs",
@@ -103,7 +113,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: commands.OutputsWorkflow,
+				Action: func(c *cli.Context) error {
+					return commands.OutputsWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+				},
 			},
 			{
 				Name:    "navigate",
@@ -112,7 +124,9 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
-				Action: commands.Navigate,
+				Action: func(c *cli.Context) error {
+					return commands.Navigate(c.String("host"), c.String("iap"), c.String("operation"))
+				},
 			},
 			{
 				Name:    "gcp",
@@ -125,7 +139,9 @@ func main() {
 						Flags: []cli.Flag{
 							&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 						},
-						Action: commands.ResourcesUsed,
+						Action: func(c *cli.Context) error {
+							return commands.ResourcesUsed(c.String("host"), c.String("iap"), c.String("operation"))
+						},
 					},
 				},
 			},

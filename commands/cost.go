@@ -9,14 +9,13 @@ import (
 	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
-	"github.com/urfave/cli/v2"
 )
 
-func ResourcesUsed(c *cli.Context) error {
+func ResourcesUsed(host, iap, operation string) error {
 	params := url.Values{}
 	params.Add("expandSubWorkflows", "true")
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	resp, err := cromwellClient.Metadata(c.String("operation"), params)
+	cromwellClient := cromwell.New(host, iap)
+	resp, err := cromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}

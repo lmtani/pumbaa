@@ -26,7 +26,7 @@ func ExampleQueryWorkflow() {
 
 	err := QueryWorkflow(ts.URL, "", "")
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 	// Output:
 	// +-----------+------+-------------------+----------+---------+

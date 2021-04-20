@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/urfave/cli/v2"
 )
 
-func OutputsWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	resp, err := cromwellClient.Outputs(c.String("operation"))
+func OutputsWorkflow(host, iap, operation string) error {
+	cromwellClient := cromwell.New(host, iap)
+	resp, err := cromwellClient.Outputs(operation)
 	if err != nil {
 		return err
 	}

@@ -5,12 +5,11 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/urfave/cli/v2"
 )
 
-func KillWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	resp, err := cromwellClient.Kill(c.String("operation"))
+func KillWorkflow(host, iap, operation string) error {
+	cromwellClient := cromwell.New(host, iap)
+	resp, err := cromwellClient.Kill(operation)
 	if err != nil {
 		return err
 	}

@@ -9,12 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
-	"github.com/urfave/cli/v2"
 )
-
-func QueryWorkflowCli(c *cli.Context) error {
-	return QueryWorkflow(c.String("host"), c.String("iap"), c.String("name"))
-}
 
 func QueryWorkflow(h, iap, name string) error {
 	params := url.Values{}

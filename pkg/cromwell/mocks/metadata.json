@@ -266,7 +266,10 @@
     "workflowRoot": "gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/",
     "actualWorkflowLanguage": "WDL",
     "id": "a1606e3a-611e-4a60-8cac-dcbe90ce3d14",
-    "inputs": {},
+    "inputs": {
+        "someInput": "just testing string",
+        "someFile": "gs://just-testing/file.txt"
+    },
     "labels": {
         "cromwell-workflow-id": "cromwell-a1606e3a-611e-4a60-8cac-dcbe90ce3d14"
     },

@@ -4,17 +4,16 @@ import (
 	"fmt"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 )
 
-func SubmitWorkflow(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
+func SubmitWorkflow(host, iap, wdl, inputs, dependencies, options string) error {
+	cromwellClient := cromwell.New(host, iap)
 	r := cromwell.SubmitRequest{
-		WorkflowSource:       c.String("wdl"),
-		WorkflowInputs:       c.String("inputs"),
-		WorkflowDependencies: c.String("dependencies"),
-		WorkflowOptions:      c.String("options")}
+		WorkflowSource:       wdl,
+		WorkflowInputs:       inputs,
+		WorkflowDependencies: dependencies,
+		WorkflowOptions:      options}
 	resp, err := cromwellClient.Submit(r)
 	if err != nil {
 		return err
