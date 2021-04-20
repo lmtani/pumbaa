@@ -12,6 +12,27 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func QueryWorkflowCli(c *cli.Context) error {
+	return QueryWorkflow(c.String("host"), c.String("iap"), c.String("name"))
+}
+
+func QueryWorkflow(h, iap, name string) error {
+	params := url.Values{}
+	if name != "" {
+		params.Add("name", name)
+	}
+	params.Add("includeSubworkflows", "false")
+	cromwellClient := cromwell.New(h, iap)
+	resp, err := cromwellClient.Query(params)
+	if err != nil {
+		return err
+	}
+	var qtr = QueryTableResponse(resp)
+	output.NewTable(os.Stdout).Render(qtr)
+	color.Cyan(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
+	return err
+}
+
 func (qtr QueryTableResponse) Header() []string {
 	return []string{"Operation", "Name", "Start", "Duration", "Status"}
 }
@@ -33,21 +54,4 @@ func (qtr QueryTableResponse) Rows() [][]string {
 		})
 	}
 	return rows
-}
-
-func QueryWorkflow(c *cli.Context) error {
-	params := url.Values{}
-	if c.String("name") != "" {
-		params.Add("name", c.String("name"))
-	}
-	params.Add("includeSubworkflows", "false")
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	resp, err := cromwellClient.Query(params)
-	if err != nil {
-		return err
-	}
-	var qtr = QueryTableResponse(resp)
-	output.NewTable(os.Stdout).Render(qtr)
-	color.Cyan(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
-	return err
 }

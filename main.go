@@ -44,7 +44,7 @@ func main() {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
-				Action: commands.QueryWorkflow,
+				Action: commands.QueryWorkflowCli,
 			},
 			{
 				Name:    "wait",
