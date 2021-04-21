@@ -28,7 +28,7 @@ func errorHandler(r *http.Response) {
 		HTTPStatus: r.Status,
 	}
 	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
-		log.Fatal(err)
+		log.Println("No json body in response")
 	}
 	log.Fatalf("Submission failed. The server returned %#v", er)
 }

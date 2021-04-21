@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
 func ExampleInputs() {
@@ -27,4 +30,26 @@ func ExampleInputs() {
 	//    "HelloHere.someFile": "gs://just-testing/file.txt",
 	//    "HelloHere.someInput": "just testing string"
 	// }
+}
+
+func TestInputsHttpError(t *testing.T) {
+	// Mock http server
+	operation := "aaaa-bbbb-uuid"
+	ts := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/workflows/v1/"+operation+"/metadata" {
+				w.WriteHeader(http.StatusNotFound)
+				_, err := w.Write([]byte(`Workflow ID Not Found`))
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}))
+	defer ts.Close()
+
+	err := Inputs(ts.URL, "", operation)
+	fmt.Println(err)
+	if err != nil {
+		log.Print("Error occurr")
+	}
 }

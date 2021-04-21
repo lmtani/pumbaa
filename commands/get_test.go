@@ -24,7 +24,7 @@ func ExampleQueryWorkflow() {
 	ts := buildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`)
 	defer ts.Close()
 
-	err := QueryWorkflow(ts.URL, "", "")
+	err := QueryWorkflow(ts.URL, "", "wf")
 	if err != nil {
 		log.Print(err)
 	}
