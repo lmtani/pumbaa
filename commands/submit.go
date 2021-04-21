@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"go.uber.org/zap"
 )
 
 func SubmitWorkflow(host, iap, wdl, inputs, dependencies, options string) error {
@@ -18,6 +17,6 @@ func SubmitWorkflow(host, iap, wdl, inputs, dependencies, options string) error 
 	if err != nil {
 		return err
 	}
-	zap.S().Info(fmt.Sprintf("🐖 Operation= %s , Status=%s", resp.ID, resp.Status))
+	fmt.Printf("🐖 Operation= %s , Status=%s", resp.ID, resp.Status)
 	return nil
 }
