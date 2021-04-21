@@ -26,7 +26,10 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 	var sr SubmitResponse
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
-	r := c.post(route, map[string]string{})
+	r, err := c.post(route, map[string]string{})
+	if err != nil {
+		return sr, err
+	}
 	defer r.Body.Close()
 
 	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
@@ -38,7 +41,10 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 func (c *Client) Status(o string) (SubmitResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
 	var sr SubmitResponse
-	r := c.get(route)
+	r, err := c.get(route)
+	if err != nil {
+		return sr, err
+	}
 	defer r.Body.Close()
 
 	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
@@ -49,8 +55,11 @@ func (c *Client) Status(o string) (SubmitResponse, error) {
 
 func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
-	r := c.get(route)
 	var or = OutputsResponse{}
+	r, err := c.get(route)
+	if err != nil {
+		return or, err
+	}
 
 	defer r.Body.Close()
 
@@ -64,7 +73,10 @@ func (c *Client) Outputs(o string) (OutputsResponse, error) {
 func (c *Client) Query(p url.Values) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
 	var qr QueryResponse
-	r := c.get(route + "?" + p.Encode())
+	r, err := c.get(route + "?" + p.Encode())
+	if err != nil {
+		return qr, err
+	}
 
 	defer r.Body.Close()
 
@@ -78,7 +90,10 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata"+"?"+p.Encode(), o)
 	var mr MetadataResponse
-	r := c.get(route)
+	r, err := c.get(route)
+	if err != nil {
+		return mr, err
+	}
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&mr); err != nil {
@@ -92,7 +107,10 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := submitPrepare(requestFields)
 	var sr SubmitResponse
-	r := c.post(route, fileParams)
+	r, err := c.post(route, fileParams)
+	if err != nil {
+		return sr, err
+	}
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
@@ -102,13 +120,13 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	return sr, nil
 }
 
-func (c *Client) get(u string) *http.Response {
+func (c *Client) get(u string) (*http.Response, error) {
 	uri := fmt.Sprintf("%s%s", c.host, u)
 	req, _ := http.NewRequest("GET", uri, nil)
 	return c.makeRequest(req)
 }
 
-func (c *Client) post(u string, files map[string]string) *http.Response {
+func (c *Client) post(u string, files map[string]string) (*http.Response, error) {
 	var (
 		uri    = fmt.Sprintf("%s%s", c.host, u)
 		body   = new(bytes.Buffer)
@@ -149,7 +167,7 @@ func (c *Client) post(u string, files map[string]string) *http.Response {
 	return c.makeRequest(req)
 }
 
-func (c *Client) makeRequest(req *http.Request) *http.Response {
+func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.iap != "" {
 		token := getGoogleIapToken(c.iap)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -161,7 +179,10 @@ func (c *Client) makeRequest(req *http.Request) *http.Response {
 		log.Fatal(err)
 	}
 	if resp.StatusCode >= 400 {
-		errorHandler(resp)
+		err := errorHandler(resp)
+		if err != nil {
+			return resp, err
+		}
 	}
-	return resp
+	return resp, nil
 }

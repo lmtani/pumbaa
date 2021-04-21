@@ -48,8 +48,7 @@ func TestInputsHttpError(t *testing.T) {
 	defer ts.Close()
 
 	err := Inputs(ts.URL, "", operation)
-	fmt.Println(err)
-	if err != nil {
-		log.Print("Error occurr")
+	if err == nil {
+		t.Error("Not found error expected, nil returned")
 	}
 }
