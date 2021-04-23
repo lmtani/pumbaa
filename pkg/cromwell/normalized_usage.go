@@ -48,7 +48,7 @@ func iterateOverElements(c []CallItem, t *TotalResources) {
 }
 
 func iterateOverElement(call CallItem) (ParsedCallAttributes, error) {
-	size, diskType, err := parseDisc(call)
+	size, diskType, err := parseDisc(call.RuntimeAttributes)
 	if err != nil {
 		return ParsedCallAttributes{}, err
 	}
@@ -61,9 +61,9 @@ func iterateOverElement(call CallItem) (ParsedCallAttributes, error) {
 		totalHdd += size
 	}
 	nproc, _ := strconv.ParseFloat(call.RuntimeAttributes.CPU, 4)
-	memory, err := parseMemory(call)
+	memory, err := parseMemory(call.RuntimeAttributes)
 	if err != nil {
-		return ParsedCallAttributes{}, err
+		color.Yellow(fmt.Sprintf("Task %s returned %s", call.Labels, err))
 	}
 	elapsed := call.End.Sub(call.Start)
 	isPreempt := call.RuntimeAttributes.Preemptible != "0"
@@ -78,11 +78,10 @@ func iterateOverElement(call CallItem) (ParsedCallAttributes, error) {
 	return parsed, nil
 }
 
-func parseDisc(c CallItem) (float64, string, error) {
-	workDisk := strings.Fields(c.RuntimeAttributes.Disks)
+func parseDisc(r RuntimeAttributes) (float64, string, error) {
+	workDisk := strings.Fields(r.Disks)
 	if len(workDisk) == 0 {
-		color.Yellow(fmt.Sprintf("No disks for: %#v", c.Labels))
-		return 0, "", nil
+		return 0, "", fmt.Errorf("No disks, found: %#v", r.Disks)
 	}
 	diskSize := workDisk[1]
 	diskType := workDisk[2]
@@ -90,18 +89,17 @@ func parseDisc(c CallItem) (float64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	boot, err := strconv.ParseFloat(c.RuntimeAttributes.BootDiskSizeGb, 8)
+	boot, err := strconv.ParseFloat(r.BootDiskSizeGb, 8)
 	if err != nil {
 		return 0, "", err
 	}
 	return size + boot, diskType, nil
 }
 
-func parseMemory(c CallItem) (float64, error) {
-	memmory := strings.Fields(c.RuntimeAttributes.Memory)
+func parseMemory(r RuntimeAttributes) (float64, error) {
+	memmory := strings.Fields(r.Memory)
 	if len(memmory) == 0 {
-		color.Yellow(fmt.Sprintf("No memory for: %#v", c.Labels))
-		return 0, nil
+		return 0, fmt.Errorf("No memory, found: %#v", r.Memory)
 	}
 	size, err := strconv.ParseFloat(memmory[0], 4)
 	if err != nil {

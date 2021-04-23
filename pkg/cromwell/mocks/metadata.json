@@ -100,7 +100,7 @@
                     "preemptible": "1",
                     "failOnStderr": "false",
                     "bootDiskSizeGb": "10",
-                    "disks": "local-disk 10 SSD",
+                    "disks": "local-disk 10 HDD",
                     "continueOnReturnCode": "0",
                     "docker": "ubuntu:20.04",
                     "maxRetries": "0",
