@@ -6,32 +6,29 @@ import (
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/martinlindhe/notify"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
 )
 
-func Wait(c *cli.Context) error {
-	cromwellClient := cromwell.New(c.String("host"), c.String("iap"))
-	resp, err := cromwellClient.Status(c.String("operation"))
+func Wait(h, iap, operation string, sleep int, alarm bool) error {
+	cromwellClient := cromwell.New(h, iap)
+	resp, err := cromwellClient.Status(operation)
 	if err != nil {
 		return err
 	}
 	status := resp.Status
-	zap.S().Info(fmt.Sprintf("Status=%s", resp.Status))
+	fmt.Printf("Status=%s\n", resp.Status)
 
-	seconds := c.Int("sleep")
-	zap.S().Info(fmt.Sprintf("Time between status check = %d", seconds))
+	fmt.Printf("Time between status check = %d\n", sleep)
 	for status == "Running" {
-		time.Sleep(time.Duration(seconds) * time.Second)
-		resp, err := cromwellClient.Status(c.String("operation"))
+		time.Sleep(time.Duration(sleep) * time.Second)
+		resp, err := cromwellClient.Status(operation)
 		if err != nil {
 			return err
 		}
-		zap.S().Info(fmt.Sprintf("Status=%s", resp.Status))
+		fmt.Printf("Status=%s\n", resp.Status)
 		status = resp.Status
 	}
 
-	if c.Bool("alarm") {
+	if alarm {
 		notify.Alert("🐖 Cromwell Cli", "alert", "Your workflow ended", "")
 	}
 	return nil

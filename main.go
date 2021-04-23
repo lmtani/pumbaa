@@ -57,7 +57,9 @@ func main() {
 					&cli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60},
 					&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false},
 				},
-				Action: commands.Wait,
+				Action: func(c *cli.Context) error {
+					return commands.Wait(c.String("host"), c.String("iap"), c.String("operation"), c.Int("sleep"), c.Bool("alarm"))
+				},
 			},
 			{
 				Name:    "submit",
