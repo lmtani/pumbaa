@@ -1,4 +1,4 @@
-# :pig2: Cromwell CLI :rocket:
+Cromwell CLI
 
 [![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/master/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
 
