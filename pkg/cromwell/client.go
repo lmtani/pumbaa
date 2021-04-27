@@ -186,3 +186,13 @@ func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
 	}
 	return resp, nil
 }
+
+func errorHandler(r *http.Response) error {
+	var er = ErrorResponse{
+		HTTPStatus: r.Status,
+	}
+	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+		log.Println("No json body in response")
+	}
+	return fmt.Errorf("Submission failed. The server returned %#v", er)
+}
