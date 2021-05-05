@@ -14,6 +14,10 @@ import (
 func Navigate(host, iap, operation string) error {
 	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
+	params.Add("excludeKey", "executionEvents")
+	params.Add("excludeKey", "submittedFiles")
+	params.Add("excludeKey", "jes")
+	params.Add("excludeKey", "inputs")
 	resp, err := cromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err

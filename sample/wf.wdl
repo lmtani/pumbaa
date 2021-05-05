@@ -9,6 +9,10 @@ task RunHelloWorkflows {
         echo "This simulates a task output file, processig string: ~{name}" > final.txt
     >>>
 
+    runtime {
+        docker: "ubuntu:20.04"
+    }
+
     output {
         File hello_out = "final.txt"
     }
@@ -26,6 +30,6 @@ workflow HelloWorld {
     }
 
     output {
-        String final = RunHelloWorkflows.hello_out
+        File final = RunHelloWorkflows.hello_out
     }
 }
