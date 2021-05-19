@@ -56,6 +56,9 @@ func Navigate(host, iap, operation string) error {
 	if item.MonitoringLog != "" {
 		color.Cyan("%s\n", item.MonitoringLog)
 	}
+	if item.BackendLogs.Log != "" {
+		color.Cyan("%s\n", item.BackendLogs.Log)
+	}
 
 	fmt.Printf("🐋 Docker image:\n")
 	color.Cyan("%s\n", item.RuntimeAttributes.Docker)

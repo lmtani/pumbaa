@@ -44,6 +44,9 @@ type MetadataResponse struct {
 	Status         string
 }
 
+type BackendLogs struct {
+	Log string
+}
 type CallItem struct {
 	ExecutionStatus     string
 	Stdout              string
@@ -61,6 +64,7 @@ type CallItem struct {
 	RuntimeAttributes   RuntimeAttributes
 	CallCaching         CallCachingData
 	ExecutionEvents     []ExecutionEvents
+	BackendLogs         BackendLogs
 }
 
 type ExecutionEvents struct {

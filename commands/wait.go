@@ -18,7 +18,7 @@ func Wait(h, iap, operation string, sleep int, alarm bool) error {
 	fmt.Printf("Status=%s\n", resp.Status)
 
 	fmt.Printf("Time between status check = %d\n", sleep)
-	for status == "Running" {
+	for status == "Running" || status == "Submitted" {
 		time.Sleep(time.Duration(sleep) * time.Second)
 		resp, err := cromwellClient.Status(operation)
 		if err != nil {
