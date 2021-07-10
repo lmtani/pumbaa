@@ -11,7 +11,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func ResourcesUsed(host, iap, operation string) error {
+func (c *Commands) ResourcesUsed(host, iap, operation string) error {
 	params := url.Values{}
 	params.Add("expandSubWorkflows", "true")
 	cromwellClient := cromwell.New(host, iap)

@@ -6,7 +6,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func SubmitWorkflow(host, iap, wdl, inputs, dependencies, options string) error {
+func (c *Commands) SubmitWorkflow(host, iap, wdl, inputs, dependencies, options string) error {
 	cromwellClient := cromwell.New(host, iap)
 	r := cromwell.SubmitRequest{
 		WorkflowSource:       wdl,

@@ -11,7 +11,7 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func Navigate(host, iap, operation string) error {
+func (c *Commands) Navigate(host, iap, operation string) error {
 	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")

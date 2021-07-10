@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func ExampleResourcesUsed() {
+func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -18,7 +18,8 @@ func ExampleResourcesUsed() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	err = ResourcesUsed(ts.URL, "", operation)
+	cmds := New()
+	err = cmds.ResourcesUsed(ts.URL, "", operation)
 	if err != nil {
 		log.Print(err)
 	}

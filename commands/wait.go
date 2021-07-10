@@ -8,7 +8,7 @@ import (
 	"github.com/martinlindhe/notify"
 )
 
-func Wait(h, iap, operation string, sleep int, alarm bool) error {
+func (c *Commands) Wait(h, iap, operation string, sleep int, alarm bool) error {
 	cromwellClient := cromwell.New(h, iap)
 	resp, err := cromwellClient.Status(operation)
 	if err != nil {

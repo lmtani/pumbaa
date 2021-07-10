@@ -22,14 +22,15 @@ func buildTestServerMutable(url string) *httptest.Server {
 	return ts
 }
 
-func ExampleWait() {
+func ExampleCommands_Wait() {
 	// Mock http server
 	rand.Seed(3)
 	operation := "aaaa-bbbb-uuid"
 	ts := buildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	err := Wait(ts.URL, "", operation, 1, false)
+	cmds := New()
+	err := cmds.Wait(ts.URL, "", operation, 1, false)
 	if err != nil {
 		log.Printf("Error: %#v", err)
 	}

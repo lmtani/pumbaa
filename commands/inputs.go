@@ -8,7 +8,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func Inputs(host, iap, operation string) error {
+func (c *Commands) Inputs(host, iap, operation string) error {
 	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
 	resp, err := cromwellClient.Metadata(operation, params)

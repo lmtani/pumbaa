@@ -11,7 +11,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func QueryWorkflow(h, iap, name string) error {
+func (c *Commands) QueryWorkflow(h, iap, name string) error {
 	params := url.Values{}
 	if name != "" {
 		params.Add("name", name)

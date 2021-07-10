@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func ExampleInputs() {
+func ExampleCommands_Inputs() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -21,7 +21,8 @@ func ExampleInputs() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	err = Inputs(ts.URL, "", operation)
+	cmds := New()
+	err = cmds.Inputs(ts.URL, "", operation)
 	if err != nil {
 		log.Print(err)
 	}
@@ -47,7 +48,8 @@ func TestInputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	err := Inputs(ts.URL, "", operation)
+	cmds := New()
+	err := cmds.Inputs(ts.URL, "", operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}

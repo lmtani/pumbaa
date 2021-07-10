@@ -12,7 +12,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func MetadataWorkflow(host, iap, operation string) error {
+func (c *Commands) MetadataWorkflow(host, iap, operation string) error {
 	cromwellClient := cromwell.New(host, iap)
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")

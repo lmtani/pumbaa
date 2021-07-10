@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func ExampleMetadataWorkflow() {
+func ExampleCommands_MetadataWorkflow() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -17,7 +17,9 @@ func ExampleMetadataWorkflow() {
 	operation := "aaaa-bbbb-uuid"
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
-	err = MetadataWorkflow(ts.URL, "", operation)
+
+	cmds := New()
+	err = cmds.MetadataWorkflow(ts.URL, "", operation)
 	if err != nil {
 		log.Print(err)
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func OutputsWorkflow(host, iap, operation string) error {
+func (c *Commands) OutputsWorkflow(host, iap, operation string) error {
 	cromwellClient := cromwell.New(host, iap)
 	resp, err := cromwellClient.Outputs(operation)
 	if err != nil {
