@@ -1,4 +1,4 @@
-package writer
+package output
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type IWriter interface {
 	Error(string)
 }
 
-func New() ColoredWriter {
+func NewColoredWriter() ColoredWriter {
 	return ColoredWriter{}
 }
 

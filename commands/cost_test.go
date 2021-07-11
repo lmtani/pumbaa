@@ -6,12 +6,12 @@ import (
 	"log"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/writer"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func buildTestCommands(h, i string) Commands {
 	c := cromwell.New(h, i)
-	w := writer.NewUncolored()
+	w := output.NewUncolored()
 	cmds := New(c, w)
 	return cmds
 }

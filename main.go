@@ -7,7 +7,7 @@ import (
 	"github.com/google/martian/log"
 	"github.com/lmtani/cromwell-cli/commands"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/writer"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 )
 
@@ -15,7 +15,7 @@ var Version = "development"
 
 func main() {
 	cromwellClient := cromwell.Default()
-	writer := writer.New()
+	writer := output.NewColoredWriter()
 	cmds := commands.New(cromwellClient, writer)
 
 	app := &cli.App{
