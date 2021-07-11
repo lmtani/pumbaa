@@ -45,22 +45,22 @@ func (c *Commands) Navigate(operation string) error {
 		return nil
 	}
 	if item.CallCaching.Hit {
-		color.Cyan(item.CallCaching.Result)
+		c.writer.Accent(item.CallCaching.Result)
 	} else {
-		color.Cyan(item.CommandLine)
+		c.writer.Accent(item.CommandLine)
 	}
 
 	fmt.Printf("Logs:\n")
-	color.Cyan("%s\n%s\n", item.Stderr, item.Stdout)
+	c.writer.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
 	if item.MonitoringLog != "" {
-		color.Cyan("%s\n", item.MonitoringLog)
+		c.writer.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
 	}
 	if item.BackendLogs.Log != "" {
-		color.Cyan("%s\n", item.BackendLogs.Log)
+		c.writer.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
 	}
 
 	fmt.Printf("🐋 Docker image:\n")
-	color.Cyan("%s\n", item.RuntimeAttributes.Docker)
+	c.writer.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
 	return nil
 }
 
