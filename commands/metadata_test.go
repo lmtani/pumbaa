@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func ExampleCommands_MetadataWorkflow() {
@@ -18,8 +20,9 @@ func ExampleCommands_MetadataWorkflow() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := New()
-	err = cmds.MetadataWorkflow(ts.URL, "", operation)
+	c := cromwell.New(ts.URL, "")
+	cmds := New(c)
+	err = cmds.MetadataWorkflow(operation)
 	if err != nil {
 		log.Print(err)
 	}

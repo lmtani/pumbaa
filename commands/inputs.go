@@ -4,14 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func (c *Commands) Inputs(host, iap, operation string) error {
-	cromwellClient := cromwell.New(host, iap)
+func (c *Commands) Inputs(operation string) error {
 	params := url.Values{}
-	resp, err := cromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}

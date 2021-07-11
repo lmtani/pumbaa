@@ -6,13 +6,16 @@ import (
 
 	"github.com/google/martian/log"
 	"github.com/lmtani/cromwell-cli/commands"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/urfave/cli/v2"
 )
 
 var Version = "development"
 
 func main() {
-	cmds := commands.New()
+	cromwellClient := cromwell.Default()
+	cmds := commands.New(cromwellClient)
+
 	app := &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
@@ -27,6 +30,10 @@ func main() {
 				Value: "http://127.0.0.1:8000",
 				Usage: "Url for your Cromwell Server",
 			},
+		},
+		Before: func(c *cli.Context) error {
+			cromwellClient.Setup(c.String("host"), c.String("iap"))
+			return nil
 		},
 		Commands: []*cli.Command{
 			{
@@ -46,7 +53,7 @@ func main() {
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.QueryWorkflow(c.String("host"), c.String("iap"), c.String("name"))
+					return cmds.QueryWorkflow(c.String("name"))
 				},
 			},
 			{
@@ -59,7 +66,7 @@ func main() {
 					&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.Wait(c.String("host"), c.String("iap"), c.String("operation"), c.Int("sleep"), c.Bool("alarm"))
+					return cmds.Wait(c.String("operation"), c.Int("sleep"), c.Bool("alarm"))
 				},
 			},
 			{
@@ -73,7 +80,7 @@ func main() {
 					&cli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.SubmitWorkflow(c.String("host"), c.String("iap"), c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+					return cmds.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
 				},
 			},
 			{
@@ -84,7 +91,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.Inputs(c.String("host"), c.String("iap"), c.String("operation"))
+					return cmds.Inputs(c.String("operation"))
 				},
 			},
 			{
@@ -95,7 +102,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.KillWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+					return cmds.KillWorkflow(c.String("operation"))
 				},
 			},
 			{
@@ -106,7 +113,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.MetadataWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+					return cmds.MetadataWorkflow(c.String("operation"))
 				},
 			},
 			{
@@ -117,7 +124,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.OutputsWorkflow(c.String("host"), c.String("iap"), c.String("operation"))
+					return cmds.OutputsWorkflow(c.String("operation"))
 				},
 			},
 			{
@@ -128,7 +135,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.Navigate(c.String("host"), c.String("iap"), c.String("operation"))
+					return cmds.Navigate(c.String("operation"))
 				},
 			},
 			{
@@ -143,7 +150,7 @@ func main() {
 							&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 						},
 						Action: func(c *cli.Context) error {
-							return cmds.ResourcesUsed(c.String("host"), c.String("iap"), c.String("operation"))
+							return cmds.ResourcesUsed(c.String("operation"))
 						},
 					},
 				},

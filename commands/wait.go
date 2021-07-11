@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/martinlindhe/notify"
 )
 
-func (c *Commands) Wait(h, iap, operation string, sleep int, alarm bool) error {
-	cromwellClient := cromwell.New(h, iap)
-	resp, err := cromwellClient.Status(operation)
+func (c *Commands) Wait(operation string, sleep int, alarm bool) error {
+	resp, err := c.CromwellClient.Status(operation)
 	if err != nil {
 		return err
 	}
@@ -20,7 +18,7 @@ func (c *Commands) Wait(h, iap, operation string, sleep int, alarm bool) error {
 	fmt.Printf("Time between status check = %d\n", sleep)
 	for status == "Running" || status == "Submitted" {
 		time.Sleep(time.Duration(sleep) * time.Second)
-		resp, err := cromwellClient.Status(operation)
+		resp, err := c.CromwellClient.Status(operation)
 		if err != nil {
 			return err
 		}

@@ -14,12 +14,21 @@ import (
 )
 
 type Client struct {
-	host string
-	iap  string
+	Host string
+	Iap  string
 }
 
-func New(h, t string) Client {
-	return Client{host: h, iap: t}
+func New(h, t string) *Client {
+	return &Client{Host: h, Iap: t}
+}
+
+func Default() *Client {
+	return &Client{Host: "http://127.0.0.1:8000", Iap: ""}
+}
+
+func (c *Client) Setup(h, t string) {
+	c.Host = h
+	c.Iap = t
 }
 
 func (c *Client) Kill(o string) (SubmitResponse, error) {
@@ -121,14 +130,14 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 }
 
 func (c *Client) get(u string) (*http.Response, error) {
-	uri := fmt.Sprintf("%s%s", c.host, u)
+	uri := fmt.Sprintf("%s%s", c.Host, u)
 	req, _ := http.NewRequest("GET", uri, nil)
 	return c.makeRequest(req)
 }
 
 func (c *Client) post(u string, files map[string]string) (*http.Response, error) {
 	var (
-		uri    = fmt.Sprintf("%s%s", c.host, u)
+		uri    = fmt.Sprintf("%s%s", c.Host, u)
 		body   = new(bytes.Buffer)
 		writer = multipart.NewWriter(body)
 	)
@@ -168,8 +177,8 @@ func (c *Client) post(u string, files map[string]string) (*http.Response, error)
 }
 
 func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
-	if c.iap != "" {
-		token := getGoogleIapToken(c.iap)
+	if c.Iap != "" {
+		token := getGoogleIapToken(c.Iap)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 	log.Printf("%s request to: %s\n", req.Method, req.URL)
@@ -194,5 +203,5 @@ func errorHandler(r *http.Response) error {
 	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
 		log.Println("No json body in response")
 	}
-	return fmt.Errorf("Submission failed. The server returned %#v", er)
+	return fmt.Errorf("submission failed. the server returned %#v", er)
 }

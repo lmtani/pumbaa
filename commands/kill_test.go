@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func ExampleKill() {
@@ -12,8 +14,9 @@ func ExampleKill() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
 	defer ts.Close()
 
-	cmds := New()
-	err := cmds.KillWorkflow(ts.URL, "", operation)
+	c := cromwell.New(ts.URL, "")
+	cmds := New(c)
+	err := cmds.KillWorkflow(operation)
 	if err != nil {
 		log.Print(err)
 	}
@@ -36,8 +39,9 @@ func TestKillHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := New()
-	err := cmds.KillWorkflow(ts.URL, "", operation)
+	c := cromwell.New(ts.URL, "")
+	cmds := New(c)
+	err := cmds.KillWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}

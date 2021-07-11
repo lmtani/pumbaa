@@ -2,13 +2,10 @@ package commands
 
 import (
 	"fmt"
-
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func (c *Commands) KillWorkflow(host, iap, operation string) error {
-	cromwellClient := cromwell.New(host, iap)
-	resp, err := cromwellClient.Kill(operation)
+func (c *Commands) KillWorkflow(operation string) error {
+	resp, err := c.CromwellClient.Kill(operation)
 	if err != nil {
 		return err
 	}

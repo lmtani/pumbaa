@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func ExampleCommands_ResourcesUsed() {
@@ -18,8 +20,9 @@ func ExampleCommands_ResourcesUsed() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := New()
-	err = cmds.ResourcesUsed(ts.URL, "", operation)
+	c := cromwell.New(ts.URL, "")
+	cmds := New(c)
+	err = cmds.ResourcesUsed(operation)
 	if err != nil {
 		log.Print(err)
 	}
