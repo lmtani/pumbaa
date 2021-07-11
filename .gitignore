@@ -1,4 +1,5 @@
 coverage.out
+.devcontainer/
 
 # Binaries for programs and plugins
 *.exe
