@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 
 	"log"
-
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func buildTestServerMutable(url string) *httptest.Server {
@@ -31,8 +29,7 @@ func ExampleCommands_Wait() {
 	ts := buildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	c := cromwell.New(ts.URL, "")
-	cmds := New(c)
+	cmds := buildTestCommands(ts.URL, "")
 	err := cmds.Wait(operation, 1, false)
 	if err != nil {
 		log.Printf("Error: %#v", err)

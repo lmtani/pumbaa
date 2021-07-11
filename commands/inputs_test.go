@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func ExampleCommands_Inputs() {
@@ -23,8 +21,7 @@ func ExampleCommands_Inputs() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	c := cromwell.New(ts.URL, "")
-	cmds := New(c)
+	cmds := buildTestCommands(ts.URL, "")
 	err = cmds.Inputs(operation)
 	if err != nil {
 		log.Print(err)
@@ -51,8 +48,7 @@ func TestInputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	c := cromwell.New(ts.URL, "")
-	cmds := New(c)
+	cmds := buildTestCommands(ts.URL, "")
 	err := cmds.Inputs(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")

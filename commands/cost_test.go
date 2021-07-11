@@ -8,6 +8,12 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
+func buildTestCommands(h, i string) Commands {
+	c := cromwell.New(h, i)
+	cmds := New(c)
+	return cmds
+}
+
 func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
@@ -20,8 +26,7 @@ func ExampleCommands_ResourcesUsed() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	c := cromwell.New(ts.URL, "")
-	cmds := New(c)
+	cmds := buildTestCommands(ts.URL, "")
 	err = cmds.ResourcesUsed(operation)
 	if err != nil {
 		log.Print(err)

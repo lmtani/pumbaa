@@ -2,8 +2,6 @@ package commands
 
 import (
 	"log"
-
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func ExampleCommands_SubmitWorkflow() {
@@ -14,8 +12,7 @@ func ExampleCommands_SubmitWorkflow() {
 	wdlPath := "../sample/wf.wdl"
 	inputsPath := "../sample/wf.inputs.json"
 
-	c := cromwell.New(ts.URL, "")
-	cmds := New(c)
+	cmds := buildTestCommands(ts.URL, "")
 	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)
 	if err != nil {
 		log.Print(err)
