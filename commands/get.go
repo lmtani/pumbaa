@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
@@ -22,7 +21,7 @@ func (c *Commands) QueryWorkflow(name string) error {
 	}
 	var qtr = QueryTableResponse(resp)
 	output.NewTable(os.Stdout).Render(qtr)
-	color.Cyan(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
+	c.writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }
 

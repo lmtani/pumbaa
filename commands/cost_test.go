@@ -6,11 +6,13 @@ import (
 	"log"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/writer"
 )
 
 func buildTestCommands(h, i string) Commands {
 	c := cromwell.New(h, i)
-	cmds := New(c)
+	w := writer.NewUncolored()
+	cmds := New(c, w)
 	return cmds
 }
 
@@ -40,4 +42,6 @@ func ExampleCommands_ResourcesUsed() {
 	// | HDD disk (GB) | 1 month       | 20.00      | -       |
 	// | SSD disk (GB) | 1 month       | 20.00      | 20.00   |
 	// +---------------+---------------+------------+---------+
+	// - Tasks with cache hit: 1
+	// - Total time with running VMs: 2160h
 }
