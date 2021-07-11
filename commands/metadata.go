@@ -8,18 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func MetadataWorkflow(host, iap, operation string) error {
-	cromwellClient := cromwell.New(host, iap)
+func (c *Commands) MetadataWorkflow(operation string) error {
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")
 	params.Add("excludeKey", "submittedFiles")
 	params.Add("excludeKey", "jes")
 	params.Add("excludeKey", "inputs")
-	resp, err := cromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}

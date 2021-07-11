@@ -4,9 +4,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func ExampleResourcesUsed() {
+func buildTestCommands(h, i string) Commands {
+	c := cromwell.New(h, i)
+	cmds := New(c)
+	return cmds
+}
+
+func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -18,7 +26,8 @@ func ExampleResourcesUsed() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	err = ResourcesUsed(ts.URL, "", operation)
+	cmds := buildTestCommands(ts.URL, "")
+	err = cmds.ResourcesUsed(operation)
 	if err != nil {
 		log.Print(err)
 	}

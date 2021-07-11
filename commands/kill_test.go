@@ -12,7 +12,8 @@ func ExampleKill() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
 	defer ts.Close()
 
-	err := KillWorkflow(ts.URL, "", operation)
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.KillWorkflow(operation)
 	if err != nil {
 		log.Print(err)
 	}
@@ -35,7 +36,8 @@ func TestKillHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	err := KillWorkflow(ts.URL, "", operation)
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.KillWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}

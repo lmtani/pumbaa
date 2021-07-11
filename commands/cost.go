@@ -11,16 +11,15 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func ResourcesUsed(host, iap, operation string) error {
+func (c *Commands) ResourcesUsed(operation string) error {
 	params := url.Values{}
 	params.Add("expandSubWorkflows", "true")
-	cromwellClient := cromwell.New(host, iap)
-	resp, err := cromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}
 	if resp.Status == "Running" {
-		return errors.New("Workflow status is still running")
+		return errors.New("workflow status is still running")
 	}
 	total, err := cromwell.GetComputeUsageForPricing(resp.Calls)
 	if err != nil {

@@ -7,18 +7,16 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func QueryWorkflow(h, iap, name string) error {
+func (c *Commands) QueryWorkflow(name string) error {
 	params := url.Values{}
 	if name != "" {
 		params.Add("name", name)
 	}
 	params.Add("includeSubworkflows", "false")
-	cromwellClient := cromwell.New(h, iap)
-	resp, err := cromwellClient.Query(params)
+	resp, err := c.CromwellClient.Query(params)
 	if err != nil {
 		return err
 	}

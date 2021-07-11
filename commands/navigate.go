@@ -11,14 +11,13 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func Navigate(host, iap, operation string) error {
-	cromwellClient := cromwell.New(host, iap)
+func (c *Commands) Navigate(operation string) error {
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")
 	params.Add("excludeKey", "submittedFiles")
 	params.Add("excludeKey", "jes")
 	params.Add("excludeKey", "inputs")
-	resp, err := cromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err
 	}
@@ -35,7 +34,7 @@ func Navigate(host, iap, operation string) error {
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = cromwellClient.Metadata(item.SubWorkflowID, params)
+		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, params)
 		if err != nil {
 			return err
 		}

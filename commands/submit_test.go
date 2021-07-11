@@ -4,14 +4,16 @@ import (
 	"log"
 )
 
-func ExampleSubmitWorkflow() {
+func ExampleCommands_SubmitWorkflow() {
 	// Mock http server
 	ts := buildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`)
 	defer ts.Close()
 
 	wdlPath := "../sample/wf.wdl"
 	inputsPath := "../sample/wf.inputs.json"
-	err := SubmitWorkflow(ts.URL, "", wdlPath, inputsPath, wdlPath, inputsPath)
+
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)
 	if err != nil {
 		log.Print(err)
 	}

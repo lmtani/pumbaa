@@ -7,13 +7,14 @@ import (
 	"testing"
 )
 
-func ExampleOutputsWorkflow() {
+func ExampleCommands_OutputsWorkflow() {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`)
 	defer ts.Close()
 
-	err := OutputsWorkflow(ts.URL, "", operation)
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.OutputsWorkflow(operation)
 	if err != nil {
 		log.Print(err)
 	}
@@ -38,7 +39,8 @@ func TestOutputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	err := OutputsWorkflow(ts.URL, "", operation)
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.OutputsWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}
