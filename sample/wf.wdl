@@ -24,12 +24,20 @@ workflow HelloWorld {
         String name
     }
 
-    call RunHelloWorkflows {
+    call RunHelloWorkflows as OutFromScatter {
         input:
             name=name
     }
 
+    scatter (i in range(3)) {
+        call RunHelloWorkflows {
+            input:
+                name="scatter_"+i
+        }
+    }
+
     output {
-        File final = RunHelloWorkflows.hello_out
+        File final = OutFromScatter.hello_out
+        Array[File] out = RunHelloWorkflows.hello_out
     }
 }

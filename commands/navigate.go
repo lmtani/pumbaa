@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fatih/color"
+	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/manifoldco/promptui"
 )
 
-func (c *Commands) Navigate(operation string) error {
+func (c *Commands) Navigate(p prompt.IPrompt, operation string) error {
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")
 	params.Add("excludeKey", "submittedFiles")
@@ -23,11 +22,11 @@ func (c *Commands) Navigate(operation string) error {
 	}
 	var item cromwell.CallItem
 	for {
-		task, err := selectDesiredTask(resp)
+		task, err := c.selectDesiredTask(p, resp)
 		if err != nil {
 			return err
 		}
-		item, err = selectDesiredShard(task)
+		item, err = c.selectDesiredShard(p, task)
 		if err != nil {
 			return err
 		}
@@ -73,7 +72,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
+func (c *Commands) selectDesiredTask(p prompt.IPrompt, m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
 	taskOptions := []string{}
 	calls := map[string][]cromwell.CallItem{}
 	for key := range m.Calls {
@@ -88,12 +87,9 @@ func selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error)
 	if m.RootWorkflowID != "" {
 		cat = "SubWorkflow"
 	}
-	color.Green("%s: %s\n", cat, m.WorkflowName)
-	prompt := promptui.Select{
-		Label: "Select a task",
-		Items: taskOptions,
-	}
-	_, taskName, err := prompt.Run()
+	c.writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
+
+	taskName, err := p.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
 		return []cromwell.CallItem{}, err
@@ -101,11 +97,12 @@ func selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error)
 	return calls[taskName], nil
 }
 
-func selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
+func (c *Commands) selectDesiredShard(p prompt.IPrompt, shards []cromwell.CallItem) (cromwell.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
-	templates := &promptui.SelectTemplates{
+
+	template := prompt.TemplateOptions{
 		Label:    "{{ . }}?",
 		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | red }}) CallCaching: {{ .CallCaching.Hit}}",
 		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }})",
@@ -118,16 +115,7 @@ func selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 		return name == input
 	}
 
-	prompt := promptui.Select{
-		Label:     "Which shard?",
-		Items:     shards,
-		Templates: templates,
-		Size:      6,
-		Searcher:  searcher,
-	}
-
-	i, _, err := prompt.Run()
-
+	i, err := p.SelectByIndex(template, searcher, shards)
 	if err != nil {
 		return cromwell.CallItem{}, err
 	}

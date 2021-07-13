@@ -1,0 +1,68 @@
+package prompt
+
+import (
+	"github.com/manifoldco/promptui"
+)
+
+type Prompt struct{}
+
+type IPrompt interface {
+	SelectByKey(taskOptions []string) (string, error)
+	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
+}
+
+func New() Prompt {
+	return Prompt{}
+}
+
+type Searcher func(input string, index int) bool
+
+func (p Prompt) SelectByKey(taskOptions []string) (string, error) {
+	prompt := promptui.Select{
+		Label: "Select a task",
+		Items: taskOptions,
+	}
+	_, taskName, err := prompt.Run()
+	return taskName, err
+}
+
+func (p Prompt) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+	templates := &promptui.SelectTemplates{
+		Label:    t.Label,
+		Active:   t.Active,
+		Inactive: t.Inactive,
+		Selected: t.Selected,
+	}
+
+	prompt := promptui.Select{
+		Label:     "Which shard?",
+		Items:     items,
+		Templates: templates,
+		Size:      6,
+		Searcher:  sfn,
+	}
+
+	i, _, err := prompt.Run()
+	return i, err
+}
+
+type TemplateOptions struct {
+	Label    string
+	Active   string
+	Inactive string
+	Selected string
+}
+
+type PromptForTests struct{}
+
+func (p PromptForTests) SelectByKey(taskOptions []string) (string, error) {
+	return "SayGoodbye", nil
+}
+
+func (p PromptForTests) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+	return 1, nil
+}
+
+func NewForTests() PromptForTests {
+	return PromptForTests{}
+}
