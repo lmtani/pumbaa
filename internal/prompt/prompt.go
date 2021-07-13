@@ -52,17 +52,3 @@ type TemplateOptions struct {
 	Inactive string
 	Selected string
 }
-
-type PromptForTests struct{}
-
-func (p PromptForTests) SelectByKey(taskOptions []string) (string, error) {
-	return "SayGoodbye", nil
-}
-
-func (p PromptForTests) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
-	return 1, nil
-}
-
-func NewForTests() PromptForTests {
-	return PromptForTests{}
-}

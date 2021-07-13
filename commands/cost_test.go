@@ -6,12 +6,29 @@ import (
 	"log"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
+
+type Uncolored struct{}
+
+func NewUncolored() Uncolored {
+	return Uncolored{}
+}
+
+func (w Uncolored) Primary(s string) {
+	fmt.Println(s)
+}
+
+func (w Uncolored) Accent(s string) {
+	fmt.Println(s)
+}
+
+func (w Uncolored) Error(s string) {
+	fmt.Println(s)
+}
 
 func buildTestCommands(h, i string) Commands {
 	c := cromwell.New(h, i)
-	w := output.NewUncolored()
+	w := NewUncolored()
 	cmds := New(c, w)
 	return cmds
 }

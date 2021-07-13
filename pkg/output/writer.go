@@ -29,21 +29,3 @@ func (w ColoredWriter) Accent(s string) {
 func (w ColoredWriter) Error(s string) {
 	color.Red(s)
 }
-
-type Uncolored struct{}
-
-func NewUncolored() Uncolored {
-	return Uncolored{}
-}
-
-func (w Uncolored) Primary(s string) {
-	fmt.Println(s)
-}
-
-func (w Uncolored) Accent(s string) {
-	fmt.Println(s)
-}
-
-func (w Uncolored) Error(s string) {
-	fmt.Println(s)
-}
