@@ -144,8 +144,8 @@ func TestClientMetadata(t *testing.T) {
 	}
 
 	totalCalls := len(resp.Calls)
-	if totalCalls != 4 {
-		t.Errorf("Expected %v, got %v", 4, totalCalls)
+	if totalCalls != 5 {
+		t.Errorf("Expected %v, got %v", 5, totalCalls)
 	}
 
 	subworkflowName := resp.Calls["HelloHere.ScatterSubworkflow"][0].SubWorkflowMetadata.WorkflowName

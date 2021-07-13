@@ -24,11 +24,13 @@ func ExampleCommands_MetadataWorkflow() {
 		log.Print(err)
 	}
 	// Output:
-	// +---------------+---------+----------+--------+
-	// |     TASK      | ATTEMPT | ELAPSED  | STATUS |
-	// +---------------+---------+----------+--------+
-	// | SayGoodbye    | 1       | 720h0m0s | Done   |
-	// | SayHello      | 1       | 720h0m0s | Done   |
-	// | SayHelloCache | 1       | 720h0m0s | Done   |
-	// +---------------+---------+----------+--------+
+	// +-------------------+---------+----------+--------+
+	// |       TASK        | ATTEMPT | ELAPSED  | STATUS |
+	// +-------------------+---------+----------+--------+
+	// | RunHelloWorkflows | 1       | 7.515s   | Done   |
+	// | RunHelloWorkflows | 1       | 7.514s   | Done   |
+	// | SayGoodbye        | 1       | 720h0m0s | Done   |
+	// | SayHello          | 1       | 720h0m0s | Done   |
+	// | SayHelloCache     | 1       | 720h0m0s | Done   |
+	// +-------------------+---------+----------+--------+
 }
