@@ -104,9 +104,9 @@ func (c *Commands) selectDesiredShard(p prompt.IPrompt, shards []cromwell.CallIt
 
 	template := prompt.TemplateOptions{
 		Label:    "{{ . }}?",
-		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | red }}) CallCaching: {{ .CallCaching.Hit}}",
-		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }})",
-		Selected: "✔ {{ .ShardIndex | green }}",
+		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
+		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }}) Attempt: {{ .Attempt | faint }} CallCaching: {{ .CallCaching.Hit | faint}}",
+		Selected: "✔ {{ .ShardIndex | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
 	}
 
 	searcher := func(input string, index int) bool {
