@@ -45,3 +45,19 @@ func TestOutputsHttpError(t *testing.T) {
 		t.Error("Not found error expected, nil returned")
 	}
 }
+
+func TestOutputsReturnError(t *testing.T) {
+	// Mock http server
+	operation := "aaaa-bbbb-uuid"
+	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`)
+	defer ts.Close()
+
+	cmds := buildTestCommands(ts.URL, "")
+	err := cmds.OutputsWorkflow(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	if err == nil {
+		t.Error("Not found error expected, nil returned")
+	}
+}
