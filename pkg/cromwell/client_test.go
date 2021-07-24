@@ -154,3 +154,26 @@ func TestClientMetadata(t *testing.T) {
 		t.Errorf("Expected %v, got %v", expected, subworkflowName)
 	}
 }
+
+func TestSetupClient(t *testing.T) {
+	c := Default()
+	expectedHost := "http://127.0.0.1:8000"
+	if c.Host != expectedHost {
+		t.Errorf("Expected %v, got %v", expectedHost, c.Host)
+	}
+	if c.Iap != "" {
+		t.Errorf("Expected %v, got %v", "", c.Iap)
+	}
+
+	newHost := "http://my-cromwell.com"
+	iapCred := "iap-credential@foo"
+	c.Setup(newHost, iapCred)
+
+	if c.Host != newHost {
+		t.Errorf("Expected %v, got %v", newHost, c.Host)
+	}
+	if c.Iap != iapCred {
+		t.Errorf("Expected %v, got %v", iapCred, c.Iap)
+	}
+
+}
