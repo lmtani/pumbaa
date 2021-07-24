@@ -42,6 +42,12 @@ type MetadataResponse struct {
 	Start          time.Time
 	End            time.Time
 	Status         string
+	Failures       []Failure
+}
+
+type Failure struct {
+	CausedBy []Failure
+	Message  string
 }
 
 type BackendLogs struct {
