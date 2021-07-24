@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"time"
-
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
@@ -16,12 +14,5 @@ type QueryTableResponse struct {
 }
 
 type MetadataTableResponse struct {
-	WorkflowName   string
-	RootWorkflowID string
-	Calls          map[string][]cromwell.CallItem
-	Inputs         map[string]interface{}
-	Outputs        map[string]interface{}
-	Start          time.Time
-	End            time.Time
-	Status         string
+	Metadata cromwell.MetadataResponse
 }

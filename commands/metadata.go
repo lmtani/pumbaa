@@ -21,9 +21,9 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	if err != nil {
 		return err
 	}
-	var mtr = MetadataTableResponse(resp)
+	var mtr = MetadataTableResponse{Metadata: resp}
 	output.NewTable(os.Stdout).Render(mtr)
-	return err
+	return nil
 }
 
 func (mtr MetadataTableResponse) Header() []string {
@@ -32,7 +32,7 @@ func (mtr MetadataTableResponse) Header() []string {
 
 func (mtr MetadataTableResponse) Rows() [][]string {
 	rows := [][]string{}
-	for call, elements := range mtr.Calls {
+	for call, elements := range mtr.Metadata.Calls {
 		substrings := strings.Split(call, ".")
 		for _, elem := range elements {
 			if elem.ExecutionStatus == "" {
