@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
@@ -23,7 +24,28 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	}
 	var mtr = MetadataTableResponse{Metadata: resp}
 	output.NewTable(os.Stdout).Render(mtr)
+	if len(resp.Failures) > 0 {
+		c.writer.Error(hasFailureMsg(resp.Failures))
+		recursiveFailureParse(resp.Failures, c.writer)
+	}
+
 	return nil
+}
+
+func hasFailureMsg(fails []cromwell.Failure) string {
+	m := "issue"
+	if len(fails) > 1 {
+		m = "issues"
+	}
+	msg := fmt.Sprintf("❗You have %d %s:\n", len(fails), m)
+	return msg
+}
+
+func recursiveFailureParse(f []cromwell.Failure, w output.IWriter) {
+	for idx := range f {
+		w.Primary(" - " + f[idx].Message)
+		recursiveFailureParse(f[idx].CausedBy, w)
+	}
 }
 
 func (mtr MetadataTableResponse) Header() []string {
