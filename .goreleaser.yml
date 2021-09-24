@@ -13,7 +13,11 @@ builds:
       - linux
       - darwin
     ldflags:
-      - -X "main.Version={{.Env.CIRCLE_TAG}}"
+      - -X "main.Version={{.Env.CIRCLE_TAG}}" -s -w
+    hooks:
+      post:
+        - upx "{{ .Path }}"
+
 archives:
   - replacements:
       darwin: Darwin
