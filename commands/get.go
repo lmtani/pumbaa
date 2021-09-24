@@ -39,7 +39,7 @@ func (qtr QueryTableResponse) Rows() [][]string {
 		elapsedTime := r.End.Sub(r.Start)
 		rows = append(rows, []string{
 			r.ID,
-			r.Name,
+			fmt.Sprintf("%.35s", r.Name),
 			r.Start.Format(timePattern),
 			elapsedTime.Round(time.Second).String(),
 			r.Status,

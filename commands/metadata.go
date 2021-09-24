@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -15,7 +17,6 @@ import (
 func (c *Commands) MetadataWorkflow(operation string) error {
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")
-	params.Add("excludeKey", "submittedFiles")
 	params.Add("excludeKey", "jes")
 	params.Add("excludeKey", "inputs")
 	resp, err := c.CromwellClient.Metadata(operation, params)
@@ -29,7 +30,25 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 		recursiveFailureParse(resp.Failures, c.writer)
 	}
 
+	showCustomOptions(resp.SubmittedFiles, c.writer)
 	return nil
+}
+
+func showCustomOptions(s cromwell.SubmittedFiles, w output.IWriter) {
+	var f cromwell.Options
+	json.Unmarshal([]byte(s.Options), &f)
+	if f != (cromwell.Options{}) {
+		w.Accent("🔧 Custom options")
+		v := reflect.ValueOf(f)
+		typeOfS := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			item := v.Field(i).Interface()
+			if item != "" {
+				w.Primary(fmt.Sprintf("- %s: %s", typeOfS.Field(i).Name, v.Field(i).Interface()))
+			}
+		}
+
+	}
 }
 
 func hasFailureMsg(fails []cromwell.Failure) string {
