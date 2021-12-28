@@ -12,7 +12,7 @@ func ExampleCommands_SubmitWorkflow() {
 	wdlPath := "../sample/wf.wdl"
 	inputsPath := "../sample/wf.inputs.json"
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)
 	if err != nil {
 		log.Print(err)

@@ -21,7 +21,7 @@ func ExampleCommands_Inputs() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err = cmds.Inputs(operation)
 	if err != nil {
 		log.Print(err)
@@ -48,7 +48,7 @@ func TestInputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.Inputs(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")

@@ -21,7 +21,7 @@ func (c *Commands) QueryWorkflow(name string) error {
 	}
 	var qtr = QueryTableResponse(resp)
 	output.NewTable(os.Stdout).Render(qtr)
-	c.writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
+	c.Writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }
 

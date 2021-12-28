@@ -26,11 +26,11 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	var mtr = MetadataTableResponse{Metadata: resp}
 	output.NewTable(os.Stdout).Render(mtr)
 	if len(resp.Failures) > 0 {
-		c.writer.Error(hasFailureMsg(resp.Failures))
-		recursiveFailureParse(resp.Failures, c.writer)
+		c.Writer.Error(hasFailureMsg(resp.Failures))
+		recursiveFailureParse(resp.Failures, c.Writer)
 	}
 
-	showCustomOptions(resp.SubmittedFiles, c.writer)
+	showCustomOptions(resp.SubmittedFiles, c.Writer)
 	return nil
 }
 

@@ -9,6 +9,6 @@ func (c *Commands) KillWorkflow(operation string) error {
 	if err != nil {
 		return err
 	}
-	c.writer.Accent(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
+	c.Writer.Accent(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
 	return nil
 }

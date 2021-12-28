@@ -18,12 +18,12 @@ type Client struct {
 	Iap  string
 }
 
-func New(h, t string) *Client {
-	return &Client{Host: h, Iap: t}
+func New(h, t string) Client {
+	return Client{Host: h, Iap: t}
 }
 
-func Default() *Client {
-	return &Client{Host: "http://127.0.0.1:8000", Iap: ""}
+func Default() Client {
+	return Client{Host: "http://127.0.0.1:8000", Iap: ""}
 }
 
 func (c *Client) Setup(h, t string) {

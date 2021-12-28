@@ -22,7 +22,7 @@ func (c *Commands) Wait(operation string, sleep int, alarm bool) error {
 		if err != nil {
 			return err
 		}
-		c.writer.Accent(fmt.Sprintf("Status=%s\n", resp.Status))
+		c.Writer.Accent(fmt.Sprintf("Status=%s\n", resp.Status))
 		status = resp.Status
 	}
 

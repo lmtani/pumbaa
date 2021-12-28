@@ -11,8 +11,8 @@ type IPrompt interface {
 	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
 }
 
-func New() Prompt {
-	return Prompt{}
+func New() *Prompt {
+	return &Prompt{}
 }
 
 type Searcher func(input string, index int) bool

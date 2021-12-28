@@ -16,6 +16,6 @@ func (c *Commands) SubmitWorkflow(wdl, inputs, dependencies, options string) err
 	if err != nil {
 		return err
 	}
-	c.writer.Accent(fmt.Sprintf("🐖 Operation= %s , Status=%s", resp.ID, resp.Status))
+	c.Writer.Accent(fmt.Sprintf("🐖 Operation= %s , Status=%s", resp.ID, resp.Status))
 	return nil
 }

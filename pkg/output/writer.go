@@ -14,8 +14,8 @@ type IWriter interface {
 	Error(string)
 }
 
-func NewColoredWriter() ColoredWriter {
-	return ColoredWriter{}
+func NewColoredWriter() *ColoredWriter {
+	return &ColoredWriter{}
 }
 
 func (w ColoredWriter) Primary(s string) {

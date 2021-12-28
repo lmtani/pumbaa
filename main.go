@@ -6,19 +6,13 @@ import (
 
 	"github.com/google/martian/log"
 	"github.com/lmtani/cromwell-cli/commands"
-	"github.com/lmtani/cromwell-cli/internal/prompt"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/urfave/cli/v2"
 )
 
 var Version = "development"
 
 func main() {
-	cromwellClient := cromwell.Default()
-	writer := output.NewColoredWriter()
-	prompt := prompt.New()
-	cmds := commands.New(cromwellClient, writer)
+	cmds := commands.New()
 
 	app := &cli.App{
 		Name:  "cromwell-cli",
@@ -36,7 +30,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			cromwellClient.Setup(c.String("host"), c.String("iap"))
+			cmds.CromwellClient.Setup(c.String("host"), c.String("iap"))
 			return nil
 		},
 		Commands: []*cli.Command{
@@ -139,7 +133,7 @@ func main() {
 					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.Navigate(prompt, c.String("operation"))
+					return cmds.Navigate(c.String("operation"))
 				},
 			},
 			{
