@@ -13,7 +13,7 @@ func ExampleCommands_OutputsWorkflow() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`)
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.OutputsWorkflow(operation)
 	if err != nil {
 		log.Print(err)
@@ -39,7 +39,7 @@ func TestOutputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.OutputsWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
@@ -52,7 +52,7 @@ func TestOutputsReturnError(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`)
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.OutputsWorkflow(operation)
 	if err != nil {
 		log.Print(err)

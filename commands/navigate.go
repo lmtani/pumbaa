@@ -10,7 +10,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
-func (c *Commands) Navigate(p prompt.IPrompt, operation string) error {
+func (c *Commands) Navigate(operation string) error {
 	params := url.Values{}
 	params.Add("excludeKey", "executionEvents")
 	params.Add("excludeKey", "submittedFiles")
@@ -22,11 +22,11 @@ func (c *Commands) Navigate(p prompt.IPrompt, operation string) error {
 	}
 	var item cromwell.CallItem
 	for {
-		task, err := c.selectDesiredTask(p, resp)
+		task, err := c.selectDesiredTask(resp)
 		if err != nil {
 			return err
 		}
-		item, err = c.selectDesiredShard(p, task)
+		item, err = c.selectDesiredShard(task)
 		if err != nil {
 			return err
 		}
@@ -44,22 +44,22 @@ func (c *Commands) Navigate(p prompt.IPrompt, operation string) error {
 		return nil
 	}
 	if item.CallCaching.Hit {
-		c.writer.Accent(item.CallCaching.Result)
+		c.Writer.Accent(item.CallCaching.Result)
 	} else {
-		c.writer.Accent(item.CommandLine)
+		c.Writer.Accent(item.CommandLine)
 	}
 
 	fmt.Printf("Logs:\n")
-	c.writer.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
+	c.Writer.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
 	if item.MonitoringLog != "" {
-		c.writer.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
+		c.Writer.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
 	}
 	if item.BackendLogs.Log != "" {
-		c.writer.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
+		c.Writer.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
 	}
 
 	fmt.Printf("🐋 Docker image:\n")
-	c.writer.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
+	c.Writer.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
 	return nil
 }
 
@@ -72,7 +72,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (c *Commands) selectDesiredTask(p prompt.IPrompt, m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
+func (c *Commands) selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
 	taskOptions := []string{}
 	calls := map[string][]cromwell.CallItem{}
 	for key := range m.Calls {
@@ -87,9 +87,9 @@ func (c *Commands) selectDesiredTask(p prompt.IPrompt, m cromwell.MetadataRespon
 	if m.RootWorkflowID != "" {
 		cat = "SubWorkflow"
 	}
-	c.writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
+	c.Writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
 
-	taskName, err := p.SelectByKey(taskOptions)
+	taskName, err := c.Prompt.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Prompt failed %v\n", err)
 		return []cromwell.CallItem{}, err
@@ -97,7 +97,7 @@ func (c *Commands) selectDesiredTask(p prompt.IPrompt, m cromwell.MetadataRespon
 	return calls[taskName], nil
 }
 
-func (c *Commands) selectDesiredShard(p prompt.IPrompt, shards []cromwell.CallItem) (cromwell.CallItem, error) {
+func (c *Commands) selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -115,7 +115,7 @@ func (c *Commands) selectDesiredShard(p prompt.IPrompt, shards []cromwell.CallIt
 		return name == input
 	}
 
-	i, err := p.SelectByIndex(template, searcher, shards)
+	i, err := c.Prompt.SelectByIndex(template, searcher, shards)
 	if err != nil {
 		return cromwell.CallItem{}, err
 	}

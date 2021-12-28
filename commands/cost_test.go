@@ -26,10 +26,11 @@ func (w Uncolored) Error(s string) {
 	fmt.Println(s)
 }
 
-func buildTestCommands(h, i string) Commands {
-	c := cromwell.New(h, i)
-	w := NewUncolored()
-	cmds := New(c, w)
+func buildTestCommands(h, i, prompt_key string, prompt_int int) *Commands {
+	cmds := New()
+	cmds.CromwellClient = cromwell.New(h, i)
+	cmds.Writer = NewUncolored()
+	cmds.Prompt = NewForTests(prompt_key, prompt_int)
 	return cmds
 }
 
@@ -45,7 +46,7 @@ func ExampleCommands_ResourcesUsed() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err = cmds.ResourcesUsed(operation)
 	if err != nil {
 		log.Print(err)

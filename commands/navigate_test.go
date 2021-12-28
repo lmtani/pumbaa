@@ -21,8 +21,8 @@ func (p PromptForTests) SelectByIndex(t prompt.TemplateOptions, sfn func(input s
 	return p.byIndexReturn, nil
 }
 
-func NewForTests(byKey string, byIndex int) PromptForTests {
-	return PromptForTests{
+func NewForTests(byKey string, byIndex int) *PromptForTests {
+	return &PromptForTests{
 		byKeyReturn: byKey, byIndexReturn: byIndex,
 	}
 }
@@ -39,9 +39,8 @@ func ExampleCommands_Navigate() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
-	prompt := NewForTests("SayGoodbye", 1)
-	err = cmds.Navigate(prompt, operation)
+	cmds := buildTestCommands(ts.URL, "", "SayGoodbye", 1)
+	err = cmds.Navigate(operation)
 	if err != nil {
 		log.Print(err)
 	}
@@ -72,9 +71,8 @@ func ExampleCommands_Navigate_second() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
-	prompt := NewForTests("RunHelloWorkflows", 1)
-	err = cmds.Navigate(prompt, operation)
+	cmds := buildTestCommands(ts.URL, "", "RunHelloWorkflows", 1)
+	err = cmds.Navigate(operation)
 	if err != nil {
 		log.Print(err)
 	}

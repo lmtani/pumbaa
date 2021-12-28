@@ -9,11 +9,17 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func (c *Commands) QueryWorkflow(name string) error {
+func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
+	date := time.Now().Add(-time.Hour * 24 * days)
 	params := url.Values{}
 	if name != "" {
 		params.Add("name", name)
 	}
+	if days != 0 {
+		c.Writer.Accent(fmt.Sprintf("Querying workflows from %s until now", date.Format(time.Stamp)))
+		params.Add("submission", date.Format("2006-01-02T00:00:00.000Z"))
+	}
+
 	params.Add("includeSubworkflows", "false")
 	resp, err := c.CromwellClient.Query(params)
 	if err != nil {
@@ -21,7 +27,7 @@ func (c *Commands) QueryWorkflow(name string) error {
 	}
 	var qtr = QueryTableResponse(resp)
 	output.NewTable(os.Stdout).Render(qtr)
-	c.writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
+	c.Writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }
 

@@ -29,7 +29,7 @@ func ExampleCommands_Wait() {
 	ts := buildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.Wait(operation, 1, false)
 	if err != nil {
 		log.Printf("Error: %#v", err)

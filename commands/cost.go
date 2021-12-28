@@ -26,8 +26,8 @@ func (c *Commands) ResourcesUsed(operation string) error {
 	}
 	var rtr = ResourceTableResponse{Total: total}
 	output.NewTable(os.Stdout).Render(rtr)
-	c.writer.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
-	c.writer.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
+	c.Writer.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
+	c.Writer.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
 	return nil
 }
 

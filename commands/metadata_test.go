@@ -18,7 +18,7 @@ func ExampleCommands_MetadataWorkflow() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err = cmds.MetadataWorkflow(operation)
 	if err != nil {
 		log.Print(err)
@@ -47,7 +47,7 @@ func ExampleCommands_MetadataWorkflow_second() {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "")
+	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err = cmds.MetadataWorkflow(operation)
 	if err != nil {
 		log.Print(err)
