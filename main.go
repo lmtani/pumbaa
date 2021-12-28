@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/google/martian/log"
 	"github.com/lmtani/cromwell-cli/commands"
@@ -48,10 +49,11 @@ func main() {
 				Aliases: []string{"q"},
 				Usage:   "Query workflows",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false},
+					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false, Value: "", Usage: "Filter by workflow name"},
+					&cli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days"},
 				},
 				Action: func(c *cli.Context) error {
-					return cmds.QueryWorkflow(c.String("name"))
+					return cmds.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
 				},
 			},
 			{

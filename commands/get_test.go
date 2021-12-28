@@ -25,7 +25,7 @@ func ExampleCommands_QueryWorkflow() {
 	defer ts.Close()
 
 	cmds := buildTestCommands(ts.URL, "", "", 0)
-	err := cmds.QueryWorkflow("wf")
+	err := cmds.QueryWorkflow("wf", 0)
 	if err != nil {
 		log.Print(err)
 	}
