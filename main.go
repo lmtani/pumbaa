@@ -50,7 +50,7 @@ func main() {
 				Usage:   "Query workflows",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false, Value: "", Usage: "Filter by workflow name"},
-					&cli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days"},
+					&cli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
