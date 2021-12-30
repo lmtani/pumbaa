@@ -96,6 +96,8 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 	return qr, nil
 }
 
+// Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
+// Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
 func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata"+"?"+p.Encode(), o)
 	var mr MetadataResponse

@@ -1,4 +1,4 @@
-# Cromwell CLI [![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/master/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
+# Cromwell CLI [![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
 
 
 Command line interface for [Cromwell Server](https://cromwell.readthedocs.io/en/stable/).
@@ -7,7 +7,7 @@ Command line interface for [Cromwell Server](https://cromwell.readthedocs.io/en/
 
 ```bash
 # Install
-curl https://raw.githubusercontent.com/lmtani/cromwell-cli/master/install.sh | bash
+curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bash
 
 # ⚙️ Submit a job
 cromwell-cli s -w sample/wf.wdl -i sample/wf.inputs.json
