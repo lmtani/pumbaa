@@ -61,9 +61,9 @@ func main() {
 				Aliases: []string{"w"},
 				Usage:   "Wait for operation until it is complete",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
-					&cli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60},
-					&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
+					&cli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
+					&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false, Usage: "Notify your OS when it is ready"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.Wait(c.String("operation"), c.Int("sleep"), c.Bool("alarm"))
@@ -74,10 +74,10 @@ func main() {
 				Aliases: []string{"s"},
 				Usage:   "Submit a workflow and its inputs to Cromwell",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true},
-					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true},
-					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false},
-					&cli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false},
+					&cli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true, Usage: "Path to the WDL file"},
+					&cli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true, Usage: "Path to the inputs JSOM file"},
+					&cli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false, Usage: "Path to the dependencies .zip file"},
+					&cli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false, Usage: "Path to the options JSON file"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
@@ -88,7 +88,7 @@ func main() {
 				Aliases: []string{"i"},
 				Usage:   "Recover inputs from the specified workflow (JSON)",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.Inputs(c.String("operation"))
@@ -99,7 +99,7 @@ func main() {
 				Aliases: []string{"k"},
 				Usage:   "Kill a running job",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.KillWorkflow(c.String("operation"))
@@ -110,7 +110,7 @@ func main() {
 				Aliases: []string{"m"},
 				Usage:   "Inspect workflow details (table)",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.MetadataWorkflow(c.String("operation"))
@@ -121,7 +121,7 @@ func main() {
 				Aliases: []string{"o"},
 				Usage:   "Query workflow outputs (JSON)",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.OutputsWorkflow(c.String("operation"))
@@ -132,7 +132,7 @@ func main() {
 				Aliases: []string{"n"},
 				Usage:   "Navigate through metadata data",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+					&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				},
 				Action: func(c *cli.Context) error {
 					return cmds.Navigate(c.String("operation"))
@@ -147,7 +147,7 @@ func main() {
 						Name:  "resources",
 						Usage: "View resource usage (cpu, mem or disk), normalized by hour.",
 						Flags: []cli.Flag{
-							&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true},
+							&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 						},
 						Action: func(c *cli.Context) error {
 							return cmds.ResourcesUsed(c.String("operation"))
