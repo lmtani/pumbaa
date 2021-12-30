@@ -3,12 +3,12 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 
 func (c *Commands) Inputs(operation string) error {
-	params := url.Values{}
-	resp, err := c.CromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, cromwell.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

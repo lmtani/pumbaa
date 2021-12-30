@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"reflect"
 	"sort"
@@ -15,10 +14,9 @@ import (
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {
-	params := url.Values{}
-	params.Add("excludeKey", "executionEvents")
-	params.Add("excludeKey", "jes")
-	params.Add("excludeKey", "inputs")
+	params := cromwell.ParamsMetadataGet{
+		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
+	}
 	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err

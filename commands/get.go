@@ -2,25 +2,18 @@ package commands
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
-	date := time.Now().Add(-time.Hour * 24 * days)
-	params := url.Values{}
-	if name != "" {
-		params.Add("name", name)
+	params := cromwell.ParamsQueryGet{
+		Submission: time.Now().Add(-time.Hour * 24 * days),
+		Name:       name,
 	}
-	if days != 0 {
-		c.Writer.Accent(fmt.Sprintf("Querying workflows from %s until now", date.Format(time.Stamp)))
-		params.Add("submission", date.Format("2006-01-02T00:00:00.000Z"))
-	}
-
-	params.Add("includeSubworkflows", "false")
 	resp, err := c.CromwellClient.Query(params)
 	if err != nil {
 		return err

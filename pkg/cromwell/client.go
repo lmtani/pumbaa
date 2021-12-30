@@ -8,9 +8,10 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-querystring/query"
 )
 
 type Client struct {
@@ -79,10 +80,16 @@ func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	return or, nil
 }
 
-func (c *Client) Query(p url.Values) (QueryResponse, error) {
+func (c *Client) Query(p ParamsQueryGet) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
+
+	opts, err := query.Values(p)
+	if err != nil {
+		return QueryResponse{}, err
+	}
+
 	var qr QueryResponse
-	r, err := c.get(route + "?" + p.Encode())
+	r, err := c.get(route + "?" + opts.Encode())
 	if err != nil {
 		return qr, err
 	}
@@ -98,10 +105,15 @@ func (c *Client) Query(p url.Values) (QueryResponse, error) {
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
 // Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
-func (c *Client) Metadata(o string, p url.Values) (MetadataResponse, error) {
-	route := fmt.Sprintf("/api/workflows/v1/%s/metadata"+"?"+p.Encode(), o)
+func (c *Client) Metadata(o string, p ParamsMetadataGet) (MetadataResponse, error) {
+	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
+
+	opts, err := query.Values(p)
+	if err != nil {
+		return MetadataResponse{}, err
+	}
 	var mr MetadataResponse
-	r, err := c.get(route)
+	r, err := c.get(route + "?" + opts.Encode())
 	if err != nil {
 		return mr, err
 	}

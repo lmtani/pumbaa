@@ -3,7 +3,6 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
@@ -11,8 +10,9 @@ import (
 )
 
 func (c *Commands) ResourcesUsed(operation string) error {
-	params := url.Values{}
-	params.Add("expandSubWorkflows", "true")
+	params := cromwell.ParamsMetadataGet{
+		ExpandSubWorkflows: true,
+	}
 	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err

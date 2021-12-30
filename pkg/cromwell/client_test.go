@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 )
 
@@ -110,7 +109,7 @@ func TestClientQuery(t *testing.T) {
 
 	client := New(ts.URL, "")
 
-	resp, _ := client.Query(url.Values{})
+	resp, _ := client.Query(ParamsQueryGet{})
 
 	expectedCound := 1
 	if resp.TotalResultsCount != expectedCound {
@@ -136,7 +135,7 @@ func TestClientMetadata(t *testing.T) {
 
 	client := New(ts.URL, "")
 
-	resp, _ := client.Metadata(operation, url.Values{})
+	resp, _ := client.Metadata(operation, ParamsMetadataGet{})
 
 	expectedWorkflowName := "HelloHere"
 	if resp.WorkflowName != expectedWorkflowName {

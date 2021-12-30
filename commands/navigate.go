@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -11,11 +10,9 @@ import (
 )
 
 func (c *Commands) Navigate(operation string) error {
-	params := url.Values{}
-	params.Add("excludeKey", "executionEvents")
-	params.Add("excludeKey", "submittedFiles")
-	params.Add("excludeKey", "jes")
-	params.Add("excludeKey", "inputs")
+	params := cromwell.ParamsMetadataGet{
+		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
+	}
 	resp, err := c.CromwellClient.Metadata(operation, params)
 	if err != nil {
 		return err

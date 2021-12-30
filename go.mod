@@ -7,6 +7,7 @@ require (
 	github.com/deckarep/gosx-notifier v0.0.0-20180201035817-e127226297fb // indirect
 	github.com/fatih/color v1.9.0
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/go-querystring v1.1.0
 	github.com/google/martian v2.1.0+incompatible
 	github.com/manifoldco/promptui v0.8.0
 	github.com/martinlindhe/notify v0.0.0-20181008203735-20632c9a275a
