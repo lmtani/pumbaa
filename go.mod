@@ -8,10 +8,9 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-querystring v1.1.0
-	github.com/google/martian v2.1.0+incompatible
 	github.com/manifoldco/promptui v0.8.0
 	github.com/martinlindhe/notify v0.0.0-20181008203735-20632c9a275a
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.14
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/urfave/cli/v2 v2.2.0
