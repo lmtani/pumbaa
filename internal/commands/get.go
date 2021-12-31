@@ -2,11 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
@@ -19,7 +17,7 @@ func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
 		return err
 	}
 	var qtr = QueryTableResponse(resp)
-	output.NewTable(os.Stdout).Render(qtr)
+	c.Writer.Table(qtr)
 	c.Writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }

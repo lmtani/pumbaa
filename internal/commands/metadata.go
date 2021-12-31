@@ -3,14 +3,12 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {
@@ -22,7 +20,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 		return err
 	}
 	var mtr = MetadataTableResponse{Metadata: resp}
-	output.NewTable(os.Stdout).Render(mtr)
+	c.Writer.Table(mtr)
 	if len(resp.Failures) > 0 {
 		c.Writer.Error(hasFailureMsg(resp.Failures))
 		recursiveFailureParse(resp.Failures, c.Writer)

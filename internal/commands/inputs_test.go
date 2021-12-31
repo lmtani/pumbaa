@@ -1,36 +1,23 @@
 package commands
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/lmtani/cromwell-cli/internal/util"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func ExampleCommands_Inputs() {
-	// Read metadata mock
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
-	if err != nil {
-		fmt.Print("Coult no read metadata mock file metadata.json")
-	}
-
-	// Mock http server
-	operation := "aaaa-bbbb-uuid"
-	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
-	defer ts.Close()
-
-	cmds := buildTestCommands(ts.URL, "", "", 0)
-	err = cmds.Inputs(operation)
-	if err != nil {
-		log.Print(err)
-	}
-	// Output:
-	// {
-	//    "HelloHere.someFile": "gs://just-testing/file.txt",
-	//    "HelloHere.someInput": "just testing string"
-	// }
+func BuildTestCommands(h, i, prompt_key string, prompt_int int) *Commands {
+	cmds := New()
+	cmds.CromwellClient = cromwell.New(h, i)
+	cmds.Writer = output.NewColoredWriter(os.Stdout)
+	cmds.Prompt = util.NewForTests(prompt_key, prompt_int)
+	return cmds
 }
 
 func TestInputsHttpError(t *testing.T) {
@@ -48,7 +35,7 @@ func TestInputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "", "", 0)
 	err := cmds.Inputs(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")

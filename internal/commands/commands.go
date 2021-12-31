@@ -12,7 +12,7 @@ import (
 var (
 	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 	defaultClient = cromwell.Default()
-	defaultWriter = output.NewColoredWriter()
+	defaultWriter = output.NewColoredWriter(os.Stdout)
 	defaultPrompt = prompt.New()
 )
 
@@ -25,6 +25,7 @@ type Writer interface {
 	Primary(string)
 	Accent(string)
 	Error(string)
+	Table(output.Table)
 }
 
 type Commands struct {

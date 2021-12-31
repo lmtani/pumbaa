@@ -3,10 +3,8 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) ResourcesUsed(operation string) error {
@@ -25,7 +23,7 @@ func (c *Commands) ResourcesUsed(operation string) error {
 		return err
 	}
 	var rtr = ResourceTableResponse{Total: total}
-	output.NewTable(os.Stdout).Render(rtr)
+	c.Writer.Table(rtr)
 	c.Writer.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
 	c.Writer.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
 	return nil

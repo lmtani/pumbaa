@@ -7,20 +7,6 @@ import (
 	"testing"
 )
 
-func ExampleKill() {
-	operation := "aaaa-bbbb-uuid"
-	ts := buildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
-	defer ts.Close()
-
-	cmds := buildTestCommands(ts.URL, "", "", 0)
-	err := cmds.KillWorkflow(operation)
-	if err != nil {
-		log.Print(err)
-	}
-	// Output:
-	// Operation=aaa-bbb-ccc, Status=aborting
-}
-
 func TestKillHttpError(t *testing.T) {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
@@ -36,7 +22,7 @@ func TestKillHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := buildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "", "", 0)
 	err := cmds.KillWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
