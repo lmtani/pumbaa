@@ -21,11 +21,17 @@ type Prompt interface {
 	SelectByIndex(t prompt.TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
 }
 
+type Writer interface {
+	Primary(string)
+	Accent(string)
+	Error(string)
+}
+
 type Commands struct {
 	CromwellClient cromwell.Client
 	Logger         *log.Logger
 	Prompt         Prompt
-	Writer         output.IWriter
+	Writer         Writer
 }
 
 func New() *Commands {

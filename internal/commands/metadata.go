@@ -32,7 +32,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	return nil
 }
 
-func showCustomOptions(s cromwell.SubmittedFiles, w output.IWriter) {
+func showCustomOptions(s cromwell.SubmittedFiles, w Writer) {
 	var f cromwell.Options
 	json.Unmarshal([]byte(s.Options), &f)
 	if f != (cromwell.Options{}) {
@@ -58,7 +58,7 @@ func hasFailureMsg(fails []cromwell.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell.Failure, w output.IWriter) {
+func recursiveFailureParse(f []cromwell.Failure, w Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)

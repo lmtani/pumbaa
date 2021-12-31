@@ -8,12 +8,6 @@ import (
 
 type ColoredWriter struct{}
 
-type IWriter interface {
-	Primary(string)
-	Accent(string)
-	Error(string)
-}
-
 func NewColoredWriter() *ColoredWriter {
 	return &ColoredWriter{}
 }
