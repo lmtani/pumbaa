@@ -11,7 +11,7 @@ import (
 
 func ExampleCommands_Inputs() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}

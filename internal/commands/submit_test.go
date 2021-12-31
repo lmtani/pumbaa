@@ -9,8 +9,8 @@ func ExampleCommands_SubmitWorkflow() {
 	ts := buildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`)
 	defer ts.Close()
 
-	wdlPath := "../sample/wf.wdl"
-	inputsPath := "../sample/wf.inputs.json"
+	wdlPath := "../../sample/wf.wdl"
+	inputsPath := "../../sample/wf.inputs.json"
 
 	cmds := buildTestCommands(ts.URL, "", "", 0)
 	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)

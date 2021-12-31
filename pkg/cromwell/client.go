@@ -15,16 +15,25 @@ import (
 )
 
 type Client struct {
-	Host string
-	Iap  string
+	Host   string
+	Iap    string
+	Logger *log.Logger
 }
 
 func New(h, t string) Client {
-	return Client{Host: h, Iap: t}
+	return Client{
+		Host:   h,
+		Iap:    t,
+		Logger: log.New(os.Stderr, "", log.LstdFlags),
+	}
 }
 
 func Default() Client {
-	return Client{Host: "http://127.0.0.1:8000", Iap: ""}
+	return Client{
+		Host:   "http://127.0.0.1:8000",
+		Iap:    "",
+		Logger: log.New(os.Stderr, "", log.LstdFlags),
+	}
 }
 
 func (c *Client) Setup(h, t string) {

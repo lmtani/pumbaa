@@ -29,7 +29,7 @@ func NewForTests(byKey string, byIndex int) *PromptForTests {
 
 func ExampleCommands_Navigate() {
 	// Mock http server
-	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -61,7 +61,7 @@ func ExampleCommands_Navigate() {
 
 func ExampleCommands_Navigate_second() {
 	// Mock http server
-	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}

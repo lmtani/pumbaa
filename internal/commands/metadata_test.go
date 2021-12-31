@@ -8,7 +8,7 @@ import (
 
 func ExampleCommands_MetadataWorkflow() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -37,7 +37,7 @@ func ExampleCommands_MetadataWorkflow() {
 
 func ExampleCommands_MetadataWorkflow_second() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../pkg/cromwell/mocks/metadata-failed.json")
+	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata-failed.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
