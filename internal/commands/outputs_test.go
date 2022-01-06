@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/lmtani/cromwell-cli/internal/util"
 )
 
 func TestOutputsHttpError(t *testing.T) {
@@ -34,7 +32,7 @@ func TestOutputsHttpError(t *testing.T) {
 func TestOutputsReturnError(t *testing.T) {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`)
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`, http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)

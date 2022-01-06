@@ -1,28 +1,76 @@
-package commands_test
+package commands
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
 
-	"github.com/lmtani/cromwell-cli/internal/commands"
-	"github.com/lmtani/cromwell-cli/internal/util"
+	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func BuildTestCommands(h, i, prompt_key string, prompt_int int) *commands.Commands {
-	cmds := commands.New()
+func BuildTestCommands(h, i, prompt_key string, prompt_int int) *Commands {
+	cmds := New()
 	cmds.CromwellClient = cromwell.New(h, i)
 	cmds.Writer = output.NewColoredWriter(os.Stdout)
-	cmds.Prompt = util.NewForTests(prompt_key, prompt_int)
+	cmds.Prompt = NewForTests(prompt_key, prompt_int)
 	return cmds
 }
 
+func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
+	ts := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == url {
+				w.WriteHeader(httpStatus)
+				_, err := w.Write([]byte(resp))
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}))
+	return ts
+}
+
+func BuildTestServerMutable(url string) *httptest.Server {
+	ts := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == url {
+				resp := `{"id": "a-new-uuid", "status": "Done"}`
+				_, err := w.Write([]byte(resp))
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}))
+	return ts
+}
+
+type fakePrompt struct {
+	byKeyReturn   string
+	byIndexReturn int
+}
+
+func (p fakePrompt) SelectByKey(taskOptions []string) (string, error) {
+	return p.byKeyReturn, nil
+}
+
+func (p fakePrompt) SelectByIndex(t prompt.TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+	return p.byIndexReturn, nil
+}
+
+func NewForTests(byKey string, byIndex int) *fakePrompt {
+	return &fakePrompt{
+		byKeyReturn: byKey, byIndexReturn: byIndex,
+	}
+}
+
 func Example_cmds_QueryWorkflow() {
-	ts := util.BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`)
+	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
@@ -48,7 +96,7 @@ func Example_cmds_Inputs() {
 
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
@@ -65,7 +113,7 @@ func Example_cmds_Inputs() {
 
 func Example_cmds_Kill() {
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
@@ -86,7 +134,7 @@ func Example_cmds_Navigate() {
 
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "SayGoodbye", 1)
@@ -118,7 +166,7 @@ func Example_cmds_Navigate_second() {
 
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "RunHelloWorkflows", 1)
@@ -148,7 +196,7 @@ func Example_cmds_ResourcesUsed() {
 
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
@@ -172,7 +220,7 @@ func Example_cmds_ResourcesUsed() {
 func ExampleCommands_OutputsWorkflow() {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`)
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
@@ -188,7 +236,7 @@ func ExampleCommands_OutputsWorkflow() {
 
 func ExampleCommands_SubmitWorkflow() {
 	// Mock http server
-	ts := util.BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`)
+	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
 
 	wdlPath := "../../sample/wf.wdl"
@@ -207,7 +255,7 @@ func ExampleCommands_Wait() {
 	// Mock http server
 	rand.Seed(3)
 	operation := "aaaa-bbbb-uuid"
-	ts := util.BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
+	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "", "", 0)
