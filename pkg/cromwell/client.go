@@ -36,22 +36,12 @@ func Default() Client {
 	}
 }
 
-func (c *Client) Setup(h, t string) {
-	c.Host = h
-	c.Iap = t
-}
-
 func (c *Client) Kill(o string) (SubmitResponse, error) {
 	var sr SubmitResponse
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
-	r, err := c.post(route, map[string]string{})
+	err := c.iapAwareRequest("GET", route, nil, nil, &sr)
 	if err != nil {
-		return sr, err
-	}
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
 		return sr, err
 	}
 	return sr, nil
@@ -59,79 +49,45 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 
 func (c *Client) Status(o string) (SubmitResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
-	var sr SubmitResponse
-	r, err := c.get(route)
+	var or SubmitResponse
+	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	if err != nil {
-		return sr, err
+		return or, err
 	}
-	defer r.Body.Close()
+	return or, nil
 
-	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
-		return sr, err
-	}
-	return sr, nil
 }
 
 func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
-	var or = OutputsResponse{}
-	r, err := c.get(route)
+	var or OutputsResponse
+	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	if err != nil {
 		return or, err
 	}
-
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&or); err != nil {
-		return or, err
-	}
-
 	return or, nil
 }
 
 func (c *Client) Query(p ParamsQueryGet) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
-
-	opts, err := query.Values(p)
-	if err != nil {
-		return QueryResponse{}, err
-	}
-
 	var qr QueryResponse
-	r, err := c.get(route + "?" + opts.Encode())
+	err := c.iapAwareRequest("GET", route, p, nil, &qr)
 	if err != nil {
 		return qr, err
 	}
-
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&qr); err != nil {
-		return qr, err
-	}
-
 	return qr, nil
+
 }
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
 // Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
 func (c *Client) Metadata(o string, p ParamsMetadataGet) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
-
-	opts, err := query.Values(p)
-	if err != nil {
-		return MetadataResponse{}, err
-	}
 	var mr MetadataResponse
-	r, err := c.get(route + "?" + opts.Encode())
+	err := c.iapAwareRequest("GET", route, p, nil, &mr)
 	if err != nil {
 		return mr, err
 	}
-
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&mr); err != nil {
-		return mr, err
-	}
-
 	return mr, nil
 }
 
@@ -139,64 +95,73 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := submitPrepare(requestFields)
 	var sr SubmitResponse
-	r, err := c.post(route, fileParams)
+	err := c.iapAwareRequest("GET", route, nil, fileParams, &sr)
 	if err != nil {
 		return sr, err
 	}
-
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&sr); err != nil {
-		return sr, err
-	}
-
 	return sr, nil
 }
 
-func (c *Client) get(u string) (*http.Response, error) {
-	uri := fmt.Sprintf("%s%s", c.Host, u)
-	req, _ := http.NewRequest("GET", uri, nil)
-	return c.makeRequest(req)
+func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
+	var body bytes.Buffer
+	var writer *multipart.Writer
+	ct := "application/json"
+	if files != nil {
+		writer = c.prepareFormData(files, body)
+		ct = writer.FormDataContentType()
+	}
+
+	opts, err := query.Values(urlParams)
+	if err != nil {
+		return err
+	}
+
+	uri := fmt.Sprintf("%s%s?%s", c.Host, route, opts.Encode())
+	req, err := http.NewRequest(method, uri, &body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.Header.Set("Content-Type", ct)
+	r, err := c.makeRequest(req)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(resp); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (c *Client) post(u string, files map[string]string) (*http.Response, error) {
+func (c *Client) prepareFormData(files map[string]string, body bytes.Buffer) *multipart.Writer {
 	var (
-		uri    = fmt.Sprintf("%s%s", c.Host, u)
-		body   = new(bytes.Buffer)
-		writer = multipart.NewWriter(body)
+		w = multipart.NewWriter(&body)
 	)
 
 	for field, path := range files {
-		// gets file name from file path
+
 		filename := filepath.Base(path)
-		// creates a new form file writer
-		fw, err := writer.CreateFormFile(field, filename)
+
+		fw, err := w.CreateFormFile(field, filename)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		// prepare the file to be read
 		file, err := os.Open(path)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		// copies the file content to the form file writer
 		if _, err := io.Copy(fw, file); err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if err := writer.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		log.Fatal(err)
 	}
-
-	req, err := http.NewRequest("POST", uri, body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return c.makeRequest(req)
+	return w
 }
 
 func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {

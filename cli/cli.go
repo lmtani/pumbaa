@@ -30,7 +30,8 @@ func CLI(args []string) int {
 			},
 		},
 		Before: func(c *cli.Context) error {
-			cmds.CromwellClient.Setup(c.String("host"), c.String("iap"))
+			cmds.CromwellClient.Host = c.String("host")
+			cmds.CromwellClient.Iap = c.String("iap")
 			return nil
 		},
 		Commands: []*cli.Command{

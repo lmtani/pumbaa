@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"log"
 	"os"
 
 	"github.com/lmtani/cromwell-cli/internal/prompt"
@@ -10,7 +9,6 @@ import (
 )
 
 var (
-	defaultLogger = log.New(os.Stderr, "", log.LstdFlags)
 	defaultClient = cromwell.Default()
 	defaultWriter = output.NewColoredWriter(os.Stdout)
 	defaultPrompt = prompt.New()
@@ -30,7 +28,6 @@ type Writer interface {
 
 type Commands struct {
 	CromwellClient cromwell.Client
-	Logger         *log.Logger
 	Prompt         Prompt
 	Writer         Writer
 }
@@ -38,7 +35,6 @@ type Commands struct {
 func New() *Commands {
 	return &Commands{
 		CromwellClient: defaultClient,
-		Logger:         defaultLogger,
 		Prompt:         defaultPrompt,
 		Writer:         defaultWriter,
 	}
