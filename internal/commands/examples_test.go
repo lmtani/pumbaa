@@ -69,7 +69,7 @@ func NewForTests(byKey string, byIndex int) *fakePrompt {
 	}
 }
 
-func Example_cmds_QueryWorkflow() {
+func ExampleCommands_QueryWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 
@@ -87,7 +87,7 @@ func Example_cmds_QueryWorkflow() {
 	// - Found 1 workflows
 }
 
-func Example_cmds_Inputs() {
+func ExampleCommands_Inputs() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -111,7 +111,7 @@ func Example_cmds_Inputs() {
 	// }
 }
 
-func Example_cmds_Kill() {
+func ExampleCommands_KillWorkflow() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
@@ -125,7 +125,7 @@ func Example_cmds_Kill() {
 	// Operation=aaa-bbb-ccc, Status=aborting
 }
 
-func Example_cmds_Navigate() {
+func ExampleCommands_Navigate() {
 	// Mock http server
 	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -157,7 +157,7 @@ func Example_cmds_Navigate() {
 	// ubuntu:20.04
 }
 
-func Example_cmds_Navigate_second() {
+func ExampleCommands_Navigate_second() {
 	// Mock http server
 	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
@@ -187,7 +187,7 @@ func Example_cmds_Navigate_second() {
 	// ubuntu:20.04
 }
 
-func Example_cmds_ResourcesUsed() {
+func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
 	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
