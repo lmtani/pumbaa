@@ -41,20 +41,14 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
 	err := c.iapAwareRequest("GET", route, nil, nil, &sr)
-	if err != nil {
-		return sr, err
-	}
-	return sr, nil
+	return sr, err
 }
 
 func (c *Client) Status(o string) (SubmitResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
 	var or SubmitResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
-	if err != nil {
-		return or, err
-	}
-	return or, nil
+	return or, err
 
 }
 
@@ -62,20 +56,14 @@ func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
 	var or OutputsResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
-	if err != nil {
-		return or, err
-	}
-	return or, nil
+	return or, err
 }
 
 func (c *Client) Query(p ParamsQueryGet) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
 	var qr QueryResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &qr)
-	if err != nil {
-		return qr, err
-	}
-	return qr, nil
+	return qr, err
 
 }
 
@@ -85,10 +73,7 @@ func (c *Client) Metadata(o string, p ParamsMetadataGet) (MetadataResponse, erro
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
 	var mr MetadataResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &mr)
-	if err != nil {
-		return mr, err
-	}
-	return mr, nil
+	return mr, err
 }
 
 func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
@@ -96,10 +81,7 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	fileParams := submitPrepare(requestFields)
 	var sr SubmitResponse
 	err := c.iapAwareRequest("GET", route, nil, fileParams, &sr)
-	if err != nil {
-		return sr, err
-	}
-	return sr, nil
+	return sr, err
 }
 
 func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
