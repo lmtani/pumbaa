@@ -2,8 +2,22 @@ package output
 
 import (
 	"bytes"
+	"os"
 	"testing"
 )
+
+func Example_writer_msgs() {
+	w := NewColoredWriter(os.Stdout)
+
+	w.Accent("Accent")
+	w.Primary("Primary")
+	w.Error("Error")
+
+	// Output:
+	// Accent
+	// Primary
+	// Error
+}
 
 type testRow struct {
 	col1 string
@@ -36,7 +50,9 @@ func TestOutputTable(t *testing.T) {
 
 	var buffer bytes.Buffer
 
-	NewTable(&buffer).Render(tb)
+	w := NewColoredWriter(&buffer)
+	w.Table(tb)
+
 	got := buffer.String()
 	want := "+---------+---------+\n|  COL1   |  COL2   |\n+---------+---------+\n| value11 | value12 |\n| value21 | value22 |\n+---------+---------+\n"
 	if got != want {

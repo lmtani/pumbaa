@@ -3,14 +3,12 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {
@@ -22,7 +20,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 		return err
 	}
 	var mtr = MetadataTableResponse{Metadata: resp}
-	output.NewTable(os.Stdout).Render(mtr)
+	c.Writer.Table(mtr)
 	if len(resp.Failures) > 0 {
 		c.Writer.Error(hasFailureMsg(resp.Failures))
 		recursiveFailureParse(resp.Failures, c.Writer)
@@ -32,7 +30,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	return nil
 }
 
-func showCustomOptions(s cromwell.SubmittedFiles, w output.IWriter) {
+func showCustomOptions(s cromwell.SubmittedFiles, w Writer) {
 	var f cromwell.Options
 	json.Unmarshal([]byte(s.Options), &f)
 	if f != (cromwell.Options{}) {
@@ -58,7 +56,7 @@ func hasFailureMsg(fails []cromwell.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell.Failure, w output.IWriter) {
+func recursiveFailureParse(f []cromwell.Failure, w Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)

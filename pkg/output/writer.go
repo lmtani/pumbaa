@@ -2,20 +2,37 @@ package output
 
 import (
 	"fmt"
+	"io"
+	"os"
 
-	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
+	"github.com/olekukonko/tablewriter"
 )
 
-type ColoredWriter struct{}
+var (
+	InfoColor    = "\033[1;34m%s\033[0m"
+	NoticeColor  = "\033[1;36m%s\033[0m"
+	WarningColor = "\033[1;33m%s\033[0m"
+	ErrorColor   = "\033[1;31m%s\033[0m"
+	DebugColor   = "\033[0;36m%s\033[0m"
 
-type IWriter interface {
-	Primary(string)
-	Accent(string)
-	Error(string)
+	NoColor = os.Getenv("TERM") == "dumb" ||
+		(!isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()))
+)
+
+type Table interface {
+	Header() []string
+	Rows() [][]string
 }
 
-func NewColoredWriter() *ColoredWriter {
-	return &ColoredWriter{}
+type ColoredWriter struct {
+	w *tablewriter.Table
+}
+
+func NewColoredWriter(writer io.Writer) *ColoredWriter {
+	return &ColoredWriter{
+		w: tablewriter.NewWriter(writer),
+	}
 }
 
 func (w ColoredWriter) Primary(s string) {
@@ -23,9 +40,25 @@ func (w ColoredWriter) Primary(s string) {
 }
 
 func (w ColoredWriter) Accent(s string) {
-	color.Magenta(s)
+	w.colorPrint(NoticeColor, s)
 }
 
 func (w ColoredWriter) Error(s string) {
-	color.Red(s)
+	w.colorPrint(ErrorColor, s)
+}
+
+func (w ColoredWriter) colorPrint(c string, s string) {
+	if NoColor {
+		fmt.Println(s)
+	} else {
+		fmt.Printf(c, s+"\n")
+	}
+}
+
+func (w ColoredWriter) Table(tab Table) {
+	w.w.SetHeader(tab.Header())
+	w.w.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
+	w.w.SetAlignment(tablewriter.ALIGN_LEFT)
+	w.w.AppendBulk(tab.Rows())
+	w.w.Render()
 }

@@ -6,11 +6,6 @@ import (
 
 type Prompt struct{}
 
-type IPrompt interface {
-	SelectByKey(taskOptions []string) (string, error)
-	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
-}
-
 func New() *Prompt {
 	return &Prompt{}
 }
