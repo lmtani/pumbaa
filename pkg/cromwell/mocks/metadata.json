@@ -382,5 +382,8 @@
     "submission": "2021-03-22T13:06:42.626Z",
     "status": "Succeeded",
     "end": "2021-03-22T13:13:47.527Z",
-    "start": "2021-03-22T13:06:49.019Z"
+    "start": "2021-03-22T13:06:49.019Z",
+    "submittedFiles": {
+        "options": "{\n  \"final_workflow_outputs_dir\": \"gs://some-bucket/\",\n  \"use_relative_output_paths\": false,\n  \"jes_gcs_root\": \"gs://workspace-bucket\",\n  \"delete_intermediate_output_files\": true,\n  \"read_from_cache\": false\n}"
+    }
 }

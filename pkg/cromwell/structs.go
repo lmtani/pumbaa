@@ -50,14 +50,6 @@ type SubmittedFiles struct {
 	Options string
 }
 
-type Options struct {
-	Final_workflow_outputs_dir       string
-	Use_relative_output_paths        string
-	Delete_intermediate_output_files string
-	Read_from_cache                  string
-	Monitoring_script                string
-}
-
 type Failure struct {
 	CausedBy []Failure
 	Message  string

@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -26,25 +25,42 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 		recursiveFailureParse(resp.Failures, c.Writer)
 	}
 
-	showCustomOptions(resp.SubmittedFiles, c.Writer)
+	err = c.showCustomOptions(resp.SubmittedFiles)
+	return err
+}
+
+func (c *Commands) showCustomOptions(s cromwell.SubmittedFiles) error {
+	var options map[string]interface{}
+	err := json.Unmarshal([]byte(s.Options), &options)
+	if err != nil {
+		return err
+	}
+
+	keys := sortOptionsKeys(options)
+
+	if len(keys) > 0 {
+		c.writeOptions(keys, options)
+	}
+
 	return nil
 }
 
-func showCustomOptions(s cromwell.SubmittedFiles, w Writer) {
-	var f cromwell.Options
-	json.Unmarshal([]byte(s.Options), &f)
-	if f != (cromwell.Options{}) {
-		w.Accent("🔧 Custom options")
-		v := reflect.ValueOf(f)
-		typeOfS := v.Type()
-		for i := 0; i < v.NumField(); i++ {
-			item := v.Field(i).Interface()
-			if item != "" {
-				w.Primary(fmt.Sprintf("- %s: %s", typeOfS.Field(i).Name, v.Field(i).Interface()))
-			}
+func (c *Commands) writeOptions(keys []string, o map[string]interface{}) {
+	c.Writer.Accent("🔧 Custom options")
+	for _, v := range keys {
+		if o[v] != "" {
+			c.Writer.Accent(fmt.Sprintf("- %s: %v", v, o[v]))
 		}
-
 	}
+}
+
+func sortOptionsKeys(f map[string]interface{}) []string {
+	keys := make([]string, 0)
+	for k := range f {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func hasFailureMsg(fails []cromwell.Failure) string {

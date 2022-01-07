@@ -296,6 +296,12 @@ func ExampleCommands_MetadataWorkflow() {
 	// | SayHello          | 1       | 720h0m0s | Done   |
 	// | SayHelloCache     | 1       | 720h0m0s | Done   |
 	// +-------------------+---------+----------+--------+
+	//🔧 Custom options
+	// - delete_intermediate_output_files: true
+	// - final_workflow_outputs_dir: gs://some-bucket/
+	// - jes_gcs_root: gs://workspace-bucket
+	// - read_from_cache: false
+	// - use_relative_output_paths: false
 }
 
 func ExampleCommands_MetadataWorkflow_second() {
