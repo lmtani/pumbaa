@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
@@ -77,31 +76,6 @@ func recursiveFailureParse(f []cromwell.Failure, w Writer) {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)
 	}
-}
-
-func (mtr MetadataTableResponse) Header() []string {
-	return []string{"task", "attempt", "elapsed", "status"}
-}
-
-func (mtr MetadataTableResponse) Rows() [][]string {
-	rows := [][]string{}
-	for call, elements := range mtr.Metadata.Calls {
-		substrings := strings.Split(call, ".")
-		for _, elem := range elements {
-			if elem.ExecutionStatus == "" {
-				continue
-			}
-			if elem.End.IsZero() {
-				elem.End = time.Now()
-			}
-			elapsedTime := elem.End.Sub(elem.Start)
-			row := []string{substrings[len(substrings)-1], fmt.Sprintf("%d", elem.Attempt), elapsedTime.String(), elem.ExecutionStatus}
-			rows = append(rows, row)
-		}
-	}
-	rs := rowSlice(rows)
-	sort.Sort(rs)
-	return rs
 }
 
 type rowSlice [][]string
