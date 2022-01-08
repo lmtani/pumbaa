@@ -48,7 +48,7 @@ func (c *Commands) writeOptions(keys []string, o map[string]interface{}) {
 	c.Writer.Accent("🔧 Custom options")
 	for _, v := range keys {
 		if o[v] != "" {
-			c.Writer.Accent(fmt.Sprintf("- %s: %v", v, o[v]))
+			c.Writer.Primary(fmt.Sprintf("- %s: %v", v, o[v]))
 		}
 	}
 }
