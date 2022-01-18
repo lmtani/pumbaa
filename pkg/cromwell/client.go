@@ -40,7 +40,7 @@ func (c *Client) Kill(o string) (SubmitResponse, error) {
 	var sr SubmitResponse
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
-	err := c.iapAwareRequest("GET", route, nil, nil, &sr)
+	err := c.iapAwareRequest("POST", route, nil, nil, &sr)
 	return sr, err
 }
 
@@ -80,7 +80,7 @@ func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := submitPrepare(requestFields)
 	var sr SubmitResponse
-	err := c.iapAwareRequest("GET", route, nil, fileParams, &sr)
+	err := c.iapAwareRequest("POST", route, nil, fileParams, &sr)
 	return sr, err
 }
 
@@ -89,7 +89,7 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	var writer *multipart.Writer
 	ct := "application/json"
 	if files != nil {
-		writer = c.prepareFormData(files, body)
+		writer = c.prepareFormData(files, &body)
 		ct = writer.FormDataContentType()
 	}
 
@@ -116,9 +116,9 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	return nil
 }
 
-func (c *Client) prepareFormData(files map[string]string, body bytes.Buffer) *multipart.Writer {
+func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) *multipart.Writer {
 	var (
-		w = multipart.NewWriter(&body)
+		w = multipart.NewWriter(body)
 	)
 
 	for field, path := range files {
