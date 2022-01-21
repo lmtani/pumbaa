@@ -1,5 +1,6 @@
 coverage.out
 .devcontainer/
+.idea/
 
 # Binaries for programs and plugins
 *.exe

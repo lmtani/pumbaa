@@ -98,7 +98,12 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 		return err
 	}
 
-	uri := fmt.Sprintf("%s%s?%s", c.Host, route, opts.Encode())
+	var uri string
+	if len(opts) == 0 {
+		uri = fmt.Sprintf("%s%s", c.Host, route)
+	} else {
+		uri = fmt.Sprintf("%s%s?%s", c.Host, route, opts.Encode())
+	}
 	req, err := http.NewRequest(method, uri, &body)
 	if err != nil {
 		log.Fatal(err)
