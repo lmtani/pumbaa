@@ -9,9 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var Version = "development"
-
-func CLI(args []string) int {
+func CLI(args []string, version string) int {
 	cmds := commands.New()
 
 	app := &cli.App{
@@ -40,7 +38,7 @@ func CLI(args []string) int {
 				Aliases: []string{"v"},
 				Usage:   "Cromwell-CLI version",
 				Action: func(c *cli.Context) error {
-					fmt.Printf("Version: %s\n", Version)
+					fmt.Printf("Version: %s\n", version)
 					return nil
 				},
 			},
