@@ -265,8 +265,8 @@ func ExampleCommands_Wait() {
 	}
 
 	// Output:
-	// Status=Done
 	// Time between status check = 1
+	// Status=Done
 }
 
 func ExampleCommands_MetadataWorkflow() {
