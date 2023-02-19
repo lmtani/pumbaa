@@ -10,7 +10,8 @@ import (
 )
 
 type ResourceTableResponse struct {
-	Total cromwell.TotalResources
+	Operation string
+	Total     cromwell.TotalResources
 }
 
 func (rtr ResourceTableResponse) Header() []string {

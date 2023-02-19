@@ -25,7 +25,7 @@ func (c *Commands) ResourcesUsed(operation string) error {
 	if err != nil {
 		return err
 	}
-	var rtr = ResourceTableResponse{Total: total}
+	var rtr = ResourceTableResponse{Total: total, Operation: operation}
 	c.Writer.Table(rtr)
 	c.Writer.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
 	c.Writer.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))

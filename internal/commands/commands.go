@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"os"
-
 	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
@@ -10,7 +8,7 @@ import (
 
 var (
 	defaultClient = cromwell.Default()
-	defaultWriter = output.NewColoredWriter(os.Stdout)
+	defaultWriter = output.NewJsonWriter()
 	defaultPrompt = prompt.New()
 )
 
