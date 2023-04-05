@@ -95,7 +95,7 @@ func (mtr MetadataTableResponse) Rows() [][]string {
 }
 
 func (mtr MetadataTableResponse) collectSingleTasks() [][]string {
-	rows := [][]string{}
+	var rows [][]string
 	for call, elements := range mtr.Metadata.Calls {
 		substrings := strings.Split(call, ".")
 		for _, elem := range elements {
@@ -117,9 +117,10 @@ func (mtr MetadataTableResponse) collectSingleTasks() [][]string {
 }
 
 func (mtr MetadataTableResponse) collectScatterTasks() [][]string {
-	names := []string{}
-	duration := []time.Duration{}
-	status := []string{}
+	var names []string
+	var duration []time.Duration
+	var status []string
+
 	for call, elements := range mtr.Metadata.Calls {
 		substrings := strings.Split(call, ".")
 		for _, elem := range elements {
@@ -139,10 +140,10 @@ func (mtr MetadataTableResponse) collectScatterTasks() [][]string {
 		}
 	}
 
-	rows := [][]string{}
-	nShards, nStatusDone, nStatusFailed, totalDuration := countOccurence(names, status, duration)
+	var rows [][]string
+	nShards, nStatusDone, nStatusFailed, totalDuration := countOccurrence(names, status, duration)
 
-	for name, _ := range nShards {
+	for name := range nShards {
 		row := []string{fmt.Sprintf("%v (Scatter)", name), "-", totalDuration[name].String(), fmt.Sprintf("%v/%v Done | %v Failed", nStatusDone[name], nShards[name], nStatusFailed[name])}
 		rows = append(rows, row)
 	}
@@ -150,7 +151,7 @@ func (mtr MetadataTableResponse) collectScatterTasks() [][]string {
 	return rows
 }
 
-func countOccurence(names, status []string, duration []time.Duration) (map[string]int, map[string]int, map[string]int, map[string]time.Duration) {
+func countOccurrence(names, status []string, duration []time.Duration) (map[string]int, map[string]int, map[string]int, map[string]time.Duration) {
 	wfShards := make(map[string]int)
 	wfStatusDone := make(map[string]int)
 	wfStatusFailed := make(map[string]int)

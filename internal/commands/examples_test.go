@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -14,11 +13,11 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func BuildTestCommands(h, i, prompt_key string, prompt_int int) *Commands {
+func BuildTestCommands(h, i, promptKey string, promptInt int) *Commands {
 	cmds := New()
 	cmds.CromwellClient = cromwell.New(h, i)
 	cmds.Writer = output.NewColoredWriter(os.Stdout)
-	cmds.Prompt = NewForTests(prompt_key, prompt_int)
+	cmds.Prompt = NewForTests(promptKey, promptInt)
 	return cmds
 }
 
@@ -89,9 +88,9 @@ func ExampleCommands_QueryWorkflow() {
 
 func ExampleCommands_Inputs() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
-		fmt.Print("Coult no read metadata mock file metadata.json")
+		fmt.Print("Could no read metadata mock file metadata.json")
 	}
 
 	// Mock http server
@@ -127,7 +126,7 @@ func ExampleCommands_KillWorkflow() {
 
 func ExampleCommands_Navigate() {
 	// Mock http server
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -159,7 +158,7 @@ func ExampleCommands_Navigate() {
 
 func ExampleCommands_Navigate_second() {
 	// Mock http server
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -189,7 +188,7 @@ func ExampleCommands_Navigate_second() {
 
 func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -271,7 +270,7 @@ func ExampleCommands_Wait() {
 
 func ExampleCommands_MetadataWorkflow() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -305,7 +304,7 @@ func ExampleCommands_MetadataWorkflow() {
 
 func ExampleCommands_MetadataWorkflow_second() {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata-failed.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata-failed.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}

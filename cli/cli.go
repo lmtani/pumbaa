@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func CLI(args []string, version string) int {
+func CLI(version string) int {
 	cmds := commands.New()
 
 	app := &cli.App{
@@ -19,7 +20,7 @@ func CLI(args []string, version string) int {
 			&cli.StringFlag{
 				Name:     "iap",
 				Required: false,
-				Usage:    "Uses your defauld Google Credentials to obtains an access token to this audience.",
+				Usage:    "Uses your default Google Credentials to obtains an access token to this audience.",
 			},
 			&cli.StringFlag{
 				Name:  "host",
@@ -157,7 +158,7 @@ func CLI(args []string, version string) int {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "Runtime error: %v\n", err)
+		log.Printf("Runtime error: %v\n", err)
 		return 1
 	}
 	return 0

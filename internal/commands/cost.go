@@ -113,7 +113,7 @@ func iterateOverElement(call cromwell.CallItem) (cromwell.ParsedCallAttributes, 
 func parseDisc(r cromwell.RuntimeAttributes) (float64, string, error) {
 	workDisk := strings.Fields(r.Disks)
 	if len(workDisk) == 0 {
-		return 0, "", fmt.Errorf("No disks, found: %#v", r.Disks)
+		return 0, "", fmt.Errorf("no disks, found: %#v", r.Disks)
 	}
 	diskSize := workDisk[1]
 	diskType := workDisk[2]
@@ -129,11 +129,11 @@ func parseDisc(r cromwell.RuntimeAttributes) (float64, string, error) {
 }
 
 func parseMemory(r cromwell.RuntimeAttributes) (float64, error) {
-	memmory := strings.Fields(r.Memory)
-	if len(memmory) == 0 {
-		return 0, fmt.Errorf("No memory, found: %#v", r.Memory)
+	memory := strings.Fields(r.Memory)
+	if len(memory) == 0 {
+		return 0, fmt.Errorf("no memory, found: %#v", r.Memory)
 	}
-	size, err := strconv.ParseFloat(memmory[0], 4)
+	size, err := strconv.ParseFloat(memory[0], 4)
 	if err != nil {
 		return 0, err
 	}

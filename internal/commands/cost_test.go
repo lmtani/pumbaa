@@ -2,7 +2,7 @@ package commands
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -10,12 +10,12 @@ import (
 )
 
 func TestCost(t *testing.T) {
-	file, err := ioutil.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta := cromwell.MetadataResponse{}
-	err = json.Unmarshal(file, &meta)
+	err = json.Unmarshal(content, &meta)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestParseDisk(t *testing.T) {
 		expectedType   string
 		expectedErr    string
 	}{
-		{runtime: r1, expectedAmount: 0, expectedType: "", expectedErr: "No disks, found:"},
+		{runtime: r1, expectedAmount: 0, expectedType: "", expectedErr: "no disks, found:"},
 		{runtime: r2, expectedAmount: 0, expectedType: "", expectedErr: "strconv.ParseFloat: parsing"},
 	}
 	for i, test := range tt {
@@ -143,7 +143,7 @@ func TestParseMemory(t *testing.T) {
 		expectedErr    string
 	}{
 		{runtime: r1, expectedAmount: 2, expectedErr: ""},
-		{runtime: r2, expectedAmount: 0, expectedErr: "No memory, found:"},
+		{runtime: r2, expectedAmount: 0, expectedErr: "no memory, found:"},
 		{runtime: r3, expectedAmount: 0, expectedErr: "strconv.ParseFloat: parsing"},
 	}
 	for i, test := range tt {
