@@ -1,10 +1,10 @@
 package cromwell
 
 import (
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
@@ -111,9 +111,9 @@ func TestClientQuery(t *testing.T) {
 
 	resp, _ := client.Query(ParamsQueryGet{})
 
-	expectedCound := 1
-	if resp.TotalResultsCount != expectedCound {
-		t.Errorf("Expected %v, got %v", expectedCound, resp.TotalResultsCount)
+	expectedCount := 1
+	if resp.TotalResultsCount != expectedCount {
+		t.Errorf("Expected %v, got %v", expectedCount, resp.TotalResultsCount)
 	}
 
 	totalWorkflows := len(resp.Results)
@@ -124,9 +124,9 @@ func TestClientQuery(t *testing.T) {
 
 func TestClientMetadata(t *testing.T) {
 	// Read metadata mock
-	content, err := ioutil.ReadFile("mocks/metadata.json")
+	content, err := os.ReadFile("mocks/metadata.json")
 	if err != nil {
-		t.Error("Coult no read metadata mock file metadata.json")
+		t.Error("Could no read metadata mock file metadata.json")
 	}
 
 	// Mock http server
@@ -147,9 +147,9 @@ func TestClientMetadata(t *testing.T) {
 		t.Errorf("Expected %v, got %v", 5, totalCalls)
 	}
 
-	subworkflowName := resp.Calls["HelloHere.ScatterSubworkflow"][0].SubWorkflowMetadata.WorkflowName
+	subWorkflowName := resp.Calls["HelloHere.ScatterSubworkflow"][0].SubWorkflowMetadata.WorkflowName
 	expected := "ScatterSubworkflow"
-	if subworkflowName != expected {
-		t.Errorf("Expected %v, got %v", expected, subworkflowName)
+	if subWorkflowName != expected {
+		t.Errorf("Expected %v, got %v", expected, subWorkflowName)
 	}
 }
