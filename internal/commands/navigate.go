@@ -13,7 +13,7 @@ func (c *Commands) Navigate(operation string) error {
 	params := cromwell.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
-	resp, err := c.CromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (c *Commands) Navigate(operation string) error {
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, params)
+		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, &params)
 		if err != nil {
 			return err
 		}

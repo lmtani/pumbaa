@@ -71,7 +71,7 @@ func TestClientSubmit(t *testing.T) {
 		WorkflowInputs:       "../../sample/wf.inputs.json",
 		WorkflowDependencies: "../../sample/wf.wdl",
 		WorkflowOptions:      "../../sample/wf.inputs.json"}
-	resp, _ := client.Submit(r)
+	resp, _ := client.Submit(&r)
 
 	expected := "Submitted"
 	if resp.Status != expected {
@@ -109,7 +109,7 @@ func TestClientQuery(t *testing.T) {
 
 	client := New(ts.URL, "")
 
-	resp, _ := client.Query(ParamsQueryGet{})
+	resp, _ := client.Query(&ParamsQueryGet{})
 
 	expectedCount := 1
 	if resp.TotalResultsCount != expectedCount {
@@ -135,7 +135,7 @@ func TestClientMetadata(t *testing.T) {
 
 	client := New(ts.URL, "")
 
-	resp, _ := client.Metadata(operation, ParamsMetadataGet{})
+	resp, _ := client.Metadata(operation, &ParamsMetadataGet{})
 
 	expectedWorkflowName := "HelloHere"
 	if resp.WorkflowName != expectedWorkflowName {

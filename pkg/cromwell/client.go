@@ -59,7 +59,7 @@ func (c *Client) Outputs(o string) (OutputsResponse, error) {
 	return or, err
 }
 
-func (c *Client) Query(p ParamsQueryGet) (QueryResponse, error) {
+func (c *Client) Query(p *ParamsQueryGet) (QueryResponse, error) {
 	route := "/api/workflows/v1/query"
 	var qr QueryResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &qr)
@@ -69,16 +69,16 @@ func (c *Client) Query(p ParamsQueryGet) (QueryResponse, error) {
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
 // Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
-func (c *Client) Metadata(o string, p ParamsMetadataGet) (MetadataResponse, error) {
+func (c *Client) Metadata(o string, p *ParamsMetadataGet) (MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
 	var mr MetadataResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &mr)
 	return mr, err
 }
 
-func (c *Client) Submit(requestFields SubmitRequest) (SubmitResponse, error) {
+func (c *Client) Submit(requestFields *SubmitRequest) (SubmitResponse, error) {
 	route := "/api/workflows/v1"
-	fileParams := submitPrepare(requestFields)
+	fileParams := submitPrepare(*requestFields)
 	var sr SubmitResponse
 	err := c.iapAwareRequest("POST", route, nil, fileParams, &sr)
 	return sr, err

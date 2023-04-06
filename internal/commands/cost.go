@@ -14,7 +14,7 @@ func (c *Commands) ResourcesUsed(operation string) error {
 	params := cromwell.ParamsMetadataGet{
 		ExpandSubWorkflows: true,
 	}
-	resp, err := c.CromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	params := cromwell.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-	resp, err := c.CromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}

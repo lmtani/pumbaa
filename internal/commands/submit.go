@@ -12,7 +12,7 @@ func (c *Commands) SubmitWorkflow(wdl, inputs, dependencies, options string) err
 		WorkflowInputs:       inputs,
 		WorkflowDependencies: dependencies,
 		WorkflowOptions:      options}
-	resp, err := c.CromwellClient.Submit(r)
+	resp, err := c.CromwellClient.Submit(&r)
 	if err != nil {
 		return err
 	}

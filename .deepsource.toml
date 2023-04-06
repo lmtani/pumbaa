@@ -1,4 +1,8 @@
 version = 1
+test_patterns = [
+  "**/*_test.go",
+  "**/example_test.go",
+]
 
 [[analyzers]]
 name = "shell"
