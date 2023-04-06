@@ -18,34 +18,32 @@ func (rtr ResourceTableResponse) Header() []string {
 }
 
 func (rtr ResourceTableResponse) Rows() [][]string {
-	rows := make([][]string, 4)
-
-	rows = append(rows, []string{
-		"CPUs",
-		"1 hour",
-		dashIfZero(rtr.Total.PreemptCPU),
-		dashIfZero(rtr.Total.CPU),
-	})
-
-	rows = append(rows, []string{
-		"Memory (GB)",
-		"1 hour",
-		dashIfZero(rtr.Total.PreemptMemory),
-		dashIfZero(rtr.Total.Memory),
-	})
-
-	rows = append(rows, []string{
-		"HDD disk (GB)",
-		"1 month",
-		dashIfZero(rtr.Total.PreemptHdd),
-		dashIfZero(rtr.Total.Hdd),
-	})
-	rows = append(rows, []string{
-		"SSD disk (GB)",
-		"1 month",
-		dashIfZero(rtr.Total.PreemptSsd),
-		dashIfZero(rtr.Total.Ssd),
-	})
+	rows := [][]string{
+		{
+			"CPUs",
+			"1 hour",
+			dashIfZero(rtr.Total.PreemptCPU),
+			dashIfZero(rtr.Total.CPU),
+		},
+		{
+			"Memory (GB)",
+			"1 hour",
+			dashIfZero(rtr.Total.PreemptMemory),
+			dashIfZero(rtr.Total.Memory),
+		},
+		{
+			"HDD disk (GB)",
+			"1 month",
+			dashIfZero(rtr.Total.PreemptHdd),
+			dashIfZero(rtr.Total.Hdd),
+		},
+		{
+			"SSD disk (GB)",
+			"1 month",
+			dashIfZero(rtr.Total.PreemptSsd),
+			dashIfZero(rtr.Total.Ssd),
+		},
+	}
 	return rows
 }
 
