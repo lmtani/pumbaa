@@ -1,13 +1,12 @@
 package main
 
 import (
+	cli "github.com/lmtani/cromwell-cli/cli"
 	"os"
-
-	app "github.com/lmtani/cromwell-cli/cli"
 )
 
 var Version = "development"
 
 func main() {
-	os.Exit(app.CLI(Version))
+	os.Exit(cli.Run(Version))
 }
