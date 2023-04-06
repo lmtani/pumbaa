@@ -57,7 +57,7 @@ func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
 		if c[idx].SubWorkflowMetadata.RootWorkflowID != "" {
 			iterateOverTasks(c[idx].SubWorkflowMetadata.Calls, t)
 		} else {
-			parsed, _ := iterateOverElement(c[idx])
+			parsed, _ := iterateOverElement(&c[idx])
 			HoursInMonth := 720.0
 			if parsed.HitCache {
 				t.CachedCalls++
@@ -79,7 +79,7 @@ func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
 	}
 }
 
-func iterateOverElement(call cromwell.CallItem) (cromwell.ParsedCallAttributes, error) {
+func iterateOverElement(call *cromwell.CallItem) (cromwell.ParsedCallAttributes, error) {
 	size, diskType, err := parseDisc(call.RuntimeAttributes)
 	if err != nil {
 		return cromwell.ParsedCallAttributes{}, err

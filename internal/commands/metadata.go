@@ -3,10 +3,8 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
-
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"sort"
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {
@@ -82,4 +80,4 @@ type rowSlice [][]string
 
 func (c rowSlice) Len() int           { return len(c) }
 func (c rowSlice) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c rowSlice) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
+func (c rowSlice) Less(i, j int) bool { return c[i][0] < c[j][0] }
