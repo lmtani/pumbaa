@@ -115,10 +115,8 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 		return err
 	}
 	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(resp); err != nil {
-		return err
-	}
-	return nil
+	err = json.NewDecoder(r.Body).Decode(resp)
+	return err
 }
 
 func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) *multipart.Writer {
