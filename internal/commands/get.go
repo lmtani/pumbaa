@@ -16,7 +16,7 @@ func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
 		Submission: submission,
 		Name:       name,
 	}
-	resp, err := c.CromwellClient.Query(params)
+	resp, err := c.CromwellClient.Query(&params)
 	if err != nil {
 		return err
 	}

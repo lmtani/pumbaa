@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Commands) Inputs(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, cromwell.ParamsMetadataGet{})
+	resp, err := c.CromwellClient.Metadata(operation, &cromwell.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

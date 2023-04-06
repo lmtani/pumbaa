@@ -13,13 +13,13 @@ func (c *Commands) Navigate(operation string) error {
 	params := cromwell.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
-	resp, err := c.CromwellClient.Metadata(operation, params)
+	resp, err := c.CromwellClient.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}
 	var item cromwell.CallItem
 	for {
-		task, err := c.selectDesiredTask(resp)
+		task, err := c.selectDesiredTask(&resp)
 		if err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ func (c *Commands) Navigate(operation string) error {
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, params)
+		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, &params)
 		if err != nil {
 			return err
 		}
@@ -69,13 +69,13 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (c *Commands) selectDesiredTask(m cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
-	taskOptions := []string{}
-	calls := map[string][]cromwell.CallItem{}
-	for key := range m.Calls {
+func (c *Commands) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
+	var taskOptions []string
+	calls := make(map[string][]cromwell.CallItem)
+	for key, value := range m.Calls {
 		sliceName := strings.Split(key, ".")
 		taskName := sliceName[len(sliceName)-1]
-		calls[taskName] = m.Calls[key]
+		calls[taskName] = value
 		if !contains(taskOptions, taskName) {
 			taskOptions = append(taskOptions, taskName)
 		}
