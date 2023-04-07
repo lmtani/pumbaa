@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/lmtani/cromwell-cli/internal/commands"
+	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
@@ -19,6 +20,7 @@ func Run(version string) int {
 
 func setupApp(version string) *cli.App {
 	cmds := commands.New()
+	ui := prompt.New()
 	return &cli.App{
 		Name:  "cromwell-cli",
 		Usage: "Command line interface for Cromwell Server",
@@ -48,8 +50,8 @@ func setupApp(version string) *cli.App {
 			kill(cmds),
 			metadata(cmds),
 			outputs(cmds),
-			navigate(cmds),
 			gcp(cmds),
+			navigate(ui),
 		},
 	}
 }

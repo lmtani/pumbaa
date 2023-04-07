@@ -8,16 +8,14 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func BuildTestCommands(h, i, promptKey string, promptInt int) *Commands {
+func BuildTestCommands(h, i string) *Commands {
 	cmds := New()
 	cmds.CromwellClient = cromwell.New(h, i)
 	cmds.Writer = output.NewColoredWriter(os.Stdout)
-	cmds.Prompt = NewForTests(promptKey, promptInt)
 	return cmds
 }
 
@@ -49,30 +47,11 @@ func BuildTestServerMutable(url string) *httptest.Server {
 	return ts
 }
 
-type fakePrompt struct {
-	byKeyReturn   string
-	byIndexReturn int
-}
-
-func (p fakePrompt) SelectByKey(taskOptions []string) (string, error) {
-	return p.byKeyReturn, nil
-}
-
-func (p fakePrompt) SelectByIndex(t prompt.TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
-	return p.byIndexReturn, nil
-}
-
-func NewForTests(byKey string, byIndex int) *fakePrompt {
-	return &fakePrompt{
-		byKeyReturn: byKey, byIndexReturn: byIndex,
-	}
-}
-
 func ExampleCommands_QueryWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.QueryWorkflow("wf", 0)
 	if err != nil {
 		log.Print(err)
@@ -98,7 +77,7 @@ func ExampleCommands_Inputs() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err = cmds.Inputs(operation)
 	if err != nil {
 		log.Print(err)
@@ -115,75 +94,13 @@ func ExampleCommands_KillWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.KillWorkflow(operation)
 	if err != nil {
 		log.Print(err)
 	}
 	// Output:
 	// Operation=aaa-bbb-ccc, Status=aborting
-}
-
-func ExampleCommands_Navigate() {
-	// Mock http server
-	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
-	if err != nil {
-		fmt.Print("Coult no read metadata mock file metadata.json")
-	}
-
-	// Mock http server
-	operation := "aaaa-bbbb-uuid"
-	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
-	defer ts.Close()
-
-	cmds := BuildTestCommands(ts.URL, "", "SayGoodbye", 1)
-	err = cmds.Navigate(operation)
-	if err != nil {
-		log.Print(err)
-	}
-	// Output:
-	// Workflow: HelloHere
-	//
-	// Command status: Done
-	// echo "HelloWorld!"
-	// Logs:
-	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stderr
-	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout
-	//
-	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/SayGoodbye.log
-	//
-	// 🐋 Docker image:
-	// ubuntu:20.04
-}
-
-func ExampleCommands_Navigate_second() {
-	// Mock http server
-	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
-	if err != nil {
-		fmt.Print("Coult no read metadata mock file metadata.json")
-	}
-
-	// Mock http server
-	operation := "aaaa-bbbb-uuid"
-	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
-	defer ts.Close()
-
-	cmds := BuildTestCommands(ts.URL, "", "RunHelloWorkflows", 1)
-	err = cmds.Navigate(operation)
-	if err != nil {
-		log.Print(err)
-	}
-	// Output:
-	// Workflow: HelloHere
-	//
-	// Command status: Done
-	// echo "This simulates a task output file, processig string: scatter_1" > final.txt
-	// Logs:
-	// /home/taniguti/cromwell-executions/HelloWorld/d47bb332-78e6-4265-8eae-c9d7929f5a1c/call-RunHelloWorkflows/shard-1/execution/stderr
-	// /home/taniguti/cromwell-executions/HelloWorld/d47bb332-78e6-4265-8eae-c9d7929f5a1c/call-RunHelloWorkflows/shard-1/execution/stdout
-	//
-	// 🐋 Docker image:
-	// ubuntu:20.04
 }
 
 func ExampleCommands_ResourcesUsed() {
@@ -198,7 +115,7 @@ func ExampleCommands_ResourcesUsed() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err = cmds.ResourcesUsed(operation)
 	if err != nil {
 		log.Print(err)
@@ -222,7 +139,7 @@ func ExampleCommands_OutputsWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.OutputsWorkflow(operation)
 	if err != nil {
 		log.Print(err)
@@ -241,7 +158,7 @@ func ExampleCommands_SubmitWorkflow() {
 	wdlPath := "../../sample/wf.wdl"
 	inputsPath := "../../sample/wf.inputs.json"
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)
 	if err != nil {
 		log.Print(err)
@@ -257,7 +174,7 @@ func ExampleCommands_Wait() {
 	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.Wait(operation, 1, false)
 	if err != nil {
 		log.Printf("Error: %#v", err)
@@ -280,7 +197,7 @@ func ExampleCommands_MetadataWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err = cmds.MetadataWorkflow(operation)
 	if err != nil {
 		log.Print(err)
@@ -314,7 +231,7 @@ func ExampleCommands_MetadataWorkflow_second() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err = cmds.MetadataWorkflow(operation)
 	if err != nil {
 		log.Print(err)
