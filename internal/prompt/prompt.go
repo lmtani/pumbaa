@@ -1,18 +1,32 @@
 package prompt
 
 import (
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/manifoldco/promptui"
+	"os"
 )
 
-type Prompt struct{}
+var (
+	defaultClient = cromwell.Default()
+	defaultWriter = output.NewColoredWriter(os.Stdout)
+)
 
-func New() *Prompt {
-	return &Prompt{}
+type Ui struct {
+	CromwellClient cromwell.Client
+	Writer         output.Writer
+}
+
+func New() *Ui {
+	return &Ui{
+		CromwellClient: defaultClient,
+		Writer:         defaultWriter,
+	}
 }
 
 type Searcher func(input string, index int) bool
 
-func (p Prompt) SelectByKey(taskOptions []string) (string, error) {
+func (p Ui) SelectByKey(taskOptions []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
@@ -21,7 +35,7 @@ func (p Prompt) SelectByKey(taskOptions []string) (string, error) {
 	return taskName, err
 }
 
-func (p Prompt) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+func (p Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
 	templates := &promptui.SelectTemplates{
 		Label:    t.Label,
 		Active:   t.Active,
@@ -46,4 +60,9 @@ type TemplateOptions struct {
 	Active   string
 	Inactive string
 	Selected string
+}
+
+type Prompt interface {
+	SelectByKey(taskOptions []string) (string, error)
+	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
 }

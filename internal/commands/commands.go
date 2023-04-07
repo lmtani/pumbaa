@@ -14,22 +14,10 @@ var (
 	defaultPrompt = prompt.New()
 )
 
-type Prompt interface {
-	SelectByKey(taskOptions []string) (string, error)
-	SelectByIndex(t prompt.TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
-}
-
-type Writer interface {
-	Primary(string)
-	Accent(string)
-	Error(string)
-	Table(output.Table)
-}
-
 type Commands struct {
 	CromwellClient cromwell.Client
-	Prompt         Prompt
-	Writer         Writer
+	Prompt         prompt.Prompt
+	Writer         output.Writer
 }
 
 func New() *Commands {

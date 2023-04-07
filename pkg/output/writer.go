@@ -58,3 +58,10 @@ func (w ColoredWriter) Table(tab Table) {
 	w.w.AppendBulk(tab.Rows())
 	w.w.Render()
 }
+
+type Writer interface {
+	Primary(string)
+	Accent(string)
+	Error(string)
+	Table(Table)
+}

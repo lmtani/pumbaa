@@ -88,7 +88,7 @@ func (c *Commands) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.C
 
 	taskName, err := c.Prompt.SelectByKey(taskOptions)
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
+		fmt.Printf("Ui failed %v\n", err)
 		return []cromwell.CallItem{}, err
 	}
 	return calls[taskName], nil

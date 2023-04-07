@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 	"sort"
 )
 
@@ -69,7 +70,7 @@ func hasFailureMsg(fails []cromwell.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell.Failure, w Writer) {
+func recursiveFailureParse(f []cromwell.Failure, w output.Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)
