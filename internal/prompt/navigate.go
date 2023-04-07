@@ -3,11 +3,33 @@ package prompt
 import (
 	"fmt"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
+	"os"
 	"strconv"
 	"strings"
 )
 
-func (p Ui) Navigate(operation string) error {
+type TermUi struct {
+	CromwellClient cromwell.Client
+	Writer         output.Writer
+	Prompt         Prompt
+}
+
+var (
+	defaultClient = cromwell.Default()
+	defaultWriter = output.NewColoredWriter(os.Stdout)
+	defaultPrompt = &Ui{}
+)
+
+func NewTermUi() *TermUi {
+	return &TermUi{
+		CromwellClient: defaultClient,
+		Writer:         defaultWriter,
+		Prompt:         defaultPrompt,
+	}
+}
+
+func (p TermUi) Navigate(operation string) error {
 	params := cromwell.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
@@ -67,7 +89,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (p Ui) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
+func (p TermUi) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.CallItem, error) {
 	var taskOptions []string
 	calls := make(map[string][]cromwell.CallItem)
 	for key, value := range m.Calls {
@@ -84,7 +106,7 @@ func (p Ui) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.CallItem
 	}
 	p.Writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
 
-	taskName, err := p.SelectByKey(taskOptions)
+	taskName, err := p.Prompt.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Ui failed %v\n", err)
 		return []cromwell.CallItem{}, err
@@ -92,7 +114,7 @@ func (p Ui) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.CallItem
 	return calls[taskName], nil
 }
 
-func (p Ui) selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
+func (p TermUi) selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -110,7 +132,7 @@ func (p Ui) selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallItem, e
 		return name == input
 	}
 
-	i, err := p.SelectByIndex(template, searcher, shards)
+	i, err := p.Prompt.SelectByIndex(template, searcher, shards)
 	if err != nil {
 		return cromwell.CallItem{}, err
 	}

@@ -1,41 +1,33 @@
 package prompt
 
 import (
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 	"github.com/manifoldco/promptui"
-	"os"
 )
 
-var (
-	defaultClient = cromwell.Default()
-	defaultWriter = output.NewColoredWriter(os.Stdout)
-)
-
-type Ui struct {
-	CromwellClient cromwell.Client
-	Writer         output.Writer
+type Prompt interface {
+	SelectByKey(taskOptions []string) (string, error)
+	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
 }
 
-func New() *Ui {
-	return &Ui{
-		CromwellClient: defaultClient,
-		Writer:         defaultWriter,
-	}
+type Ui struct{}
+
+type TemplateOptions struct {
+	Label    string
+	Active   string
+	Inactive string
+	Selected string
 }
 
-type Searcher func(input string, index int) bool
-
-func (p Ui) SelectByKey(taskOptions []string) (string, error) {
+func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
 	}
-	_, taskName, err := prompt.Run()
+	_, taskName, err := p.RunPrompt(prompt)
 	return taskName, err
 }
 
-func (p Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+func (p *Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
 	templates := &promptui.SelectTemplates{
 		Label:    t.Label,
 		Active:   t.Active,
@@ -51,18 +43,11 @@ func (p Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) b
 		Searcher:  sfn,
 	}
 
-	i, _, err := prompt.Run()
+	i, _, err := p.RunPrompt(prompt)
 	return i, err
 }
 
-type TemplateOptions struct {
-	Label    string
-	Active   string
-	Inactive string
-	Selected string
-}
-
-type Prompt interface {
-	SelectByKey(taskOptions []string) (string, error)
-	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
+func (p *Ui) RunPrompt(prompt promptui.Select) (int, string, error) {
+	idx, taskName, err := prompt.Run()
+	return idx, taskName, err
 }

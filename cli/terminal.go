@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/lmtani/cromwell-cli/internal/commands"
 	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
@@ -111,7 +112,7 @@ func outputs(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func navigate(ui *prompt.Ui) *cli.Command {
+func navigate(ui *prompt.TermUi) *cli.Command {
 	return &cli.Command{
 		Name:    "navigate",
 		Aliases: []string{"n"},
@@ -141,6 +142,18 @@ func gcp(cmds *commands.Commands) *cli.Command {
 					return cmds.ResourcesUsed(c.String("operation"))
 				},
 			},
+		},
+	}
+}
+
+func getVersion(version string) *cli.Command {
+	return &cli.Command{
+		Name:    "version",
+		Aliases: []string{"v"},
+		Usage:   "Cromwell-CLI version",
+		Action: func(c *cli.Context) error {
+			fmt.Printf("Version: %s\n", version)
+			return nil
 		},
 	}
 }

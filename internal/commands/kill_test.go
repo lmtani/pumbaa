@@ -22,7 +22,7 @@ func TestKillHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.KillWorkflow(operation)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")

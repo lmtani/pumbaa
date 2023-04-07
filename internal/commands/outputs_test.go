@@ -35,7 +35,7 @@ func TestOutputsReturnError(t *testing.T) {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "", "", 0)
+	cmds := BuildTestCommands(ts.URL, "")
 	err := cmds.OutputsWorkflow(operation)
 	if err != nil {
 		log.Print(err)
