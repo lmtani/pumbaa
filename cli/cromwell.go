@@ -17,6 +17,8 @@ func localDeploy() *cli.Command {
 			&cli.Int64Flag{Name: "mysql-port", Required: false, Value: 3306, Usage: "Your MySQL port"},
 			&cli.Int64Flag{Name: "port", Required: false, Value: 8000, Usage: "Port to bind Cromwell Server"},
 			&cli.Int64Flag{Name: "max-jobs", Required: false, Value: 1, Usage: "Maximum number of jobs to run in parallel"},
+			&cli.Int64Flag{Name: "replace-config", Required: false, Value: 1, Usage: "Maximum number of jobs to run in parallel"},
+			&cli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 		},
 		Action: func(c *cli.Context) error {
 			db := util.MysqlConfig{
@@ -25,7 +27,7 @@ func localDeploy() *cli.Command {
 				Username: c.String("mysql-user"),
 				Password: c.String("mysql-passwd"),
 			}
-			return util.StartCromwellServer(db, c.Int("port"), c.Int("max-jobs"))
+			return util.StartCromwellServer(db, c.Int("port"), c.Int("max-jobs"), c.Bool("override"))
 		},
 	}
 }

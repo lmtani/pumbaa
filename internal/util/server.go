@@ -22,7 +22,7 @@ import (
 
 const CromwellUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
 
-func StartCromwellServer(db MysqlConfig, webport, maxJobs int) error {
+func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig bool) error {
 
 	// create a channel to receive signals
 	sigs := make(chan os.Signal, 1)
@@ -35,7 +35,7 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int) error {
 
 	java := isInUserPath("java")
 	if !java {
-		return fmt.Errorf("java is not installed. please install java first")
+		return fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
 	}
 
 	err := checkMysqlConn(db)
@@ -78,9 +78,15 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int) error {
 	// get path before the last slash
 	configPath := filepath.Dir(cromwell)
 
-	config, err := createDefaultConfig(db, configPath, webport, maxJobs)
-	if err != nil {
-		return err
+	config := filepath.Join(configPath, "cromwell.json")
+	_, err = os.Stat(config)
+	if os.IsNotExist(err) || replaceConfig {
+		err = createDefaultConfig(db, config, webport, maxJobs)
+		if err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("config file already exists. skipping...")
 	}
 
 	err = startCromwellProcess(cromwell, config)
@@ -214,7 +220,7 @@ type MysqlConfig struct {
 	Password string
 }
 
-func createDefaultConfig(db MysqlConfig, configPath string, port, maxConcurrentJobs int) (string, error) {
+func createDefaultConfig(db MysqlConfig, config string, port, maxConcurrentJobs int) error {
 	viper.SetConfigType("json")
 
 	// Set the configuration values
@@ -239,15 +245,14 @@ func createDefaultConfig(db MysqlConfig, configPath string, port, maxConcurrentJ
 	viper.Set("docker.perform-registry-lookup-if-digest-is-provided", false)
 
 	// Write the configuration to file
-	config := filepath.Join(configPath, "cromwell.json")
 	err := viper.WriteConfigAs(config)
 	if err != nil {
 		fmt.Printf("Error writing config file: %s", err)
-		return "", err
+		return err
 	}
 
 	fmt.Println("Config file written successfully")
-	return config, nil
+	return nil
 }
 
 func checkMysqlConn(dbConf MysqlConfig) error {

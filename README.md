@@ -5,7 +5,16 @@
 
 ---
 
-Command line interface for [Cromwell Server](https://cromwell.readthedocs.io/en/stable/).
+This program was created to:
+
+- Facilitate the installation and configuration of a Cromwell Server with a local backend using Docker.
+- Provide the functionality to reuse already processed jobs by default, via the Call Cache mechanism.
+- Provide ways to interact with the server, such as submitting, querying, and inspecting jobs.
+- Familiarize myself with the Go language.
+
+The [Broad Institute has its own CLI](https://github.com/broadinstitute/cromshell), be sure to check it out.
+
+But don't forget to give us a star if ours has been helpful 😉
 
 ## Quickstart
 
@@ -16,7 +25,19 @@ curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bas
 cromwell-cli --help
 ```
 
-> **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell) server in order to make all commands work. E.g.: running `java -jar /path/to/cromwell.jar server` in your localhost.
+## Features
+
+- [x] Start Cromwell Server locally
+- [x] List workflows by name
+- [x] Submit a workflow
+- [x] Abort a workflow
+- [x] Navigate through workflow metadata
+- [x] Get metadata
+- [x] Get outputs
+- [x] Get inputs
+- [x] Make requests to a remote Cromwell Server protected by IAP (Google Identity Aware Proxy)
+- [x] For Google Cloud backend jobs: estimate resource usage
+- [ ] Have a cool name
 
 ### Example: Cromwell behind Google Identity Aware Proxy
 
@@ -26,10 +47,3 @@ HOST="https://your-cromwell.dev"
 AUDIENCE="Expected audience"
 cromwell-cli --host "${HOST}" --iap "${AUDIENCE}" query
 ```
-
-### Others
-
-Check these other repositories if you don't need Google authentication:
-
-- https://github.com/broadinstitute/cromshell
-- https://github.com/stjudecloud/oliver
