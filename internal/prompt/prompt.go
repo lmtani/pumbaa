@@ -4,13 +4,6 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-type Prompt interface {
-	SelectByKey(taskOptions []string) (string, error)
-	SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error)
-}
-
-type Ui struct{}
-
 type TemplateOptions struct {
 	Label    string
 	Active   string
@@ -18,7 +11,7 @@ type TemplateOptions struct {
 	Selected string
 }
 
-func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
+func SelectByKey(taskOptions []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
@@ -27,12 +20,12 @@ func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
 	return taskName, err
 }
 
-func (p *Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+func SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
 	templates := &promptui.SelectTemplates{
-		Label:    t.Label,
-		Active:   t.Active,
-		Inactive: t.Inactive,
-		Selected: t.Selected,
+		Label:    "{{ . }}?",
+		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
+		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }}) Attempt: {{ .Attempt | faint }} CallCaching: {{ .CallCaching.Hit | faint}}",
+		Selected: "✔ {{ .ShardIndex | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
 	}
 
 	prompt := promptui.Select{

@@ -12,20 +12,19 @@ import (
 type TermUi struct {
 	CromwellClient cromwell.Client
 	Writer         output.Writer
-	Prompt         Prompt
 }
 
 var (
-	defaultClient = cromwell.Default()
-	defaultWriter = output.NewColoredWriter(os.Stdout)
-	defaultPrompt = &Ui{}
+	defaultClient            = cromwell.Default()
+	defaultWriter            = output.NewColoredWriter(os.Stdout)
+	defaultPromptSelectKey   = SelectByKey
+	defaultPromptSelectIndex = SelectByIndex
 )
 
 func NewTermUi() *TermUi {
 	return &TermUi{
 		CromwellClient: defaultClient,
 		Writer:         defaultWriter,
-		Prompt:         defaultPrompt,
 	}
 }
 
@@ -106,7 +105,7 @@ func (p TermUi) selectDesiredTask(m *cromwell.MetadataResponse) ([]cromwell.Call
 	}
 	p.Writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
 
-	taskName, err := p.Prompt.SelectByKey(taskOptions)
+	taskName, err := defaultPromptSelectKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Ui failed %v\n", err)
 		return []cromwell.CallItem{}, err
@@ -119,20 +118,13 @@ func (p TermUi) selectDesiredShard(shards []cromwell.CallItem) (cromwell.CallIte
 		return shards[0], nil
 	}
 
-	template := TemplateOptions{
-		Label:    "{{ . }}?",
-		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
-		Inactive: "  {{ .ShardIndex | faint }} ({{ .ExecutionStatus | red }}) Attempt: {{ .Attempt | faint }} CallCaching: {{ .CallCaching.Hit | faint}}",
-		Selected: "✔ {{ .ShardIndex | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",
-	}
-
 	searcher := func(input string, index int) bool {
 		shard := shards[index]
 		name := strconv.Itoa(shard.ShardIndex)
 		return name == input
 	}
 
-	i, err := p.Prompt.SelectByIndex(template, searcher, shards)
+	i, err := defaultPromptSelectIndex(searcher, shards)
 	if err != nil {
 		return cromwell.CallItem{}, err
 	}

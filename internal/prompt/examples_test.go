@@ -10,13 +10,11 @@ import (
 	"os"
 )
 
-type MockUi struct{}
-
-func (m MockUi) SelectByKey(taskOptions []string) (string, error) {
+func MockSelectByKey(taskOptions []string) (string, error) {
 	return "SayGoodbye", nil
 }
 
-func (m MockUi) SelectByIndex(t TemplateOptions, sfn func(input string, index int) bool, items interface{}) (int, error) {
+func MockSelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
 	return 1, nil
 }
 
@@ -46,11 +44,11 @@ func Example_navigate() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	ui := &TermUi{
-		CromwellClient: cromwell.New(ts.URL, ""),
-		Writer:         output.NewColoredWriter(os.Stdout),
-		Prompt:         MockUi{},
-	}
+	// Mock prompt interaction
+	defaultPromptSelectKey = MockSelectByKey
+	defaultPromptSelectIndex = MockSelectByIndex
+
+	ui := &TermUi{cromwell.New(ts.URL, ""), output.NewColoredWriter(os.Stdout)}
 
 	err = ui.Navigate(operation)
 	if err != nil {
