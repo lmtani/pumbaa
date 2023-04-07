@@ -1,4 +1,4 @@
-# Cromwell CLI 
+# Cromwell CLI
 
 [![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
  [![DeepSource](https://deepsource.io/gh/lmtani/cromwell-cli.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/cromwell-cli/?ref=repository-badge)
