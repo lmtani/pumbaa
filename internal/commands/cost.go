@@ -86,7 +86,7 @@ func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
 
 func iterateOverElement(call *cromwell.CallItem) (cromwell.ParsedCallAttributes, error) {
 	runtimeAttrs := call.RuntimeAttributes
-	size, diskType, err := parseDisc(runtimeAttrs)
+	size, diskType, err := parseDisk(runtimeAttrs)
 	if err != nil {
 		return cromwell.ParsedCallAttributes{}, err
 	}
@@ -118,7 +118,7 @@ func calculateDiskSize(diskType string, size float64) (float64, float64) {
 	return totalSsd, totalHdd
 }
 
-func parseDisc(r cromwell.RuntimeAttributes) (float64, string, error) {
+func parseDisk(r cromwell.RuntimeAttributes) (float64, string, error) {
 	workDisk := strings.Fields(r.Disks)
 	if len(workDisk) == 0 {
 		return 0, "", fmt.Errorf("no disks, found: %#v", r.Disks)

@@ -97,7 +97,7 @@ func TestParseDisk(t *testing.T) {
 		{runtime: r2, expectedAmount: 0, expectedType: "", expectedErr: "strconv.ParseFloat: parsing"},
 	}
 	for i, test := range tt {
-		amount, diskType, err := parseDisc(test.runtime)
+		amount, diskType, err := parseDisk(test.runtime)
 		if !ErrorContains(err, test.expectedErr) {
 			t.Errorf("[%d] Err is expected to be '%s', found '%s'", i, test.expectedErr, err)
 		}
