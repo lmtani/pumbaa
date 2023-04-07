@@ -37,7 +37,7 @@ type MetadataResponse struct {
 	WorkflowName   string
 	SubmittedFiles SubmittedFiles
 	RootWorkflowID string
-	Calls          map[string][]CallItem
+	Calls          CallItemSet
 	Inputs         map[string]interface{}
 	Outputs        map[string]interface{}
 	Start          time.Time
@@ -58,6 +58,9 @@ type Failure struct {
 type BackendLogs struct {
 	Log string
 }
+
+type CallItemSet map[string][]CallItem
+
 type CallItem struct {
 	ExecutionStatus     string
 	Stdout              string
