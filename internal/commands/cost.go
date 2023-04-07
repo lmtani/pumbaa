@@ -54,13 +54,14 @@ func iterateOverTasks(data cromwell.CallItemSet, t *cromwell.TotalResources) {
 func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
 	HoursInMonth := 720.0
 
-	for _, item := range c {
+	for i := range c {
+		item := &c[i] // pointer to avoid copying
 		if item.SubWorkflowMetadata.RootWorkflowID != "" {
 			iterateOverTasks(item.SubWorkflowMetadata.Calls, t)
 			continue
 		}
 
-		parsed, _ := iterateOverElement(&item) // ignoring error for now
+		parsed, _ := iterateOverElement(item) // ignoring error for now
 		if parsed.HitCache {
 			t.CachedCalls++
 			continue
@@ -91,7 +92,7 @@ func iterateOverElement(call *cromwell.CallItem) (cromwell.ParsedCallAttributes,
 		return cromwell.ParsedCallAttributes{}, err
 	}
 	totalSsd, totalHdd := calculateDiskSize(diskType, size)
-	cpus, _ := strconv.ParseFloat(runtimeAttrs.CPU, 4)
+	cpus, _ := strconv.ParseFloat(runtimeAttrs.CPU, 32)
 	memory, _ := parseMemory(runtimeAttrs)
 
 	parsed := cromwell.ParsedCallAttributes{
@@ -125,11 +126,11 @@ func parseDisk(r cromwell.RuntimeAttributes) (float64, string, error) {
 	}
 	diskSize := workDisk[1]
 	diskType := workDisk[2]
-	size, err := strconv.ParseFloat(diskSize, 4)
+	size, err := strconv.ParseFloat(diskSize, 32)
 	if err != nil {
 		return 0, "", err
 	}
-	boot, err := strconv.ParseFloat(r.BootDiskSizeGb, 8)
+	boot, err := strconv.ParseFloat(r.BootDiskSizeGb, 32)
 	if err != nil {
 		return 0, "", err
 	}
@@ -141,7 +142,7 @@ func parseMemory(r cromwell.RuntimeAttributes) (float64, error) {
 	if len(memory) == 0 {
 		return 0, fmt.Errorf("no memory, found: %#v", r.Memory)
 	}
-	size, err := strconv.ParseFloat(memory[0], 4)
+	size, err := strconv.ParseFloat(memory[0], 32)
 	if err != nil {
 		return 0, err
 	}

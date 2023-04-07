@@ -23,7 +23,7 @@ func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
 		Label: "Select a task",
 		Items: taskOptions,
 	}
-	_, taskName, err := p.RunPrompt(prompt)
+	_, taskName, err := prompt.Run()
 	return taskName, err
 }
 
@@ -43,11 +43,6 @@ func (p *Ui) SelectByIndex(t TemplateOptions, sfn func(input string, index int) 
 		Searcher:  sfn,
 	}
 
-	i, _, err := p.RunPrompt(prompt)
+	i, _, err := prompt.Run()
 	return i, err
-}
-
-func (p *Ui) RunPrompt(prompt promptui.Select) (int, string, error) {
-	idx, taskName, err := prompt.Run()
-	return idx, taskName, err
 }
