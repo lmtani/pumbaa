@@ -1,8 +1,9 @@
 package main
 
 import (
-	cli "github.com/lmtani/cromwell-cli/cli"
 	"os"
+
+	cli "github.com/lmtani/cromwell-cli/cli"
 )
 
 var Version = "development"

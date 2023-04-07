@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -169,7 +168,6 @@ func ExampleCommands_SubmitWorkflow() {
 
 func ExampleCommands_Wait() {
 	// Mock http server
-	rand.Seed(3)
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()

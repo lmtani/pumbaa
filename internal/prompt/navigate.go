@@ -2,11 +2,12 @@ package prompt
 
 import (
 	"fmt"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 type TermUi struct {

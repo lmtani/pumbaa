@@ -1,11 +1,12 @@
 package app
 
 import (
+	"log"
+	"os"
+
 	"github.com/lmtani/cromwell-cli/internal/commands"
 	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
-	"log"
-	"os"
 )
 
 func setupApp(version string) *cli.App {

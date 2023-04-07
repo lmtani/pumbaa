@@ -3,9 +3,10 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/output"
-	"sort"
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {

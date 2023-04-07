@@ -2,12 +2,13 @@ package prompt
 
 import (
 	"fmt"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func MockSelectByKey(taskOptions []string) (string, error) {

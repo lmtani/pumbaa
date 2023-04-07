@@ -2,10 +2,11 @@ package app
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/lmtani/cromwell-cli/internal/commands"
 	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
-	"time"
 )
 
 func query(cmds *commands.Commands) *cli.Command {
