@@ -6,7 +6,7 @@ task RunHelloWorkflows {
     }
 
     command <<<
-        echo "This simulates a task output file, processig string: ~{name}" > final.txt
+        echo "This simulates a task output file, processing string: ~{name}" > final.txt
     >>>
 
     runtime {

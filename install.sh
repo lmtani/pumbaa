@@ -61,10 +61,10 @@ print_message() {
 
 #---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  determine_arch
-#   DESCRIPTION:  Attempt to determin architecture of host
+#   DESCRIPTION:  Attempt to determine architecture of host
 #    PARAMETERS:  none
 #       RETURNS:  0 = Arch Detected. Also prints detected arch to stdout
-#                 1 = Unkown arch
+#                 1 = Unknown arch
 #                 20 = 'uname' not found in path
 #-------------------------------------------------------------------------------
 determine_arch() {
@@ -85,10 +85,10 @@ determine_arch() {
 
 #---  FUNCTION  ----------------------------------------------------------------
 #          NAME:  determine_os
-#   DESCRIPTION:  Attempts to determin host os using uname
+#   DESCRIPTION:  Attempts to determine host os using uname
 #    PARAMETERS:  none
 #       RETURNS:  0 = OS Detected. Also prints detected os to stdout
-#                 1 = Unkown OS
+#                 1 = Unknown OS
 #                 20 = 'uname' not found in path
 #-------------------------------------------------------------------------------
 determine_os() {

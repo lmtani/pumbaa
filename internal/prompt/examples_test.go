@@ -38,7 +38,7 @@ func Example_navigate() {
 	// Mock http server
 	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
-		fmt.Print("Coult no read metadata mock file metadata.json")
+		fmt.Print("Could no read metadata mock file metadata.json")
 	}
 
 	// Mock http server

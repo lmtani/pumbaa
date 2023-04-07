@@ -12,9 +12,9 @@ curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bas
 cromwell-cli --help
 ```
 
-> **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell) server in order to make all comands work. E.g.: running `java -jar /path/to/cromwell.jar server` in your localhost.
+> **Obs:** You need to point to [Cromwell](https://github.com/broadinstitute/cromwell) server in order to make all commands work. E.g.: running `java -jar /path/to/cromwell.jar server` in your localhost.
 
-### Example: Cromwell behind Google Indentity Aware Proxy
+### Example: Cromwell behind Google Identity Aware Proxy
 
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google/service-account.json
