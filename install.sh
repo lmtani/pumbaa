@@ -8,7 +8,7 @@ PREFIX="${PREFIX:-}"
 ANDROID_ROOT="${ANDROID_ROOT:-}"
 
 if [[ -n "${PREFIX}" ]]; then
-  INSTALL_PREFIX="${PREFIX}/bin"
+  INSTALL_PREFIX="${PREFIX}"
 else
   INSTALL_PREFIX="/usr/local/bin"
 fi
@@ -124,8 +124,9 @@ install_file_unix() {
   file="${1}"
   dest="${2}"
 
+
   if command -v install >/dev/null 2>&1; then
-    if [[ "${EUID}" == "0" ]]; then
+    if [ -w $(dirname $dest) ]; then
       install -m 755 "${file}" "${dest}"
       rcode="${?}"
     else

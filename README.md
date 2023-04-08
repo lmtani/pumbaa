@@ -18,12 +18,15 @@ But don't forget to give us a star if ours has been helpful 😉
 
 ## Quickstart
 
-```bash
-# Install
-curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bash
+You can download the binary from the [releases page]() for your platform or install it by running the following command:
 
-cromwell-cli --help
+```bash
+curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bash
 ```
+
+> Note: The script will download the latest release for your platform and add it to `/usr/local/bin/`. If you want to install it in a different location, you can use a environment variable to specify it. For example:
+>
+> `curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | PREFIX=/home/taniguti/bin bash`
 
 ## Features
 
@@ -39,7 +42,30 @@ cromwell-cli --help
 - [x] For Google Cloud backend jobs: estimate resource usage
 - [ ] Have a cool name
 
-### Example: Cromwell behind Google Identity Aware Proxy
+## Examples
+
+### Local server deploy
+
+You need to open a new terminal after starting the server. Press CTRL+c when you want to shut it down.
+[![asciicast](https://asciinema.org/a/9oHGhq7t2CGpBMl3M0vicA67Q.svg)](https://asciinema.org/a/9oHGhq7t2CGpBMl3M0vicA67Q)
+
+### Submit workflow
+
+[![asciicast](https://asciinema.org/a/rSGGiYwAOITWNx4gX4Qtq8h8F.svg)](https://asciinema.org/a/rSGGiYwAOITWNx4gX4Qtq8h8F)
+
+### Query workflows
+[![asciicast](https://asciinema.org/a/JTQR8Va7bnHhYIZ5uxSWfZBse.svg)](https://asciinema.org/a/JTQR8Va7bnHhYIZ5uxSWfZBse)
+
+### Navigate through workflow metadata
+
+[![asciicast](https://asciinema.org/a/yxDZp4H2DYAWStjS2nPvsAIqM.svg)](https://asciinema.org/a/yxDZp4H2DYAWStjS2nPvsAIqM)
+
+
+### Cromwell behind Google Identity Aware Proxy
+
+This is a very specific use case, but it's here. If you are using a Cromwell server behind Google Identity Aware Proxy (IAP), you can use the `--iap` flag to make requests to it. You will need to provide the expected audience of the token, which is the URL of the server. For example:
+
+You will also need to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the path of your Google service account JSON file.
 
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google/service-account.json

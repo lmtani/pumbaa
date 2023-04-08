@@ -43,7 +43,7 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig boo
 		return fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
 
 			Start a new mysql server with:
-			  - docker run --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0
+			  - docker run -d --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0
 			Stop it later with:
 			  - docker stop cromwell-db
 			Start it again with:
