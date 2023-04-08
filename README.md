@@ -18,15 +18,19 @@ But don't forget to give us a star if ours has been helpful 😉
 
 ## Quickstart
 
-You can download the binary from the [releases page]() for your platform or install it by running the following command:
+You can download the binary from the [releases page](https://github.com/lmtani/cromwell-cli/releases) for your platform or install it by running the following command:
 
 ```bash
 curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bash
 ```
 
-> Note: The script will download the latest release for your platform and add it to `/usr/local/bin/`. If you want to install it in a different location, you can use a environment variable to specify it. For example:
->
-> `curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | PREFIX=/home/taniguti/bin bash`
+It's allowed to install the binary in any location, but you will need to set variable PREFIX when running the install script.
+
+```bash
+curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | PREFIX=/home/taniguti/bin bash
+```
+
+This way you don't need to provide privileged access.
 
 ## Features
 
