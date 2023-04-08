@@ -173,7 +173,7 @@ func ExampleCommands_Wait() {
 	defer ts.Close()
 
 	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.Wait(operation, 1, false)
+	err := cmds.Wait(operation, 1)
 	if err != nil {
 		log.Printf("Error: %#v", err)
 	}

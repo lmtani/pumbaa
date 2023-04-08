@@ -3,11 +3,9 @@ package commands
 import (
 	"fmt"
 	"time"
-
-	"github.com/martinlindhe/notify"
 )
 
-func (c *Commands) Wait(operation string, sleep int, alarm bool) error {
+func (c *Commands) Wait(operation string, sleep int) error {
 	resp, err := c.CromwellClient.Status(operation)
 	if err != nil {
 		return err
@@ -26,8 +24,5 @@ func (c *Commands) Wait(operation string, sleep int, alarm bool) error {
 		status = resp.Status
 	}
 
-	if alarm {
-		notify.Alert("🐖 Cromwell Cli", "alert", "Your workflow ended", "")
-	}
 	return nil
 }

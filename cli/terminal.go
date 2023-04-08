@@ -32,10 +32,9 @@ func wait(cmds *commands.Commands) *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			&cli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
-			&cli.BoolFlag{Name: "alarm", Aliases: []string{"a"}, Required: false, Usage: "Notify your OS when it is ready"},
 		},
 		Action: func(c *cli.Context) error {
-			return cmds.Wait(c.String("operation"), c.Int("sleep"), c.Bool("alarm"))
+			return cmds.Wait(c.String("operation"), c.Int("sleep"))
 		},
 	}
 }
