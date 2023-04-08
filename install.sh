@@ -126,7 +126,8 @@ install_file_unix() {
 
 
   if command -v install >/dev/null 2>&1; then
-    if [ -w $(dirname $dest) ]; then
+    basedir=$(dirname "${dest}")
+    if [ -w "${basedir}" ]; then
       install -m 755 "${file}" "${dest}"
       rcode="${?}"
     else
