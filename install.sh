@@ -151,7 +151,7 @@ main() {
 
     prefix="${1}"
     cli_base_url="https://github.com/lmtani/cromwell-cli/releases/download"
-    version="0.9.2"
+    version="0.10.0"
     print_message "== Install prefix set to ${prefix}" "info"
 
     cli_arch="$(determine_arch)"
@@ -178,7 +178,7 @@ main() {
         exit 1
     fi
 
-    asset_name="cromwell-cli_${version}_${cli_os}_${cli_arch}.tar.gz"
+    asset_name="cromwell-cli_${cli_os}_${cli_arch}.tar.gz"
     print_message "== Downloading binary file from github: ${asset_name}" "info"
     uri="${cli_base_url}/v${version}/${asset_name}"
     tempdir=$(mktemp -d)
