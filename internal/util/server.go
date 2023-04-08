@@ -152,7 +152,12 @@ func DownloadCromwell(cromwellFileName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(resp.Body)
 	size, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 	if err != nil {
 		return err
@@ -169,13 +174,23 @@ func DownloadCromwell(cromwellFileName string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(resp.Body)
 
 	file, err := os.Create(cromwellFileName)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(file)
 
 	writer := io.MultiWriter(file, bar)
 
@@ -261,7 +276,12 @@ func checkMysqlConn(dbConf MysqlConfig) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			fmt.Println("Failed to close database connection:", err)
+		}
+	}(db)
 
 	err = db.Ping()
 	if err != nil {
