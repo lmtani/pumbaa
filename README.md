@@ -67,7 +67,7 @@ You need to open a new terminal after starting the server. Press CTRL+c when you
 
 ### Cromwell behind Google Identity Aware Proxy
 
-This is a very specific use case, but it's here. If you are using a Cromwell server behind Google Identity Aware Proxy (IAP), you can use the `--iap` flag to make requests to it. You will need to provide the expected audience of the token, which is the URL of the server. For example:
+This is a very specific use case, but it's here. If you are using a Cromwell server behind Google Identity Aware Proxy (IAP), you can use the `--iap` flag to make requests to it. You will need to provide the expected audience of the token, which is the client_id of your oauth. For example:
 
 You will also need to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the path of your Google service account JSON file.
 
