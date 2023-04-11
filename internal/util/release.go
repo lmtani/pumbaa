@@ -10,13 +10,17 @@ import (
 	"strings"
 )
 
+// BuildWorkflowDistribution It builds a zip file with all dependencies.
 func BuildWorkflowDistribution(workflowPath string) error {
 
 	fmt.Println("Finding dependencies for workflow: ", workflowPath)
-	dependencies, err := getDependenciesFromWdlContent2(workflowPath)
+	dependencies, err := getDependencies(workflowPath)
 	if err != nil {
 		return nil
 	}
+
+	// TODO: Modify WDL file to have simplified imports.
+	// i.e.: import "dependencies.wdl" instead of import "path/to/dependencies.wdl"
 
 	fmt.Println("Packing dependencies into a zip file: ", dependencies)
 	depsName := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
@@ -27,7 +31,8 @@ func BuildWorkflowDistribution(workflowPath string) error {
 	return nil
 }
 
-func getDependenciesFromWdlContent2(filePath string) ([]string, error) {
+// getDependencies It recursively finds all dependencies.
+func getDependencies(filePath string) ([]string, error) {
 	var importPaths []string
 	// Load the content of the file
 	content, err := os.ReadFile(filePath)
@@ -48,7 +53,7 @@ func getDependenciesFromWdlContent2(filePath string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		subDependencies, err := getDependenciesFromWdlContent2(fullPath)
+		subDependencies, err := getDependencies(fullPath)
 		if err != nil {
 			fmt.Println("entrou no erro", err)
 			return nil, err
@@ -126,6 +131,7 @@ func packDependencies(n string, files []string) error {
 	return nil
 }
 
+// hasDuplicates checks if there are duplicated values in a slice
 func hasDuplicates(toZip []string) bool {
 	// create a map to store the count of each element
 	// in the slice
@@ -149,6 +155,7 @@ func hasDuplicates(toZip []string) bool {
 	return dup
 }
 
+// removeDuplicates removes duplicated values from a slice
 func removeDuplicates(input []string) []string {
 	seen := make(map[string]bool)
 	var result []string
@@ -163,6 +170,7 @@ func removeDuplicates(input []string) []string {
 	return result
 }
 
+// resolvePath resolves a relative path to an absolute path
 func resolvePath(basePath, relativePath string) (string, error) {
 	// Get the directory of the base path
 	dir := filepath.Dir(basePath)
