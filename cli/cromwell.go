@@ -31,3 +31,17 @@ func localDeploy() *cli.Command {
 		},
 	}
 }
+
+func packDependencies() *cli.Command {
+	return &cli.Command{
+		Name:    "build",
+		Aliases: []string{"b"},
+		Usage:   "Edit import statements in WDLs and build a zip file with all dependencies",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
+		},
+		Action: func(c *cli.Context) error {
+			return util.BuildWorkflowDistribution(c.String("wdl"))
+		},
+	}
+}

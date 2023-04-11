@@ -33,6 +33,7 @@ func setupApp(version string) *cli.App {
 		gcp(cmds),
 		navigate(ui),
 		localDeploy(),
+		packDependencies(),
 	}
 
 	// Define the Flags slice
