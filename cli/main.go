@@ -5,13 +5,16 @@ import (
 	"os"
 
 	"github.com/lmtani/cromwell-cli/internal/commands"
-	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
 )
 
+// Define global variables to be injected
+var (
+	cmds *commands.Commands
+)
+
 func setupApp(version string) *cli.App {
-	cmds := commands.New()
-	ui := prompt.NewTermUi()
+	cmds = commands.New()
 
 	// Define the Before function
 	beforeFunc := func(c *cli.Context) error {
@@ -23,15 +26,15 @@ func setupApp(version string) *cli.App {
 	// Define the Commands slice
 	commandsSlice := []*cli.Command{
 		getVersion(version),
-		query(cmds),
-		wait(cmds),
-		submit(cmds),
-		inputs(cmds),
-		kill(cmds),
-		metadata(cmds),
-		outputs(cmds),
-		gcp(cmds),
-		navigate(ui),
+		query(),
+		wait(),
+		submit(),
+		inputs(),
+		kill(),
+		metadata(),
+		outputs(),
+		gcp(),
+		navigate(),
 		localDeploy(),
 	}
 
