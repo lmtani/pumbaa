@@ -2,6 +2,7 @@ package util
 
 import (
 	"archive/zip"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -19,8 +20,8 @@ func BuildWorkflowDistribution(workflowPath string) error {
 		return nil
 	}
 
-	// TODO: Modify WDL file to have simplified imports.
-	// i.e.: import "dependencies.wdl" instead of import "path/to/dependencies.wdl"
+	// Modify WDL file to have simplified imports. i.e.: import "dependencies.wdl" instead of import "path/to/dependencies.wdl"
+	replaceImports(workflowPath)
 
 	fmt.Println("Packing dependencies into a zip file: ", dependencies)
 	depsName := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
@@ -29,6 +30,63 @@ func BuildWorkflowDistribution(workflowPath string) error {
 		return err
 	}
 	return nil
+}
+
+func replaceImports(path string) {
+
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer file.Close()
+
+	outputFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", filepath.Base(path)))
+	fmt.Println("Creating temp file: ", outputFile.Name())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer outputFile.Close()
+
+	importRegex := regexp.MustCompile(`import\s+["'].*\/(.+)["']`)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Check if the line contains an import statement
+		match := importRegex.FindStringSubmatch(line)
+		if len(match) > 0 {
+			// Get the filename from the import statement
+			filename := match[1]
+
+			// Update the line with the new import statement
+			newLine := strings.ReplaceAll(line, match[0], fmt.Sprintf(`import "%s"`, filename))
+
+			// Write the modified line to the output file
+			_, err := outputFile.WriteString(newLine + "\n")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			// Print the original and modified import statements
+			fmt.Printf("Original import: %s\nModified import: %s\n", line, newLine)
+		} else {
+			// Write the original line to the output file
+			_, err := outputFile.WriteString(line + "\n")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 // getDependencies It recursively finds all dependencies.
@@ -95,7 +153,7 @@ func packDependencies(n string, files []string) error {
 
 	// Add files to the zip archive
 	for _, filename := range files {
-		file, err := os.Open(filename)
+		file, err := os.Open(filename) // TODO: criacao de arquivo temporario aqui
 		if err != nil {
 			return err
 		}
