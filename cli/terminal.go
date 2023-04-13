@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/internal/commands"
-	"github.com/lmtani/cromwell-cli/internal/prompt"
 	"github.com/urfave/cli/v2"
 )
 
-func query(cmds *commands.Commands) *cli.Command {
+func query() *cli.Command {
 	return &cli.Command{
 		Name:    "query",
 		Aliases: []string{"q"},
@@ -24,7 +22,7 @@ func query(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func wait(cmds *commands.Commands) *cli.Command {
+func wait() *cli.Command {
 	return &cli.Command{
 		Name:    "wait",
 		Aliases: []string{"w"},
@@ -39,7 +37,7 @@ func wait(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func submit(cmds *commands.Commands) *cli.Command {
+func submit() *cli.Command {
 	return &cli.Command{
 		Name:    "submit",
 		Aliases: []string{"s"},
@@ -56,7 +54,7 @@ func submit(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func inputs(cmds *commands.Commands) *cli.Command {
+func inputs() *cli.Command {
 	return &cli.Command{
 		Name:    "inputs",
 		Aliases: []string{"i"},
@@ -70,7 +68,7 @@ func inputs(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func kill(cmds *commands.Commands) *cli.Command {
+func kill() *cli.Command {
 	return &cli.Command{
 		Name:    "kill",
 		Aliases: []string{"k"},
@@ -84,7 +82,7 @@ func kill(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func metadata(cmds *commands.Commands) *cli.Command {
+func metadata() *cli.Command {
 	return &cli.Command{
 		Name:    "metadata",
 		Aliases: []string{"m"},
@@ -98,7 +96,7 @@ func metadata(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func outputs(cmds *commands.Commands) *cli.Command {
+func outputs() *cli.Command {
 	return &cli.Command{
 		Name:    "outputs",
 		Aliases: []string{"o"},
@@ -112,7 +110,7 @@ func outputs(cmds *commands.Commands) *cli.Command {
 	}
 }
 
-func navigate(ui *prompt.TermUi) *cli.Command {
+func navigate() *cli.Command {
 	return &cli.Command{
 		Name:    "navigate",
 		Aliases: []string{"n"},
@@ -121,12 +119,12 @@ func navigate(ui *prompt.TermUi) *cli.Command {
 			&cli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 		},
 		Action: func(c *cli.Context) error {
-			return ui.Navigate(c.String("operation"))
+			return cmds.Navigate(c.String("operation"))
 		},
 	}
 }
 
-func gcp(cmds *commands.Commands) *cli.Command {
+func gcp() *cli.Command {
 	return &cli.Command{
 		Name:    "gcp",
 		Aliases: []string{"g"},

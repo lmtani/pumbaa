@@ -244,3 +244,48 @@ func ExampleCommands_MetadataWorkflow_second() {
 	//  - Workflow input processing failed
 	//  - Required workflow input 'HelloWorld.name' not specified
 }
+
+func MockSelectByKey(taskOptions []string) (string, error) {
+	return "SayGoodbye", nil
+}
+
+func MockSelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
+	return 1, nil
+}
+
+func Example_navigate() {
+	// Mock http server
+	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	if err != nil {
+		fmt.Print("Could no read metadata mock file metadata.json")
+	}
+
+	// Mock http server
+	operation := "aaaa-bbbb-uuid"
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
+	defer ts.Close()
+
+	// Mock prompt interaction
+	defaultPromptSelectKey = MockSelectByKey
+	defaultPromptSelectIndex = MockSelectByIndex
+
+	cmds := BuildTestCommands(ts.URL, "")
+
+	err = cmds.Navigate(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	// Output:
+	// Workflow: HelloHere
+	//
+	// Command status: Done
+	// echo "HelloWorld!"
+	// Logs:
+	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stderr
+	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/stdout
+	//
+	// gs://bucket/HelloHere/a1606e3a-611e-4a60-8cac-dcbe90ce3d14/call-SayGoodbye/SayGoodbye.log
+	//
+	// 🐋 Docker image:
+	// ubuntu:20.04
+}
