@@ -41,7 +41,7 @@ func packDependencies() *cli.Command {
 			&cli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
 		},
 		Action: func(c *cli.Context) error {
-			return util.BuildWorkflowDistribution(c.String("wdl"))
+			return util.BuildWorkflowDist(c.String("wdl"))
 		},
 	}
 }

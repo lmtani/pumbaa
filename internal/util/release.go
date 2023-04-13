@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-// BuildWorkflowDistribution It builds a zip file with all dependencies.
-func BuildWorkflowDistribution(workflowPath string) error {
+// BuildWorkflowDist It builds a zip file with all dependencies.
+func BuildWorkflowDist(workflowPath string) error {
 
 	fmt.Println("Finding dependencies for workflow: ", workflowPath)
 	dependencies, err := getDependencies(workflowPath)
@@ -21,23 +21,53 @@ func BuildWorkflowDistribution(workflowPath string) error {
 	}
 
 	// Modify WDL file to have simplified imports. i.e.: import "dependencies.wdl" instead of import "path/to/dependencies.wdl"
-	replaceImports(workflowPath)
+	releaseWorkflow, err := replaceImports(workflowPath)
+	if err != nil {
+		return err
+	}
 
-	fmt.Println("Packing dependencies into a zip file: ", dependencies)
+	// create releases directory
+	err = createDirectory("releases")
+	if err != nil {
+		return err
+	}
+	// set write permission to releases directory
+	err = os.Chmod("releases", 0777)
+	if err != nil {
+		return err
+	}
+
+	// remove suffix pattern. Ex: aaa_vvv_ddd.wdl_a23143123 -> aaa_vvv_ddd.wdl
+	newName := strings.Replace(releaseWorkflow, filepath.Ext(releaseWorkflow), "", 1)
+	// get filename
+	newName = filepath.Base(newName) + ".wdl"
+
+	// move the modified WDL file to the releases directory
+	fmt.Println("Moving file to releases directory: ", newName)
+	err = os.Rename(releaseWorkflow, filepath.Join("releases", newName))
+	if err != nil {
+		return err
+	}
+
 	depsName := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
 	err = packDependencies(depsName, dependencies)
+	if err != nil {
+		return err
+	}
+	// move the zip file to the releases directory
+	err = os.Rename(depsName, filepath.Join("releases", depsName))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func replaceImports(path string) {
+func replaceImports(path string) (string, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return "", err
 	}
 	defer file.Close()
 
@@ -45,7 +75,7 @@ func replaceImports(path string) {
 	fmt.Println("Creating temp file: ", outputFile.Name())
 	if err != nil {
 		fmt.Println(err)
-		return
+		return "", err
 	}
 	defer outputFile.Close()
 
@@ -68,7 +98,7 @@ func replaceImports(path string) {
 			_, err := outputFile.WriteString(newLine + "\n")
 			if err != nil {
 				fmt.Println(err)
-				return
+				return "", err
 			}
 
 			// Print the original and modified import statements
@@ -78,15 +108,16 @@ func replaceImports(path string) {
 			_, err := outputFile.WriteString(line + "\n")
 			if err != nil {
 				fmt.Println(err)
-				return
+				return "", err
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
-		return
+		return "", err
 	}
+	return outputFile.Name(), nil
 }
 
 // getDependencies It recursively finds all dependencies.
@@ -128,16 +159,25 @@ func getDependencies(filePath string) ([]string, error) {
 // packDependencies packs all files in a folder into a zip file
 // It will return an error if there are duplicated files in the folder
 func packDependencies(n string, files []string) error {
-	// create a slice with basenames of files
+	// create a slice with basenames of files and check if any duplicated value in filesToZip
 	var filesToZip []string
 	for _, file := range files {
 		filesToZip = append(filesToZip, filepath.Base(file))
 	}
-
-	// check if any duplicated value in filesToZip
 	if hasDuplicates(filesToZip) {
 		return fmt.Errorf("duplicate files found in dependencies folder")
 	}
+
+	// Replace import statements
+	var replacedFiles []string
+	for _, file := range files {
+		tempFile, err := replaceImports(file)
+		if err != nil {
+			return err
+		}
+		replacedFiles = append(replacedFiles, tempFile)
+	}
+	fmt.Println(replacedFiles)
 
 	// Create a new zip file
 	zipFile, err := os.Create(n)
@@ -152,40 +192,52 @@ func packDependencies(n string, files []string) error {
 	defer zipWriter.Close()
 
 	// Add files to the zip archive
-	for _, filename := range files {
-		file, err := os.Open(filename) // TODO: criacao de arquivo temporario aqui
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		// Get the file information
-		info, err := file.Stat()
-		if err != nil {
-			return err
-		}
-
-		// Create a new file header
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-
-		// Set the name of the file within the zip archive
-		header.Name = filepath.Base(filename)
-
-		// Add the file to the zip archive
-		writer, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(writer, file)
+	for _, filename := range replacedFiles {
+		fmt.Println("Adding file to zip: ", filename)
+		err := addFileToZip(filename, zipWriter)
 		if err != nil {
 			return err
 		}
 	}
 
 	fmt.Println("Zip file created successfully")
+	return nil
+}
+
+func addFileToZip(filename string, zipWriter *zip.Writer) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Get the file information
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	// Create a new file header
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return err
+	}
+
+	// Remove the suffix pattern after "_" due to temp file name
+	filename = strings.Replace(filename, filepath.Ext(filename), "", 1)
+
+	// Set the name of the file within the zip archive
+	header.Name = filepath.Base(filename) + ".wdl"
+
+	// Add the file to the zip archive
+	writer, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(writer, file)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
