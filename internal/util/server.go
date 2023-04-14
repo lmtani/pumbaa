@@ -7,14 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
-	"sync"
-	"syscall"
 	"time"
-
-	"github.com/spf13/viper"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/schollz/progressbar/v3"
@@ -22,12 +17,45 @@ import (
 
 const CromwellUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
 
-func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig bool) error {
+func StartCromwellServer(c Config, replaceConfig bool) error {
+	err := checkRequirements(c.Database)
+	if err != nil {
+		return err
+	}
 
-	// create a channel to receive signals
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	cromwell, err := cromwellSavePath()
+	if err != nil {
+		return err
+	}
 
+	// Download Cromwell if it does not exist
+	_, err = os.Stat(cromwell)
+	if os.IsNotExist(err) {
+		err = DownloadCromwell(cromwell)
+		if err != nil {
+			return err
+		}
+	}
+
+	basePath := filepath.Dir(cromwell)
+	config := filepath.Join(basePath, "cromwell.conf")
+	_, err = os.Stat(config)
+	if os.IsNotExist(err) || replaceConfig {
+		err = createCromwellConfig(config, c)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = startCromwellProcess(cromwell, config, basePath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkRequirements(db Database) error {
+	var err error
 	docker := isInUserPath("docker")
 	if !docker {
 		return fmt.Errorf("docker is not installed. please install docker first")
@@ -38,7 +66,7 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig boo
 		return fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
 	}
 
-	err := checkMysqlConn(db)
+	err = checkMysqlConn(db)
 	if err != nil {
 		return fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
 
@@ -50,7 +78,6 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig boo
 			  - docker start cromwell-db
 		`)
 	}
-
 	// check if it has internet connection
 	_, err = http.Get("https://www.google.com")
 	if err != nil {
@@ -62,77 +89,12 @@ func StartCromwellServer(db MysqlConfig, webport, maxJobs int, replaceConfig boo
 		return fmt.Errorf("windows is not supported. please use linux or macos")
 	}
 
-	cromwell, err := cromwellSavePath()
-	if err != nil {
-		return err
-	}
-
-	_, err = os.Stat(cromwell)
-	if os.IsNotExist(err) {
-		err = DownloadCromwell(cromwell)
-		if err != nil {
-			return err
-		}
-	}
-
-	// get path before the last slash
-	configPath := filepath.Dir(cromwell)
-
-	config := filepath.Join(configPath, "cromwell.json")
-	_, err = os.Stat(config)
-	if os.IsNotExist(err) || replaceConfig {
-		err = createDefaultConfig(db, config, webport, maxJobs)
-		if err != nil {
-			return err
-		}
-	} else {
-		fmt.Println("config file already exists. skipping...")
-	}
-
-	err = startCromwellProcess(cromwell, config)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func startCromwellProcess(cromwellPath, configFile string) error {
-	cmd := exec.Command("java", "-DLOG_MODE=pretty", fmt.Sprintf("-Dconfig.file=%s", configFile), "-jar", cromwellPath, "server")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = filepath.Dir(cromwellPath)
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	// Create a channel to receive signals
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// Create a WaitGroup to wait for the goroutine to exit
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-
-	// Start a goroutine to wait for signals and exit gracefully
-	go func() {
-		defer wg.Done()
-		<-sigChan // Wait for a signal
-		fmt.Println("Received signal, stopping Cromwell process...")
-		err := cmd.Process.Signal(os.Interrupt) // Send interrupt signal to the process
-		if err != nil {
-			fmt.Println("Failed to send interrupt signal to Cromwell process:", err)
-		}
-		err = cmd.Wait() // Wait for the process to exit
-		if err != nil {
-			fmt.Println("Cromwell process exited with error:", err)
-		}
-		fmt.Println("Cromwell process stopped.")
-	}()
-
-	// Wait for the goroutine to exit
-	wg.Wait()
-
+func startCromwellProcess(cromwellPath, configFile, basePath string) error {
+	fmt.Println("To start the Cromwell Server run:")
+	fmt.Printf("cd %s && java -DLOG_MODE=pretty -Dconfig.file=%s -jar %s server", basePath, configFile, cromwellPath)
 	return nil
 }
 
@@ -220,7 +182,7 @@ func cromwellSavePath() (string, error) {
 
 func createDirectory(p string) error {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-		err := os.MkdirAll(p, 0600)
+		err := os.MkdirAll(p, 0777)
 		if err != nil {
 			return err
 		}
@@ -235,43 +197,8 @@ type MysqlConfig struct {
 	Password string
 }
 
-func createDefaultConfig(db MysqlConfig, config string, port, maxConcurrentJobs int) error {
-	viper.SetConfigType("json")
-
-	// Set the configuration values
-	viper.Set("backend.default", "Local")
-	viper.Set("backend.providers.Local.actor-factory", "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory")
-	viper.Set("backend.providers.Local.config.max-concurrent-workflows", 1)
-	viper.Set("backend.providers.Local.config.concurrent-job-limit", maxConcurrentJobs)
-	viper.Set("backend.providers.Local.config.filesystems.local.localization", []string{"hard-link", "soft-link", "copy"})
-
-	viper.Set("webservice.port", port)
-
-	viper.Set("database.profile", "slick.jdbc.MySQLProfile$")
-	viper.Set("database.db.driver", "com.mysql.cj.jdbc.Driver")
-	viper.Set("database.db.url", fmt.Sprintf("jdbc:mysql://%s:%d/cromwell?rewriteBatchedStatements=true&useSSL=false", db.Host, db.Port))
-	viper.Set("database.db.user", db.Username)
-	viper.Set("database.db.password", db.Password)
-	viper.Set("database.db.connectionTimeout", 50000)
-
-	viper.Set("call-caching.enabled", true)
-	viper.Set("call-caching.invalidate-bad-cache-results", true)
-
-	viper.Set("docker.perform-registry-lookup-if-digest-is-provided", false)
-
-	// Write the configuration to file
-	err := viper.WriteConfigAs(config)
-	if err != nil {
-		fmt.Printf("Error writing config file: %s", err)
-		return err
-	}
-
-	fmt.Println("Config file written successfully")
-	return nil
-}
-
-func checkMysqlConn(dbConf MysqlConfig) error {
-	dbConn := fmt.Sprintf("%s:%s@tcp(%s:%d)/", dbConf.Username, dbConf.Password, dbConf.Host, dbConf.Port)
+func checkMysqlConn(dbConf Database) error {
+	dbConn := fmt.Sprintf("%s:%s@tcp(%s:%d)/", dbConf.User, dbConf.Password, dbConf.Host, dbConf.Port)
 	db, err := sql.Open("mysql", dbConn)
 	if err != nil {
 		return err

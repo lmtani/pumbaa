@@ -21,13 +21,32 @@ func localDeploy() *cli.Command {
 			&cli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 		},
 		Action: func(c *cli.Context) error {
-			db := util.MysqlConfig{
-				Host:     c.String("mysql-host"),
-				Port:     c.Int("mysql-port"),
-				Username: c.String("mysql-user"),
-				Password: c.String("mysql-passwd"),
+			config := util.Config{
+				Backend: util.Backend{
+					Default:                "Local",
+					Provider:               "Local",
+					ActorFactory:           "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+					MaxConcurrentWorkflows: 100,
+					ConcurrentJobLimit:     100,
+				},
+				Database: util.Database{
+					Profile:           "slick.jdbc.MySQLProfile$",
+					Driver:            "com.mysql.cj.jdbc.Driver",
+					Host:              c.String("mysql-host"),
+					User:              "root",
+					Password:          "1234",
+					Port:              3306,
+					ConnectionTimeout: 50000,
+				},
+				CallCaching: util.CallCaching{
+					Enabled:                   true,
+					InvalidateBadCacheResults: true,
+				},
+				Docker: util.Docker{
+					PerformRegistryLookupIfDigestIsProvided: false,
+				},
 			}
-			return util.StartCromwellServer(db, c.Int("port"), c.Int("max-jobs"), c.Bool("override"))
+			return util.StartCromwellServer(config, c.Bool("override"))
 		},
 	}
 }
