@@ -1,9 +1,11 @@
-package util
+package cromwell
 
 import (
 	"fmt"
 	"os"
 	"text/template"
+
+	"github.com/urfave/cli/v2"
 )
 
 func createCromwellConfig(savePath string, config Config) error {
@@ -35,27 +37,27 @@ func createCromwellConfig(savePath string, config Config) error {
 }
 
 func getTemplate() string {
-
-	template := `backend {
+	return `backend {
   default = {{ .Backend.Default }}
 
   providers {
-
-    {{ .Backend.Provider }} {
-      actor-factory = "{{ .Backend.ActorFactory }}"
+    {{ range .Providers }}
+    {{ .Name }} {
+      actor-factory = "{{ .ActorFactor }}"
       config {
-        max-concurrent-workflows = {{ .Backend.MaxConcurrentWorkflows }}
-        concurrent-job-limit = {{ .Backend.ConcurrentJobLimit }}
+        max-concurrent-workflows = {{ .Config.MaxConcurrentWorkflows }}
+        concurrent-job-limit = {{ .Config.ConcurrentJobLimit }}
 
         filesystems {
           local {
             localization: [
-              {{ range .Backend.FileSystems.Localization }}"{{ . }}", {{ end }}
+            {{ range .Config.FileSystems.Local.Localization }}"{{ . }}",{{ end }}
             ]
           }
         }
       }
     }
+    {{ end }}
   }
 }
 
@@ -79,7 +81,10 @@ docker {
     perform-registry-lookup-if-digest-is-provided = {{ .Docker.PerformRegistryLookupIfDigestIsProvided }}
 }
 `
-	return template
+}
+
+type FileSystems struct {
+	Localization []string
 }
 
 type Backend struct {
@@ -88,9 +93,7 @@ type Backend struct {
 	ActorFactory           string
 	MaxConcurrentWorkflows int
 	ConcurrentJobLimit     int
-	FileSystems            struct {
-		Localization []string
-	}
+	FileSystems            FileSystems
 }
 
 type Database struct {
@@ -118,4 +121,34 @@ type Config struct {
 	Database
 	CallCaching
 	Docker
+}
+
+func ParseCliParams(c *cli.Context) Config {
+	config := Config{
+		Backend: Backend{
+			Default:                "Local",
+			Provider:               "Local",
+			ActorFactory:           "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+			MaxConcurrentWorkflows: 1,
+			ConcurrentJobLimit:     c.Int("max-jobs"),
+			FileSystems:            FileSystems{Localization: []string{"hard-link", "soft-link", "copy"}},
+		},
+		Database: Database{
+			Profile:           "slick.jdbc.MySQLProfile$",
+			Driver:            "com.mysql.cj.jdbc.Driver",
+			Host:              c.String("mysql-host"),
+			User:              c.String("mysql-user"),
+			Password:          c.String("mysql-passwd"),
+			Port:              c.Int("mysql-port"),
+			ConnectionTimeout: 50000,
+		},
+		CallCaching: CallCaching{
+			Enabled:                   true,
+			InvalidateBadCacheResults: true,
+		},
+		Docker: Docker{
+			PerformRegistryLookupIfDigestIsProvided: false,
+		},
+	}
+	return config
 }

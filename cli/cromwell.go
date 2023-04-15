@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/lmtani/cromwell-cli/internal/util"
+	"github.com/lmtani/cromwell-cli/internal/cromwell"
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,32 +21,8 @@ func localDeploy() *cli.Command {
 			&cli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 		},
 		Action: func(c *cli.Context) error {
-			config := util.Config{
-				Backend: util.Backend{
-					Default:                "Local",
-					Provider:               "Local",
-					ActorFactory:           "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-					MaxConcurrentWorkflows: 100,
-					ConcurrentJobLimit:     100,
-				},
-				Database: util.Database{
-					Profile:           "slick.jdbc.MySQLProfile$",
-					Driver:            "com.mysql.cj.jdbc.Driver",
-					Host:              c.String("mysql-host"),
-					User:              "root",
-					Password:          "1234",
-					Port:              3306,
-					ConnectionTimeout: 50000,
-				},
-				CallCaching: util.CallCaching{
-					Enabled:                   true,
-					InvalidateBadCacheResults: true,
-				},
-				Docker: util.Docker{
-					PerformRegistryLookupIfDigestIsProvided: false,
-				},
-			}
-			return util.StartCromwellServer(config, c.Bool("override"))
+			config := cromwell.ParseCliParams(c)
+			return cromwell.StartCromwellServer(config, c.Bool("override"))
 		},
 	}
 }
@@ -60,7 +36,7 @@ func packDependencies() *cli.Command {
 			&cli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
 		},
 		Action: func(c *cli.Context) error {
-			return util.BuildWorkflowDist(c.String("wdl"))
+			return cromwell.BuildWorkflowDist(c.String("wdl"))
 		},
 	}
 }
