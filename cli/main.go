@@ -24,7 +24,7 @@ func setupApp(version string) *cli.App {
 	}
 
 	// Define the Commands slice
-	commandsSlice := []*cli.Command{
+	cliCommands := []*cli.Command{
 		getVersion(version),
 		query(),
 		wait(),
@@ -40,7 +40,7 @@ func setupApp(version string) *cli.App {
 	}
 
 	// Define the Flags slice
-	flagsSlice := []cli.Flag{
+	cliFlags := []cli.Flag{
 		&cli.StringFlag{
 			Name:     "iap",
 			Required: false,
@@ -56,9 +56,9 @@ func setupApp(version string) *cli.App {
 	return &cli.App{
 		Name:     "cromwell-cli",
 		Usage:    "Command line interface for Cromwell Server",
-		Flags:    flagsSlice,
+		Flags:    cliFlags,
 		Before:   beforeFunc,
-		Commands: commandsSlice,
+		Commands: cliCommands,
 	}
 }
 
