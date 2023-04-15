@@ -1,6 +1,7 @@
 package cromwell
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"text/template"
@@ -8,12 +9,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func createCromwellConfig(savePath string, config Config) error {
-	fmt.Println("Creating cromwell config file...")
-	configTemplate := getTemplate()
+//go:embed config.tmpl
+var ConfigTmpl string
 
+func createCromwellConfig(savePath string, config Config) error {
 	// Parse the template
-	tmpl, err := template.New("config").Parse(configTemplate)
+
+	tmpl, err := template.New("config").Parse(ConfigTmpl)
 	if err != nil {
 		return err
 	}
@@ -36,64 +38,39 @@ func createCromwellConfig(savePath string, config Config) error {
 	return nil
 }
 
-func getTemplate() string {
-	return `backend {
-  default = {{ .Backend.Default }}
-
-  providers {
-    {{ range .Providers }}
-    {{ .Name }} {
-      actor-factory = "{{ .ActorFactor }}"
-      config {
-        max-concurrent-workflows = {{ .Config.MaxConcurrentWorkflows }}
-        concurrent-job-limit = {{ .Config.ConcurrentJobLimit }}
-
-        filesystems {
-          local {
-            localization: [
-            {{ range .Config.FileSystems.Local.Localization }}"{{ . }}",{{ end }}
-            ]
-          }
-        }
-      }
-    }
-    {{ end }}
-  }
+type BackendConfig struct {
+	Default   string
+	Providers []ProviderConfig
 }
 
-database {
-  profile = "{{ .Database.Profile }}"
-  db {
-    driver = "{{ .Database.Driver }}"
-    url = "{{ .Database.URL }}"
-    user = "{{ .Database.User }}"
-    password = "{{ .Database.Password }}"
-    connectionTimeout = {{ .Database.ConnectionTimeout }}
-  }
+type ProviderConfig struct {
+	Name        string
+	ActorFactor string
+	Config      ProviderSettings
 }
 
-call-caching {
-  enabled = {{ .CallCaching.Enabled }}
-  invalidate-bad-cache-results = {{ .CallCaching.InvalidateBadCacheResults }}
-}
-
-docker {
-    perform-registry-lookup-if-digest-is-provided = {{ .Docker.PerformRegistryLookupIfDigestIsProvided }}
-}
-`
-}
-
-type FileSystems struct {
-	Localization []string
-}
-
-type Backend struct {
-	Default                string
-	Provider               string
-	ActorFactory           string
+type ProviderSettings struct {
 	MaxConcurrentWorkflows int
 	ConcurrentJobLimit     int
-	FileSystems            FileSystems
+	FileSystems            Engine
+}
+
+type GcsFilesystem struct {
+	Auth string `json:"auth"`
+}
+
+type LocalFilesystem struct {
+	Localization []string `json:"localization"`
+}
+
+type Filesystems struct {
+	GcsFilesystem   `json:"gcs,omitempty"`
+	HTTP            struct{} `json:"http,omitempty"`
+	LocalFilesystem `json:"local,omitempty"`
+}
+
+type Engine struct {
+	Filesystems `json:"filesystems"`
 }
 
 type Database struct {
@@ -117,21 +94,28 @@ type Docker struct {
 }
 
 type Config struct {
-	Backend
+	BackendConfig
 	Database
 	CallCaching
 	Docker
+	Engine
 }
 
 func ParseCliParams(c *cli.Context) Config {
+	engines := Engine{
+		Filesystems{
+			HTTP:            struct{}{},
+			GcsFilesystem:   GcsFilesystem{Auth: "application-default"},
+			LocalFilesystem: LocalFilesystem{Localization: []string{"hard-link", "soft-link", "copy"}},
+		},
+	}
+
 	config := Config{
-		Backend: Backend{
-			Default:                "Local",
-			Provider:               "Local",
-			ActorFactory:           "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-			MaxConcurrentWorkflows: 1,
-			ConcurrentJobLimit:     c.Int("max-jobs"),
-			FileSystems:            FileSystems{Localization: []string{"hard-link", "soft-link", "copy"}},
+		BackendConfig: BackendConfig{
+			Default: "Local",
+			Providers: []ProviderConfig{
+				{Name: "Local", ActorFactor: "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory", Config: ProviderSettings{MaxConcurrentWorkflows: 1, ConcurrentJobLimit: c.Int("max-jobs"), FileSystems: engines}},
+			},
 		},
 		Database: Database{
 			Profile:           "slick.jdbc.MySQLProfile$",
@@ -149,6 +133,7 @@ func ParseCliParams(c *cli.Context) Config {
 		Docker: Docker{
 			PerformRegistryLookupIfDigestIsProvided: false,
 		},
+		Engine: engines,
 	}
 	return config
 }
