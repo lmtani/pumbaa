@@ -15,24 +15,39 @@ import (
 
 // Define global variables to be injected
 var (
-	cmds *cmd.Commands
+	cmdService *cmd.Commands
 )
 
 func setupApp(version string) *urfaveCli.App {
-	cmds = cmd.New()
-	generalCategory := "General"
-	googleCategory := "Google"
-	setupCategory := "Setup"
+	// Start service
+	cmdService = cmd.New()
 
-	// Define the Before function
+	// Override the default cromwell server host
 	beforeFunc := func(c *urfaveCli.Context) error {
-		cmds.CromwellClient.Host = c.String("host")
-		cmds.CromwellClient.Iap = c.String("iap")
+		cmdService.CromwellClient.Host = c.String("host")
+		cmdService.CromwellClient.Iap = c.String("iap")
 		return nil
 	}
 
-	// Define the Commands slice
-	cliCommands := []*urfaveCli.Command{
+	// Define global flags
+	flags := []urfaveCli.Flag{
+		&urfaveCli.StringFlag{
+			Name:     "iap",
+			Required: false,
+			Usage:    "Uses your default Google Credentials to obtains an access token to this audience.",
+		},
+		&urfaveCli.StringFlag{
+			Name:  "host",
+			Value: "http://127.0.0.1:8000",
+			Usage: "Url for your Cromwell Server",
+		},
+	}
+
+	// Define the urfaveCli.App.Commands slice
+	generalCategory := "General"
+	googleCategory := "Google"
+	setupCategory := "Setup"
+	cmds := []*urfaveCli.Command{
 		{
 			Name:     "version",
 			Aliases:  []string{"v"},
@@ -53,7 +68,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+				return cmdService.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
 			},
 		},
 		{
@@ -66,7 +81,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.Wait(c.String("operation"), c.Int("sleep"))
+				return cmdService.Wait(c.String("operation"), c.Int("sleep"))
 			},
 		},
 		{
@@ -81,7 +96,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false, Usage: "Path to the options JSON file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+				return cmdService.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
 			},
 		},
 		{
@@ -93,7 +108,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.Inputs(c.String("operation"))
+				return cmdService.Inputs(c.String("operation"))
 			},
 		},
 		{
@@ -105,7 +120,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.KillWorkflow(c.String("operation"))
+				return cmdService.KillWorkflow(c.String("operation"))
 			},
 		},
 		{
@@ -117,7 +132,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.MetadataWorkflow(c.String("operation"))
+				return cmdService.MetadataWorkflow(c.String("operation"))
 			},
 		},
 		{
@@ -129,7 +144,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.OutputsWorkflow(c.String("operation"))
+				return cmdService.OutputsWorkflow(c.String("operation"))
 			},
 		},
 		{
@@ -141,7 +156,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmds.Navigate(c.String("operation"))
+				return cmdService.Navigate(c.String("operation"))
 			},
 		},
 		{
@@ -157,7 +172,7 @@ func setupApp(version string) *urfaveCli.App {
 						&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 					},
 					Action: func(c *urfaveCli.Context) error {
-						return cmds.ResourcesUsed(c.String("operation"))
+						return cmdService.ResourcesUsed(c.String("operation"))
 					},
 				},
 			},
@@ -196,26 +211,12 @@ func setupApp(version string) *urfaveCli.App {
 		},
 	}
 
-	// Define the Flags slice
-	cliFlags := []urfaveCli.Flag{
-		&urfaveCli.StringFlag{
-			Name:     "iap",
-			Required: false,
-			Usage:    "Uses your default Google Credentials to obtains an access token to this audience.",
-		},
-		&urfaveCli.StringFlag{
-			Name:  "host",
-			Value: "http://127.0.0.1:8000",
-			Usage: "Url for your Cromwell Server",
-		},
-	}
-
 	return &urfaveCli.App{
 		Name:     "cromwell-cli",
 		Usage:    "Command line interface for Cromwell Server",
-		Flags:    cliFlags,
+		Flags:    flags,
 		Before:   beforeFunc,
-		Commands: cliCommands,
+		Commands: cmds,
 	}
 }
 
