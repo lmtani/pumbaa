@@ -20,6 +20,9 @@ var (
 
 func setupApp(version string) *urfaveCli.App {
 	cmds = cmd.New()
+	generalCategory := "General"
+	googleCategory := "Google"
+	setupCategory := "Setup"
 
 	// Define the Before function
 	beforeFunc := func(c *urfaveCli.Context) error {
@@ -31,18 +34,20 @@ func setupApp(version string) *urfaveCli.App {
 	// Define the Commands slice
 	cliCommands := []*urfaveCli.Command{
 		{
-			Name:    "version",
-			Aliases: []string{"v"},
-			Usage:   "Cromwell-CLI version",
+			Name:     "version",
+			Aliases:  []string{"v"},
+			Usage:    "Cromwell-CLI version",
+			Category: generalCategory,
 			Action: func(c *urfaveCli.Context) error {
 				fmt.Printf("Version: %s\n", version)
 				return nil
 			},
 		},
 		{
-			Name:    "query",
-			Aliases: []string{"q"},
-			Usage:   "Query workflows",
+			Name:     "query",
+			Aliases:  []string{"q"},
+			Usage:    "Query workflows",
+			Category: generalCategory,
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false, Value: "", Usage: "Filter by workflow name"},
 				&urfaveCli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
@@ -52,9 +57,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "wait",
-			Aliases: []string{"w"},
-			Usage:   "Wait for operation until it is complete",
+			Name:     "wait",
+			Aliases:  []string{"w"},
+			Category: generalCategory,
+			Usage:    "Wait for operation until it is complete",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				&urfaveCli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
@@ -64,9 +70,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "submit",
-			Aliases: []string{"s"},
-			Usage:   "Submit a workflow and its inputs to Cromwell",
+			Name:     "submit",
+			Aliases:  []string{"s"},
+			Usage:    "Submit a workflow and its inputs to Cromwell",
+			Category: generalCategory,
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true, Usage: "Path to the WDL file"},
 				&urfaveCli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true, Usage: "Path to the inputs JSOM file"},
@@ -78,9 +85,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "inputs",
-			Aliases: []string{"i"},
-			Usage:   "Recover inputs from the specified workflow (JSON)",
+			Name:     "inputs",
+			Aliases:  []string{"i"},
+			Usage:    "Recover inputs from the specified workflow (JSON)",
+			Category: generalCategory,
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
@@ -89,9 +97,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "kill",
-			Aliases: []string{"k"},
-			Usage:   "Kill a running job",
+			Name:     "kill",
+			Aliases:  []string{"k"},
+			Category: generalCategory,
+			Usage:    "Kill a running job",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
@@ -100,9 +109,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "metadata",
-			Aliases: []string{"m"},
-			Usage:   "Inspect workflow details (table)",
+			Name:     "metadata",
+			Aliases:  []string{"m"},
+			Category: generalCategory,
+			Usage:    "Inspect workflow details (table)",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
@@ -111,9 +121,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "outputs",
-			Aliases: []string{"o"},
-			Usage:   "Query workflow outputs (JSON)",
+			Name:     "outputs",
+			Aliases:  []string{"o"},
+			Category: generalCategory,
+			Usage:    "Query workflow outputs (JSON)",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
@@ -122,9 +133,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "navigate",
-			Aliases: []string{"n"},
-			Usage:   "Navigate through metadata data",
+			Name:     "navigate",
+			Aliases:  []string{"n"},
+			Category: generalCategory,
+			Usage:    "Navigate through metadata data",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
@@ -133,9 +145,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "gcp",
-			Aliases: []string{"g"},
-			Usage:   "Use commands specific for Google backend",
+			Name:     "gcp",
+			Aliases:  []string{"g"},
+			Category: googleCategory,
+			Usage:    "Use commands specific for Google backend",
 			Subcommands: []*urfaveCli.Command{
 				{
 					Name:  "resources",
@@ -150,9 +163,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "local-deploy",
-			Aliases: []string{"ld"},
-			Usage:   "Install Cromwell Server locally with default configuration and start it",
+			Name:     "local-deploy",
+			Aliases:  []string{"ld"},
+			Category: setupCategory,
+			Usage:    "Install Cromwell Server locally with default configuration and start it",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "mysql-host", Required: false, Value: "127.0.0.1", Usage: "Your MySQL host"},
 				&urfaveCli.StringFlag{Name: "mysql-passwd", Aliases: []string{"d"}, Required: false, Value: "1234", Usage: "Your MySQL password"},
@@ -169,9 +183,10 @@ func setupApp(version string) *urfaveCli.App {
 			},
 		},
 		{
-			Name:    "build",
-			Aliases: []string{"b"},
-			Usage:   "Edit import statements in WDLs and build a zip file with all dependencies",
+			Name:     "build",
+			Aliases:  []string{"b"},
+			Category: setupCategory,
+			Usage:    "Edit import statements in WDLs and build a zip file with all dependencies",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
 			},
