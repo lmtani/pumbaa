@@ -8,18 +8,18 @@ import (
 
 	cromwell2 "github.com/lmtani/cromwell-cli/cromwell"
 
-	"github.com/lmtani/cromwell-cli/commands"
+	"github.com/lmtani/cromwell-cli/cmd"
 
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 // Define global variables to be injected
 var (
-	cmds *commands.Commands
+	cmds *cmd.Commands
 )
 
 func setupApp(version string) *urfaveCli.App {
-	cmds = commands.New()
+	cmds = cmd.New()
 
 	// Define the Before function
 	beforeFunc := func(c *urfaveCli.Context) error {
