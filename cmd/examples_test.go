@@ -7,13 +7,13 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func BuildTestCommands(h, i string) *Commands {
 	cmds := New()
-	cmds.CromwellClient = cromwell.New(h, i)
+	cmds.CromwellClient = cromwell_client.New(h, i)
 	cmds.Writer = output.NewColoredWriter(os.Stdout)
 	return cmds
 }
@@ -66,7 +66,7 @@ func ExampleCommands_QueryWorkflow() {
 
 func ExampleCommands_Inputs() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Could no read metadata mock file metadata.json")
 	}
@@ -104,7 +104,7 @@ func ExampleCommands_KillWorkflow() {
 
 func ExampleCommands_ResourcesUsed() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -185,7 +185,7 @@ func ExampleCommands_Wait() {
 
 func ExampleCommands_MetadataWorkflow() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -219,7 +219,7 @@ func ExampleCommands_MetadataWorkflow() {
 
 func ExampleCommands_MetadataWorkflow_second() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata-failed.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata-failed.json")
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -255,7 +255,7 @@ func MockSelectByIndex(sfn func(input string, index int) bool, items interface{}
 
 func Example_navigate() {
 	// Mock http server
-	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
 		fmt.Print("Could no read metadata mock file metadata.json")
 	}

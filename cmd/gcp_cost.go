@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func (c *Commands) ResourcesUsed(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, &cromwell.ParamsMetadataGet{ExpandSubWorkflows: true})
+	resp, err := c.CromwellClient.Metadata(operation, &cromwell_client.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
 		return err
 	}
@@ -39,19 +39,19 @@ func dashIfZero(v float64) string {
 	return s
 }
 
-func GetComputeUsageForPricing(data cromwell.CallItemSet) (cromwell.TotalResources, error) {
-	t := cromwell.TotalResources{}
+func GetComputeUsageForPricing(data cromwell_client.CallItemSet) (cromwell_client.TotalResources, error) {
+	t := cromwell_client.TotalResources{}
 	iterateOverTasks(data, &t)
 	return t, nil
 }
 
-func iterateOverTasks(data cromwell.CallItemSet, t *cromwell.TotalResources) {
+func iterateOverTasks(data cromwell_client.CallItemSet, t *cromwell_client.TotalResources) {
 	for key := range data {
 		iterateOverElements(data[key], t)
 	}
 }
 
-func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
+func iterateOverElements(c []cromwell_client.CallItem, t *cromwell_client.TotalResources) {
 	HoursInMonth := 720.0
 
 	for i := range c {
@@ -85,17 +85,17 @@ func iterateOverElements(c []cromwell.CallItem, t *cromwell.TotalResources) {
 	}
 }
 
-func iterateOverElement(call *cromwell.CallItem) (cromwell.ParsedCallAttributes, error) {
+func iterateOverElement(call *cromwell_client.CallItem) (cromwell_client.ParsedCallAttributes, error) {
 	runtimeAttrs := call.RuntimeAttributes
 	size, diskType, err := parseDisk(runtimeAttrs)
 	if err != nil {
-		return cromwell.ParsedCallAttributes{}, err
+		return cromwell_client.ParsedCallAttributes{}, err
 	}
 	totalSsd, totalHdd := calculateDiskSize(diskType, size)
 	cpus, _ := strconv.ParseFloat(runtimeAttrs.CPU, 32)
 	memory, _ := parseMemory(runtimeAttrs)
 
-	parsed := cromwell.ParsedCallAttributes{
+	parsed := cromwell_client.ParsedCallAttributes{
 		Preempt:  runtimeAttrs.Preemptible != "0",
 		Hdd:      totalHdd,
 		Ssd:      totalSsd,
@@ -119,7 +119,7 @@ func calculateDiskSize(diskType string, size float64) (float64, float64) {
 	return totalSsd, totalHdd
 }
 
-func parseDisk(r cromwell.RuntimeAttributes) (float64, string, error) {
+func parseDisk(r cromwell_client.RuntimeAttributes) (float64, string, error) {
 	workDisk := strings.Fields(r.Disks)
 	if len(workDisk) == 0 {
 		return 0, "", fmt.Errorf("no disks, found: %#v", r.Disks)
@@ -137,7 +137,7 @@ func parseDisk(r cromwell.RuntimeAttributes) (float64, string, error) {
 	return size + boot, diskType, nil
 }
 
-func parseMemory(r cromwell.RuntimeAttributes) (float64, error) {
+func parseMemory(r cromwell_client.RuntimeAttributes) (float64, error) {
 	memory := strings.Fields(r.Memory)
 	if len(memory) == 0 {
 		return 0, fmt.Errorf("no memory, found: %#v", r.Memory)

@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func (c *Commands) Inputs(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, &cromwell.ParamsMetadataGet{})
+	resp, err := c.CromwellClient.Metadata(operation, &cromwell_client.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

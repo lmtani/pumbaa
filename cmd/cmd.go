@@ -3,17 +3,17 @@ package cmd
 import (
 	"os"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 var (
-	defaultClient = cromwell.Default()
+	defaultClient = cromwell_client.Default()
 	defaultWriter = output.NewColoredWriter(os.Stdout)
 )
 
 type Commands struct {
-	CromwellClient cromwell.Client
+	CromwellClient cromwell_client.Client
 	Writer         output.Writer
 }
 

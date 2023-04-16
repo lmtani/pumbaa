@@ -3,11 +3,11 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func (c *Commands) SubmitWorkflow(wdl, inputs, dependencies, options string) error {
-	r := cromwell.SubmitRequest{
+	r := cromwell_client.SubmitRequest{
 		WorkflowSource:       wdl,
 		WorkflowInputs:       inputs,
 		WorkflowDependencies: dependencies,

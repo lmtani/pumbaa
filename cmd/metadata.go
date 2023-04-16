@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func (c *Commands) MetadataWorkflow(operation string) error {
-	params := cromwell.ParamsMetadataGet{
+	params := cromwell_client.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
 	resp, err := c.CromwellClient.Metadata(operation, &params)
@@ -28,7 +28,7 @@ func (c *Commands) MetadataWorkflow(operation string) error {
 	return err
 }
 
-func (c *Commands) showCustomOptions(s cromwell.SubmittedFiles) error {
+func (c *Commands) showCustomOptions(s cromwell_client.SubmittedFiles) error {
 	var options map[string]interface{}
 	err := json.Unmarshal([]byte(s.Options), &options)
 	if err != nil {
@@ -62,7 +62,7 @@ func sortOptionsKeys(f map[string]interface{}) []string {
 	return keys
 }
 
-func hasFailureMsg(fails []cromwell.Failure) string {
+func hasFailureMsg(fails []cromwell_client.Failure) string {
 	m := "issue"
 	if len(fails) > 1 {
 		m = "issues"
@@ -71,7 +71,7 @@ func hasFailureMsg(fails []cromwell.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell.Failure, w output.Writer) {
+func recursiveFailureParse(f []cromwell_client.Failure, w output.Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)

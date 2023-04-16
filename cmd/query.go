@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
@@ -12,7 +12,7 @@ func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
 	if days != 0 {
 		submission = time.Now().Add(-time.Hour * 24 * days)
 	}
-	params := cromwell.ParamsQueryGet{
+	params := cromwell_client.ParamsQueryGet{
 		Submission: submission,
 		Name:       name,
 	}
