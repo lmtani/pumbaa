@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/lmtani/cromwell-cli/internal/cromwell"
+	cromwell2 "github.com/lmtani/cromwell-cli/cromwell"
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,8 +21,8 @@ func localDeploy() *cli.Command {
 			&cli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 		},
 		Action: func(c *cli.Context) error {
-			config := cromwell.ParseCliParams(c)
-			return cromwell.StartCromwellServer(config, c.Bool("override"))
+			config := cromwell2.ParseCliParams(c)
+			return cromwell2.StartCromwellServer(config, c.Bool("override"))
 		},
 	}
 }
@@ -36,7 +36,7 @@ func packDependencies() *cli.Command {
 			&cli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
 		},
 		Action: func(c *cli.Context) error {
-			return cromwell.BuildWorkflowDist(c.String("wdl"))
+			return cromwell2.BuildWorkflowDist(c.String("wdl"))
 		},
 	}
 }

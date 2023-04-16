@@ -5,7 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/cromwell-cli/internal/prompt"
+	"github.com/lmtani/cromwell-cli/prompt"
+
 	"github.com/lmtani/cromwell-cli/pkg/cromwell"
 )
 

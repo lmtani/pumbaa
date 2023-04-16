@@ -10,7 +10,7 @@ import (
 )
 
 func TestCost(t *testing.T) {
-	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell/mocks/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}

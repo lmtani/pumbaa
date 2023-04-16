@@ -4,7 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/lmtani/cromwell-cli/internal/commands"
+	"github.com/lmtani/cromwell-cli/commands"
+
 	"github.com/urfave/cli/v2"
 )
 
