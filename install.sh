@@ -150,8 +150,10 @@ main() {
     print_banner
 
     prefix="${1}"
+
     cli_base_url="https://github.com/lmtani/cromwell-cli/releases/download"
     version="0.9.2"
+
     print_message "== Install prefix set to ${prefix}" "info"
 
     cli_arch="$(determine_arch)"
@@ -180,7 +182,9 @@ main() {
 
     asset_name="cromwell-cli_${cli_os}_${cli_arch}.tar.gz"
     print_message "== Downloading binary file from github: ${asset_name}" "info"
-    uri="${cli_base_url}/v${version}/${asset_name}"
+
+    uri=$(wget -q -O - https://api.github.com/repos/lmtani/cromwell-cli/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
+    print_message "== Downloading from ${uri}" "info"
     tempdir=$(mktemp -d)
     wget "${uri}" -P "$tempdir" 1>"${tempdir}/wget.out" 2>"${tempdir}/wget.err"
     tar -xf "${tempdir}/${asset_name}" -C "${tempdir}"
