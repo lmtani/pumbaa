@@ -156,8 +156,8 @@ func setupApp(version string) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				prompt := prompt.Ui{}
-				return cmd.Navigate(c.String("operation"), cromwellClient, writer, &prompt)
+				ui := prompt.Ui{}
+				return cmd.Navigate(c.String("operation"), cromwellClient, writer, &ui)
 			},
 		},
 		{
