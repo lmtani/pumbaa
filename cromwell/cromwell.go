@@ -101,7 +101,7 @@ func checkRequirements(db Database) error {
 
 func startCromwellProcess(cromwellPath, configFile, basePath string) error {
 	fmt.Println("To start the Cromwell Server run:")
-	fmt.Printf("cd %s && java -DLOG_MODE=pretty -Dconfig.file=%s -jar %s server", basePath, configFile, cromwellPath)
+	fmt.Printf("cd %s && java -DLOG_MODE=pretty -Dconfig.file=%s -jar %s server\n", basePath, configFile, cromwellPath)
 	return nil
 }
 
@@ -113,7 +113,7 @@ func isInUserPath(s string) bool {
 func DownloadCromwell(cromwellFileName string) error {
 	// create http client
 	client := http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 5 * time.Minute,
 	}
 
 	// get the content length of the file
@@ -141,6 +141,8 @@ func DownloadCromwell(cromwellFileName string) error {
 	// download the file and update the progress bar
 	resp, err = client.Get(jarUrl)
 	if err != nil {
+		// if the download fails, delete the file
+		err = os.Remove(cromwellFileName)
 		return err
 	}
 	defer func(Body io.ReadCloser) {
