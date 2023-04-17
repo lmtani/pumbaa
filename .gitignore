@@ -22,3 +22,4 @@ dist/
 *secret.json
 cromwell-cli
 .vscode/
+releases

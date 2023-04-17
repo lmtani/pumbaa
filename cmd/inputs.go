@@ -1,14 +1,14 @@
-package commands
+package cmd
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) Inputs(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, &cromwell.ParamsMetadataGet{})
+func Inputs(operation string, c *cromwell_client.Client) error {
+	resp, err := c.Metadata(operation, &cromwell_client.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

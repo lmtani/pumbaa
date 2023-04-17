@@ -1,10 +1,14 @@
-package commands
+package cmd
 
 import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
 func TestKillHttpError(t *testing.T) {
@@ -22,8 +26,10 @@ func TestKillHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.KillWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err := KillWorkflow(operation, cromwellClient, writer)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}
