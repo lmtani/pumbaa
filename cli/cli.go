@@ -6,14 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/cmd"
+	"github.com/lmtani/cromwell-cli/cromwell"
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 	"github.com/lmtani/cromwell-cli/pkg/output"
-	prompt2 "github.com/lmtani/cromwell-cli/prompt"
-
-	cromwell2 "github.com/lmtani/cromwell-cli/cromwell"
-
-	"github.com/lmtani/cromwell-cli/cmd"
-
+	"github.com/lmtani/cromwell-cli/prompt"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
@@ -159,7 +156,7 @@ func setupApp(version string) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				prompt := prompt2.Ui{}
+				prompt := prompt.Ui{}
 				return cmd.Navigate(c.String("operation"), cromwellClient, writer, &prompt)
 			},
 		},
@@ -199,8 +196,8 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				config := cromwell2.ParseCliParams(c)
-				return cromwell2.StartCromwellServer(config, c.Bool("override"))
+				config := cromwell.ParseCliParams(c)
+				return cromwell.StartCromwellServer(config, c.Bool("override"))
 			},
 		},
 		{
@@ -212,7 +209,7 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cromwell2.BuildWorkflowDist(c.String("wdl"))
+				return cromwell.BuildWorkflowDist(c.String("wdl"))
 			},
 		},
 	}
