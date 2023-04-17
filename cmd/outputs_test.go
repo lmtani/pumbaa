@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func TestOutputsHttpError(t *testing.T) {
@@ -22,8 +24,8 @@ func TestOutputsHttpError(t *testing.T) {
 		}))
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.OutputsWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	err := OutputsWorkflow(operation, cromwellClient)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}
@@ -35,8 +37,9 @@ func TestOutputsReturnError(t *testing.T) {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `improbable-situation`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.OutputsWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+
+	err := OutputsWorkflow(operation, cromwellClient)
 	if err != nil {
 		log.Print(err)
 	}

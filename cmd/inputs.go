@@ -7,8 +7,8 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) Inputs(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, &cromwell_client.ParamsMetadataGet{})
+func Inputs(operation string, c *cromwell_client.Client) error {
+	resp, err := c.Metadata(operation, &cromwell_client.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

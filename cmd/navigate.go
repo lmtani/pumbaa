@@ -5,38 +5,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/cromwell-cli/prompt"
-
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-var (
-	defaultPromptSelectKey   = prompt.SelectByKey
-	defaultPromptSelectIndex = prompt.SelectByIndex
-)
-
-func (c *Commands) Navigate(operation string) error {
+func Navigate(operation string, c *cromwell_client.Client, w Writer, p Prompt) error {
 	params := cromwell_client.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
-	resp, err := c.CromwellClient.Metadata(operation, &params)
+	resp, err := c.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}
 	var item cromwell_client.CallItem
 	for {
-		task, err := c.selectDesiredTask(&resp)
+		task, err := selectDesiredTask(&resp, p, w)
 		if err != nil {
 			return err
 		}
-		item, err = c.selectDesiredShard(task)
+		item, err = selectDesiredShard(task, p)
 		if err != nil {
 			return err
 		}
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = c.CromwellClient.Metadata(item.SubWorkflowID, &params)
+		resp, err = c.Metadata(item.SubWorkflowID, &params)
 		if err != nil {
 			return err
 		}
@@ -47,22 +40,22 @@ func (c *Commands) Navigate(operation string) error {
 		return nil
 	}
 	if item.CallCaching.Hit {
-		c.Writer.Accent(item.CallCaching.Result)
+		w.Accent(item.CallCaching.Result)
 	} else {
-		c.Writer.Accent(item.CommandLine)
+		w.Accent(item.CommandLine)
 	}
 
 	fmt.Printf("Logs:\n")
-	c.Writer.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
+	w.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
 	if item.MonitoringLog != "" {
-		c.Writer.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
+		w.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
 	}
 	if item.BackendLogs.Log != "" {
-		c.Writer.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
+		w.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
 	}
 
 	fmt.Printf("🐋 Docker image:\n")
-	c.Writer.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
+	w.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
 	return nil
 }
 
@@ -75,7 +68,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (c *Commands) selectDesiredTask(m *cromwell_client.MetadataResponse) ([]cromwell_client.CallItem, error) {
+func selectDesiredTask(m *cromwell_client.MetadataResponse, p Prompt, w Writer) ([]cromwell_client.CallItem, error) {
 	var taskOptions []string
 	calls := make(map[string][]cromwell_client.CallItem)
 	for key, value := range m.Calls {
@@ -90,9 +83,9 @@ func (c *Commands) selectDesiredTask(m *cromwell_client.MetadataResponse) ([]cro
 	if m.RootWorkflowID != "" {
 		cat = "SubWorkflow"
 	}
-	c.Writer.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
+	w.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
 
-	taskName, err := defaultPromptSelectKey(taskOptions)
+	taskName, err := p.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Ui failed %v\n", err)
 		return []cromwell_client.CallItem{}, err
@@ -100,7 +93,7 @@ func (c *Commands) selectDesiredTask(m *cromwell_client.MetadataResponse) ([]cro
 	return calls[taskName], nil
 }
 
-func (c *Commands) selectDesiredShard(shards []cromwell_client.CallItem) (cromwell_client.CallItem, error) {
+func selectDesiredShard(shards []cromwell_client.CallItem, p Prompt) (cromwell_client.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -111,7 +104,7 @@ func (c *Commands) selectDesiredShard(shards []cromwell_client.CallItem) (cromwe
 		return name == input
 	}
 
-	i, err := defaultPromptSelectIndex(searcher, shards)
+	i, err := p.SelectByIndex(searcher, shards)
 	if err != nil {
 		return cromwell_client.CallItem{}, err
 	}

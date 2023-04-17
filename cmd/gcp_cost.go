@@ -9,8 +9,8 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) ResourcesUsed(operation string) error {
-	resp, err := c.CromwellClient.Metadata(operation, &cromwell_client.ParamsMetadataGet{ExpandSubWorkflows: true})
+func ResourcesUsed(operation string, c *cromwell_client.Client, w Writer) error {
+	resp, err := c.Metadata(operation, &cromwell_client.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
 		return err
 	}
@@ -25,9 +25,9 @@ func (c *Commands) ResourcesUsed(operation string) error {
 	}
 
 	var rtr = ResourceTableResponse{Total: total}
-	c.Writer.Table(rtr)
-	c.Writer.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
-	c.Writer.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
+	w.Table(rtr)
+	w.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
+	w.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
 	return nil
 }
 

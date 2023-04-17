@@ -6,51 +6,64 @@ import (
 	"sort"
 
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
-	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func (c *Commands) MetadataWorkflow(operation string) error {
+func MetadataWorkflow(operation string, c *cromwell_client.Client, w Writer) error {
 	params := cromwell_client.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-	resp, err := c.CromwellClient.Metadata(operation, &params)
+	resp, err := c.Metadata(operation, &params)
 	if err != nil {
 		return err
 	}
 	var mtr = MetadataTableResponse{Metadata: resp}
-	c.Writer.Table(mtr)
+	w.Table(mtr)
 	if len(resp.Failures) > 0 {
-		c.Writer.Error(hasFailureMsg(resp.Failures))
-		recursiveFailureParse(resp.Failures, c.Writer)
+		w.Error(hasFailureMsg(resp.Failures))
+		recursiveFailureParse(resp.Failures, w)
 	}
 
-	err = c.showCustomOptions(resp.SubmittedFiles)
+	items, err := showCustomOptions(resp.SubmittedFiles)
+	if err != nil {
+		return err
+	}
+
+	if len(items) > 0 {
+		w.Accent("🔧 Custom options")
+	}
+	// iterate over items strings
+	for _, v := range items {
+		w.Primary(v)
+	}
 	return err
 }
 
-func (c *Commands) showCustomOptions(s cromwell_client.SubmittedFiles) error {
+func showCustomOptions(s cromwell_client.SubmittedFiles) ([]string, error) {
+	items := make([]string, 0)
+
 	var options map[string]interface{}
 	err := json.Unmarshal([]byte(s.Options), &options)
 	if err != nil {
-		return err
+		return items, err
 	}
 
 	keys := sortOptionsKeys(options)
 
 	if len(keys) > 0 {
-		c.writeOptions(keys, options)
+		items = writeOptions(keys, options)
 	}
 
-	return nil
+	return items, nil
 }
 
-func (c *Commands) writeOptions(keys []string, o map[string]interface{}) {
-	c.Writer.Accent("🔧 Custom options")
+func writeOptions(keys []string, o map[string]interface{}) []string {
+	items := make([]string, 0)
 	for _, v := range keys {
 		if o[v] != "" {
-			c.Writer.Primary(fmt.Sprintf("- %s: %v", v, o[v]))
+			items = append(items, fmt.Sprintf("- %s: %v", v, o[v]))
 		}
 	}
+	return items
 }
 
 func sortOptionsKeys(f map[string]interface{}) []string {
@@ -71,7 +84,7 @@ func hasFailureMsg(fails []cromwell_client.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell_client.Failure, w output.Writer) {
+func recursiveFailureParse(f []cromwell_client.Failure, w Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)

@@ -1,25 +1,15 @@
 package cmd
 
-import (
-	"os"
+import "github.com/lmtani/cromwell-cli/pkg/output"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
-	"github.com/lmtani/cromwell-cli/pkg/output"
-)
-
-var (
-	defaultClient = cromwell_client.Default()
-	defaultWriter = output.NewColoredWriter(os.Stdout)
-)
-
-type Commands struct {
-	CromwellClient cromwell_client.Client
-	Writer         output.Writer
+type Prompt interface {
+	SelectByKey(taskOptions []string) (string, error)
+	SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error)
 }
 
-func New() *Commands {
-	return &Commands{
-		CromwellClient: defaultClient,
-		Writer:         defaultWriter,
-	}
+type Writer interface {
+	Primary(string)
+	Accent(string)
+	Error(string)
+	Table(output.Table)
 }

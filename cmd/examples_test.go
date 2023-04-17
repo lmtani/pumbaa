@@ -11,13 +11,6 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/output"
 )
 
-func BuildTestCommands(h, i string) *Commands {
-	cmds := New()
-	cmds.CromwellClient = cromwell_client.New(h, i)
-	cmds.Writer = output.NewColoredWriter(os.Stdout)
-	return cmds
-}
-
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
 	ts := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,12 +39,16 @@ func BuildTestServerMutable(url string) *httptest.Server {
 	return ts
 }
 
-func ExampleCommands_QueryWorkflow() {
+func Example_queryWorkflow() {
+	// setup
 	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.QueryWorkflow("wf", 0)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	// call
+	err := QueryWorkflow("wf", 0, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -64,7 +61,7 @@ func ExampleCommands_QueryWorkflow() {
 	// - Found 1 workflows
 }
 
-func ExampleCommands_Inputs() {
+func Example_inputs() {
 	// Read metadata mock
 	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
@@ -76,8 +73,9 @@ func ExampleCommands_Inputs() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err = cmds.Inputs(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+
+	err = Inputs(operation, cromwellClient)
 	if err != nil {
 		log.Print(err)
 	}
@@ -88,13 +86,15 @@ func ExampleCommands_Inputs() {
 	// }
 }
 
-func ExampleCommands_KillWorkflow() {
+func Example_killWorkflow() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.KillWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err := KillWorkflow(operation, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -102,7 +102,7 @@ func ExampleCommands_KillWorkflow() {
 	// Operation=aaa-bbb-ccc, Status=aborting
 }
 
-func ExampleCommands_ResourcesUsed() {
+func Example_resourcesUsed() {
 	// Read metadata mock
 	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
@@ -114,8 +114,10 @@ func ExampleCommands_ResourcesUsed() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err = cmds.ResourcesUsed(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err = ResourcesUsed(operation, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -132,14 +134,15 @@ func ExampleCommands_ResourcesUsed() {
 	// - Total time with running VMs: 2160h
 }
 
-func ExampleCommands_OutputsWorkflow() {
+func Example_outputsWorkflow() {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.OutputsWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+
+	err := OutputsWorkflow(operation, cromwellClient)
 	if err != nil {
 		log.Print(err)
 	}
@@ -149,7 +152,7 @@ func ExampleCommands_OutputsWorkflow() {
 	// }
 }
 
-func ExampleCommands_SubmitWorkflow() {
+func Example_submitWorkflow() {
 	// Mock http server
 	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
@@ -157,8 +160,10 @@ func ExampleCommands_SubmitWorkflow() {
 	wdlPath := "../examples/wf.wdl"
 	inputsPath := "../examples/wf.inputs.json"
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err := SubmitWorkflow(wdlPath, inputsPath, wdlPath, inputsPath, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -166,14 +171,16 @@ func ExampleCommands_SubmitWorkflow() {
 	// 🐖 Operation= a-new-uuid , Status=Submitted
 }
 
-func ExampleCommands_Wait() {
+func Example_wait() {
 	// Mock http server
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.Wait(operation, 1)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err := Wait(operation, 1, cromwellClient, writer)
 	if err != nil {
 		log.Printf("Error: %#v", err)
 	}
@@ -183,7 +190,7 @@ func ExampleCommands_Wait() {
 	// Status=Done
 }
 
-func ExampleCommands_MetadataWorkflow() {
+func Example_metadataWorkflow() {
 	// Read metadata mock
 	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
@@ -195,8 +202,10 @@ func ExampleCommands_MetadataWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err = cmds.MetadataWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err = MetadataWorkflow(operation, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -217,7 +226,7 @@ func ExampleCommands_MetadataWorkflow() {
 	// - use_relative_output_paths: false
 }
 
-func ExampleCommands_MetadataWorkflow_second() {
+func Example_metadataWorkflow_second() {
 	// Read metadata mock
 	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata-failed.json")
 	if err != nil {
@@ -229,8 +238,10 @@ func ExampleCommands_MetadataWorkflow_second() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err = cmds.MetadataWorkflow(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+
+	err = MetadataWorkflow(operation, cromwellClient, writer)
 	if err != nil {
 		log.Print(err)
 	}
@@ -245,12 +256,17 @@ func ExampleCommands_MetadataWorkflow_second() {
 	//  - Required workflow input 'HelloWorld.name' not specified
 }
 
-func MockSelectByKey(taskOptions []string) (string, error) {
-	return "SayGoodbye", nil
+type MockedPrompt struct {
+	keyToReturn   string
+	indexToReturn int
 }
 
-func MockSelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
-	return 1, nil
+func (m *MockedPrompt) SelectByKey(taskOptions []string) (string, error) {
+	return m.keyToReturn, nil
+}
+
+func (m *MockedPrompt) SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
+	return m.indexToReturn, nil
 }
 
 func Example_navigate() {
@@ -265,13 +281,14 @@ func Example_navigate() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	// Mock prompt interaction
-	defaultPromptSelectKey = MockSelectByKey
-	defaultPromptSelectIndex = MockSelectByIndex
+	cromwellClient := cromwell_client.New(ts.URL, "")
+	writer := output.NewColoredWriter(os.Stdout)
+	mockedPrompt := MockedPrompt{
+		indexToReturn: 1,
+		keyToReturn:   "SayGoodbye",
+	}
 
-	cmds := BuildTestCommands(ts.URL, "")
-
-	err = cmds.Navigate(operation)
+	err = Navigate(operation, cromwellClient, writer, &mockedPrompt)
 	if err != nil {
 		log.Print(err)
 	}

@@ -4,14 +4,9 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-type TemplateOptions struct {
-	Label    string
-	Active   string
-	Inactive string
-	Selected string
-}
+type Ui struct{}
 
-func SelectByKey(taskOptions []string) (string, error) {
+func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
@@ -20,7 +15,7 @@ func SelectByKey(taskOptions []string) (string, error) {
 	return taskName, err
 }
 
-func SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
+func (p *Ui) SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
 		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",

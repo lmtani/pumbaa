@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"fmt"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) KillWorkflow(operation string) error {
-	resp, err := c.CromwellClient.Kill(operation)
+func KillWorkflow(operation string, c *cromwell_client.Client, w Writer) error {
+	resp, err := c.Kill(operation)
 	if err != nil {
 		return err
 	}
-	c.Writer.Accent(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
+	w.Accent(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
 	return nil
 }

@@ -6,6 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/cromwell-cli/pkg/output"
+	prompt2 "github.com/lmtani/cromwell-cli/prompt"
+
 	cromwell2 "github.com/lmtani/cromwell-cli/cromwell"
 
 	"github.com/lmtani/cromwell-cli/cmd"
@@ -13,22 +17,7 @@ import (
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
-// Define global variables to be injected
-var (
-	cmdService *cmd.Commands
-)
-
 func setupApp(version string) *urfaveCli.App {
-	// Start service
-	cmdService = cmd.New()
-
-	// Override the default cromwell server host
-	beforeFunc := func(c *urfaveCli.Context) error {
-		cmdService.CromwellClient.Host = c.String("host")
-		cmdService.CromwellClient.Iap = c.String("iap")
-		return nil
-	}
-
 	// Define global flags
 	flags := []urfaveCli.Flag{
 		&urfaveCli.StringFlag{
@@ -68,7 +57,9 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				return cmd.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")), cromwellClient, writer)
 			},
 		},
 		{
@@ -81,7 +72,9 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.Wait(c.String("operation"), c.Int("sleep"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				return cmd.Wait(c.String("operation"), c.Int("sleep"), cromwellClient, writer)
 			},
 		},
 		{
@@ -96,7 +89,9 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false, Usage: "Path to the options JSON file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				return cmd.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"), cromwellClient, writer)
 			},
 		},
 		{
@@ -108,7 +103,8 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.Inputs(c.String("operation"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				return cmd.Inputs(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -120,7 +116,9 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.KillWorkflow(c.String("operation"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				return cmd.KillWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -132,7 +130,9 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.MetadataWorkflow(c.String("operation"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				return cmd.MetadataWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -144,7 +144,8 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.OutputsWorkflow(c.String("operation"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				return cmd.OutputsWorkflow(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -156,7 +157,10 @@ func setupApp(version string) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cmdService.Navigate(c.String("operation"))
+				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+				writer := output.NewColoredWriter(os.Stdout)
+				prompt := prompt2.Ui{}
+				return cmd.Navigate(c.String("operation"), cromwellClient, writer, &prompt)
 			},
 		},
 		{
@@ -172,7 +176,9 @@ func setupApp(version string) *urfaveCli.App {
 						&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 					},
 					Action: func(c *urfaveCli.Context) error {
-						return cmdService.ResourcesUsed(c.String("operation"))
+						cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+						writer := output.NewColoredWriter(os.Stdout)
+						return cmd.ResourcesUsed(c.String("operation"), cromwellClient, writer)
 					},
 				},
 			},
@@ -215,7 +221,6 @@ func setupApp(version string) *urfaveCli.App {
 		Name:     "cromwell-cli",
 		Usage:    "Command line interface for Cromwell Server",
 		Flags:    flags,
-		Before:   beforeFunc,
 		Commands: cmds,
 	}
 }

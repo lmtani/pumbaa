@@ -3,10 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) OutputsWorkflow(operation string) error {
-	resp, err := c.CromwellClient.Outputs(operation)
+func OutputsWorkflow(operation string, c *cromwell_client.Client) error {
+	resp, err := c.Outputs(operation)
 	if err != nil {
 		return err
 	}

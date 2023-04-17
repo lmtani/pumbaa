@@ -7,7 +7,7 @@ import (
 	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
-func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
+func QueryWorkflow(name string, days time.Duration, c *cromwell_client.Client, w Writer) error {
 	var submission time.Time
 	if days != 0 {
 		submission = time.Now().Add(-time.Hour * 24 * days)
@@ -16,12 +16,13 @@ func (c *Commands) QueryWorkflow(name string, days time.Duration) error {
 		Submission: submission,
 		Name:       name,
 	}
-	resp, err := c.CromwellClient.Query(&params)
+	resp, err := c.Query(&params)
 	if err != nil {
 		return err
 	}
 	var qtr = QueryTableResponse(resp)
-	c.Writer.Table(qtr)
-	c.Writer.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
+
+	w.Table(qtr)
+	w.Accent(fmt.Sprintf("- Found %d workflows", resp.TotalResultsCount))
 	return err
 }

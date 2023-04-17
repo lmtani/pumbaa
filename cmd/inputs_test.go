@@ -3,6 +3,8 @@ package cmd
 import (
 	"net/http"
 	"testing"
+
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func TestInputsHttpError(t *testing.T) {
@@ -11,8 +13,9 @@ func TestInputsHttpError(t *testing.T) {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", "Workflow ID Not Found", http.StatusNotFound)
 	defer ts.Close()
 
-	cmds := BuildTestCommands(ts.URL, "")
-	err := cmds.Inputs(operation)
+	cromwellClient := cromwell_client.New(ts.URL, "")
+
+	err := Inputs(operation, cromwellClient)
 	if err == nil {
 		t.Error("Not found error expected, nil returned")
 	}
