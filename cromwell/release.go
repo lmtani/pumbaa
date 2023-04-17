@@ -32,7 +32,7 @@ func BuildWorkflowDist(workflowPath string) error {
 		return err
 	}
 	// set write permission to releases directory
-	err = os.Chmod("releases", 0777)
+	err = os.Chmod("releases", 0750)
 	if err != nil {
 		return err
 	}

@@ -191,7 +191,7 @@ func cromwellSavePath() (string, error) {
 
 func createDirectory(p string) error {
 	if _, err := os.Stat(p); os.IsNotExist(err) {
-		err := os.MkdirAll(p, 0777)
+		err := os.MkdirAll(p, 0750)
 		if err != nil {
 			return err
 		}
