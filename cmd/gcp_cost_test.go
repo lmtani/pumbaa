@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"encoding/json"
@@ -6,15 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 func TestCost(t *testing.T) {
-	content, err := os.ReadFile("../../pkg/cromwell/mocks/metadata.json")
+	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	meta := cromwell.MetadataResponse{}
+	meta := cromwell_client.MetadataResponse{}
 	err = json.Unmarshal(content, &meta)
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestCost(t *testing.T) {
 }
 
 func TestParseDisk(t *testing.T) {
-	r1 := cromwell.RuntimeAttributes{
+	r1 := cromwell_client.RuntimeAttributes{
 		BootDiskSizeGb: "10",
 		CPU:            "1",
 		Disks:          "",
@@ -69,7 +69,7 @@ func TestParseDisk(t *testing.T) {
 		Memory:         "2 GB",
 		Preemptible:    "1",
 	}
-	r2 := cromwell.RuntimeAttributes{
+	r2 := cromwell_client.RuntimeAttributes{
 		BootDiskSizeGb: "10",
 		CPU:            "1",
 		Disks:          "local-disk 1a0 HDD",
@@ -88,7 +88,7 @@ func TestParseDisk(t *testing.T) {
 	// }
 
 	tt := []struct {
-		runtime        cromwell.RuntimeAttributes
+		runtime        cromwell_client.RuntimeAttributes
 		expectedAmount float64
 		expectedType   string
 		expectedErr    string
@@ -111,7 +111,7 @@ func TestParseDisk(t *testing.T) {
 }
 
 func TestParseMemory(t *testing.T) {
-	r1 := cromwell.RuntimeAttributes{
+	r1 := cromwell_client.RuntimeAttributes{
 		BootDiskSizeGb: "10",
 		CPU:            "1",
 		Disks:          "local-disk 10 HDD",
@@ -119,7 +119,7 @@ func TestParseMemory(t *testing.T) {
 		Memory:         "2 GB",
 		Preemptible:    "1",
 	}
-	r2 := cromwell.RuntimeAttributes{
+	r2 := cromwell_client.RuntimeAttributes{
 		BootDiskSizeGb: "10",
 		CPU:            "1",
 		Disks:          "local-disk 10 HDD",
@@ -127,7 +127,7 @@ func TestParseMemory(t *testing.T) {
 		Memory:         "",
 		Preemptible:    "1",
 	}
-	r3 := cromwell.RuntimeAttributes{
+	r3 := cromwell_client.RuntimeAttributes{
 		BootDiskSizeGb: "10",
 		CPU:            "1",
 		Disks:          "local-disk 10 HDD, work-disk 10 HDD",
@@ -137,7 +137,7 @@ func TestParseMemory(t *testing.T) {
 	}
 
 	tt := []struct {
-		runtime        cromwell.RuntimeAttributes
+		runtime        cromwell_client.RuntimeAttributes
 		expectedAmount float64
 		expectedType   string
 		expectedErr    string
