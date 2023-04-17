@@ -6,8 +6,19 @@ import (
 	cli "github.com/lmtani/cromwell-cli/cli"
 )
 
-var Version = "development"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
+var ()
 
 func main() {
-	os.Exit(cli.Run(Version))
+	buildInfo := cli.Build{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}
+	os.Exit(cli.Run(&buildInfo))
 }

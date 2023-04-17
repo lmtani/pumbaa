@@ -14,7 +14,7 @@ import (
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
-func setupApp(version string) *urfaveCli.App {
+func setupApp(b *Build) *urfaveCli.App {
 	// Define global flags
 	flags := []urfaveCli.Flag{
 		&urfaveCli.StringFlag{
@@ -40,7 +40,9 @@ func setupApp(version string) *urfaveCli.App {
 			Usage:    "Cromwell-CLI version",
 			Category: generalCategory,
 			Action: func(c *urfaveCli.Context) error {
-				fmt.Printf("Version: %s\n", version)
+				fmt.Printf("Version: %s\n", b.Version)
+				fmt.Printf("Date: %s\n", b.Date)
+				fmt.Printf("Commit: %s\n", b.Commit)
 				return nil
 			},
 		},
@@ -222,11 +224,17 @@ func setupApp(version string) *urfaveCli.App {
 	}
 }
 
-func Run(version string) int {
-	app := setupApp(version)
+func Run(b *Build) int {
+	app := setupApp(b)
 	if err := app.Run(os.Args); err != nil {
 		log.Printf("Runtime error: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+type Build struct {
+	Version string
+	Commit  string
+	Date    string
 }
