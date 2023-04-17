@@ -1,4 +1,4 @@
-package cromwell
+package cromwell_client
 
 import (
 	"context"

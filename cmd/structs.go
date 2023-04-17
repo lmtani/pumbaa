@@ -1,4 +1,4 @@
-package commands
+package cmd
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell"
+	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
 )
 
 type ResourceTableResponse struct {
-	Total cromwell.TotalResources
+	Total cromwell_client.TotalResources
 }
 
 func (rtr ResourceTableResponse) Header() []string {
@@ -48,7 +48,7 @@ func (rtr ResourceTableResponse) Rows() [][]string {
 }
 
 type QueryTableResponse struct {
-	Results           []cromwell.QueryResponseWorkflow
+	Results           []cromwell_client.QueryResponseWorkflow
 	TotalResultsCount int
 }
 
@@ -76,7 +76,7 @@ func (qtr QueryTableResponse) Rows() [][]string {
 }
 
 type MetadataTableResponse struct {
-	Metadata cromwell.MetadataResponse
+	Metadata cromwell_client.MetadataResponse
 }
 
 func (mtr MetadataTableResponse) Header() []string {
