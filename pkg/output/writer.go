@@ -22,12 +22,12 @@ type Table interface {
 }
 
 type ColoredWriter struct {
-	w *tablewriter.Table
+	table *tablewriter.Table
 }
 
 func NewColoredWriter(writer io.Writer) *ColoredWriter {
 	return &ColoredWriter{
-		w: tablewriter.NewWriter(writer),
+		table: tablewriter.NewWriter(writer),
 	}
 }
 
@@ -52,9 +52,9 @@ func (w ColoredWriter) colorPrint(c string, s string) {
 }
 
 func (w ColoredWriter) Table(tab Table) {
-	w.w.SetHeader(tab.Header())
-	w.w.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
-	w.w.SetAlignment(tablewriter.ALIGN_LEFT)
-	w.w.AppendBulk(tab.Rows())
-	w.w.Render()
+	w.table.SetHeader(tab.Header())
+	w.table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
+	w.table.SetAlignment(tablewriter.ALIGN_LEFT)
+	w.table.AppendBulk(tab.Rows())
+	w.table.Render()
 }
