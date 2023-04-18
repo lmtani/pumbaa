@@ -151,9 +151,6 @@ main() {
 
     prefix="${1}"
 
-    cli_base_url="https://github.com/lmtani/cromwell-cli/releases/download"
-    version="0.9.2"
-
     print_message "== Install prefix set to ${prefix}" "info"
 
     cli_arch="$(determine_arch)"
