@@ -78,10 +78,13 @@ func (c *Client) Submit(requestFields *SubmitRequest) (SubmitResponse, error) {
 
 func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
 	var body bytes.Buffer
-	var writer *multipart.Writer
+
 	ct := "application/json"
 	if files != nil {
-		writer = c.prepareFormData(files, &body)
+		writer, err := c.prepareFormData(files, &body)
+		if err != nil {
+			return err
+		}
 		ct = writer.FormDataContentType()
 	}
 
@@ -98,7 +101,7 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	}
 	req, err := http.NewRequest(method, uri, &body)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	req.Header.Set("Content-Type", ct)
@@ -106,15 +109,18 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			println(err)
+		}
+	}(r.Body)
 	err = json.NewDecoder(r.Body).Decode(resp)
 	return err
 }
 
-func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) *multipart.Writer {
-	var (
-		w = multipart.NewWriter(body)
-	)
+func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
+	var w = multipart.NewWriter(body)
 
 	for field, path := range files {
 
@@ -122,23 +128,23 @@ func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) *m
 
 		fw, err := w.CreateFormFile(field, filename)
 		if err != nil {
-			log.Fatal(err)
+			return w, err
 		}
 
 		file, err := os.Open(path)
 		if err != nil {
-			log.Fatal(err)
+			return w, err
 		}
 
 		if _, err := io.Copy(fw, file); err != nil {
-			log.Fatal(err)
+			return w, err
 		}
 	}
 
 	if err := w.Close(); err != nil {
-		log.Fatal(err)
+		return w, err
 	}
-	return w
+	return w, nil
 }
 
 func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
@@ -150,7 +156,7 @@ func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return &http.Response{}, err
 	}
 	if resp.StatusCode >= 400 {
 		err := errorHandler(resp)
