@@ -6,7 +6,7 @@ import (
 
 type Ui struct{}
 
-func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
+func (*Ui) SelectByKey(taskOptions []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Select a task",
 		Items: taskOptions,
@@ -15,7 +15,7 @@ func (p *Ui) SelectByKey(taskOptions []string) (string, error) {
 	return taskName, err
 }
 
-func (p *Ui) SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
+func (*Ui) SelectByIndex(sfn func(input string, index int) bool, items interface{}) (int, error) {
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ . }}?",
 		Active:   "✔ {{ .ShardIndex  | green }} ({{ .ExecutionStatus | green }}) Attempt: {{ .Attempt | green }} CallCaching: {{ .CallCaching.Hit | green}}",

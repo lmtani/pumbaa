@@ -13,7 +13,7 @@ type ResourceTableResponse struct {
 	Total cromwell_client.TotalResources
 }
 
-func (rtr ResourceTableResponse) Header() []string {
+func (ResourceTableResponse) Header() []string {
 	return []string{"Resource", "Normalized to", "Preemptive", "Normal"}
 }
 
@@ -52,7 +52,7 @@ type QueryTableResponse struct {
 	TotalResultsCount int
 }
 
-func (qtr QueryTableResponse) Header() []string {
+func (QueryTableResponse) Header() []string {
 	return []string{"Operation", "Name", "Start", "Duration", "Status"}
 }
 
@@ -79,7 +79,7 @@ type MetadataTableResponse struct {
 	Metadata cromwell_client.MetadataResponse
 }
 
-func (mtr MetadataTableResponse) Header() []string {
+func (MetadataTableResponse) Header() []string {
 	return []string{"task", "attempt", "elapsed", "status"}
 }
 

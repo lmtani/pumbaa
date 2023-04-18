@@ -119,7 +119,7 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	return err
 }
 
-func (c *Client) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
+func (*Client) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
 	var w = multipart.NewWriter(body)
 
 	for field, path := range files {

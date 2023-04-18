@@ -31,7 +31,7 @@ func NewColoredWriter(writer io.Writer) *ColoredWriter {
 	}
 }
 
-func (w ColoredWriter) Primary(s string) {
+func (ColoredWriter) Primary(s string) {
 	fmt.Println(s)
 }
 
@@ -43,7 +43,7 @@ func (w ColoredWriter) Error(s string) {
 	w.colorPrint(ErrorColor, s)
 }
 
-func (w ColoredWriter) colorPrint(c string, s string) {
+func (ColoredWriter) colorPrint(c, s string) {
 	if NoColor {
 		fmt.Println(s)
 	} else {

@@ -238,7 +238,12 @@ func createCromwellConfig(savePath string, config Config) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(file)
 
 	// Render the template with the configuration values
 	config.Database.URL = fmt.Sprintf(

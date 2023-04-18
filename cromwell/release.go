@@ -69,7 +69,12 @@ func replaceImports(path string) (string, error) {
 		fmt.Println(err)
 		return "", err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			println(err)
+		}
+	}(file)
 
 	outputFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", filepath.Base(path)))
 	fmt.Println("Creating temp file: ", outputFile.Name())
@@ -77,7 +82,12 @@ func replaceImports(path string) (string, error) {
 		fmt.Println(err)
 		return "", err
 	}
-	defer outputFile.Close()
+	defer func(outputFile *os.File) {
+		err := outputFile.Close()
+		if err != nil {
+			print(err)
+		}
+	}(outputFile)
 
 	importRegex := regexp.MustCompile(`import\s+["'].*\/(.+)["']`)
 
@@ -92,7 +102,7 @@ func replaceImports(path string) (string, error) {
 			filename := match[1]
 
 			// Update the line with the new import statement
-			newLine := strings.ReplaceAll(line, match[0], fmt.Sprintf(`import "%s"`, filename))
+			newLine := strings.ReplaceAll(line, match[0], fmt.Sprintf(`import %q`, filename))
 
 			// Write the modified line to the output file
 			_, err := outputFile.WriteString(newLine + "\n")
@@ -185,11 +195,21 @@ func packDependencies(n string, files []string) error {
 
 		return err
 	}
-	defer zipFile.Close()
+	defer func(zipFile *os.File) {
+		err := zipFile.Close()
+		if err != nil {
+			println(err)
+		}
+	}(zipFile)
 
 	// Create a new zip archive
 	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	defer func(zipWriter *zip.Writer) {
+		err := zipWriter.Close()
+		if err != nil {
+			println(err)
+		}
+	}(zipWriter)
 
 	// Add files to the zip archive
 	for _, filename := range replacedFiles {
@@ -209,7 +229,12 @@ func addFileToZip(filename string, zipWriter *zip.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			println(err)
+		}
+	}(file)
 
 	// Get the file information
 	info, err := file.Stat()

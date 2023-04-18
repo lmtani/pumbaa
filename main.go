@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	cli "github.com/lmtani/cromwell-cli/cli"
+	"github.com/lmtani/cromwell-cli/cli"
 )
 
 var (
@@ -11,8 +11,6 @@ var (
 	commit  = "none"
 	date    = "unknown"
 )
-
-var ()
 
 func main() {
 	buildInfo := cli.Build{
