@@ -1,7 +1,7 @@
 # Cromwell CLI
 
-[![codecov](https://codecov.io/gh/lmtani/cromwell-cli/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/cromwell-cli)
- [![DeepSource](https://deepsource.io/gh/lmtani/cromwell-cli.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/cromwell-cli/?ref=repository-badge)
+[![codecov](https://codecov.io/gh/lmtani/pumbaa/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/pumbaa)
+ [![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
 
 ---
 
@@ -18,16 +18,16 @@ But don't forget to give us a star if ours has been helpful 😉
 
 ## Quickstart
 
-You can download the binary from the [releases page](https://github.com/lmtani/cromwell-cli/releases) for your platform or install it by running the following command:
+You can download the binary from the [releases page](https://github.com/lmtani/pumbaa/releases) for your platform or install it by running the following command:
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | bash
+curl https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
 ```
 
 It's allowed to install the binary in any location, but you will need to set variable PREFIX when running the install script.
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/cromwell-cli/main/install.sh | PREFIX=/home/taniguti/bin bash
+curl https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | PREFIX=/home/taniguti/bin bash
 ```
 
 This way you don't need to provide privileged access.
@@ -75,5 +75,5 @@ You will also need to set the `GOOGLE_APPLICATION_CREDENTIALS` environment varia
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google/service-account.json
 HOST="https://your-cromwell.dev"
 AUDIENCE="Expected audience"
-cromwell-cli --host "${HOST}" --iap "${AUDIENCE}" query
+pumbaa --host "${HOST}" --iap "${AUDIENCE}" query
 ```

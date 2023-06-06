@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
 func TestInputsHttpError(t *testing.T) {

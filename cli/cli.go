@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/cmd"
-	"github.com/lmtani/cromwell-cli/cromwell"
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
-	"github.com/lmtani/cromwell-cli/pkg/output"
-	"github.com/lmtani/cromwell-cli/prompt"
+	"github.com/lmtani/pumbaa/cmd"
+	"github.com/lmtani/pumbaa/cromwell"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/output"
+	"github.com/lmtani/pumbaa/prompt"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
@@ -37,7 +37,7 @@ func setupApp(b *Build) *urfaveCli.App {
 		{
 			Name:     "version",
 			Aliases:  []string{"v"},
-			Usage:    "Cromwell-CLI version",
+			Usage:    "pumbaa version",
 			Category: generalCategory,
 			Action: func(c *urfaveCli.Context) error {
 				fmt.Printf("Version: %s\n", b.Version)
@@ -217,7 +217,7 @@ func setupApp(b *Build) *urfaveCli.App {
 	}
 
 	return &urfaveCli.App{
-		Name:     "cromwell-cli",
+		Name:     "Pumbaa",
 		Usage:    "Command line interface for Cromwell Server",
 		Flags:    flags,
 		Commands: cmds,

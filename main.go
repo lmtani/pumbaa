@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/lmtani/cromwell-cli/cli"
+	"github.com/lmtani/pumbaa/cli"
 )
 
 var (

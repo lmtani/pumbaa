@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
 func Navigate(operation string, c *cromwell_client.Client, w Writer, p Prompt) error {

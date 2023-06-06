@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
 func SubmitWorkflow(wdl, inputs, dependencies, options string, c *cromwell_client.Client, w Writer) error {

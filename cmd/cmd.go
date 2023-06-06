@@ -1,6 +1,6 @@
 package cmd
 
-import "github.com/lmtani/cromwell-cli/pkg/output"
+import "github.com/lmtani/pumbaa/pkg/output"
 
 type Prompt interface {
 	SelectByKey(taskOptions []string) (string, error)

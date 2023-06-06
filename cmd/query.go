@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
 func QueryWorkflow(name string, days time.Duration, c *cromwell_client.Client, w Writer) error {

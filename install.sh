@@ -177,17 +177,17 @@ main() {
         exit 1
     fi
 
-    asset_name="cromwell-cli_${cli_os}_${cli_arch}.tar.gz"
+    asset_name="pumbaa_${cli_os}_${cli_arch}.tar.gz"
     print_message "== Downloading binary file from github: ${asset_name}" "info"
 
-    uri=$(wget -q -O - https://api.github.com/repos/lmtani/cromwell-cli/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
+    uri=$(wget -q -O - https://api.github.com/repos/lmtani/pumbaa/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
     print_message "== Downloading from ${uri}" "info"
     tempdir=$(mktemp -d)
     wget "${uri}" -P "$tempdir" 1>"${tempdir}/wget.out" 2>"${tempdir}/wget.err"
     tar -xf "${tempdir}/${asset_name}" -C "${tempdir}"
 
-    print_message "== Installing in ${prefix}/cromwell-cli" "info"
-    install_file_unix "${tempdir}/cromwell-cli" "${prefix}/cromwell-cli"
+    print_message "== Installing in ${prefix}/pumbaa" "info"
+    install_file_unix "${tempdir}/pumbaa" "${prefix}/pumbaa"
     print_message "Done!" "ok"
 }
 

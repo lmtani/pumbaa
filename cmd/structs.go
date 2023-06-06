@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
 type ResourceTableResponse struct {

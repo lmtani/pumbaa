@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"os"
 
-	"github.com/lmtani/cromwell-cli/pkg/cromwell_client"
-	"github.com/lmtani/cromwell-cli/pkg/output"
+	"github.com/lmtani/pumbaa/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/pkg/output"
 )
 
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {

@@ -1,4 +1,4 @@
-module github.com/lmtani/cromwell-cli
+module github.com/lmtani/pumbaa
 
 go 1.20
 

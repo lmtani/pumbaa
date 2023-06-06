@@ -14,4 +14,4 @@ name = "go"
 enabled = true
 
   [analyzers.meta]
-  import_root = "github.com/lmtani/cromwell-cli"
+  import_root = "github.com/lmtani/pumbaa"
