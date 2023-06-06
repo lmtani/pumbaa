@@ -1,9 +1,12 @@
-# Cromwell CLI
+# Pumbaa
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/lmtani/pumbaa)](https://goreportcard.com/report/github.com/lmtani/pumbaa)
 [![codecov](https://codecov.io/gh/lmtani/pumbaa/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/pumbaa)
- [![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
+[![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
 
 ---
+
+A command line interface for Cromwell Server.
 
 This program was created to:
 
@@ -44,9 +47,11 @@ This way you don't need to provide privileged access.
 - [x] Get inputs
 - [x] Make requests to a remote Cromwell Server protected by IAP (Google Identity Aware Proxy)
 - [x] For Google Cloud backend jobs: estimate resource usage
-- [ ] Have a cool name
+- [x] Have a cool name
 
 ## Examples
+
+_Obs:_ the examples below are from a previous release, but the commands are the same. I will update them soon.
 
 ### Local server deploy
 
