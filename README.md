@@ -1,9 +1,16 @@
 # Pumbaa
 
+<img align="right" height="150" src="https://github.com/lmtani/pumbaa/assets/12699242/2abc456d-609a-4f32-89a0-d12a597a652f">
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/lmtani/pumbaa)](https://goreportcard.com/report/github.com/lmtani/pumbaa)
+
 [![codecov](https://codecov.io/gh/lmtani/pumbaa/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/pumbaa)
+
 [![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
 
+
+
+<!-- ![Screenshot from 2023-06-06 09-13-12](https://github.com/lmtani/pumbaa/assets/12699242/191aa13e-6ca5-436b-b798-a62ff3619f29) -->
 ---
 
 A command line interface for Cromwell Server.
