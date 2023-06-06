@@ -44,7 +44,7 @@ func BuildWorkflowDist(workflowPath string) error {
 
 	// move the modified WDL file to the releases directory
 	fmt.Println("Moving file to releases directory: ", newName)
-	err = os.Rename(releaseWorkflow, filepath.Join("releases", newName))
+	err = moveFile(releaseWorkflow, filepath.Join("releases", newName))
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func BuildWorkflowDist(workflowPath string) error {
 		return err
 	}
 	// move the zip file to the releases directory
-	err = os.Rename(depsName, filepath.Join("releases", depsName))
+	err = moveFile(depsName, filepath.Join("releases", depsName))
 	if err != nil {
 		return err
 	}
@@ -317,4 +317,32 @@ func resolvePath(basePath, relativePath string) (string, error) {
 	fullPath = filepath.Clean(fullPath)
 
 	return fullPath, nil
+}
+
+func moveFile(srcPath, destPath string) error {
+	// Copy the file to the destination directory
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	// Remove the original file
+	err = os.Remove(srcPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
