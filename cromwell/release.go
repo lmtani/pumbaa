@@ -12,7 +12,7 @@ import (
 )
 
 // BuildWorkflowDist It builds a zip file with all dependencies.
-func BuildWorkflowDist(workflowPath string) error {
+func BuildWorkflowDist(workflowPath, outDir string) error {
 
 	fmt.Println("Finding dependencies for workflow: ", workflowPath)
 	dependencies, err := getDependencies(workflowPath)
@@ -27,12 +27,12 @@ func BuildWorkflowDist(workflowPath string) error {
 	}
 
 	// create releases directory
-	err = createDirectory("releases")
+	err = createDirectory(outDir)
 	if err != nil {
 		return err
 	}
 	// set write permission to releases directory
-	err = os.Chmod("releases", 0750)
+	err = os.Chmod(outDir, 0750)
 	if err != nil {
 		return err
 	}
@@ -44,20 +44,23 @@ func BuildWorkflowDist(workflowPath string) error {
 
 	// move the modified WDL file to the releases directory
 	fmt.Println("Moving file to releases directory: ", newName)
-	err = moveFile(releaseWorkflow, filepath.Join("releases", newName))
+	err = moveFile(releaseWorkflow, filepath.Join(outDir, newName))
 	if err != nil {
 		return err
 	}
 
 	depsName := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
-	err = packDependencies(depsName, dependencies)
+	deps, err := packDependencies(depsName, dependencies)
 	if err != nil {
 		return err
 	}
-	// move the zip file to the releases directory
-	err = moveFile(depsName, filepath.Join("releases", depsName))
-	if err != nil {
-		return err
+	// move the zip file to the releases directory if any file was added to the zip
+	if len(deps) > 0 {
+		err = moveFile(depsName, filepath.Join(outDir, depsName))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Zip file created successfully")
 	}
 	return nil
 }
@@ -136,7 +139,6 @@ func getDependencies(filePath string) ([]string, error) {
 	// Load the content of the file
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println("entrou no erro", err)
 		return nil, err
 	}
 
@@ -154,7 +156,6 @@ func getDependencies(filePath string) ([]string, error) {
 		}
 		subDependencies, err := getDependencies(fullPath)
 		if err != nil {
-			fmt.Println("entrou no erro", err)
 			return nil, err
 		}
 
@@ -168,14 +169,14 @@ func getDependencies(filePath string) ([]string, error) {
 
 // packDependencies packs all files in a folder into a zip file
 // It will return an error if there are duplicated files in the folder
-func packDependencies(n string, files []string) error {
+func packDependencies(n string, files []string) ([]string, error) {
 	// create a slice with basenames of files and check if any duplicated value in filesToZip
 	var filesToZip []string
 	for _, file := range files {
 		filesToZip = append(filesToZip, filepath.Base(file))
 	}
 	if hasDuplicates(filesToZip) {
-		return fmt.Errorf("duplicate files found in dependencies folder")
+		return filesToZip, fmt.Errorf("duplicate files found in dependencies folder")
 	}
 
 	// Replace import statements
@@ -183,17 +184,19 @@ func packDependencies(n string, files []string) error {
 	for _, file := range files {
 		tempFile, err := replaceImports(file)
 		if err != nil {
-			return err
+			return filesToZip, err
 		}
 		replacedFiles = append(replacedFiles, tempFile)
 	}
-	fmt.Println(replacedFiles)
+
+	if len(replacedFiles) == 0 {
+		return replacedFiles, nil
+	}
 
 	// Create a new zip file
 	zipFile, err := os.Create(n)
 	if err != nil {
-
-		return err
+		return filesToZip, err
 	}
 	defer func(zipFile *os.File) {
 		err := zipFile.Close()
@@ -216,12 +219,10 @@ func packDependencies(n string, files []string) error {
 		fmt.Println("Adding file to zip: ", filename)
 		err := addFileToZip(filename, zipWriter)
 		if err != nil {
-			return err
+			return filesToZip, err
 		}
 	}
-
-	fmt.Println("Zip file created successfully")
-	return nil
+	return filesToZip, nil
 }
 
 func addFileToZip(filename string, zipWriter *zip.Writer) error {
@@ -325,13 +326,23 @@ func moveFile(srcPath, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func(srcFile *os.File) {
+		err := srcFile.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(srcFile)
 
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func(destFile *os.File) {
+		err := destFile.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(destFile)
 
 	_, err = io.Copy(destFile, srcFile)
 	if err != nil {

@@ -209,9 +209,10 @@ func setupApp(b *Build) *urfaveCli.App {
 			Usage:    "Edit import statements in WDLs and build a zip file with all dependencies",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "wdl", Required: true, Usage: "Main workflow"},
+				&urfaveCli.StringFlag{Name: "out", Required: false, Value: "releases", Usage: "Output directory"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cromwell.BuildWorkflowDist(c.String("wdl"))
+				return cromwell.BuildWorkflowDist(c.String("wdl"), c.String("out"))
 			},
 		},
 	}
