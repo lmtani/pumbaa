@@ -7,14 +7,15 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/lmtani/pumbaa/internal/pkg/output"
+
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
-	"github.com/lmtani/pumbaa/pkg/output"
 )
 
 const METADATA = "../../pkg/cromwell_client/mocks/metadata.json"
 const METADATA_FAIL = "../../pkg/cromwell_client/mocks/metadata-failed.json"
-const wdlPath = "../../examples/wf.wdl"
-const inputsPath = "../../examples/wf.inputs.json"
+const wdlPath = "../../assets/workflow.wdl"
+const inputsPath = "../../assets/workflow.inputs.json"
 
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
 	ts := httptest.NewServer(

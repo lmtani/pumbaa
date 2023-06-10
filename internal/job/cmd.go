@@ -1,6 +1,8 @@
 package job
 
-import "github.com/lmtani/pumbaa/pkg/output"
+import (
+	"github.com/lmtani/pumbaa/internal/pkg/output"
+)
 
 type Prompt interface {
 	SelectByKey(taskOptions []string) (string, error)

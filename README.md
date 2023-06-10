@@ -23,13 +23,13 @@ But don't forget to give us a star if ours has been helpful 😉
 You can download the binary from the [releases page](https://github.com/lmtani/pumbaa/releases) for your platform or install it by running the following command:
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
+curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | bash
 ```
 
-It's allowed to install the binary in any location, but you will need to set variable PREFIX when running the install script.
+It's allowed to install the binary in any location, but you will need to set variable PREFIX when running the script.
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | PREFIX=/home/taniguti/bin bash
+curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | PREFIX=/home/taniguti/bin bash
 ```
 
 This way you don't need to provide privileged access.

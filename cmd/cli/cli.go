@@ -1,4 +1,4 @@
-package cli
+package main
 
 import (
 	"fmt"
@@ -6,14 +6,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/pkg/output"
+	"github.com/lmtani/pumbaa/internal/pkg/prompt"
+
 	"github.com/lmtani/pumbaa/internal/build"
-	cromwell2 "github.com/lmtani/pumbaa/internal/setup"
+	"github.com/lmtani/pumbaa/internal/setup"
 
 	"github.com/lmtani/pumbaa/internal/job"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
-	"github.com/lmtani/pumbaa/pkg/output"
-	"github.com/lmtani/pumbaa/prompt"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
@@ -201,8 +202,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				config := cromwell2.ParseCliParams(c)
-				return cromwell2.StartCromwellServer(config, c.Bool("override"))
+				config := setup.ParseCliParams(c)
+				return setup.StartCromwellServer(config, c.Bool("override"))
 			},
 		},
 		{

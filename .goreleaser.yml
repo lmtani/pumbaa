@@ -9,6 +9,7 @@ before:
 builds:
   - binary: pumbaa
     id: pumbaa
+    main: ./cmd/cli
     env:
       - CGO_ENABLED=0
     goos:

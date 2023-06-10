@@ -67,10 +67,10 @@ func TestClientSubmit(t *testing.T) {
 	client := New(ts.URL, "")
 
 	r := SubmitRequest{
-		WorkflowSource:       "../../examples/wf.wdl",
-		WorkflowInputs:       "../../examples/wf.inputs.json",
-		WorkflowDependencies: "../../examples/wf.wdl",
-		WorkflowOptions:      "../../examples/wf.inputs.json"}
+		WorkflowSource:       "../../assets/workflow.wdl",
+		WorkflowInputs:       "../../assets/workflow.inputs.json",
+		WorkflowDependencies: "../../assets/workflow.wdl",
+		WorkflowOptions:      "../../assets/workflow.inputs.json"}
 	resp, _ := client.Submit(&r)
 
 	expected := "Submitted"

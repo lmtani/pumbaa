@@ -20,7 +20,7 @@ jobs:
     steps:
       - checkout
       - run: sudo apt-get update && sudo apt-get install -y upx
-      - run: curl -sL https://git.io/goreleaser | bash
+      - run: curl -sL https://git.io/goreleaser | bash --config=./configs/.goreleaser.yml
 
 workflows:
   main:

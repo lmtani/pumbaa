@@ -1,10 +1,6 @@
 package main
 
-import (
-	"os"
-
-	"github.com/lmtani/pumbaa/cli"
-)
+import "os"
 
 var (
 	version = "dev"
@@ -13,10 +9,10 @@ var (
 )
 
 func main() {
-	buildInfo := cli.Build{
+	buildInfo := Build{
 		Version: version,
 		Commit:  commit,
 		Date:    date,
 	}
-	os.Exit(cli.Run(&buildInfo))
+	os.Exit(Run(&buildInfo))
 }
