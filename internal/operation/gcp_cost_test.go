@@ -1,4 +1,4 @@
-package cmd
+package operation
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestCost(t *testing.T) {
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
+	content, err := os.ReadFile(METADATA)
 	if err != nil {
 		t.Fatal(err)
 	}

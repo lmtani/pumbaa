@@ -6,7 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/lmtani/pumbaa/cmd"
+	"github.com/lmtani/pumbaa/internal/operation"
+
 	"github.com/lmtani/pumbaa/cromwell"
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 	"github.com/lmtani/pumbaa/pkg/output"
@@ -58,7 +59,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return cmd.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")), cromwellClient, writer)
+				return operation.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")), cromwellClient, writer)
 			},
 		},
 		{
@@ -73,7 +74,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return cmd.Wait(c.String("operation"), c.Int("sleep"), cromwellClient, writer)
+				return operation.Wait(c.String("operation"), c.Int("sleep"), cromwellClient, writer)
 			},
 		},
 		{
@@ -90,7 +91,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return cmd.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"), cromwellClient, writer)
+				return operation.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"), cromwellClient, writer)
 			},
 		},
 		{
@@ -103,7 +104,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			},
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
-				return cmd.Inputs(c.String("operation"), cromwellClient)
+				return operation.Inputs(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -117,7 +118,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return cmd.KillWorkflow(c.String("operation"), cromwellClient, writer)
+				return operation.KillWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -131,7 +132,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return cmd.MetadataWorkflow(c.String("operation"), cromwellClient, writer)
+				return operation.MetadataWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -144,7 +145,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			},
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
-				return cmd.OutputsWorkflow(c.String("operation"), cromwellClient)
+				return operation.OutputsWorkflow(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -159,7 +160,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
 				ui := prompt.Ui{}
-				return cmd.Navigate(c.String("operation"), cromwellClient, writer, &ui)
+				return operation.Navigate(c.String("operation"), cromwellClient, writer, &ui)
 			},
 		},
 		{
@@ -177,7 +178,7 @@ func setupApp(b *Build) *urfaveCli.App {
 					Action: func(c *urfaveCli.Context) error {
 						cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 						writer := output.NewColoredWriter(os.Stdout)
-						return cmd.ResourcesUsed(c.String("operation"), cromwellClient, writer)
+						return operation.ResourcesUsed(c.String("operation"), cromwellClient, writer)
 					},
 				},
 			},

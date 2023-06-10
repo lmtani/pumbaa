@@ -1,4 +1,4 @@
-package cmd
+package operation
 
 import (
 	"fmt"
@@ -10,6 +10,11 @@ import (
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 	"github.com/lmtani/pumbaa/pkg/output"
 )
+
+const METADATA = "../../pkg/cromwell_client/mocks/metadata.json"
+const METADATA_FAIL = "../../pkg/cromwell_client/mocks/metadata-failed.json"
+const wdlPath = "../../examples/wf.wdl"
+const inputsPath = "../../examples/wf.inputs.json"
 
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
 	ts := httptest.NewServer(
@@ -63,7 +68,7 @@ func Example_queryWorkflow() {
 
 func Example_inputs() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
+	content, err := os.ReadFile(METADATA)
 	if err != nil {
 		fmt.Print("Could no read metadata mock file metadata.json")
 	}
@@ -104,7 +109,7 @@ func Example_killWorkflow() {
 
 func Example_resourcesUsed() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
+	content, err := os.ReadFile(METADATA)
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -157,9 +162,6 @@ func Example_submitWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
 
-	wdlPath := "../examples/wf.wdl"
-	inputsPath := "../examples/wf.inputs.json"
-
 	cromwellClient := cromwell_client.New(ts.URL, "")
 	writer := output.NewColoredWriter(os.Stdout)
 
@@ -192,7 +194,7 @@ func Example_wait() {
 
 func Example_metadataWorkflow() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
+	content, err := os.ReadFile(METADATA)
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -228,7 +230,7 @@ func Example_metadataWorkflow() {
 
 func Example_metadataWorkflow_second() {
 	// Read metadata mock
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata-failed.json")
+	content, err := os.ReadFile(METADATA_FAIL)
 	if err != nil {
 		fmt.Print("Coult no read metadata mock file metadata.json")
 	}
@@ -271,9 +273,9 @@ func (m *MockedPrompt) SelectByIndex(sfn func(input string, index int) bool, ite
 
 func Example_navigate() {
 	// Mock http server
-	content, err := os.ReadFile("../pkg/cromwell_client/mocks/metadata.json")
+	content, err := os.ReadFile(METADATA)
 	if err != nil {
-		fmt.Print("Could no read metadata mock file metadata.json")
+		fmt.Printf("Could no read metadata mock file %s", METADATA)
 	}
 
 	// Mock http server
