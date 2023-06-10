@@ -4,19 +4,16 @@
 [![codecov](https://codecov.io/gh/lmtani/pumbaa/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/pumbaa)
 [![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
 
+This project is a command-line interface (CLI) for the Cromwell Server, designed with the following objectives:
 
-A command line interface for Cromwell Server.
+- Simplify the process of installing and configuring a local backend for the Cromwell Server using Docker.
+- Enable reuse of already processed jobs via the Call Cache mechanism, set by default.
+- Provide an interface for interacting with the server, such as submitting, querying, and inspecting jobs.
+- Serve as a personal learning experience with the Go language.
 
-This program was created to:
+The Broad Institute has its own [CLI for Cromwell](https://github.com/broadinstitute/cromshell), which is worth checking out.
 
-- Facilitate the installation and configuration of a Cromwell Server with a local backend using Docker.
-- Provide the functionality to reuse already processed jobs by default, via the Call Cache mechanism.
-- Provide ways to interact with the server, such as submitting, querying, and inspecting jobs.
-- Familiarize myself with the Go language.
-
-The [Broad Institute has its own CLI](https://github.com/broadinstitute/cromshell), be sure to check it out.
-
-But don't forget to give us a star if ours has been helpful 😉
+However, if you found our project helpful, don't forget to give us a star 😉.
 
 ## Quickstart
 
@@ -26,7 +23,7 @@ You can download the binary from the [releases page](https://github.com/lmtani/p
 curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | bash
 ```
 
-It's allowed to install the binary in any location, but you will need to set variable PREFIX when running the script.
+You can install the binary in any location by setting the _PREFIX_ variable to your desired installation directory when running the script:
 
 ```bash
 curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | PREFIX=/home/taniguti/bin bash
