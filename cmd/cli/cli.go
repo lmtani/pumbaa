@@ -216,7 +216,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "out", Required: false, Value: "releases", Usage: "Output directory"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return build.BuildWorkflowDist(c.String("wdl"), c.String("out"))
+				return build.WorkflowDist(c.String("wdl"), c.String("out"))
 			},
 		},
 	}

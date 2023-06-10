@@ -13,8 +13,8 @@ import (
 	"github.com/lmtani/pumbaa/internal/pkg/util"
 )
 
-// BuildWorkflowDist It builds a zip file with all dependencies.
-func BuildWorkflowDist(workflowPath, outDir string) error {
+// WorkflowDist It builds a zip file with all dependencies.
+func WorkflowDist(workflowPath, outDir string) error {
 
 	fmt.Println("Finding dependencies for workflow: ", workflowPath)
 	dependencies, err := getDependencies(workflowPath)
