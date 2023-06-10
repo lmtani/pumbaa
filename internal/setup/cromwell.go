@@ -1,4 +1,4 @@
-package cromwell
+package setup
 
 import (
 	"database/sql"
@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"text/template"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/pkg/util"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/schollz/progressbar/v3"
@@ -30,7 +32,7 @@ func StartCromwellServer(c Config, replaceConfig bool) error {
 	}
 
 	// Defines the save path for the cromwell jar file
-	jarPath, err := cromwellSavePath()
+	jarPath, err := util.CromwellSavePath()
 	if err != nil {
 		return err
 	}
@@ -171,31 +173,6 @@ func DownloadCromwell(cromwellFileName string) error {
 	}
 
 	fmt.Println("\nFile downloaded successfully.")
-	return nil
-}
-
-func cromwellSavePath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	saveDir := filepath.Join(home, ".cromwell")
-	err = createDirectory(saveDir)
-	if err != nil {
-		return "", err
-	}
-
-	fileName := filepath.Join(saveDir, "cromwell.jar")
-	return fileName, nil
-}
-
-func createDirectory(p string) error {
-	if _, err := os.Stat(p); os.IsNotExist(err) {
-		err := os.MkdirAll(p, 0750)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

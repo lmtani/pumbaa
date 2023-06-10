@@ -1,4 +1,4 @@
-package cromwell
+package setup
 
 type BackendConfig struct {
 	Default   string

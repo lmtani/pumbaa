@@ -1,4 +1,4 @@
-package operation
+package job
 
 import "github.com/lmtani/pumbaa/pkg/output"
 

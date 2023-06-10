@@ -6,9 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/operation"
+	"github.com/lmtani/pumbaa/internal/build"
+	cromwell2 "github.com/lmtani/pumbaa/internal/setup"
 
-	"github.com/lmtani/pumbaa/cromwell"
+	"github.com/lmtani/pumbaa/internal/job"
+
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 	"github.com/lmtani/pumbaa/pkg/output"
 	"github.com/lmtani/pumbaa/prompt"
@@ -59,7 +61,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return operation.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")), cromwellClient, writer)
+				return job.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")), cromwellClient, writer)
 			},
 		},
 		{
@@ -74,7 +76,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return operation.Wait(c.String("operation"), c.Int("sleep"), cromwellClient, writer)
+				return job.Wait(c.String("operation"), c.Int("sleep"), cromwellClient, writer)
 			},
 		},
 		{
@@ -91,7 +93,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return operation.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"), cromwellClient, writer)
+				return job.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"), cromwellClient, writer)
 			},
 		},
 		{
@@ -104,7 +106,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			},
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
-				return operation.Inputs(c.String("operation"), cromwellClient)
+				return job.Inputs(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -118,7 +120,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return operation.KillWorkflow(c.String("operation"), cromwellClient, writer)
+				return job.KillWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -132,7 +134,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
-				return operation.MetadataWorkflow(c.String("operation"), cromwellClient, writer)
+				return job.MetadataWorkflow(c.String("operation"), cromwellClient, writer)
 			},
 		},
 		{
@@ -145,7 +147,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			},
 			Action: func(c *urfaveCli.Context) error {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
-				return operation.OutputsWorkflow(c.String("operation"), cromwellClient)
+				return job.OutputsWorkflow(c.String("operation"), cromwellClient)
 			},
 		},
 		{
@@ -160,7 +162,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 				writer := output.NewColoredWriter(os.Stdout)
 				ui := prompt.Ui{}
-				return operation.Navigate(c.String("operation"), cromwellClient, writer, &ui)
+				return job.Navigate(c.String("operation"), cromwellClient, writer, &ui)
 			},
 		},
 		{
@@ -178,7 +180,7 @@ func setupApp(b *Build) *urfaveCli.App {
 					Action: func(c *urfaveCli.Context) error {
 						cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
 						writer := output.NewColoredWriter(os.Stdout)
-						return operation.ResourcesUsed(c.String("operation"), cromwellClient, writer)
+						return job.ResourcesUsed(c.String("operation"), cromwellClient, writer)
 					},
 				},
 			},
@@ -199,8 +201,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				config := cromwell.ParseCliParams(c)
-				return cromwell.StartCromwellServer(config, c.Bool("override"))
+				config := cromwell2.ParseCliParams(c)
+				return cromwell2.StartCromwellServer(config, c.Bool("override"))
 			},
 		},
 		{
@@ -213,7 +215,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "out", Required: false, Value: "releases", Usage: "Output directory"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return cromwell.BuildWorkflowDist(c.String("wdl"), c.String("out"))
+				return build.BuildWorkflowDist(c.String("wdl"), c.String("out"))
 			},
 		},
 	}

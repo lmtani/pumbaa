@@ -1,4 +1,4 @@
-package cromwell
+package build
 
 import (
 	"archive/zip"
@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/lmtani/pumbaa/internal/pkg/util"
 )
 
 // BuildWorkflowDist It builds a zip file with all dependencies.
@@ -27,7 +29,7 @@ func BuildWorkflowDist(workflowPath, outDir string) error {
 	}
 
 	// create releases directory
-	err = createDirectory(outDir)
+	err = util.CreateDirectory(outDir)
 	if err != nil {
 		return err
 	}
