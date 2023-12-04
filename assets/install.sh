@@ -179,10 +179,11 @@ main() {
     asset_name="pumbaa_${cli_os}_${cli_arch}.tar.gz"
     print_message "== Downloading binary file from github: ${asset_name}" "info"
 
-    uri=$(wget -q -O - https://api.github.com/repos/lmtani/pumbaa/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
+    uri=$(curl -s https://api.github.com/repos/lmtani/pumbaa/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
     print_message "== Downloading from ${uri}" "info"
+    output_filename=$(basename "${uri}")
     tempdir=$(mktemp -d)
-    wget "${uri}" -P "$tempdir" 1>"${tempdir}/wget.out" 2>"${tempdir}/wget.err"
+    curl -L -o "${tempdir}/${output_filename}" "${uri}" 1>"${tempdir}/curl.out" 2>"${tempdir}/curl.err"
     tar -xf "${tempdir}/${asset_name}" -C "${tempdir}"
 
     print_message "== Installing in ${prefix}/pumbaa" "info"
