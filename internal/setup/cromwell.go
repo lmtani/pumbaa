@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/pkg/storage/google"
 	"github.com/lmtani/pumbaa/internal/pkg/util"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -240,6 +241,12 @@ func ParseCliParams(c *cli.Context) Config {
 			GcsFilesystem:   GcsFilesystem{Auth: "application-default"},
 			LocalFilesystem: LocalFilesystem{Localization: []string{"hard-link", "soft-link", "copy"}},
 		},
+	}
+
+	_, err := google.GetClient()
+	if err == nil {
+		fmt.Println("Google Cloud Default credentials found. Enabling GCS filesystem.")
+		engines.GcsFilesystem.Auth = "application-default"
 	}
 
 	config := Config{
