@@ -34,28 +34,20 @@ EOF
 #       RETURNS:  Formatted Message to stdout
 #-------------------------------------------------------------------------------
 print_message() {
-  local message
-  local severity
-  local red
-  local green
-  local yellow
-  local nc
-
-  message="${1}"
-  severity="${2}"
-  red='\e[0;31m'
-  green='\e[0;32m'
-  yellow='\e[1;33m'
-  nc='\e[0m'
+  local message="$1"
+  local severity="$2"
+  local red='\033[0;31m'
+  local green='\033[0;32m'
+  local yellow='\033[1;33m'
+  local nc='\033[0m'
 
   case "${severity}" in
     "info" ) echo -e "${nc}${message}${nc}";;
-      "ok" ) echo -e "${green}${message}${nc}";;
-   "error" ) echo -e "${red}${message}${nc}";;
+    "ok" ) echo -e "${green}${message}${nc}";;
+    "error" ) echo -e "${red}${message}${nc}";;
     "warn" ) echo -e "${yellow}${message}${nc}";;
+    *) echo -e "${message}";; # Default case if severity is not recognized
   esac
-
-
 }
 
 #---  FUNCTION  ----------------------------------------------------------------
@@ -179,7 +171,7 @@ main() {
     asset_name="pumbaa_${cli_os}_${cli_arch}.tar.gz"
     print_message "== Downloading binary file from github: ${asset_name}" "info"
 
-    uri=$(curl -s https://api.github.com/repos/lmtani/pumbaa/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}")
+    uri=$(curl -s https://api.github.com/repos/lmtani/pumbaa/releases/latest | grep "browser_download_url" | cut -d '"' -f 4 | grep "${asset_name}" || true)
     # Raise error if uri is empty
     if [[ -z "${uri}" ]]; then
         print_message "== Could not find binary for ${cli_os} ${cli_arch}" "error"
