@@ -238,7 +238,6 @@ func ParseCliParams(c *cli.Context) Config {
 	engines := Engine{
 		Filesystems{
 			HTTP:            struct{}{},
-			GcsFilesystem:   GcsFilesystem{Auth: "application-default"},
 			LocalFilesystem: LocalFilesystem{Localization: []string{"hard-link", "soft-link", "copy"}},
 		},
 	}

@@ -18,9 +18,6 @@ builds:
     goarch:
       - arm64
       - amd64
-    hooks:
-      post:
-        - upx "{{ .Path }}"
 
 archives:
   - id: pumbaa
