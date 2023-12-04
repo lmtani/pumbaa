@@ -238,14 +238,15 @@ func ParseCliParams(c *cli.Context) Config {
 	engines := Engine{
 		Filesystems{
 			HTTP:            struct{}{},
+			GcsFilesystem:   GcsFilesystem{Auth: "application-default", Enabled: true},
 			LocalFilesystem: LocalFilesystem{Localization: []string{"hard-link", "soft-link", "copy"}},
 		},
 	}
 
 	_, err := google.GetClient()
-	if err == nil {
-		fmt.Println("Google Cloud Default credentials found. Enabling GCS filesystem.")
-		engines.GcsFilesystem.Auth = "application-default"
+	if err != nil {
+		fmt.Println("Google Cloud Default credentials not found. Disabling GCS filesystem.")
+		engines.GcsFilesystem.Enabled = false
 	}
 
 	config := Config{

@@ -18,7 +18,8 @@ type ProviderSettings struct {
 }
 
 type GcsFilesystem struct {
-	Auth string `json:"auth"`
+	Auth    string `json:"auth"`
+	Enabled bool   `json:"enabled"`
 }
 
 type LocalFilesystem struct {

@@ -25,7 +25,7 @@ backend {
 engine {
   filesystems {
 
-    {{- if .Engine.GcsFilesystem }}
+    {{- if .Engine.GcsFilesystem.Enabled }}
     gcs {
       auth = "{{ .Engine.GcsFilesystem.Auth }}"
     }
