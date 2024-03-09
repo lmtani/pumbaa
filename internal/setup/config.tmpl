@@ -15,6 +15,11 @@ backend {
             {{ range .Config.FileSystems.LocalFilesystem.Localization }}"{{ . }}",{{ end }}
             ]
           }
+          {{- if .Engine.GcsFilesystem.Enabled }}
+          gcs {
+            auth = "{{ .Engine.GcsFilesystem.Auth }}"
+          }
+          {{- end }}
         }
       }
     }
