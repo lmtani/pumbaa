@@ -2,6 +2,7 @@ package output
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/types"
 	"io"
 	"os"
 
@@ -51,10 +52,10 @@ func (ColoredWriter) colorPrint(c, s string) {
 	}
 }
 
-func (w ColoredWriter) Table(tab Table) {
-	w.table.SetHeader(tab.Header())
+func (w ColoredWriter) Table(table types.Table) {
+	w.table.SetHeader(table.Header())
 	w.table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
 	w.table.SetAlignment(tablewriter.ALIGN_LEFT)
-	w.table.AppendBulk(tab.Rows())
+	w.table.AppendBulk(table.Rows())
 	w.table.Render()
 }

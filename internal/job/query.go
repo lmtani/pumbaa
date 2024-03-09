@@ -2,12 +2,13 @@ package job
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"time"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func QueryWorkflow(name string, days time.Duration, c *cromwell_client.Client, w Writer) error {
+func QueryWorkflow(name string, days time.Duration, c *cromwell_client.Client, w ports.Writer) error {
 	var submission time.Time
 	if days != 0 {
 		submission = time.Now().Add(-time.Hour * 24 * days)

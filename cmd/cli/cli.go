@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/adapters"
+	"github.com/lmtani/pumbaa/internal/core"
 	"log"
 	"os"
 	"time"
@@ -9,7 +11,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/pkg/output"
 	"github.com/lmtani/pumbaa/internal/pkg/prompt"
 
-	"github.com/lmtani/pumbaa/internal/build"
 	"github.com/lmtani/pumbaa/internal/setup"
 
 	"github.com/lmtani/pumbaa/internal/job"
@@ -106,8 +107,9 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
-				return job.Inputs(c.String("operation"), cromwellClient)
+				cromwellClient := adapters.NewCromwellClient(c.String("host"), c.String("iap"))
+				i := core.NewInputs(cromwellClient)
+				return i.Inputs(c.String("operation"))
 			},
 		},
 		{
@@ -179,9 +181,10 @@ func setupApp(b *Build) *urfaveCli.App {
 						&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 					},
 					Action: func(c *urfaveCli.Context) error {
-						cromwellClient := cromwell_client.New(c.String("host"), c.String("iap"))
+						cromwell := adapters.NewCromwellClient(c.String("host"), c.String("iap"))
 						writer := output.NewColoredWriter(os.Stdout)
-						return job.ResourcesUsed(c.String("operation"), cromwellClient, writer)
+						resources := core.NewResourcesUsed(cromwell, writer)
+						return resources.Get(c.String("operation"))
 					},
 				},
 			},
@@ -216,11 +219,14 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "out", Required: false, Value: "releases", Usage: "Output directory"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return build.WorkflowDist(c.String("wdl"), c.String("out"))
+				wdl := adapters.RegexWdlPArser{}
+				fs := adapters.LocalFilesystem{}
+				releaser := core.NewRelease(&wdl, &fs)
+				err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
+				return err
 			},
 		},
 	}
-
 	return &urfaveCli.App{
 		Name:     "Pumbaa",
 		Usage:    "Command line interface for Cromwell Server",

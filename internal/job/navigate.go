@@ -2,13 +2,14 @@ package job
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"strconv"
 	"strings"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func Navigate(operation string, c *cromwell_client.Client, w Writer, p Prompt) error {
+func Navigate(operation string, c *cromwell_client.Client, w ports.Writer, p Prompt) error {
 	params := cromwell_client.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
@@ -68,7 +69,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func selectDesiredTask(m *cromwell_client.MetadataResponse, p Prompt, w Writer) ([]cromwell_client.CallItem, error) {
+func selectDesiredTask(m *cromwell_client.MetadataResponse, p Prompt, w ports.Writer) ([]cromwell_client.CallItem, error) {
 	var taskOptions []string
 	calls := make(map[string][]cromwell_client.CallItem)
 	for key, value := range m.Calls {

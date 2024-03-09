@@ -2,11 +2,12 @@ package job
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func KillWorkflow(operation string, c *cromwell_client.Client, w Writer) error {
+func KillWorkflow(operation string, c *cromwell_client.Client, w ports.Writer) error {
 	resp, err := c.Kill(operation)
 	if err != nil {
 		return err

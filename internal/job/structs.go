@@ -166,3 +166,11 @@ func countOccurrence(names, status []string, duration []time.Duration) (map[stri
 	}
 	return wfShards, wfStatusDone, wfStatusFailed, wfTimeElapsed
 }
+
+func dashIfZero(v float64) string {
+	s := fmt.Sprintf("%.2f", v)
+	if v == 0.0 {
+		s = "-"
+	}
+	return s
+}

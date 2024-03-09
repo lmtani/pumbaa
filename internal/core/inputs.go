@@ -1,14 +1,22 @@
-package job
+package core
 
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/lmtani/pumbaa/pkg/cromwell_client"
+	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/types"
 )
 
-func Inputs(operation string, c *cromwell_client.Client) error {
-	resp, err := c.Metadata(operation, &cromwell_client.ParamsMetadataGet{})
+type Inputs struct {
+	c ports.Cromwell
+}
+
+func NewInputs(c ports.Cromwell) *Inputs {
+	return &Inputs{c: c}
+}
+
+func (i *Inputs) Inputs(operation string) error {
+	resp, err := i.c.Metadata(operation, &types.ParamsMetadataGet{})
 	if err != nil {
 		return err
 	}

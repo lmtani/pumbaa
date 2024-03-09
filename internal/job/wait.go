@@ -2,12 +2,13 @@ package job
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"time"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func Wait(operation string, sleep int, c *cromwell_client.Client, w Writer) error {
+func Wait(operation string, sleep int, c *cromwell_client.Client, w ports.Writer) error {
 	resp, err := c.Status(operation)
 	if err != nil {
 		return err

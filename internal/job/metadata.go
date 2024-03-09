@@ -3,12 +3,13 @@ package job
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"sort"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func MetadataWorkflow(operation string, c *cromwell_client.Client, w Writer) error {
+func MetadataWorkflow(operation string, c *cromwell_client.Client, w ports.Writer) error {
 	params := cromwell_client.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
@@ -84,7 +85,7 @@ func hasFailureMsg(fails []cromwell_client.Failure) string {
 	return msg
 }
 
-func recursiveFailureParse(f []cromwell_client.Failure, w Writer) {
+func recursiveFailureParse(f []cromwell_client.Failure, w ports.Writer) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
 		recursiveFailureParse(f[idx].CausedBy, w)

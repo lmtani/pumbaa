@@ -2,11 +2,12 @@ package job
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 
 	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func SubmitWorkflow(wdl, inputs, dependencies, options string, c *cromwell_client.Client, w Writer) error {
+func SubmitWorkflow(wdl, inputs, dependencies, options string, c *cromwell_client.Client, w ports.Writer) error {
 	r := cromwell_client.SubmitRequest{
 		WorkflowSource:       wdl,
 		WorkflowInputs:       inputs,
