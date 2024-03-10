@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/lmtani/pumbaa/internal/setup"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
@@ -184,8 +183,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				config := setup.ParseCliParams(c)
-				return setup.StartCromwellServer(config, c.Bool("override"))
+				return localDeploy(c)
 			},
 		},
 		{

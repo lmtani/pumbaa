@@ -13,8 +13,26 @@ import (
 
 type LocalFilesystem struct{}
 
+func NewLocalFilesystem() *LocalFilesystem {
+	return &LocalFilesystem{}
+}
+
 func (l *LocalFilesystem) CreateDirectory(dir string) error {
-	return os.MkdirAll(dir, os.ModePerm)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, 0750)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l *LocalFilesystem) HomeDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return home, nil
 }
 
 func (l *LocalFilesystem) MoveFile(srcPath, destPath string) error {
@@ -237,8 +255,5 @@ func (l *LocalFilesystem) resolvePath(basePath, relativePath string) (string, er
 func (l *LocalFilesystem) IsInUserPath(path string) bool {
 	// Check if the path is in the user's path
 	_, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }

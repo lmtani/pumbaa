@@ -1,4 +1,4 @@
-package setup
+package types
 
 type BackendConfig struct {
 	Default   string
@@ -57,6 +57,7 @@ type Docker struct {
 }
 
 type Config struct {
+	Override bool
 	BackendConfig
 	Database
 	CallCaching

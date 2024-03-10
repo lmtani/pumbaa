@@ -6,4 +6,5 @@ type Filesystem interface {
 	ZipFiles(workflowPath, zipPath string, files []string) ([]string, error)
 	ReplaceImports(workflowPath string) (string, error)
 	IsInUserPath(path string) bool
+	HomeDir() (string, error)
 }

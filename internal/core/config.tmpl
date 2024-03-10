@@ -12,12 +12,12 @@ backend {
         filesystems {
           local {
             localization: [
-            {{ range .Config.FileSystems.LocalFilesystem.Localization }}"{{ . }}",{{ end }}
+            {{ range .Engine.Filesystems.LocalFilesystem.Localization }}"{{ . }}",{{ end }}
             ]
           }
-          {{- if .Engine.GcsFilesystem.Enabled }}
+          {{- if .Engine.Filesystems.GcsFilesystem.Enabled }}
           gcs {
-            auth = "{{ .Engine.GcsFilesystem.Auth }}"
+            auth = "{{ .Engine.Filesystems.GcsFilesystem.Auth }}"
           }
           {{- end }}
         }
@@ -30,9 +30,9 @@ backend {
 engine {
   filesystems {
 
-    {{- if .Engine.GcsFilesystem.Enabled }}
+    {{- if .Engine.Filesystems.GcsFilesystem.Enabled }}
     gcs {
-      auth = "{{ .Engine.GcsFilesystem.Auth }}"
+      auth = "{{ .Engine.Filesystems.GcsFilesystem.Auth }}"
     }
     {{- end }}
 
