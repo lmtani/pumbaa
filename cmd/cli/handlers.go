@@ -112,7 +112,15 @@ func ParseCliParams(c *urfaveCli.Context) types.Config {
 		BackendConfig: types.BackendConfig{
 			Default: "Local",
 			Providers: []types.ProviderConfig{
-				{Name: "Local", ActorFactor: "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory", Config: types.ProviderSettings{MaxConcurrentWorkflows: 1, ConcurrentJobLimit: c.Int("max-jobs"), FileSystems: engines}},
+				{
+					Name:        "Local",
+					ActorFactor: "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+					Config: types.ProviderSettings{
+						MaxConcurrentWorkflows: 1,
+						ConcurrentJobLimit:     c.Int("max-jobs"),
+						FileSystems:            engines,
+					},
+				},
 			},
 		},
 		Database: types.Database{
