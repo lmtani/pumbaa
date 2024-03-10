@@ -1,6 +1,8 @@
 package setup
 
 import (
+	"cloud.google.com/go/storage"
+	"context"
 	"database/sql"
 	_ "embed"
 	"fmt"
@@ -12,9 +14,6 @@ import (
 	"strconv"
 	"text/template"
 	"time"
-
-	"github.com/lmtani/pumbaa/internal/pkg/storage/google"
-	"github.com/lmtani/pumbaa/internal/pkg/util"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/schollz/progressbar/v3"
@@ -33,7 +32,7 @@ func StartCromwellServer(c Config, replaceConfig bool) error {
 	}
 
 	// Defines the save path for the cromwell jar file
-	jarPath, err := util.CromwellSavePath()
+	jarPath, err := CromwellSavePath()
 	if err != nil {
 		return err
 	}
@@ -234,6 +233,21 @@ func createCromwellConfig(savePath string, config Config) error {
 	return nil
 }
 
+func GetClient() (*storage.Client, error) {
+	ctx := context.Background()
+
+	// Attempt to create a client
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	// If the client is created successfully, credentials are available
+	fmt.Println("Credentials are available for Google Cloud Storage")
+	return client, nil
+}
+
 func ParseCliParams(c *cli.Context) Config {
 	engines := Engine{
 		Filesystems{
@@ -243,7 +257,7 @@ func ParseCliParams(c *cli.Context) Config {
 		},
 	}
 
-	_, err := google.GetClient()
+	_, err := GetClient()
 	if err != nil {
 		fmt.Println("Google Cloud Default credentials not found. Disabling GCS filesystem.")
 		engines.GcsFilesystem.Enabled = false
@@ -275,4 +289,29 @@ func ParseCliParams(c *cli.Context) Config {
 		Engine: engines,
 	}
 	return config
+}
+
+func CromwellSavePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	saveDir := filepath.Join(home, ".cromwell")
+	err = CreateDirectory(saveDir)
+	if err != nil {
+		return "", err
+	}
+
+	fileName := filepath.Join(saveDir, "cromwell.jar")
+	return fileName, nil
+}
+
+func CreateDirectory(p string) error {
+	if _, err := os.Stat(p); os.IsNotExist(err) {
+		err := os.MkdirAll(p, 0750)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

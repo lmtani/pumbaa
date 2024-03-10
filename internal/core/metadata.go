@@ -1,27 +1,35 @@
-package job
+package core
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/types"
 	"sort"
-
-	"github.com/lmtani/pumbaa/pkg/cromwell_client"
 )
 
-func MetadataWorkflow(operation string, c *cromwell_client.Client, w ports.Writer) error {
-	params := cromwell_client.ParamsMetadataGet{
+type MetadataTable struct {
+	c ports.Cromwell
+	w ports.Writer
+}
+
+func NewMetadata(c ports.Cromwell, w ports.Writer) *MetadataTable {
+	return &MetadataTable{c: c, w: w}
+}
+
+func (m *MetadataTable) Metadata(o string) error {
+	params := types.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-	resp, err := c.Metadata(operation, &params)
+	resp, err := m.c.Metadata(o, &params)
 	if err != nil {
 		return err
 	}
-	var mtr = MetadataTableResponse{Metadata: resp}
-	w.Table(mtr)
+	var mtr = types.MetadataTableResponse{Metadata: resp}
+	m.w.Table(mtr)
 	if len(resp.Failures) > 0 {
-		w.Error(hasFailureMsg(resp.Failures))
-		recursiveFailureParse(resp.Failures, w)
+		m.w.Error(hasFailureMsg(resp.Failures))
+		recursiveFailureParse(resp.Failures, m.w)
 	}
 
 	items, err := showCustomOptions(resp.SubmittedFiles)
@@ -30,16 +38,16 @@ func MetadataWorkflow(operation string, c *cromwell_client.Client, w ports.Write
 	}
 
 	if len(items) > 0 {
-		w.Accent("🔧 Custom options")
+		m.w.Accent("🔧 Custom options")
 	}
 	// iterate over items strings
 	for _, v := range items {
-		w.Primary(v)
+		m.w.Primary(v)
 	}
 	return err
 }
 
-func showCustomOptions(s cromwell_client.SubmittedFiles) ([]string, error) {
+func showCustomOptions(s types.SubmittedFiles) ([]string, error) {
 	items := make([]string, 0)
 
 	var options map[string]interface{}
@@ -76,7 +84,14 @@ func sortOptionsKeys(f map[string]interface{}) []string {
 	return keys
 }
 
-func hasFailureMsg(fails []cromwell_client.Failure) string {
+func recursiveFailureParse(f []types.Failure, w ports.Writer) {
+	for idx := range f {
+		w.Primary(" - " + f[idx].Message)
+		recursiveFailureParse(f[idx].CausedBy, w)
+	}
+}
+
+func hasFailureMsg(fails []types.Failure) string {
 	m := "issue"
 	if len(fails) > 1 {
 		m = "issues"
@@ -84,16 +99,3 @@ func hasFailureMsg(fails []cromwell_client.Failure) string {
 	msg := fmt.Sprintf("❗You have %d %s:\n", len(fails), m)
 	return msg
 }
-
-func recursiveFailureParse(f []cromwell_client.Failure, w ports.Writer) {
-	for idx := range f {
-		w.Primary(" - " + f[idx].Message)
-		recursiveFailureParse(f[idx].CausedBy, w)
-	}
-}
-
-type rowSlice [][]string
-
-func (c rowSlice) Len() int           { return len(c) }
-func (c rowSlice) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c rowSlice) Less(i, j int) bool { return c[i][0] < c[j][0] }

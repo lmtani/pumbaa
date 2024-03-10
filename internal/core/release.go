@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
-	"github.com/lmtani/pumbaa/internal/ports"
 	"path/filepath"
 	"strings"
+
+	"github.com/lmtani/pumbaa/internal/ports"
 )
 
 type Release struct {

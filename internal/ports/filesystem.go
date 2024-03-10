@@ -5,4 +5,5 @@ type Filesystem interface {
 	MoveFile(srcPath, destPath string) error
 	ZipFiles(workflowPath, zipPath string, files []string) ([]string, error)
 	ReplaceImports(workflowPath string) (string, error)
+	IsInUserPath(path string) bool
 }

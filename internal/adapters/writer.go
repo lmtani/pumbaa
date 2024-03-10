@@ -1,10 +1,11 @@
-package output
+package adapters
 
 import (
 	"fmt"
-	"github.com/lmtani/pumbaa/internal/types"
 	"io"
 	"os"
+
+	"github.com/lmtani/pumbaa/internal/types"
 
 	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
@@ -44,7 +45,7 @@ func (w ColoredWriter) Error(s string) {
 	w.colorPrint(ErrorColor, s)
 }
 
-func (ColoredWriter) colorPrint(c, s string) {
+func (w ColoredWriter) colorPrint(c, s string) {
 	if NoColor {
 		fmt.Println(s)
 	} else {

@@ -233,3 +233,12 @@ func (l *LocalFilesystem) resolvePath(basePath, relativePath string) (string, er
 
 	return fullPath, nil
 }
+
+func (l *LocalFilesystem) IsInUserPath(path string) bool {
+	// Check if the path is in the user's path
+	_, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return true
+}

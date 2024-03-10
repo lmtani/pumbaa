@@ -12,10 +12,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/go-querystring/query"
 	"github.com/lmtani/pumbaa/internal/types"
 	"google.golang.org/api/idtoken"
-
-	"github.com/google/go-querystring/query"
 )
 
 type Client struct {
