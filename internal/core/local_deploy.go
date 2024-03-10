@@ -217,9 +217,6 @@ func (l *LocalDeploy) createCromwellConfig(savePath string) error {
 		"jdbc:mysql://%s:%d/cromwell?rewriteBatchedStatements=true",
 		l.c.Database.Host, l.c.Database.Port)
 
-	// Print whole struct, with attr names
-	fmt.Printf("%+v\n", l.c)
-
 	err = tmpl.Execute(file, l.c)
 	if err != nil {
 		return err

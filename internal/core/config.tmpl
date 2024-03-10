@@ -2,7 +2,7 @@ backend {
   default = {{ .BackendConfig.Default }}
 
   providers {
-    {{ range .Providers }}
+    {{ range .BackendConfig.Providers }}
     {{ .Name }} {
       actor-factory = "{{ .ActorFactor }}"
       config {
@@ -12,12 +12,12 @@ backend {
         filesystems {
           local {
             localization: [
-            {{ range .Engine.Filesystems.LocalFilesystem.Localization }}"{{ . }}",{{ end }}
+            {{ range .Config.FileSystems.LocalFilesystem.Localization }}"{{ . }}",{{ end }}
             ]
           }
-          {{- if .Engine.Filesystems.GcsFilesystem.Enabled }}
+          {{- if .Config.FileSystems.GcsFilesystem.Enabled }}
           gcs {
-            auth = "{{ .Engine.Filesystems.GcsFilesystem.Auth }}"
+            auth = "{{ .Config.FileSystems.GcsFilesystem.Auth }}"
           }
           {{- end }}
         }
@@ -30,9 +30,9 @@ backend {
 engine {
   filesystems {
 
-    {{- if .Engine.Filesystems.GcsFilesystem.Enabled }}
+    {{- if .Engine.GcsFilesystem.Enabled }}
     gcs {
-      auth = "{{ .Engine.Filesystems.GcsFilesystem.Auth }}"
+      auth = "{{ .Engine.GcsFilesystem.Auth }}"
     }
     {{- end }}
 

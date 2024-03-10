@@ -18,22 +18,22 @@ type ProviderSettings struct {
 }
 
 type GcsFilesystem struct {
-	Auth    string `json:"auth"`
-	Enabled bool   `json:"enabled"`
+	Auth    string
+	Enabled bool
 }
 
 type LocalFilesystem struct {
-	Localization []string `json:"localization"`
+	Localization []string
 }
 
 type Filesystems struct {
-	GcsFilesystem   `json:"gcs,omitempty"`
-	HTTP            struct{} `json:"http,omitempty"`
-	LocalFilesystem `json:"local,omitempty"`
+	GcsFilesystem   GcsFilesystem
+	HTTP            struct{}
+	LocalFilesystem LocalFilesystem
 }
 
 type Engine struct {
-	Filesystems `json:"filesystems"`
+	Filesystems
 }
 
 type Database struct {
@@ -57,10 +57,10 @@ type Docker struct {
 }
 
 type Config struct {
-	Override bool
-	BackendConfig
-	Database
-	CallCaching
-	Docker
-	Engine
+	Override      bool
+	BackendConfig BackendConfig
+	Database      Database
+	CallCaching   CallCaching
+	Docker        Docker
+	Engine        Engine
 }
