@@ -1,19 +1,26 @@
 package core
 
-import "github.com/lmtani/pumbaa/internal/ports"
+import (
+	"fmt"
+
+	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/types"
+)
 
 type Kill struct {
 	c ports.Cromwell
+	w ports.Writer
 }
 
-func NewKill(c ports.Cromwell) *Kill {
-	return &Kill{c: c}
+func NewKill(c ports.Cromwell, w ports.Writer) *Kill {
+	return &Kill{c: c, w: w}
 }
 
-func (k *Kill) Kill(o string) error {
-	_, err := k.c.Kill(o)
+func (k *Kill) Kill(o string) (types.SubmitResponse, error) {
+	resp, err := k.c.Kill(o)
 	if err != nil {
-		return err
+		return types.SubmitResponse{}, err
 	}
-	return nil
+	k.w.Accent(fmt.Sprintf("Operation=%s, Status=%s", resp.ID, resp.Status))
+	return resp, nil
 }

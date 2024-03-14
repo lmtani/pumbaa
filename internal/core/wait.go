@@ -2,8 +2,9 @@ package core
 
 import (
 	"fmt"
-	"github.com/lmtani/pumbaa/internal/ports"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/ports"
 )
 
 type Wait struct {
@@ -21,6 +22,7 @@ func (wt *Wait) Wait(operation string, sleep int) error {
 		return err
 	}
 	status := resp.Status
+	fmt.Printf("Time between status check = %d\n", sleep)
 	wt.w.Accent(fmt.Sprintf("Status=%s\n", resp.Status))
 	for status == "Running" || status == "Submitted" {
 		time.Sleep(time.Duration(sleep) * time.Second)

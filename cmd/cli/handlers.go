@@ -51,13 +51,16 @@ func submit(c *urfaveCli.Context) error {
 func inputs(c *urfaveCli.Context) error {
 	cromwellClient := adapters.NewCromwellClient(c.String("host"), c.String("iap"))
 	i := core.NewInputs(cromwellClient)
-	return i.Inputs(c.String("operation"))
+	_, err := i.Inputs(c.String("operation"))
+	return err
 }
 
 func kill(c *urfaveCli.Context) error {
 	cromwellClient := adapters.NewCromwellClient(c.String("host"), c.String("iap"))
-	k := core.NewKill(cromwellClient)
-	return k.Kill(c.String("operation"))
+	w := adapters.NewColoredWriter(os.Stdout)
+	k := core.NewKill(cromwellClient, w)
+	_, err := k.Kill(c.String("operation"))
+	return err
 }
 
 func metadata(c *urfaveCli.Context) error {
