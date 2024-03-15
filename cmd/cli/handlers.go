@@ -96,7 +96,8 @@ func localDeploy(c *urfaveCli.Context) error {
 	mysql := adapters.NewMysql(config.Database)
 	gcs := adapters.NewGoogleStorage()
 	fs := adapters.NewLocalFilesystem()
-	ld := core.NewLocalDeploy(fs, mysql, gcs, config)
+	h := adapters.NewDefaultHTTP()
+	ld := core.NewLocalDeploy(fs, mysql, gcs, h, config)
 	return ld.Deploy()
 }
 

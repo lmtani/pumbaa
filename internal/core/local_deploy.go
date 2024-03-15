@@ -3,18 +3,14 @@ package core
 import (
 	_ "embed"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"text/template"
-	"time"
 
 	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
-	"github.com/schollz/progressbar/v3"
 )
 
 const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
@@ -22,33 +18,16 @@ const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/
 //go:embed config.tmpl
 var ConfigTmpl string
 
-var (
-	ErrorNoInternetConnection = fmt.Errorf("no internet connection. please check your internet connection")
-	ErrorWindowsNotSupported  = fmt.Errorf("windows is not supported. please use linux or macos")
-	ErrorDockerNotInstalled   = fmt.Errorf("docker is not installed. please install docker first")
-	ErrorJavaNotInstalled     = fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
-	ErrorGoogleCredentials    = fmt.Errorf("Google Cloud Default credentials not found. Disabling GCS filesystem.")
-	ErrorMysqlNotInstalled    = fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
-
-			Start a new mysql server with:
-			  - docker run -d --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0
-			Stop it later with:
-			  - docker stop cromwell-db
-			Start it again with:
-			  - docker start cromwell-db
-		`)
-)
-
-// TODO: Fix cromwell config template
 type LocalDeploy struct {
-	fl  ports.Filesystem
-	sql ports.Sql
-	gs  ports.GoogleCloudStorage
-	c   types.Config
+	fl   ports.Filesystem
+	http ports.HTTPClient
+	sql  ports.Sql
+	gs   ports.GoogleCloudStorage
+	c    types.Config
 }
 
-func NewLocalDeploy(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudStorage, c types.Config) *LocalDeploy {
-	return &LocalDeploy{fl: fl, sql: sql, c: c, gs: gs}
+func NewLocalDeploy(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudStorage, h ports.HTTPClient, c types.Config) *LocalDeploy {
+	return &LocalDeploy{fl: fl, sql: sql, c: c, gs: gs, http: h}
 }
 
 func (l *LocalDeploy) Deploy() error {
@@ -64,26 +43,27 @@ func (l *LocalDeploy) Deploy() error {
 	}
 
 	// Defines the save path for the cromwell jar file
-	jarPath, err := l.CromwellSavePath()
+	savePath, err := l.CromwellSavePath()
 	if err != nil {
 		return err
 	}
 
 	// Downloads Cromwell if it does not exist
-	_, err = os.Stat(jarPath)
+	_, err = os.Stat(savePath)
 	if os.IsNotExist(err) {
-		err = DownloadCromwell(jarPath)
+		err = l.http.DownloadWithProgress(jarUrl, savePath)
 		if err != nil {
+			err = os.Remove(savePath)
 			return err
 		}
 	}
 
-	basePath := filepath.Dir(jarPath)
+	basePath := filepath.Dir(savePath)
 	config := filepath.Join(basePath, "cromwell.conf")
-	_, err = os.Stat(config)
-	if os.IsNotExist(err) || l.c.Override {
-		err = l.createCromwellConfig(config)
-		if err != nil {
+
+	// Check for the existence of the config file or if override is enabled
+	if _, err := os.Stat(config); os.IsNotExist(err) || l.c.Override {
+		if err := l.createCromwellConfig(config); err != nil {
 			return err
 		}
 	}
@@ -122,75 +102,6 @@ func (l *LocalDeploy) checkRequirements() error {
 	}
 
 	return err
-}
-
-func isInUserPath(s string) bool {
-	_, err := exec.LookPath(s)
-	return err == nil
-}
-
-func DownloadCromwell(cromwellFileName string) error {
-	// create http client
-	client := http.Client{
-		Timeout: 5 * time.Minute,
-	}
-
-	// get the content length of the file
-	resp, err := client.Head(jarUrl)
-	if err != nil {
-		return err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(resp.Body)
-	size, err := strconv.Atoi(resp.Header.Get("Content-Length"))
-	if err != nil {
-		return err
-	}
-
-	// create the progress bar
-	bar := progressbar.DefaultBytes(
-		int64(size),
-		"downloading",
-	)
-
-	// download the file and update the progress bar
-	resp, err = client.Get(jarUrl)
-	if err != nil {
-		// if the download fails, delete the file
-		err = os.Remove(cromwellFileName)
-		return err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(resp.Body)
-
-	file, err := os.Create(cromwellFileName)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(file)
-
-	writer := io.MultiWriter(file, bar)
-
-	_, err = io.Copy(writer, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("\nFile downloaded successfully.")
-	return nil
 }
 
 func (l *LocalDeploy) createCromwellConfig(savePath string) error {
@@ -238,3 +149,25 @@ func (l *LocalDeploy) CromwellSavePath() (string, error) {
 	fileName := filepath.Join(saveDir, "cromwell.jar")
 	return fileName, nil
 }
+
+func isInUserPath(s string) bool {
+	_, err := exec.LookPath(s)
+	return err == nil
+}
+
+var (
+	ErrorNoInternetConnection = fmt.Errorf("no internet connection. please check your internet connection")
+	ErrorWindowsNotSupported  = fmt.Errorf("windows is not supported. please use linux or macos")
+	ErrorDockerNotInstalled   = fmt.Errorf("docker is not installed. please install docker first")
+	ErrorJavaNotInstalled     = fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
+	ErrorGoogleCredentials    = fmt.Errorf("Google Cloud Default credentials not found. Disabling GCS filesystem.")
+	ErrorMysqlNotInstalled    = fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
+
+			Start a new mysql server with:
+			  - docker run -d --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0
+			Stop it later with:
+			  - docker stop cromwell-db
+			Start it again with:
+			  - docker start cromwell-db
+		`)
+)
