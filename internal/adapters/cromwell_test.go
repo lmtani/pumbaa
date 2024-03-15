@@ -25,13 +25,22 @@ func buildTestServer(url, resp string) *httptest.Server {
 	return ts
 }
 
+func NewTestCromwellClient(h string) *CromwellClient {
+	gcp := NewGoogleCloud("")
+	return &CromwellClient{
+		Host:   h,
+		Gcp:    gcp,
+		Logger: log.New(os.Stderr, "", log.LstdFlags),
+	}
+}
+
 func TestClientStatus(t *testing.T) {
 	// Mock http server
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/status", `{"id": "aaa-bbb-ccc", "status": "running"}`)
 
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	resp, _ := client.Status(operation)
 
@@ -48,7 +57,7 @@ func TestClientKill(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`)
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	resp, _ := client.Kill(operation)
 
@@ -66,7 +75,7 @@ func TestClientSubmit(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`)
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	r := types.SubmitRequest{
 		WorkflowSource:       "../../assets/workflow.wdl",
@@ -90,7 +99,7 @@ func TestClientOutputs(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`)
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	resp, _ := client.Outputs(operation)
 
@@ -109,7 +118,7 @@ func TestClientQuery(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`)
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	resp, _ := client.Query(&types.ParamsQueryGet{})
 
@@ -135,7 +144,7 @@ func TestClientMetadata(t *testing.T) {
 	ts := buildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content))
 	defer ts.Close()
 
-	client := NewCromwellClient(ts.URL, "")
+	client := NewTestCromwellClient(ts.URL)
 
 	resp, _ := client.Metadata(operation, &types.ParamsMetadataGet{})
 

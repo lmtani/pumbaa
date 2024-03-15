@@ -22,11 +22,11 @@ type LocalDeploy struct {
 	fl   ports.Filesystem
 	http ports.HTTPClient
 	sql  ports.Sql
-	gs   ports.GoogleCloudStorage
+	gs   ports.GoogleCloudPlatform
 	c    types.Config
 }
 
-func NewLocalDeploy(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudStorage, h ports.HTTPClient, c types.Config) *LocalDeploy {
+func NewLocalDeploy(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudPlatform, h ports.HTTPClient, c types.Config) *LocalDeploy {
 	return &LocalDeploy{fl: fl, sql: sql, c: c, gs: gs, http: h}
 }
 
@@ -36,7 +36,7 @@ func (l *LocalDeploy) Deploy() error {
 		return err
 	}
 
-	_, err = l.gs.GetClient()
+	_, err = l.gs.GetStorageClient()
 	if err != nil {
 		fmt.Println(ErrorGoogleCredentials)
 		l.c.Engine.GcsFilesystem.Enabled = false

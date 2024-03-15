@@ -54,7 +54,7 @@ func Example_queryWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	q := core.NewQuery(cromwellClient, writer)
 
@@ -84,7 +84,7 @@ func Example_inputs() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	i := core.NewInputs(cromwellClient)
 
 	_, err = i.Inputs(operation)
@@ -103,7 +103,7 @@ func Example_killWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	w := adapters.NewColoredWriter(os.Stdout)
 	k := core.NewKill(cromwellClient, w)
 
@@ -127,7 +127,7 @@ func Example_resourcesUsed() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	r := core.NewResourcesUsed(cromwellClient, writer)
 
@@ -154,7 +154,7 @@ func Example_outputsWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	o := core.NewOutputs(cromwellClient)
 
 	err := o.Outputs(operation)
@@ -172,7 +172,7 @@ func Example_submitWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	s := core.NewSubmit(cromwellClient, writer)
 
@@ -190,7 +190,7 @@ func Example_wait() {
 	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	w := core.NewWait(cromwellClient, writer)
 
@@ -216,7 +216,7 @@ func Example_metadataWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	m := core.NewMetadata(cromwellClient, writer)
 
@@ -253,7 +253,7 @@ func Example_metadataWorkflow_second() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	m := core.NewMetadata(cromwellClient, writer)
 
@@ -297,7 +297,7 @@ func Example_navigate() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 
-	cromwellClient := adapters.NewCromwellClient(ts.URL, "")
+	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
 	mockedPrompt := MockedPrompt{
 		indexToReturn: 1,

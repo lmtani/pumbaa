@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,25 +12,27 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-querystring/query"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
-	"google.golang.org/api/idtoken"
 )
 
-type Client struct {
+type CromwellClient struct {
 	Host   string
 	Iap    string
+	Gcp    ports.GoogleCloudPlatform
 	Logger *log.Logger
 }
 
-func NewCromwellClient(h, t string) *Client {
-	return &Client{
+func NewCromwellClient(h, t string, gcp ports.GoogleCloudPlatform) *CromwellClient {
+	return &CromwellClient{
 		Host:   h,
 		Iap:    t,
+		Gcp:    gcp,
 		Logger: log.New(os.Stderr, "", log.LstdFlags),
 	}
 }
 
-func (c *Client) Kill(o string) (types.SubmitResponse, error) {
+func (c *CromwellClient) Kill(o string) (types.SubmitResponse, error) {
 	var sr types.SubmitResponse
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
@@ -39,7 +40,7 @@ func (c *Client) Kill(o string) (types.SubmitResponse, error) {
 	return sr, err
 }
 
-func (c *Client) Status(o string) (types.SubmitResponse, error) {
+func (c *CromwellClient) Status(o string) (types.SubmitResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
 	var or types.SubmitResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
@@ -47,14 +48,14 @@ func (c *Client) Status(o string) (types.SubmitResponse, error) {
 
 }
 
-func (c *Client) Outputs(o string) (types.OutputsResponse, error) {
+func (c *CromwellClient) Outputs(o string) (types.OutputsResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
 	var or types.OutputsResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	return or, err
 }
 
-func (c *Client) Query(p *types.ParamsQueryGet) (types.QueryResponse, error) {
+func (c *CromwellClient) Query(p *types.ParamsQueryGet) (types.QueryResponse, error) {
 	route := "/api/workflows/v1/query"
 	var qr types.QueryResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &qr)
@@ -64,14 +65,14 @@ func (c *Client) Query(p *types.ParamsQueryGet) (types.QueryResponse, error) {
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
 // Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
-func (c *Client) Metadata(o string, p *types.ParamsMetadataGet) (types.MetadataResponse, error) {
+func (c *CromwellClient) Metadata(o string, p *types.ParamsMetadataGet) (types.MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
 	var mr types.MetadataResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &mr)
 	return mr, err
 }
 
-func (c *Client) Submit(requestFields *types.SubmitRequest) (types.SubmitResponse, error) {
+func (c *CromwellClient) Submit(requestFields *types.SubmitRequest) (types.SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := submitPrepare(*requestFields)
 	var sr types.SubmitResponse
@@ -79,7 +80,7 @@ func (c *Client) Submit(requestFields *types.SubmitRequest) (types.SubmitRespons
 	return sr, err
 }
 
-func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
+func (c *CromwellClient) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
 	var body bytes.Buffer
 
 	ct := "application/json"
@@ -122,7 +123,7 @@ func (c *Client) iapAwareRequest(method, route string, urlParams interface{}, fi
 	return err
 }
 
-func (*Client) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
+func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
 	var w = multipart.NewWriter(body)
 
 	for field, path := range files {
@@ -150,9 +151,12 @@ func (*Client) prepareFormData(files map[string]string, body *bytes.Buffer) (*mu
 	return w, nil
 }
 
-func (c *Client) makeRequest(req *http.Request) (*http.Response, error) {
+func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.Iap != "" {
-		token := getGoogleIapToken(c.Iap)
+		token, err := c.Gcp.GetIAPToken()
+		if err != nil {
+			return &http.Response{}, err
+		}
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
 	log.Printf("%s request to: %s\n", req.Method, req.URL)
@@ -193,20 +197,6 @@ func submitPrepare(r types.SubmitRequest) map[string]string {
 		fileParams["workflowOptions"] = r.WorkflowOptions
 	}
 	return fileParams
-}
-
-// Can be decoupled
-func getGoogleIapToken(aud string) string {
-	ctx := context.Background()
-	ts, err := idtoken.NewTokenSource(ctx, aud)
-	if err != nil {
-		log.Fatal(err)
-	}
-	token, err := ts.Token()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return token.AccessToken
 }
 
 type FakeCromwell struct {
