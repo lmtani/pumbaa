@@ -1,4 +1,4 @@
-package core
+package cromwell
 
 import (
 	"encoding/json"

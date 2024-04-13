@@ -1,8 +1,9 @@
-package core
+package cromwell
 
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/lmtani/pumbaa/internal/ports"
 )
 

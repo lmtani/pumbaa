@@ -1,4 +1,4 @@
-package core
+package local
 
 import (
 	_ "embed"
@@ -18,7 +18,7 @@ const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/
 //go:embed config.tmpl
 var ConfigTmpl string
 
-type LocalDeploy struct {
+type Deployer struct {
 	fl   ports.Filesystem
 	http ports.HTTPClient
 	sql  ports.Sql
@@ -26,11 +26,11 @@ type LocalDeploy struct {
 	c    types.Config
 }
 
-func NewLocalDeploy(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudPlatform, h ports.HTTPClient, c types.Config) *LocalDeploy {
-	return &LocalDeploy{fl: fl, sql: sql, c: c, gs: gs, http: h}
+func NewDeployer(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudPlatform, h ports.HTTPClient, c types.Config) *Deployer {
+	return &Deployer{fl: fl, sql: sql, c: c, gs: gs, http: h}
 }
 
-func (l *LocalDeploy) Deploy() error {
+func (l *Deployer) Deploy() error {
 	err := l.checkRequirements()
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func (l *LocalDeploy) Deploy() error {
 	return nil
 }
 
-func (l *LocalDeploy) checkRequirements() error {
+func (l *Deployer) checkRequirements() error {
 	var err error
 	docker := isInUserPath("docker")
 	if !docker {
@@ -104,7 +104,7 @@ func (l *LocalDeploy) checkRequirements() error {
 	return err
 }
 
-func (l *LocalDeploy) createCromwellConfig(savePath string) error {
+func (l *Deployer) createCromwellConfig(savePath string) error {
 	// Parse the template
 	tmpl, err := template.New("config").Parse(ConfigTmpl)
 	if err != nil {
@@ -135,7 +135,7 @@ func (l *LocalDeploy) createCromwellConfig(savePath string) error {
 	return nil
 }
 
-func (l *LocalDeploy) CromwellSavePath() (string, error) {
+func (l *Deployer) CromwellSavePath() (string, error) {
 	home, err := l.fl.HomeDir()
 	if err != nil {
 		return "", err
@@ -160,7 +160,7 @@ var (
 	ErrorWindowsNotSupported  = fmt.Errorf("windows is not supported. please use linux or macos")
 	ErrorDockerNotInstalled   = fmt.Errorf("docker is not installed. please install docker first")
 	ErrorJavaNotInstalled     = fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
-	ErrorGoogleCredentials    = fmt.Errorf("Google Cloud Default credentials not found. Disabling GCS filesystem.")
+	ErrorGoogleCredentials    = fmt.Errorf("google Cloud Default credentials not found. Disabling GCS filesystem")
 	ErrorMysqlNotInstalled    = fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
 
 			Start a new mysql server with:

@@ -5,10 +5,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/core/cromwell"
+	"github.com/lmtani/pumbaa/internal/core/interactive"
+	"github.com/lmtani/pumbaa/internal/core/local"
+
 	"github.com/lmtani/pumbaa/internal/types"
 
 	"github.com/lmtani/pumbaa/internal/adapters"
-	"github.com/lmtani/pumbaa/internal/core"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
@@ -20,7 +23,7 @@ func DefaultCromwellClient(h, iap string) *adapters.CromwellClient {
 func build(c *urfaveCli.Context) error {
 	wdl := adapters.RegexWdlPArser{}
 	fs := adapters.NewLocalFilesystem()
-	releaser := core.NewRelease(&wdl, fs)
+	releaser := local.NewBuilder(&wdl, fs)
 	err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
 	return err
 }
@@ -35,27 +38,27 @@ func getVersion(b *Build) error {
 func query(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
-	q := core.NewQuery(cromwellClient, writer)
+	q := cromwell.NewQuery(cromwellClient, writer)
 	return q.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
 }
 
 func wait(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
-	w := core.NewWait(cromwellClient, writer)
+	w := cromwell.NewWait(cromwellClient, writer)
 	return w.Wait(c.String("operation"), c.Int("sleep"))
 }
 
 func submit(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
-	s := core.NewSubmit(cromwellClient, writer)
+	s := cromwell.NewSubmit(cromwellClient, writer)
 	return s.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
 }
 
 func inputs(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	i := core.NewInputs(cromwellClient)
+	i := cromwell.NewInputs(cromwellClient)
 	_, err := i.Inputs(c.String("operation"))
 	return err
 }
@@ -63,7 +66,7 @@ func inputs(c *urfaveCli.Context) error {
 func kill(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	w := adapters.NewColoredWriter(os.Stdout)
-	k := core.NewKill(cromwellClient, w)
+	k := cromwell.NewKill(cromwellClient, w)
 	_, err := k.Kill(c.String("operation"))
 	return err
 }
@@ -71,13 +74,13 @@ func kill(c *urfaveCli.Context) error {
 func metadata(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
-	m := core.NewMetadata(cromwellClient, writer)
+	m := cromwell.NewMetadata(cromwellClient, writer)
 	return m.Metadata(c.String("operation"))
 }
 
 func outputs(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	out := core.NewOutputs(cromwellClient)
+	out := cromwell.NewOutputs(cromwellClient)
 	return out.Outputs(c.String("operation"))
 }
 
@@ -85,14 +88,14 @@ func navigate(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
 	ui := adapters.Ui{}
-	n := core.NewNavigate(cromwellClient, writer, &ui)
+	n := interactive.NewNavigate(cromwellClient, writer, &ui)
 	return n.Navigate(c.String("operation"))
 }
 
 func gcpResources(c *urfaveCli.Context) error {
 	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
 	writer := adapters.NewColoredWriter(os.Stdout)
-	resources := core.NewResourcesUsed(cromwellClient, writer)
+	resources := cromwell.NewResourcesUsed(cromwellClient, writer)
 	return resources.Get(c.String("operation"))
 }
 
@@ -102,7 +105,7 @@ func localDeploy(c *urfaveCli.Context) error {
 	gcs := adapters.NewGoogleCloud("")
 	fs := adapters.NewLocalFilesystem()
 	h := adapters.NewDefaultHTTP()
-	ld := core.NewLocalDeploy(fs, mysql, gcs, h, config)
+	ld := local.NewDeployer(fs, mysql, gcs, h, config)
 	return ld.Deploy()
 }
 

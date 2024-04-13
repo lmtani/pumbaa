@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/lmtani/pumbaa/internal/core/cromwell"
+	"github.com/lmtani/pumbaa/internal/core/interactive"
+
 	"github.com/lmtani/pumbaa/internal/adapters"
-	"github.com/lmtani/pumbaa/internal/core"
 )
 
 const (
@@ -56,7 +58,7 @@ func Example_queryWorkflow() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	q := core.NewQuery(cromwellClient, writer)
+	q := cromwell.NewQuery(cromwellClient, writer)
 
 	// call
 	err := q.QueryWorkflow("wf", 0)
@@ -85,7 +87,7 @@ func Example_inputs() {
 	defer ts.Close()
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
-	i := core.NewInputs(cromwellClient)
+	i := cromwell.NewInputs(cromwellClient)
 
 	_, err = i.Inputs(operation)
 	if err != nil {
@@ -105,7 +107,7 @@ func Example_killWorkflow() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	w := adapters.NewColoredWriter(os.Stdout)
-	k := core.NewKill(cromwellClient, w)
+	k := cromwell.NewKill(cromwellClient, w)
 
 	_, err := k.Kill(operation)
 	if err != nil {
@@ -129,7 +131,7 @@ func Example_resourcesUsed() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	r := core.NewResourcesUsed(cromwellClient, writer)
+	r := cromwell.NewResourcesUsed(cromwellClient, writer)
 
 	err = r.Get(operation)
 	if err != nil {
@@ -155,7 +157,7 @@ func Example_outputsWorkflow() {
 	defer ts.Close()
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
-	o := core.NewOutputs(cromwellClient)
+	o := cromwell.NewOutputs(cromwellClient)
 
 	err := o.Outputs(operation)
 	if err != nil {
@@ -174,7 +176,7 @@ func Example_submitWorkflow() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	s := core.NewSubmit(cromwellClient, writer)
+	s := cromwell.NewSubmit(cromwellClient, writer)
 
 	err := s.SubmitWorkflow(WDLPath, InputsPath, WDLPath, InputsPath)
 	if err != nil {
@@ -192,7 +194,7 @@ func Example_wait() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	w := core.NewWait(cromwellClient, writer)
+	w := cromwell.NewWait(cromwellClient, writer)
 
 	err := w.Wait(operation, 1)
 	if err != nil {
@@ -218,7 +220,7 @@ func Example_metadataWorkflow() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	m := core.NewMetadata(cromwellClient, writer)
+	m := cromwell.NewMetadata(cromwellClient, writer)
 
 	err = m.Metadata(operation)
 	if err != nil {
@@ -255,7 +257,7 @@ func Example_metadataWorkflow_second() {
 
 	cromwellClient := DefaultCromwellClient(ts.URL, "")
 	writer := adapters.NewColoredWriter(os.Stdout)
-	m := core.NewMetadata(cromwellClient, writer)
+	m := cromwell.NewMetadata(cromwellClient, writer)
 
 	err = m.Metadata(operation)
 	if err != nil {
@@ -303,7 +305,7 @@ func Example_navigate() {
 		indexToReturn: 1,
 		keyToReturn:   "SayGoodbye",
 	}
-	n := core.NewNavigate(cromwellClient, writer, &mockedPrompt)
+	n := interactive.NewNavigate(cromwellClient, writer, &mockedPrompt)
 
 	err = n.Navigate(operation)
 	if err != nil {

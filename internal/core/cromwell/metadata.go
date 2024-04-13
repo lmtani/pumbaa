@@ -1,11 +1,12 @@
-package core
+package cromwell
 
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+
 	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
-	"sort"
 )
 
 type MetadataTable struct {

@@ -1,4 +1,4 @@
-package core
+package cromwell
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestInputs(t *testing.T) {
-	content, err := os.ReadFile("../adapters/testdata/metadata.json")
+	content, err := os.ReadFile("../../adapters/testdata/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}

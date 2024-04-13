@@ -1,4 +1,4 @@
-package core
+package local
 
 import (
 	"fmt"
@@ -8,19 +8,19 @@ import (
 	"github.com/lmtani/pumbaa/internal/ports"
 )
 
-type Release struct {
+type Builder struct {
 	wdl ports.Wdl
 	fs  ports.Filesystem
 }
 
-func NewRelease(wdl ports.Wdl, fs ports.Filesystem) *Release {
-	return &Release{wdl: wdl, fs: fs}
+func NewBuilder(wdl ports.Wdl, fs ports.Filesystem) *Builder {
+	return &Builder{wdl: wdl, fs: fs}
 }
 
 // WorkflowDist It builds a zip file with all dependencies.
 // It also produces a new WDL file to remove relative imports.
-func (r *Release) WorkflowDist(workflowPath, outDir string) error {
-	matchs, err := r.wdl.GetDependencies(workflowPath)
+func (r *Builder) WorkflowDist(workflowPath, outDir string) error {
+	matches, err := r.wdl.GetDependencies(workflowPath)
 	if err != nil {
 		return err
 	}
@@ -44,9 +44,9 @@ func (r *Release) WorkflowDist(workflowPath, outDir string) error {
 		return err
 	}
 
-	depsName := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
-	dependencies := r.secondElementOfListOfLists(matchs)
-	zipName, err := r.fs.ZipFiles(workflowPath, depsName, dependencies)
+	depNames := strings.Replace(filepath.Base(workflowPath), ".wdl", ".zip", 1)
+	dependencies := r.secondElementOfListOfLists(matches)
+	zipName, err := r.fs.ZipFiles(workflowPath, depNames, dependencies)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (r *Release) WorkflowDist(workflowPath, outDir string) error {
 	return nil
 }
 
-func (r *Release) secondElementOfListOfLists(lol [][]string) []string {
+func (r *Builder) secondElementOfListOfLists(lol [][]string) []string {
 	if len(lol) == 0 {
 		return nil
 	}
