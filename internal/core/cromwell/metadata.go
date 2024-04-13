@@ -9,28 +9,19 @@ import (
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
-type MetadataTable struct {
-	c ports.Cromwell
-	w ports.Writer
-}
-
-func NewMetadata(c ports.Cromwell, w ports.Writer) *MetadataTable {
-	return &MetadataTable{c: c, w: w}
-}
-
-func (m *MetadataTable) Metadata(o string) error {
+func (c *Cromwell) Metadata(o string) error {
 	params := types.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-	resp, err := m.c.Metadata(o, &params)
+	resp, err := c.c.Metadata(o, &params)
 	if err != nil {
 		return err
 	}
 	var mtr = types.MetadataTableResponse{Metadata: resp}
-	m.w.Table(mtr)
+	c.w.Table(mtr)
 	if len(resp.Failures) > 0 {
-		m.w.Error(hasFailureMsg(resp.Failures))
-		recursiveFailureParse(resp.Failures, m.w)
+		c.w.Error(hasFailureMsg(resp.Failures))
+		recursiveFailureParse(resp.Failures, c.w)
 	}
 
 	items, err := showCustomOptions(resp.SubmittedFiles)
@@ -39,11 +30,11 @@ func (m *MetadataTable) Metadata(o string) error {
 	}
 
 	if len(items) > 0 {
-		m.w.Accent("🔧 Custom options")
+		c.w.Accent("🔧 Custom options")
 	}
 	// iterate over items strings
 	for _, v := range items {
-		m.w.Primary(v)
+		c.w.Primary(v)
 	}
 	return err
 }

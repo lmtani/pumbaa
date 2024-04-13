@@ -15,9 +15,10 @@ import (
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
-func DefaultCromwellClient(h, iap string) *adapters.CromwellClient {
+func DefaultCromwell(h, iap string) *cromwell.Cromwell {
 	gcp := adapters.NewGoogleCloud(iap)
-	return adapters.NewCromwellClient(h, iap, gcp)
+	client := adapters.NewCromwellClient(h, gcp)
+	return cromwell.NewCromwell(client, adapters.NewColoredWriter(os.Stdout))
 }
 
 func build(c *urfaveCli.Context) error {
@@ -36,76 +37,63 @@ func getVersion(b *Build) error {
 }
 
 func query(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
-	q := cromwell.NewQuery(cromwellClient, writer)
-	return q.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
 }
 
 func wait(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
-	w := cromwell.NewWait(cromwellClient, writer)
-	return w.Wait(c.String("operation"), c.Int("sleep"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.Wait(c.String("operation"), c.Int("sleep"))
 }
 
 func submit(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
-	s := cromwell.NewSubmit(cromwellClient, writer)
-	return s.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
 }
 
 func inputs(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	i := cromwell.NewInputs(cromwellClient)
-	_, err := i.Inputs(c.String("operation"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	_, err := cs.Inputs(c.String("operation"))
 	return err
 }
 
 func kill(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	w := adapters.NewColoredWriter(os.Stdout)
-	k := cromwell.NewKill(cromwellClient, w)
-	_, err := k.Kill(c.String("operation"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	_, err := cs.Kill(c.String("operation"))
 	return err
 }
 
 func metadata(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
-	m := cromwell.NewMetadata(cromwellClient, writer)
-	return m.Metadata(c.String("operation"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.Metadata(c.String("operation"))
 }
 
 func outputs(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	out := cromwell.NewOutputs(cromwellClient)
-	return out.Outputs(c.String("operation"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.Outputs(c.String("operation"))
 }
 
 func navigate(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
+	gcp := adapters.NewGoogleCloud(c.String("iap"))
+	cc := adapters.NewCromwellClient(c.String("host"), gcp)
+	w := adapters.NewColoredWriter(os.Stdout)
 	ui := adapters.Ui{}
-	n := interactive.NewNavigate(cromwellClient, writer, &ui)
+	n := interactive.NewNavigate(cc, w, &ui)
 	return n.Navigate(c.String("operation"))
 }
 
 func gcpResources(c *urfaveCli.Context) error {
-	cromwellClient := DefaultCromwellClient(c.String("host"), c.String("iap"))
-	writer := adapters.NewColoredWriter(os.Stdout)
-	resources := cromwell.NewResourcesUsed(cromwellClient, writer)
-	return resources.Get(c.String("operation"))
+	cs := DefaultCromwell(c.String("host"), c.String("iap"))
+	return cs.Get(c.String("operation"))
 }
 
 func localDeploy(c *urfaveCli.Context) error {
 	config := ParseCliParams(c)
-	mysql := adapters.NewMysql(config.Database)
+	db := adapters.NewMysql(config.Database)
 	gcs := adapters.NewGoogleCloud("")
 	fs := adapters.NewLocalFilesystem()
 	h := adapters.NewDefaultHTTP()
-	ld := local.NewDeployer(fs, mysql, gcs, h, config)
+	ld := local.NewDeployer(fs, db, gcs, h, config)
 	return ld.Deploy()
 }
 

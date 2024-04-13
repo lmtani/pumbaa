@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lmtani/pumbaa/internal/adapters"
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
@@ -20,12 +19,8 @@ func TestCost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fakeCromwell := adapters.FakeCromwell{
-		MetadataResponse: meta,
-	}
 
-	w := adapters.NewColoredWriter(os.Stdout)
-	c := NewResourcesUsed(&fakeCromwell, w)
+	c := NewGCPResourceParser()
 
 	resp, err := c.GetComputeUsageForPricing(meta.Calls)
 	if err != nil {
@@ -104,9 +99,7 @@ func TestParseDisk(t *testing.T) {
 		{runtime: r2, expectedAmount: 0, expectedType: "", expectedErr: "strconv.ParseFloat: parsing"},
 	}
 
-	fakeCromwell := adapters.FakeCromwell{}
-	w := adapters.NewColoredWriter(os.Stdout)
-	c := NewResourcesUsed(&fakeCromwell, w)
+	c := NewGCPResourceParser()
 
 	for i, test := range tt {
 		amount, diskType, err := c.parseDisk(test.runtime)
@@ -159,9 +152,7 @@ func TestParseMemory(t *testing.T) {
 		{runtime: r3, expectedAmount: 0, expectedErr: "strconv.ParseFloat: parsing"},
 	}
 
-	fakeCromwell := adapters.FakeCromwell{}
-	w := adapters.NewColoredWriter(os.Stdout)
-	c := NewResourcesUsed(&fakeCromwell, w)
+	c := NewGCPResourceParser()
 	for i, test := range tt {
 		amount, err := c.parseMemory(test.runtime)
 		if !ErrorContains(err, test.expectedErr) {

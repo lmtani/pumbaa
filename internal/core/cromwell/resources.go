@@ -5,57 +5,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
-type ResourcesUsed struct {
-	c ports.Cromwell
-	w ports.Writer
+type GCPResourceParser struct{}
+
+// NewGCPResourceParser uses Cromwell metadata to parse the resources used by a workflow
+// executed on GCP.
+func NewGCPResourceParser() *GCPResourceParser {
+	return &GCPResourceParser{}
+
 }
 
-func NewResourcesUsed(c ports.Cromwell, w ports.Writer) *ResourcesUsed {
-	return &ResourcesUsed{c: c, w: w}
-}
-
-func (r *ResourcesUsed) Get(o string) error {
-	m, err := r.c.Metadata(o, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
-	if err != nil {
-		r.w.Error(err.Error())
-		return err
-	}
-
-	if m.Status == "Running" {
-		r.w.Error("workflow status is still running")
-		return err
-	}
-
-	total, err := r.GetComputeUsageForPricing(m.Calls)
-	if err != nil {
-		r.w.Error(err.Error())
-		return err
-	}
-
-	var rtr = types.ResourceTableResponse{Total: total}
-	r.w.Table(rtr)
-	r.w.Accent(fmt.Sprintf("- Tasks with cache hit: %d", total.CachedCalls))
-	r.w.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", total.TotalTime.Hours()))
-	return nil
-}
-
-func (r *ResourcesUsed) GetComputeUsageForPricing(data types.CallItemSet) (types.TotalResources, error) {
+func (r *GCPResourceParser) GetComputeUsageForPricing(data types.CallItemSet) (types.TotalResources, error) {
 	t := types.TotalResources{}
 	r.iterateOverTasks(data, &t)
 	return t, nil
 }
 
-func (r *ResourcesUsed) iterateOverTasks(data types.CallItemSet, t *types.TotalResources) {
+func (r *GCPResourceParser) iterateOverTasks(data types.CallItemSet, t *types.TotalResources) {
 	for key := range data {
 		r.iterateOverElements(data[key], t)
 	}
 }
 
-func (r *ResourcesUsed) iterateOverElement(call *types.CallItem) (types.ParsedCallAttributes, error) {
+func (r *GCPResourceParser) iterateOverElement(call *types.CallItem) (types.ParsedCallAttributes, error) {
 	runtimeAttrs := call.RuntimeAttributes
 	size, diskType, err := r.parseDisk(runtimeAttrs)
 	if err != nil {
@@ -77,7 +51,7 @@ func (r *ResourcesUsed) iterateOverElement(call *types.CallItem) (types.ParsedCa
 	return parsed, nil
 }
 
-func (r *ResourcesUsed) iterateOverElements(c []types.CallItem, t *types.TotalResources) {
+func (r *GCPResourceParser) iterateOverElements(c []types.CallItem, t *types.TotalResources) {
 	HoursInMonth := 720.0
 
 	for i := range c {
@@ -111,7 +85,7 @@ func (r *ResourcesUsed) iterateOverElements(c []types.CallItem, t *types.TotalRe
 	}
 }
 
-func (r *ResourcesUsed) parseDisk(runtimeAttrs types.RuntimeAttributes) (float64, string, error) {
+func (r *GCPResourceParser) parseDisk(runtimeAttrs types.RuntimeAttributes) (float64, string, error) {
 	workDisk := strings.Fields(runtimeAttrs.Disks)
 	if len(workDisk) == 0 {
 		return 0, "", fmt.Errorf("no disks, found: %#v", runtimeAttrs.Disks)
@@ -129,7 +103,7 @@ func (r *ResourcesUsed) parseDisk(runtimeAttrs types.RuntimeAttributes) (float64
 	return size + boot, diskType, nil
 }
 
-func (r *ResourcesUsed) calculateDiskSize(diskType string, size float64) (float64, float64) {
+func (r *GCPResourceParser) calculateDiskSize(diskType string, size float64) (float64, float64) {
 	totalSsd := 0.0
 	totalHdd := 0.0
 	switch diskType {
@@ -141,7 +115,7 @@ func (r *ResourcesUsed) calculateDiskSize(diskType string, size float64) (float6
 	return totalSsd, totalHdd
 }
 
-func (r *ResourcesUsed) parseMemory(runtimeAttrs types.RuntimeAttributes) (float64, error) {
+func (r *GCPResourceParser) parseMemory(runtimeAttrs types.RuntimeAttributes) (float64, error) {
 	memory := strings.Fields(runtimeAttrs.Memory)
 	if len(memory) == 0 {
 		return 0, fmt.Errorf("no memory, found: %#v", runtimeAttrs.Memory)

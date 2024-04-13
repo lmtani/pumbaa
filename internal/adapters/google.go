@@ -42,5 +42,8 @@ func (gc *GoogleCloud) GetIAPToken() (string, error) {
 		log.Fatal(err)
 	}
 	token, err := ts.Token()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return token.AccessToken, err
 }

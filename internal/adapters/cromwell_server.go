@@ -18,15 +18,13 @@ import (
 
 type CromwellClient struct {
 	Host   string
-	Iap    string
 	Gcp    ports.GoogleCloudPlatform
 	Logger *log.Logger
 }
 
-func NewCromwellClient(h, t string, gcp ports.GoogleCloudPlatform) *CromwellClient {
+func NewCromwellClient(h string, gcp ports.GoogleCloudPlatform) *CromwellClient {
 	return &CromwellClient{
 		Host:   h,
-		Iap:    t,
 		Gcp:    gcp,
 		Logger: log.New(os.Stderr, "", log.LstdFlags),
 	}
@@ -45,7 +43,6 @@ func (c *CromwellClient) Status(o string) (types.SubmitResponse, error) {
 	var or types.SubmitResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	return or, err
-
 }
 
 func (c *CromwellClient) Outputs(o string) (types.OutputsResponse, error) {
@@ -152,7 +149,7 @@ func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buff
 }
 
 func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) {
-	if c.Iap != "" {
+	if c.Gcp != nil {
 		token, err := c.Gcp.GetIAPToken()
 		if err != nil {
 			return &http.Response{}, err
@@ -197,50 +194,4 @@ func submitPrepare(r types.SubmitRequest) map[string]string {
 		fileParams["workflowOptions"] = r.WorkflowOptions
 	}
 	return fileParams
-}
-
-type FakeCromwell struct {
-	MetadataCalled bool
-	AbortCalled    bool
-	StatusCalled   bool
-	OutputsCalled  bool
-	QueryCalled    bool
-	SubmitCalled   bool
-
-	SubmitResponse   types.SubmitResponse
-	MetadataResponse types.MetadataResponse
-	OutputsResponse  types.OutputsResponse
-	QueryResponse    types.QueryResponse
-
-	Err error
-}
-
-func (f *FakeCromwell) Metadata(o string, p *types.ParamsMetadataGet) (types.MetadataResponse, error) {
-	f.MetadataCalled = true
-	return f.MetadataResponse, f.Err
-}
-
-func (f *FakeCromwell) Kill(o string) (types.SubmitResponse, error) {
-	f.AbortCalled = true
-	return f.SubmitResponse, f.Err
-}
-
-func (f *FakeCromwell) Status(o string) (types.SubmitResponse, error) {
-	f.StatusCalled = true
-	return f.SubmitResponse, f.Err
-}
-
-func (f *FakeCromwell) Outputs(o string) (types.OutputsResponse, error) {
-	f.OutputsCalled = true
-	return f.OutputsResponse, f.Err
-}
-
-func (f *FakeCromwell) Query(p *types.ParamsQueryGet) (types.QueryResponse, error) {
-	f.QueryCalled = true
-	return f.QueryResponse, f.Err
-}
-
-func (f *FakeCromwell) Submit(requestFields *types.SubmitRequest) (types.SubmitResponse, error) {
-	f.SubmitCalled = true
-	return f.SubmitResponse, f.Err
 }

@@ -10,12 +10,12 @@ import (
 )
 
 type Navigate struct {
-	c ports.Cromwell
+	c ports.CromwellServer
 	w ports.Writer
 	p ports.Prompt
 }
 
-func NewNavigate(c ports.Cromwell, w ports.Writer, p ports.Prompt) *Navigate {
+func NewNavigate(c ports.CromwellServer, w ports.Writer, p ports.Prompt) *Navigate {
 	return &Navigate{c: c, w: w, p: p}
 }
 

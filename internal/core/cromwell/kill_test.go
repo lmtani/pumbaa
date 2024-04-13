@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/lmtani/pumbaa/internal/adapters/test"
+
 	"github.com/lmtani/pumbaa/internal/adapters"
 	"github.com/lmtani/pumbaa/internal/types"
 )
@@ -13,12 +15,12 @@ func TestKill_Kill(t *testing.T) {
 		ID:     "fake-id",
 		Status: "fake-status",
 	}
-	fakeCromwell := adapters.FakeCromwell{
+	fakeCromwell := test.FakeCromwell{
 		SubmitResponse: expected,
 	}
 	w := adapters.NewColoredWriter(os.Stdout)
 
-	i := NewKill(&fakeCromwell, w)
+	i := NewCromwell(&fakeCromwell, w)
 
 	resp, err := i.Kill("fake-id")
 	if err != nil {

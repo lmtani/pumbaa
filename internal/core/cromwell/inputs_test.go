@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lmtani/pumbaa/internal/adapters/test"
+
 	"github.com/lmtani/pumbaa/internal/adapters"
 	"github.com/lmtani/pumbaa/internal/types"
 )
@@ -20,11 +22,11 @@ func TestInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fakeCromwell := adapters.FakeCromwell{
+	fakeCromwell := test.FakeCromwell{
 		MetadataResponse: meta,
 	}
-
-	i := NewInputs(&fakeCromwell)
+	w := adapters.NewColoredWriter(os.Stdout)
+	i := NewCromwell(&fakeCromwell, w)
 
 	inputs, err := i.Inputs("fake-operation")
 	if err != nil {

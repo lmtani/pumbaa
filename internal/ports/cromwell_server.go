@@ -2,7 +2,7 @@ package ports
 
 import "github.com/lmtani/pumbaa/internal/types"
 
-type Cromwell interface {
+type CromwellServer interface {
 	Kill(o string) (types.SubmitResponse, error)
 	Status(o string) (types.SubmitResponse, error)
 	Outputs(o string) (types.OutputsResponse, error)
