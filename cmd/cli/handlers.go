@@ -112,7 +112,7 @@ func ParseCliParams(c *urfaveCli.Context) types.Config {
 		Filesystems: types.Filesystems{
 			HTTP:            struct{}{},
 			GcsFilesystem:   types.GcsFilesystem{Auth: "application-default", Enabled: true},
-			LocalFilesystem: types.LocalFilesystem{Localization: []string{"hard-link", "soft-link", "copy"}},
+			LocalFilesystem: types.LocalFilesystem{Localization: []string{"hard-link", "soft-link", "cached-copy"}},
 		},
 	}
 
