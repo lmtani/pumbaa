@@ -15,7 +15,7 @@ import (
 
 const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
 
-//go:embed config.tmpl
+//go:embed templates/config.tmpl
 var ConfigTmpl string
 
 type Deployer struct {

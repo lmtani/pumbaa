@@ -13,7 +13,7 @@ func (c *Cromwell) Metadata(o string) error {
 	params := types.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-	resp, err := c.c.Metadata(o, &params)
+	resp, err := c.s.Metadata(o, &params)
 	if err != nil {
 		return err
 	}

@@ -10,12 +10,12 @@ import (
 )
 
 type Cromwell struct {
-	c ports.CromwellServer
+	s ports.CromwellServer
 	w ports.Writer
 }
 
 func NewCromwell(c ports.CromwellServer, w ports.Writer) *Cromwell {
-	return &Cromwell{c: c, w: w}
+	return &Cromwell{s: c, w: w}
 }
 
 func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) error {
@@ -24,7 +24,7 @@ func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) err
 		WorkflowInputs:       inputs,
 		WorkflowDependencies: dependencies,
 		WorkflowOptions:      options}
-	resp, err := c.c.Submit(&r)
+	resp, err := c.s.Submit(&r)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) err
 }
 
 func (c *Cromwell) Inputs(operation string) (map[string]interface{}, error) {
-	resp, err := c.c.Metadata(operation, &types.ParamsMetadataGet{})
+	resp, err := c.s.Metadata(operation, &types.ParamsMetadataGet{})
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (c *Cromwell) Inputs(operation string) (map[string]interface{}, error) {
 }
 
 func (c *Cromwell) Kill(operation string) (types.SubmitResponse, error) {
-	resp, err := c.c.Kill(operation)
+	resp, err := c.s.Kill(operation)
 	if err != nil {
 		return types.SubmitResponse{}, err
 	}
@@ -60,7 +60,7 @@ func (c *Cromwell) Kill(operation string) (types.SubmitResponse, error) {
 }
 
 func (c *Cromwell) Outputs(o string) error {
-	resp, err := c.c.Outputs(o)
+	resp, err := c.s.Outputs(o)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (c *Cromwell) QueryWorkflow(name string, days time.Duration) error {
 		Submission: submission,
 		Name:       name,
 	}
-	resp, err := c.c.Query(&params)
+	resp, err := c.s.Query(&params)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (c *Cromwell) QueryWorkflow(name string, days time.Duration) error {
 }
 
 func (c *Cromwell) Wait(operation string, sleep int) error {
-	resp, err := c.c.Status(operation)
+	resp, err := c.s.Status(operation)
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (c *Cromwell) Wait(operation string, sleep int) error {
 	c.w.Accent(fmt.Sprintf("Status=%s\n", resp.Status))
 	for status == "Running" || status == "Submitted" {
 		time.Sleep(time.Duration(sleep) * time.Second)
-		resp, err := c.c.Status(operation)
+		resp, err := c.s.Status(operation)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func (c *Cromwell) Wait(operation string, sleep int) error {
 }
 
 func (c *Cromwell) Get(o string) error {
-	m, err := c.c.Metadata(o, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
+	m, err := c.s.Metadata(o, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
 		c.w.Error(err.Error())
 		return err
