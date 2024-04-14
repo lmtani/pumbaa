@@ -130,7 +130,7 @@ func Example_resourcesUsed() {
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
 
-	err = cs.Get(operation)
+	err = cs.ResourceUsages(operation)
 	if err != nil {
 		log.Print(err)
 	}

@@ -84,7 +84,7 @@ func navigate(c *urfaveCli.Context) error {
 
 func gcpResources(c *urfaveCli.Context) error {
 	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.Get(c.String("operation"))
+	return cs.ResourceUsages(c.String("operation"))
 }
 
 func localDeploy(c *urfaveCli.Context) error {

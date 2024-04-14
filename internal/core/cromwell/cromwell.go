@@ -112,7 +112,7 @@ func (c *Cromwell) Wait(operation string, sleep int) error {
 	return nil
 }
 
-func (c *Cromwell) Get(o string) error {
+func (c *Cromwell) ResourceUsages(o string) error {
 	m, err := c.s.Metadata(o, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
 		c.w.Error(err.Error())
