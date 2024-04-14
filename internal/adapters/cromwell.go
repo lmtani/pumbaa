@@ -69,9 +69,18 @@ func (c *CromwellClient) Metadata(o string, p *types.ParamsMetadataGet) (types.M
 	return mr, err
 }
 
-func (c *CromwellClient) Submit(requestFields *types.SubmitRequest) (types.SubmitResponse, error) {
+func (c *CromwellClient) Submit(wdl, inputs, dependencies, options string) (types.SubmitResponse, error) {
 	route := "/api/workflows/v1"
-	fileParams := submitPrepare(*requestFields)
+	fileParams := map[string]string{
+		"workflowSource": wdl,
+		"workflowInputs": inputs,
+	}
+	if dependencies != "" {
+		fileParams["workflowDependencies"] = dependencies
+	}
+	if options != "" {
+		fileParams["workflowOptions"] = options
+	}
 	var sr types.SubmitResponse
 	err := c.iapAwareRequest("POST", route, nil, fileParams, &sr)
 	return sr, err
@@ -179,19 +188,4 @@ func errorHandler(r *http.Response) error {
 		log.Println("No json body in response")
 	}
 	return fmt.Errorf("submission failed. the server returned %#v", er)
-}
-
-// Can be decoupled
-func submitPrepare(r types.SubmitRequest) map[string]string {
-	fileParams := map[string]string{
-		"workflowSource": r.WorkflowSource,
-		"workflowInputs": r.WorkflowInputs,
-	}
-	if r.WorkflowDependencies != "" {
-		fileParams["workflowDependencies"] = r.WorkflowDependencies
-	}
-	if r.WorkflowOptions != "" {
-		fileParams["workflowOptions"] = r.WorkflowOptions
-	}
-	return fileParams
 }

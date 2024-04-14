@@ -17,13 +17,7 @@ func NewCromwell(c ports.CromwellServer, w ports.Writer) *Cromwell {
 }
 
 func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) (types.SubmitResponse, error) {
-	r := types.SubmitRequest{
-		WorkflowSource:       wdl,
-		WorkflowInputs:       inputs,
-		WorkflowDependencies: dependencies,
-		WorkflowOptions:      options}
-	resp, err := c.s.Submit(&r)
-	return resp, err
+	return c.s.Submit(wdl, inputs, dependencies, options)
 }
 
 func (c *Cromwell) Inputs(operation string) (map[string]interface{}, error) {
