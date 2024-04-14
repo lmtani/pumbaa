@@ -10,9 +10,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/types"
-
 	"github.com/lmtani/pumbaa/internal/adapters"
+	"github.com/lmtani/pumbaa/internal/types"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 

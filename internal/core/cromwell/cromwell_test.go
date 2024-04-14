@@ -47,10 +47,16 @@ func TestCromwell_Outputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Cromwell{
 				s: tt.fields.s,
-				w: tt.fields.w,
 			}
-			if err := c.Outputs(tt.args.o); (err != nil) != tt.wantErr {
-				t.Errorf("Outputs() error = %v, wantErr %v", err, tt.wantErr)
+			data, err := c.Outputs(tt.args.o)
+			if err != nil {
+				t.Errorf("Outputs() error = %v", err)
+			}
+			if data.ID != tt.fields.s.(*test.FakeCromwell).OutputsResponse.ID {
+				t.Errorf("Outputs() = %v, want %v", data.ID, tt.fields.s.(*test.FakeCromwell).OutputsResponse.ID)
+			}
+			if data.Outputs["output"] != tt.fields.s.(*test.FakeCromwell).OutputsResponse.Outputs["output"] {
+				t.Errorf("Outputs() = %v, want %v", data.Outputs["output"], tt.fields.s.(*test.FakeCromwell).OutputsResponse.Outputs["output"])
 			}
 		})
 	}
@@ -97,10 +103,31 @@ func TestCromwell_QueryWorkflow(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Cromwell{
 				s: tt.fields.s,
-				w: tt.fields.w,
 			}
-			if err := c.QueryWorkflow(tt.args.name, tt.args.days); (err != nil) != tt.wantErr {
-				t.Errorf("QueryWorkflow() error = %v, wantErr %v", err, tt.wantErr)
+			data, err := c.QueryWorkflow(tt.args.name, tt.args.days)
+			if err != nil {
+				t.Errorf("QueryWorkflow() error = %v", err)
+			}
+			if data.Results[0].ID != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].ID {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].ID, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].ID)
+			}
+			if data.Results[0].Name != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Name {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].Name, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Name)
+			}
+			if data.Results[0].Status != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Status {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].Status, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Status)
+			}
+			if data.Results[0].Submission != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Submission {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].Submission, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Submission)
+			}
+			if data.Results[0].Start != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Start {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].Start, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].Start)
+			}
+			if data.Results[0].End != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].End {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].End, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].End)
+			}
+			if data.Results[0].MetadataArchiveStatus != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].MetadataArchiveStatus {
+				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].MetadataArchiveStatus, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].MetadataArchiveStatus)
 			}
 		})
 	}

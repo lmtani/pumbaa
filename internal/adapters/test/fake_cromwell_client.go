@@ -43,7 +43,7 @@ func (f *FakeCromwell) Query(p *types.ParamsQueryGet) (types.QueryResponse, erro
 	return f.QueryResponse, f.Err
 }
 
-func (f *FakeCromwell) Submit(requestFields *types.SubmitRequest) (types.SubmitResponse, error) {
+func (f *FakeCromwell) Submit(wdl, inputs, dependencies, options string) (types.SubmitResponse, error) {
 	f.SubmitCalled = true
 	return f.SubmitResponse, f.Err
 }
