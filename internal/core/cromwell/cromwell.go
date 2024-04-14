@@ -10,37 +10,53 @@ import (
 
 type Cromwell struct {
 	s ports.CromwellServer
+	l ports.Logger
+	w ports.Writer
 }
 
-func NewCromwell(c ports.CromwellServer, w ports.Writer) *Cromwell {
-	return &Cromwell{s: c}
+func NewCromwell(c ports.CromwellServer, l ports.Logger, w ports.Writer) *Cromwell {
+	return &Cromwell{s: c, w: w, l: l}
 }
 
-func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) (types.SubmitResponse, error) {
-	return c.s.Submit(wdl, inputs, dependencies, options)
+func (c *Cromwell) SubmitWorkflow(wdl, inputs, dependencies, options string) error {
+	d, err := c.s.Submit(wdl, inputs, dependencies, options)
+	if err != nil {
+		return err
+	}
+	c.w.Message(fmt.Sprintf("🐖 Operation= %s , Status=%s", d.ID, d.Status))
+	return nil
 }
 
-func (c *Cromwell) Inputs(operation string) (map[string]interface{}, error) {
+func (c *Cromwell) Inputs(operation string) error {
 	resp, err := c.s.Metadata(operation, &types.ParamsMetadataGet{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	originalInputs := make(map[string]interface{})
 	for k, v := range resp.Inputs {
 		originalInputs[fmt.Sprintf("%s.%s", resp.WorkflowName, k)] = v
 	}
-	return originalInputs, nil
+	return c.w.Json(originalInputs)
 }
 
-func (c *Cromwell) Kill(operation string) (types.SubmitResponse, error) {
-	return c.s.Kill(operation)
+func (c *Cromwell) Kill(operation string) error {
+	d, err := c.s.Kill(operation)
+	if err != nil {
+		return err
+	}
+	c.w.Message(fmt.Sprintf("🐖 Operation=%s, Status=%s", d.ID, d.Status))
+	return nil
 }
 
-func (c *Cromwell) Outputs(o string) (types.OutputsResponse, error) {
-	return c.s.Outputs(o)
+func (c *Cromwell) Outputs(o string) error {
+	d, err := c.s.Outputs(o)
+	if err != nil {
+		return err
+	}
+	return c.w.Json(d)
 }
 
-func (c *Cromwell) QueryWorkflow(name string, days time.Duration) (types.QueryResponse, error) {
+func (c *Cromwell) QueryWorkflow(name string, days time.Duration) error {
 	var submission time.Time
 	if days != 0 {
 		submission = time.Now().Add(-time.Hour * 24 * days)
@@ -49,15 +65,27 @@ func (c *Cromwell) QueryWorkflow(name string, days time.Duration) (types.QueryRe
 		Submission: submission,
 		Name:       name,
 	}
-	return c.s.Query(&params)
+	d, err := c.s.Query(&params)
+	if err != nil {
+		return err
+	}
+	if len(d.Results) == 0 {
+		c.w.Message("No results found")
+		return nil
+	}
+	c.w.QueryTable(d)
+	return nil
 }
 
-func (c *Cromwell) Metadata(o string) (types.MetadataResponse, error) {
+func (c *Cromwell) Metadata(o string) error {
 	params := types.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
-
-	return c.s.Metadata(o, &params)
+	d, err := c.s.Metadata(o, &params)
+	if err != nil {
+		return err
+	}
+	return c.w.MetadataTable(d)
 }
 
 func (c *Cromwell) Wait(operation string, sleep int) error {
@@ -80,16 +108,21 @@ func (c *Cromwell) Wait(operation string, sleep int) error {
 	return nil
 }
 
-func (c *Cromwell) ResourceUsages(o string) (types.TotalResources, error) {
+func (c *Cromwell) ResourceUsages(o string) error {
 	m, err := c.s.Metadata(o, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
-		return types.TotalResources{}, err
+		return err
 	}
 
 	if m.Status == "Running" {
-		return types.TotalResources{}, err
+		return err
 	}
 
 	rp := NewGCPResourceParser()
-	return rp.GetComputeUsageForPricing(m.Calls)
+	d, err := rp.GetComputeUsageForPricing(m.Calls)
+	if err != nil {
+		return err
+	}
+	c.w.ResourceTable(d)
+	return nil
 }

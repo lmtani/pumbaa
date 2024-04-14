@@ -28,11 +28,13 @@ type Table interface {
 
 type ColoredWriter struct {
 	table *tablewriter.Table
+	w     io.Writer
 }
 
 func NewColoredWriter(writer io.Writer) *ColoredWriter {
 	return &ColoredWriter{
 		table: tablewriter.NewWriter(writer),
+		w:     writer,
 	}
 }
 
@@ -41,6 +43,10 @@ func (ColoredWriter) Primary(s string) {
 }
 
 func (w ColoredWriter) Accent(s string) {
+	w.colorPrint(NoticeColor, s)
+}
+
+func (w ColoredWriter) Message(s string) {
 	w.colorPrint(NoticeColor, s)
 }
 
@@ -62,6 +68,16 @@ func (w ColoredWriter) Table(table types.Table) {
 	w.table.SetAlignment(tablewriter.ALIGN_LEFT)
 	w.table.AppendBulk(table.Rows())
 	w.table.Render()
+}
+
+func (w ColoredWriter) Json(i interface{}) error {
+	b, err := json.MarshalIndent(i, "", "   ")
+	if err != nil {
+		return err
+	}
+	data := string(b)
+	_, err = w.w.Write([]byte(data))
+	return err
 }
 
 func (w ColoredWriter) QueryTable(d types.QueryResponse) {

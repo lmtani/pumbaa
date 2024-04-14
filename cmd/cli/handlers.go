@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/lmtani/pumbaa/internal/core/cromwell"
 	"github.com/lmtani/pumbaa/internal/core/interactive"
@@ -22,7 +21,8 @@ func DefaultCromwell(h, iap string) *cromwell.Cromwell {
 	}
 
 	client := adapters.NewCromwellClient(h, gcp)
-	return cromwell.NewCromwell(client, adapters.NewColoredWriter(os.Stdout))
+	logger := adapters.Logger{}
+	return cromwell.NewCromwell(client, &logger, adapters.NewColoredWriter(os.Stdout))
 }
 
 type Handler struct {
@@ -37,12 +37,7 @@ func NewDefaultHandler(h, iap string) *Handler {
 }
 
 func (h *Handler) Query(c *urfaveCli.Context) error {
-	data, err := h.c.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
-	if err != nil {
-		return err
-	}
-	h.w.QueryTable(data)
-	return nil
+	return h.c.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
 }
 
 func (h *Handler) wait(c *urfaveCli.Context) error {
@@ -50,64 +45,27 @@ func (h *Handler) wait(c *urfaveCli.Context) error {
 }
 
 func (h *Handler) submit(c *urfaveCli.Context) error {
-	data, err := h.c.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
-	if err != nil {
-		return err
-	}
-	h.w.Accent(fmt.Sprintf("🐖 Operation= %s , Status=%s", data.ID, data.Status))
-	return nil
+	return h.c.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
 }
 
 func (h *Handler) inputs(c *urfaveCli.Context) error {
-	data, err := h.c.Inputs(c.String("operation"))
-	if err != nil {
-		return err
-	}
-	b, err := json.MarshalIndent(data, "", "   ")
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(b))
-	return nil
+	return h.c.Inputs(c.String("operation"))
 }
 
 func (h *Handler) kill(c *urfaveCli.Context) error {
-	data, err := h.c.Kill(c.String("operation"))
-	if err != nil {
-		return err
-	}
-	h.w.Accent(fmt.Sprintf("Operation=%s, Status=%s", data.ID, data.Status))
-	return nil
+	return h.c.Kill(c.String("operation"))
 }
 
 func (h *Handler) metadata(c *urfaveCli.Context) error {
-	data, err := h.c.Metadata(c.String("operation"))
-	if err != nil {
-		return err
-	}
-	return h.w.MetadataTable(data)
+	return h.c.Metadata(c.String("operation"))
 }
 
 func (h *Handler) outputs(c *urfaveCli.Context) error {
-	data, err := h.c.Outputs(c.String("operation"))
-	if err != nil {
-		return err
-	}
-	b, err := json.MarshalIndent(data.Outputs, "", "   ")
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(b))
-	return nil
+	return h.c.Outputs(c.String("operation"))
 }
 
 func (h *Handler) gcpResources(c *urfaveCli.Context) error {
-	data, err := h.c.ResourceUsages(c.String("operation"))
-	if err != nil {
-		return err
-	}
-	h.w.ResourceTable(data)
-	return nil
+	return h.c.ResourceUsages(c.String("operation"))
 }
 
 func build(c *urfaveCli.Context) error {
