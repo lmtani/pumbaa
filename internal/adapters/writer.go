@@ -1,9 +1,12 @@
 package adapters
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/lmtani/pumbaa/internal/types"
 
@@ -59,4 +62,95 @@ func (w ColoredWriter) Table(table types.Table) {
 	w.table.SetAlignment(tablewriter.ALIGN_LEFT)
 	w.table.AppendBulk(table.Rows())
 	w.table.Render()
+}
+
+func (w ColoredWriter) QueryTable(d types.QueryResponse) {
+	var qtr = types.QueryTableResponse(d)
+
+	w.Table(qtr)
+	w.Accent(fmt.Sprintf("- Found %d workflows", d.TotalResultsCount))
+}
+
+func (w ColoredWriter) ResourceTable(d types.TotalResources) {
+	var rtr = types.ResourceTableResponse{Total: d}
+	w.Table(rtr)
+	w.Accent(fmt.Sprintf("- Tasks with cache hit: %d", d.CachedCalls))
+	w.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", d.TotalTime.Hours()))
+}
+
+func (w ColoredWriter) MetadataTable(d types.MetadataResponse) error {
+
+	var mtr = types.MetadataTableResponse{Metadata: d}
+	w.Table(mtr)
+	if len(d.Failures) > 0 {
+		w.Error(hasFailureMsg(d.Failures))
+		recursiveFailureParse(d.Failures, w)
+	}
+
+	items, err := showCustomOptions(d.SubmittedFiles)
+	if err != nil {
+		return err
+	}
+
+	if len(items) > 0 {
+		w.Accent("🔧 Custom options")
+	}
+	// iterate over items strings
+	for _, v := range items {
+		w.Primary(v)
+	}
+	return nil
+}
+
+func showCustomOptions(s types.SubmittedFiles) ([]string, error) {
+	items := make([]string, 0)
+
+	var options map[string]interface{}
+	err := json.Unmarshal([]byte(s.Options), &options)
+	if err != nil {
+		return items, err
+	}
+
+	keys := sortOptionsKeys(options)
+
+	if len(keys) > 0 {
+		items = writeOptions(keys, options)
+	}
+
+	return items, nil
+}
+
+func writeOptions(keys []string, o map[string]interface{}) []string {
+	items := make([]string, 0)
+	for _, v := range keys {
+		if o[v] != "" {
+			items = append(items, fmt.Sprintf("- %s: %v", v, o[v]))
+		}
+	}
+	return items
+}
+
+func sortOptionsKeys(f map[string]interface{}) []string {
+	keys := make([]string, 0)
+	for k := range f {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func recursiveFailureParse(f []types.Failure, w ports.Writer) {
+	for idx := range f {
+		w.Primary(" - " + f[idx].Message)
+		recursiveFailureParse(f[idx].CausedBy, w)
+	}
+}
+
+func hasFailureMsg(fails []types.Failure) string {
+	m := "issue"
+	if len(fails) > 1 {
+		m = "issues"
+	}
+	msg := fmt.Sprintf("❗You have %d %s:\n", len(fails), m)
+	return msg
 }

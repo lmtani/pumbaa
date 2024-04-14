@@ -69,7 +69,7 @@ func (l *Deployer) Deploy() error {
 	}
 
 	fmt.Println("To start the Cromwell Server run:")
-	fmt.Printf("cd %s && java -DLOG_MODE=pretty -Dconfig.file=%s -jar %s server\n", basePath, config, basePath)
+	fmt.Printf("cd %s && java -DLOG_MODE=pretty -Dconfig.file=%s -jar %s server\n", basePath, config, savePath)
 	return nil
 }
 

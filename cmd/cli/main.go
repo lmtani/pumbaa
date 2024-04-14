@@ -58,7 +58,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return query(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.Query(c)
 			},
 		},
 		{
@@ -71,7 +72,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return wait(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.wait(c)
 			},
 		},
 		{
@@ -86,7 +88,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false, Usage: "Path to the options JSON file"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return submit(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.submit(c)
 			},
 		},
 		{
@@ -98,7 +101,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return inputs(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.inputs(c)
 			},
 		},
 		{
@@ -110,7 +114,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return kill(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.kill(c)
 			},
 		},
 		{
@@ -122,7 +127,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return metadata(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.metadata(c)
 			},
 		},
 		{
@@ -134,7 +140,8 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return outputs(c)
+				h := NewDefaultHandler(c.String("host"), c.String("iap"))
+				return h.outputs(c)
 			},
 		},
 		{
@@ -162,7 +169,8 @@ func setupApp(b *Build) *urfaveCli.App {
 						&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 					},
 					Action: func(c *urfaveCli.Context) error {
-						return gcpResources(c)
+						h := NewDefaultHandler(c.String("host"), c.String("iap"))
+						return h.gcpResources(c)
 					},
 				},
 			},

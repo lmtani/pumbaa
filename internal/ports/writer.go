@@ -7,4 +7,7 @@ type Writer interface {
 	Accent(string)
 	Error(string)
 	Table(table types.Table)
+	QueryTable(table types.QueryResponse)
+	ResourceTable(table types.TotalResources)
+	MetadataTable(d types.MetadataResponse) error
 }

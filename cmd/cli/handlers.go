@@ -1,13 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
-	"time"
-
 	"github.com/lmtani/pumbaa/internal/core/cromwell"
 	"github.com/lmtani/pumbaa/internal/core/interactive"
 	"github.com/lmtani/pumbaa/internal/core/local"
+	"github.com/lmtani/pumbaa/internal/ports"
+	"os"
+	"time"
 
 	"github.com/lmtani/pumbaa/internal/types"
 
@@ -16,9 +17,98 @@ import (
 )
 
 func DefaultCromwell(h, iap string) *cromwell.Cromwell {
-	gcp := adapters.NewGoogleCloud(iap)
+	var gcp ports.GoogleCloudPlatform
+	if iap != "" {
+		gcp = adapters.NewGoogleCloud(iap)
+	}
+
 	client := adapters.NewCromwellClient(h, gcp)
 	return cromwell.NewCromwell(client, adapters.NewColoredWriter(os.Stdout))
+}
+
+type Handler struct {
+	c *cromwell.Cromwell
+	w ports.Writer
+}
+
+func NewDefaultHandler(h, iap string) *Handler {
+	c := DefaultCromwell(h, iap)
+	w := adapters.NewColoredWriter(os.Stdout)
+	return &Handler{c: c, w: w}
+}
+
+func (h *Handler) Query(c *urfaveCli.Context) error {
+	data, err := h.c.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+	if err != nil {
+		return err
+	}
+	h.w.QueryTable(data)
+	return nil
+}
+
+func (h *Handler) wait(c *urfaveCli.Context) error {
+	return h.c.Wait(c.String("operation"), c.Int("sleep"))
+}
+
+func (h *Handler) submit(c *urfaveCli.Context) error {
+	data, err := h.c.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+	if err != nil {
+		return err
+	}
+	h.w.Accent(fmt.Sprintf("🐖 Operation= %s , Status=%s", data.ID, data.Status))
+	return nil
+}
+
+func (h *Handler) inputs(c *urfaveCli.Context) error {
+	data, err := h.c.Inputs(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(data, "", "   ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
+}
+
+func (h *Handler) kill(c *urfaveCli.Context) error {
+	data, err := h.c.Kill(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	h.w.Accent(fmt.Sprintf("Operation=%s, Status=%s", data.ID, data.Status))
+	return nil
+}
+
+func (h *Handler) metadata(c *urfaveCli.Context) error {
+	data, err := h.c.Metadata(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	return h.w.MetadataTable(data)
+}
+
+func (h *Handler) outputs(c *urfaveCli.Context) error {
+	data, err := h.c.Outputs(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(data.Outputs, "", "   ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
+}
+
+func (h *Handler) gcpResources(c *urfaveCli.Context) error {
+	data, err := h.c.ResourceUsages(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	h.w.ResourceTable(data)
+	return nil
 }
 
 func build(c *urfaveCli.Context) error {
@@ -36,43 +126,6 @@ func getVersion(b *Build) error {
 	return nil
 }
 
-func query(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
-}
-
-func wait(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.Wait(c.String("operation"), c.Int("sleep"))
-}
-
-func submit(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
-}
-
-func inputs(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	_, err := cs.Inputs(c.String("operation"))
-	return err
-}
-
-func kill(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	_, err := cs.Kill(c.String("operation"))
-	return err
-}
-
-func metadata(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.Metadata(c.String("operation"))
-}
-
-func outputs(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.Outputs(c.String("operation"))
-}
-
 func navigate(c *urfaveCli.Context) error {
 	gcp := adapters.NewGoogleCloud(c.String("iap"))
 	cc := adapters.NewCromwellClient(c.String("host"), gcp)
@@ -80,11 +133,6 @@ func navigate(c *urfaveCli.Context) error {
 	ui := adapters.Ui{}
 	n := interactive.NewNavigate(cc, w, &ui)
 	return n.Navigate(c.String("operation"))
-}
-
-func gcpResources(c *urfaveCli.Context) error {
-	cs := DefaultCromwell(c.String("host"), c.String("iap"))
-	return cs.ResourceUsages(c.String("operation"))
 }
 
 func localDeploy(c *urfaveCli.Context) error {
