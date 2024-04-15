@@ -1,7 +1,6 @@
 package cromwell
 
 import (
-	"os"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/adapters/test"
@@ -18,9 +17,9 @@ func TestKill_Kill(t *testing.T) {
 	fakeCromwell := test.FakeCromwell{
 		SubmitResponse: expected,
 	}
-	w := adapters.NewColoredWriter(os.Stdout)
+	l := adapters.NewLogger(adapters.InfoLevel)
 
-	i := NewCromwell(&fakeCromwell, w)
+	i := NewCromwell(&fakeCromwell, l)
 
 	resp, err := i.Kill("fake-id")
 	if err != nil {

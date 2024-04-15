@@ -28,7 +28,7 @@ const (
 func FakeCromwell(h, iap string) *cromwell.Cromwell {
 	gcp := test.NewFakeGoogleCloud()
 	client := adapters.NewCromwellClient(h, gcp)
-	return cromwell.NewCromwell(client, adapters.NewColoredWriter(os.Stdout))
+	return cromwell.NewCromwell(client, adapters.NewLogger(adapters.InfoLevel))
 }
 
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
@@ -64,12 +64,14 @@ func Example_queryWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
 	// call
-	err := cs.QueryWorkflow("wf", 0)
+	d, err := cs.QueryWorkflow("wf", 0)
 	if err != nil {
 		log.Print(err)
 	}
+	w.QueryTable(d)
 	// Output:
 	// +-----------+------+-------------------+----------+---------+
 	// | OPERATION | NAME |       START       | DURATION | STATUS  |
@@ -91,8 +93,13 @@ func Example_inputs() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
-	_, err = cs.Inputs(operation)
+	d, err := cs.Inputs(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	err = w.Json(d)
 	if err != nil {
 		log.Print(err)
 	}
@@ -105,16 +112,18 @@ func Example_inputs() {
 
 func Example_killWorkflow() {
 	operation := "aaaa-bbbb-uuid"
-	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaa-bbb-ccc", "status": "aborting"}`, http.StatusOK)
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaaa-bbbb-uuid", "status": "aborting"}`, http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
 	_, err := cs.Kill(operation)
 	if err != nil {
 		log.Print(err)
 	}
+	w.Message(fmt.Sprintf("Operation=%s, Status=%s", operation, "aborting"))
 	// Output:
-	// Operation=aaa-bbb-ccc, Status=aborting
+	// Operation=aaaa-bbbb-uuid, Status=aborting
 }
 
 func Example_resourcesUsed() {
@@ -129,11 +138,13 @@ func Example_resourcesUsed() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
-	err = cs.ResourceUsages(operation)
+	d, err := cs.ResourceUsages(operation)
 	if err != nil {
 		log.Print(err)
 	}
+	w.ResourceTable(d)
 	// Output:
 	// +---------------+---------------+------------+---------+
 	// |   RESOURCE    | NORMALIZED TO | PREEMPTIVE | NORMAL  |
@@ -153,8 +164,13 @@ func Example_outputsWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
-	err := cs.Outputs(operation)
+	d, err := cs.Outputs(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	err = w.Json(d.Outputs)
 	if err != nil {
 		log.Print(err)
 	}
@@ -169,11 +185,13 @@ func Example_submitWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
-	err := cs.SubmitWorkflow(WDLPath, InputsPath, WDLPath, InputsPath)
+	d, err := cs.SubmitWorkflow(WDLPath, InputsPath, WDLPath, InputsPath)
 	if err != nil {
 		log.Print(err)
 	}
+	w.Message(fmt.Sprintf("🐖 Operation= %s , Status=%s", d.ID, d.Status))
 	// Output:
 	// 🐖 Operation= a-new-uuid , Status=Submitted
 }
@@ -207,8 +225,13 @@ func Example_metadataWorkflow() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
+	w := adapters.NewColoredWriter(os.Stdout)
 
-	err = cs.Metadata(operation)
+	d, err := cs.Metadata(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	err = w.MetadataTable(d)
 	if err != nil {
 		log.Print(err)
 	}
@@ -242,7 +265,12 @@ func Example_metadataWorkflow_second() {
 	defer ts.Close()
 	cs := FakeCromwell(ts.URL, "")
 
-	err = cs.Metadata(operation)
+	d, err := cs.Metadata(operation)
+	if err != nil {
+		log.Print(err)
+	}
+	w := adapters.NewColoredWriter(os.Stdout)
+	err = w.MetadataTable(d)
 	if err != nil {
 		log.Print(err)
 	}

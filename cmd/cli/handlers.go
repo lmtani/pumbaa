@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/lmtani/pumbaa/internal/core/cromwell"
-	"github.com/lmtani/pumbaa/internal/core/interactive"
-	"github.com/lmtani/pumbaa/internal/core/local"
-	"github.com/lmtani/pumbaa/internal/ports"
 	"os"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/adapters"
+	"github.com/lmtani/pumbaa/internal/core/cromwell"
+	"github.com/lmtani/pumbaa/internal/core/interactive"
+	"github.com/lmtani/pumbaa/internal/core/local"
+	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
 	urfaveCli "github.com/urfave/cli/v2"
 )
@@ -22,7 +22,7 @@ func DefaultCromwell(h, iap string) *cromwell.Cromwell {
 
 	client := adapters.NewCromwellClient(h, gcp)
 	logger := adapters.Logger{}
-	return cromwell.NewCromwell(client, &logger, adapters.NewColoredWriter(os.Stdout))
+	return cromwell.NewCromwell(client, &logger)
 }
 
 type Handler struct {
@@ -37,7 +37,12 @@ func NewDefaultHandler(h, iap string) *Handler {
 }
 
 func (h *Handler) Query(c *urfaveCli.Context) error {
-	return h.c.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+	d, err := h.c.QueryWorkflow(c.String("name"), time.Duration(c.Int64("days")))
+	if err != nil {
+		return err
+	}
+	h.w.QueryTable(d)
+	return nil
 }
 
 func (h *Handler) wait(c *urfaveCli.Context) error {
@@ -45,27 +50,52 @@ func (h *Handler) wait(c *urfaveCli.Context) error {
 }
 
 func (h *Handler) submit(c *urfaveCli.Context) error {
-	return h.c.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+	d, err := h.c.SubmitWorkflow(c.String("wdl"), c.String("inputs"), c.String("dependencies"), c.String("options"))
+	if err != nil {
+		return err
+	}
+	return h.w.Json(d)
 }
 
 func (h *Handler) inputs(c *urfaveCli.Context) error {
-	return h.c.Inputs(c.String("operation"))
+	d, err := h.c.Inputs(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	return h.w.Json(d)
 }
 
 func (h *Handler) kill(c *urfaveCli.Context) error {
-	return h.c.Kill(c.String("operation"))
+	d, err := h.c.Kill(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	return h.w.Json(d)
 }
 
 func (h *Handler) metadata(c *urfaveCli.Context) error {
-	return h.c.Metadata(c.String("operation"))
+	d, err := h.c.Metadata(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	return h.w.MetadataTable(d)
 }
 
 func (h *Handler) outputs(c *urfaveCli.Context) error {
-	return h.c.Outputs(c.String("operation"))
+	d, err := h.c.Outputs(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	return h.w.Json(d)
 }
 
 func (h *Handler) gcpResources(c *urfaveCli.Context) error {
-	return h.c.ResourceUsages(c.String("operation"))
+	d, err := h.c.ResourceUsages(c.String("operation"))
+	if err != nil {
+		return err
+	}
+	h.w.ResourceTable(d)
+	return nil
 }
 
 func build(c *urfaveCli.Context) error {

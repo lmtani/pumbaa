@@ -25,8 +25,8 @@ func TestInputs(t *testing.T) {
 	fakeCromwell := test.FakeCromwell{
 		MetadataResponse: meta,
 	}
-	w := adapters.NewColoredWriter(os.Stdout)
-	i := NewCromwell(&fakeCromwell, w)
+	l := adapters.NewLogger(adapters.InfoLevel)
+	i := NewCromwell(&fakeCromwell, l)
 
 	inputs, err := i.Inputs("fake-operation")
 	if err != nil {

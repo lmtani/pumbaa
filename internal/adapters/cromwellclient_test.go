@@ -81,7 +81,7 @@ func TestClientSubmit(t *testing.T) {
 		WorkflowInputs:       "../../assets/workflow.inputs.json",
 		WorkflowDependencies: "../../assets/workflow.wdl",
 		WorkflowOptions:      "../../assets/workflow.inputs.json"}
-	resp, _ := client.Submit(&r)
+	resp, _ := client.Submit(r.WorkflowSource, r.WorkflowInputs, r.WorkflowDependencies, r.WorkflowOptions)
 
 	expected := "Submitted"
 	if resp.Status != expected {
