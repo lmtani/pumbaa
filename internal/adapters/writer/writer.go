@@ -1,12 +1,13 @@
-package adapters
+package writer
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lmtani/pumbaa/internal/ports"
 	"io"
 	"os"
 	"sort"
+
+	"github.com/lmtani/pumbaa/internal/ports"
 
 	"github.com/lmtani/pumbaa/internal/types"
 

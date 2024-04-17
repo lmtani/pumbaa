@@ -7,17 +7,19 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/lmtani/pumbaa/internal/adapters/cromwellclient"
+	"github.com/lmtani/pumbaa/internal/adapters/logger"
+	"github.com/lmtani/pumbaa/internal/adapters/writer"
+
 	"github.com/lmtani/pumbaa/internal/adapters/test"
 	"github.com/lmtani/pumbaa/internal/core/cromwell"
 
 	"github.com/lmtani/pumbaa/internal/core/interactive"
-
-	"github.com/lmtani/pumbaa/internal/adapters"
 )
 
 const (
-	MetadataPath       = "../../internal/adapters/testdata/metadata.json"
-	MetadataFailedPath = "../../internal/adapters/testdata/metadata-failed.json"
+	MetadataPath       = "../../internal/adapters/cromwellclient/testdata/metadata.json"
+	MetadataFailedPath = "../../internal/adapters/cromwellclient/testdata/metadata-failed.json"
 )
 
 const (
@@ -25,10 +27,29 @@ const (
 	InputsPath = "../../assets/workflow.inputs.json"
 )
 
-func FakeCromwell(h, iap string) *cromwell.Cromwell {
+var AbortingResponse = `{
+	"id": "aaaa-bbbb-uuid",
+	"status": "aborting"
+}`
+
+var QueryResponse = `{
+	"Results": [{
+		"id": "aaa",
+		"name": "wf",
+		"status": "Running",
+		"submission": "2021-03-22T13:06:42.626Z",
+		"start": "2021-03-22T13:06:42.626Z",
+		"end": "2021-03-22T13:06:42.626Z",
+		"metadataarchivestatus": "archived"
+	}],
+	"TotalResultsCount": 1
+}`
+
+func NewTestHandler(h string) *Handler {
 	gcp := test.NewFakeGoogleCloud()
-	client := adapters.NewCromwellClient(h, gcp)
-	return cromwell.NewCromwell(client, adapters.NewLogger(adapters.InfoLevel))
+	client := cromwellclient.NewCromwellClient(h, gcp)
+	c := cromwell.NewCromwell(client, logger.NewLogger(logger.InfoLevel))
+	return &Handler{c: c, w: writer.NewColoredWriter(os.Stdout)}
 }
 
 func BuildTestServer(url, resp string, httpStatus int) *httptest.Server {
@@ -61,17 +82,17 @@ func BuildTestServerMutable(url string) *httptest.Server {
 
 func Example_queryWorkflow() {
 	// setup
-	ts := BuildTestServer("/api/workflows/v1/query", `{"Results": [{"id":"aaa", "name": "wf", "status": "Running", "submission": "2021-03-22T13:06:42.626Z", "start": "2021-03-22T13:06:42.626Z", "end": "2021-03-22T13:06:42.626Z", "metadataarchivestatus": "archived"}], "TotalResultsCount": 1}`, http.StatusOK)
+	ts := BuildTestServer("/api/workflows/v1/query", QueryResponse, http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+
+	h := NewTestHandler(ts.URL)
 
 	// call
-	d, err := cs.QueryWorkflow("wf", 0)
+	d, err := h.c.QueryWorkflow("wf", 0)
 	if err != nil {
 		log.Print(err)
 	}
-	w.QueryTable(d)
+	h.w.QueryTable(d)
 	// Output:
 	// +-----------+------+-------------------+----------+---------+
 	// | OPERATION | NAME |       START       | DURATION | STATUS  |
@@ -92,14 +113,13 @@ func Example_inputs() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.Inputs(operation)
+	d, err := h.c.Inputs(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	err = w.Json(d)
+	err = h.w.Json(d)
 	if err != nil {
 		log.Print(err)
 	}
@@ -112,16 +132,15 @@ func Example_inputs() {
 
 func Example_killWorkflow() {
 	operation := "aaaa-bbbb-uuid"
-	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", `{"id": "aaaa-bbbb-uuid", "status": "aborting"}`, http.StatusOK)
+	ts := BuildTestServer("/api/workflows/v1/"+operation+"/abort", AbortingResponse, http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	_, err := cs.Kill(operation)
+	_, err := h.c.Kill(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	w.Message(fmt.Sprintf("Operation=%s, Status=%s", operation, "aborting"))
+	h.w.Message(fmt.Sprintf("Operation=%s, Status=%s", operation, "aborting"))
 	// Output:
 	// Operation=aaaa-bbbb-uuid, Status=aborting
 }
@@ -137,14 +156,13 @@ func Example_resourcesUsed() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.ResourceUsages(operation)
+	d, err := h.c.ResourceUsages(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	w.ResourceTable(d)
+	h.w.ResourceTable(d)
 	// Output:
 	// +---------------+---------------+------------+---------+
 	// |   RESOURCE    | NORMALIZED TO | PREEMPTIVE | NORMAL  |
@@ -163,14 +181,13 @@ func Example_outputsWorkflow() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/outputs", `{"id": "aaa-bbb-ccc", "outputs": {"output_path": "/path/to/output.txt"}}`, http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.Outputs(operation)
+	d, err := h.c.Outputs(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	err = w.Json(d.Outputs)
+	err = h.w.Json(d.Outputs)
 	if err != nil {
 		log.Print(err)
 	}
@@ -184,14 +201,13 @@ func Example_submitWorkflow() {
 	// Mock http server
 	ts := BuildTestServer("/api/workflows/v1", `{"id": "a-new-uuid", "status": "Submitted"}`, http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.SubmitWorkflow(WDLPath, InputsPath, WDLPath, InputsPath)
+	d, err := h.c.SubmitWorkflow(WDLPath, InputsPath, WDLPath, InputsPath)
 	if err != nil {
 		log.Print(err)
 	}
-	w.Message(fmt.Sprintf("🐖 Operation= %s , Status=%s", d.ID, d.Status))
+	h.w.Message(fmt.Sprintf("🐖 Operation= %s , Status=%s", d.ID, d.Status))
 	// Output:
 	// 🐖 Operation= a-new-uuid , Status=Submitted
 }
@@ -201,9 +217,9 @@ func Example_wait() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServerMutable("/api/workflows/v1/" + operation + "/status")
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
+	h := NewTestHandler(ts.URL)
 
-	err := cs.Wait(operation, 1)
+	err := h.c.Wait(operation, 1)
 	if err != nil {
 		log.Printf("Error: %#v", err)
 	}
@@ -224,14 +240,13 @@ func Example_metadataWorkflow() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
-	w := adapters.NewColoredWriter(os.Stdout)
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.Metadata(operation)
+	d, err := h.c.Metadata(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	err = w.MetadataTable(d)
+	err = h.w.MetadataTable(d)
 	if err != nil {
 		log.Print(err)
 	}
@@ -263,14 +278,14 @@ func Example_metadataWorkflow_second() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
-	cs := FakeCromwell(ts.URL, "")
+	h := NewTestHandler(ts.URL)
 
-	d, err := cs.Metadata(operation)
+	d, err := h.c.Metadata(operation)
 	if err != nil {
 		log.Print(err)
 	}
-	w := adapters.NewColoredWriter(os.Stdout)
-	err = w.MetadataTable(d)
+
+	err = h.w.MetadataTable(d)
 	if err != nil {
 		log.Print(err)
 	}
@@ -309,13 +324,13 @@ func Example_navigate() {
 	operation := "aaaa-bbbb-uuid"
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
-
-	cromwellClient := adapters.NewCromwellClient(ts.URL, nil)
-	writer := adapters.NewColoredWriter(os.Stdout)
+	cromwellClient := cromwellclient.NewCromwellClient(ts.URL, nil)
+	writer := writer.NewColoredWriter(os.Stdout)
 	mockedPrompt := MockedPrompt{
 		indexToReturn: 1,
 		keyToReturn:   "SayGoodbye",
 	}
+
 	n := interactive.NewNavigate(cromwellClient, writer, &mockedPrompt)
 
 	err = n.Navigate(operation)

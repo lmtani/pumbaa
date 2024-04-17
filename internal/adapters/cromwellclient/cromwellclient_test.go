@@ -1,4 +1,4 @@
-package adapters
+package cromwellclient
 
 import (
 	"log"
@@ -77,10 +77,10 @@ func TestClientSubmit(t *testing.T) {
 	client := NewTestCromwellClient(ts.URL)
 
 	r := types.SubmitRequest{
-		WorkflowSource:       "../../assets/workflow.wdl",
-		WorkflowInputs:       "../../assets/workflow.inputs.json",
-		WorkflowDependencies: "../../assets/workflow.wdl",
-		WorkflowOptions:      "../../assets/workflow.inputs.json"}
+		WorkflowSource:       "../../../assets/workflow.wdl",
+		WorkflowInputs:       "../../../assets/workflow.inputs.json",
+		WorkflowDependencies: "../../../assets/workflow.wdl",
+		WorkflowOptions:      "../../../assets/workflow.inputs.json"}
 	resp, _ := client.Submit(r.WorkflowSource, r.WorkflowInputs, r.WorkflowDependencies, r.WorkflowOptions)
 
 	expected := "Submitted"

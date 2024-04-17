@@ -6,14 +6,15 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/lmtani/pumbaa/internal/adapters/logger"
+
 	"github.com/lmtani/pumbaa/internal/adapters/test"
 
-	"github.com/lmtani/pumbaa/internal/adapters"
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
 func TestInputs(t *testing.T) {
-	content, err := os.ReadFile("../../adapters/testdata/metadata.json")
+	content, err := os.ReadFile("../../adapters/cromwellclient/testdata/metadata.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +26,7 @@ func TestInputs(t *testing.T) {
 	fakeCromwell := test.FakeCromwell{
 		MetadataResponse: meta,
 	}
-	l := adapters.NewLogger(adapters.InfoLevel)
+	l := logger.NewLogger(logger.InfoLevel)
 	i := NewCromwell(&fakeCromwell, l)
 
 	inputs, err := i.Inputs("fake-operation")

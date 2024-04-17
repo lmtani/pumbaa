@@ -1,4 +1,4 @@
-package adapters
+package prompt
 
 import (
 	"github.com/manifoldco/promptui"

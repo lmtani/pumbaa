@@ -3,9 +3,10 @@ package cromwell
 import (
 	"testing"
 
+	"github.com/lmtani/pumbaa/internal/adapters/logger"
+
 	"github.com/lmtani/pumbaa/internal/adapters/test"
 
-	"github.com/lmtani/pumbaa/internal/adapters"
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
@@ -17,7 +18,7 @@ func TestKill_Kill(t *testing.T) {
 	fakeCromwell := test.FakeCromwell{
 		SubmitResponse: expected,
 	}
-	l := adapters.NewLogger(adapters.InfoLevel)
+	l := logger.NewLogger(logger.InfoLevel)
 
 	i := NewCromwell(&fakeCromwell, l)
 

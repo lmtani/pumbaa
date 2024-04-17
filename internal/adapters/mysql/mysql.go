@@ -1,4 +1,4 @@
-package adapters
+package mysql
 
 import (
 	"database/sql"

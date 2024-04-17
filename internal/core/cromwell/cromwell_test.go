@@ -5,7 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/adapters"
+	"github.com/lmtani/pumbaa/internal/adapters/writer"
+
 	"github.com/lmtani/pumbaa/internal/adapters/test"
 	"github.com/lmtani/pumbaa/internal/ports"
 	"github.com/lmtani/pumbaa/internal/types"
@@ -36,7 +37,7 @@ func TestCromwell_Outputs(t *testing.T) {
 						},
 					},
 				},
-				w: adapters.NewColoredWriter(os.Stdout),
+				w: writer.NewColoredWriter(os.Stdout),
 			},
 			args: args{
 				o: "operation",
@@ -95,7 +96,7 @@ func TestCromwell_QueryWorkflow(t *testing.T) {
 						},
 					},
 				},
-				w: adapters.NewColoredWriter(os.Stdout),
+				w: writer.NewColoredWriter(os.Stdout),
 			},
 		},
 	}

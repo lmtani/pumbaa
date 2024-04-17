@@ -5,7 +5,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/adapters"
+	"github.com/lmtani/pumbaa/internal/adapters/cromwellclient"
+	"github.com/lmtani/pumbaa/internal/adapters/filesystem"
+	"github.com/lmtani/pumbaa/internal/adapters/google"
+	"github.com/lmtani/pumbaa/internal/adapters/http"
+	"github.com/lmtani/pumbaa/internal/adapters/logger"
+	"github.com/lmtani/pumbaa/internal/adapters/mysql"
+	"github.com/lmtani/pumbaa/internal/adapters/prompt"
+	"github.com/lmtani/pumbaa/internal/adapters/wdl"
+	"github.com/lmtani/pumbaa/internal/adapters/writer"
+
 	"github.com/lmtani/pumbaa/internal/core/cromwell"
 	"github.com/lmtani/pumbaa/internal/core/interactive"
 	"github.com/lmtani/pumbaa/internal/core/local"
@@ -17,11 +26,11 @@ import (
 func DefaultCromwell(h, iap string) *cromwell.Cromwell {
 	var gcp ports.GoogleCloudPlatform
 	if iap != "" {
-		gcp = adapters.NewGoogleCloud(iap)
+		gcp = google.NewGoogleCloud(iap)
 	}
 
-	client := adapters.NewCromwellClient(h, gcp)
-	logger := adapters.Logger{}
+	client := cromwellclient.NewCromwellClient(h, gcp)
+	logger := logger.Logger{}
 	return cromwell.NewCromwell(client, &logger)
 }
 
@@ -32,7 +41,7 @@ type Handler struct {
 
 func NewDefaultHandler(h, iap string) *Handler {
 	c := DefaultCromwell(h, iap)
-	w := adapters.NewColoredWriter(os.Stdout)
+	w := writer.NewColoredWriter(os.Stdout)
 	return &Handler{c: c, w: w}
 }
 
@@ -99,8 +108,8 @@ func (h *Handler) gcpResources(c *urfaveCli.Context) error {
 }
 
 func build(c *urfaveCli.Context) error {
-	wdl := adapters.RegexWdlPArser{}
-	fs := adapters.NewLocalFilesystem()
+	wdl := wdl.RegexWdlPArser{}
+	fs := filesystem.NewLocalFilesystem()
 	releaser := local.NewBuilder(&wdl, fs)
 	err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
 	return err
@@ -114,20 +123,20 @@ func getVersion(b *Build) error {
 }
 
 func navigate(c *urfaveCli.Context) error {
-	gcp := adapters.NewGoogleCloud(c.String("iap"))
-	cc := adapters.NewCromwellClient(c.String("host"), gcp)
-	w := adapters.NewColoredWriter(os.Stdout)
-	ui := adapters.Ui{}
+	gcp := google.NewGoogleCloud(c.String("iap"))
+	cc := cromwellclient.NewCromwellClient(c.String("host"), gcp)
+	w := writer.NewColoredWriter(os.Stdout)
+	ui := prompt.Ui{}
 	n := interactive.NewNavigate(cc, w, &ui)
 	return n.Navigate(c.String("operation"))
 }
 
 func localDeploy(c *urfaveCli.Context) error {
 	config := ParseCliParams(c)
-	db := adapters.NewMysql(config.Database)
-	gcs := adapters.NewGoogleCloud("")
-	fs := adapters.NewLocalFilesystem()
-	h := adapters.NewDefaultHTTP()
+	db := mysql.NewMysql(config.Database)
+	gcs := google.NewGoogleCloud("")
+	fs := filesystem.NewLocalFilesystem()
+	h := http.NewDefaultHTTP()
 	ld := local.NewDeployer(fs, db, gcs, h, config)
 	return ld.Deploy()
 }

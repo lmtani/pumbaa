@@ -1,4 +1,4 @@
-package adapters
+package wdl
 
 import (
 	"os"

@@ -1,4 +1,4 @@
-package adapters
+package filesystem
 
 import (
 	"archive/zip"
