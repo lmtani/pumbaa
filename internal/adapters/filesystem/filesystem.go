@@ -9,12 +9,16 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/lmtani/pumbaa/internal/ports"
 )
 
-type LocalFilesystem struct{}
+type LocalFilesystem struct {
+	l ports.Logger
+}
 
-func NewLocalFilesystem() *LocalFilesystem {
-	return &LocalFilesystem{}
+func NewLocalFilesystem(l ports.Logger) *LocalFilesystem {
+	return &LocalFilesystem{l: l}
 }
 
 func (l *LocalFilesystem) CreateDirectory(dir string) error {
@@ -40,7 +44,7 @@ func (l *LocalFilesystem) MoveFile(srcPath, destPath string) error {
 }
 
 func (l *LocalFilesystem) ZipFiles(workflowPath, zipPath string, files []string) ([]string, error) {
-	fmt.Println("Creating zip file: ", zipPath)
+	l.l.Info(fmt.Sprintf("Creating zip file: %s", zipPath))
 	var filesToZip []string
 	for _, file := range files {
 		fmt.Println("Adding file to zip: ", file)
@@ -53,8 +57,8 @@ func (l *LocalFilesystem) ZipFiles(workflowPath, zipPath string, files []string)
 	// Replace import statements
 	var replacedFiles []string
 	for _, file := range files {
-		fmt.Println("Replacing imports in file: ", file)
-		fmt.Println("Workflow path: ", workflowPath)
+		l.l.Info(fmt.Sprintf("Replacing imports in file: %s", file))
+		l.l.Info(fmt.Sprintf("Workflow path: %s", workflowPath))
 		resolvedPath, err := l.resolvePath(workflowPath, file)
 		if err != nil {
 			return filesToZip, err
@@ -93,7 +97,7 @@ func (l *LocalFilesystem) ZipFiles(workflowPath, zipPath string, files []string)
 
 	// Add files to the zip archive
 	for _, filename := range replacedFiles {
-		fmt.Println("Adding file to zip: ", filename)
+		l.l.Info(fmt.Sprintf("Adding file to zip: %s", filename))
 		err := l.addFileToZip(filename, zipWriter)
 		if err != nil {
 			return filesToZip, err
@@ -106,7 +110,7 @@ func (l *LocalFilesystem) ReplaceImports(path string) (string, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		fmt.Println(err)
+		l.l.Error(err.Error())
 		return "", err
 	}
 	defer func(file *os.File) {
@@ -117,15 +121,15 @@ func (l *LocalFilesystem) ReplaceImports(path string) (string, error) {
 	}(file)
 
 	outputFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", filepath.Base(path)))
-	fmt.Println("Creating temp file: ", outputFile.Name())
+	l.l.Info(fmt.Sprintf("Creating temp file: %s", outputFile.Name()))
 	if err != nil {
-		fmt.Println(err)
+		l.l.Error(err.Error())
 		return "", err
 	}
 	defer func(outputFile *os.File) {
 		err := outputFile.Close()
 		if err != nil {
-			print(err)
+			l.l.Error(err.Error())
 		}
 	}(outputFile)
 
@@ -147,24 +151,24 @@ func (l *LocalFilesystem) ReplaceImports(path string) (string, error) {
 			// Write the modified line to the output file
 			_, err := outputFile.WriteString(newLine + "\n")
 			if err != nil {
-				fmt.Println(err)
+				l.l.Error(err.Error())
 				return "", err
 			}
 
 			// Print the original and modified import statements
-			fmt.Printf("Original import: %s\nModified import: %s\n", line, newLine)
+			l.l.Info(fmt.Sprintf("Original import: %s\nModified import: %s\n", line, newLine))
 		} else {
 			// Write the original line to the output file
 			_, err := outputFile.WriteString(line + "\n")
 			if err != nil {
-				fmt.Println(err)
+				l.l.Error(err.Error())
 				return "", err
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Println(err)
+		l.l.Error(err.Error())
 		return "", err
 	}
 	return outputFile.Name(), nil
@@ -229,7 +233,7 @@ func (l *LocalFilesystem) hasDuplicates(toZip []string) bool {
 	for k, v := range occurs {
 		if v > 1 {
 			dup = true
-			fmt.Println("duplicate files found in dependencies folder: ", k)
+			l.l.Info(fmt.Sprintf("duplicate files found in dependencies folder: %s", k))
 		}
 	}
 	return dup
@@ -238,16 +242,16 @@ func (l *LocalFilesystem) hasDuplicates(toZip []string) bool {
 func (l *LocalFilesystem) resolvePath(basePath, relativePath string) (string, error) {
 	// Get the directory of the base path
 	dir := filepath.Dir(basePath)
-	fmt.Println(" - Base path: ", dir)
-	fmt.Println(" - Relative path: ", relativePath)
+	l.l.Info(fmt.Sprintf(" - Base path: %s", dir))
+	l.l.Info(fmt.Sprintf(" - Relative path: %s", relativePath))
 
 	// Join the directory with the relative path
 	fullPath := filepath.Join(dir, relativePath)
-	fmt.Println(" - Full path: ", fullPath)
+	l.l.Info(fmt.Sprintf(" - Full path: %s", fullPath))
 
 	// Clean up the path to remove any redundant separators and dots
 	fullPath = filepath.Clean(fullPath)
-	fmt.Println(" - Cleaned path: ", fullPath)
+	l.l.Info(fmt.Sprintf(" - Cleaned path: %s", fullPath))
 
 	return fullPath, nil
 }

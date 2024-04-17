@@ -109,7 +109,8 @@ func (h *Handler) gcpResources(c *urfaveCli.Context) error {
 
 func build(c *urfaveCli.Context) error {
 	wdl := wdl.RegexWdlPArser{}
-	fs := filesystem.NewLocalFilesystem()
+	l := logger.Logger{}
+	fs := filesystem.NewLocalFilesystem(&l)
 	releaser := local.NewBuilder(&wdl, fs)
 	err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
 	return err
@@ -135,7 +136,8 @@ func localDeploy(c *urfaveCli.Context) error {
 	config := ParseCliParams(c)
 	db := mysql.NewMysql(config.Database)
 	gcs := google.NewGoogleCloud("")
-	fs := filesystem.NewLocalFilesystem()
+	l := logger.Logger{}
+	fs := filesystem.NewLocalFilesystem(&l)
 	h := http.NewDefaultHTTP()
 	ld := local.NewDeployer(fs, db, gcs, h, config)
 	return ld.Deploy()
