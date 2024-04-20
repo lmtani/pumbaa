@@ -120,7 +120,7 @@ func (l *LocalFilesystem) ReplaceImports(path string) (string, error) {
 		}
 	}(file)
 
-	outputFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", filepath.Base(path)))
+	outputFile, err := os.CreateTemp("", filepath.Base(path))
 	l.l.Info(fmt.Sprintf("Creating temp file: %s", outputFile.Name()))
 	if err != nil {
 		l.l.Error(err.Error())
