@@ -204,7 +204,7 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.StringFlag{Name: "out", Required: false, Value: "releases", Usage: "Output directory"},
 			},
 			Action: func(c *urfaveCli.Context) error {
-				return build(c)
+				return packDependencies(c)
 			},
 		},
 	}

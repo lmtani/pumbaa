@@ -110,12 +110,12 @@ func (h *Handler) gcpResources(c *urfaveCli.Context) error {
 	return nil
 }
 
-func build(c *urfaveCli.Context) error {
+func packDependencies(c *urfaveCli.Context) error {
 	parser := wdl.RegexWdlPArser{}
 	l := logger.Logger{}
 	fs := filesystem.NewLocalFilesystem(&l)
 	releaser := local.NewBuilder(&parser, fs)
-	err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
+	err := releaser.PackDependencies(c.String("wdl"), c.String("out"))
 	return err
 }
 

@@ -1,5 +1,6 @@
 package ports
 
 type Wdl interface {
-	GetDependencies(workflowPath string) ([][]string, error)
+	GetDependencies(contents string) ([]string, error)
+	ReplaceImports(contents string) (string, error)
 }
