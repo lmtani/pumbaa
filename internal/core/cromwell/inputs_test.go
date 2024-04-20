@@ -14,7 +14,7 @@ import (
 )
 
 func TestInputs(t *testing.T) {
-	content, err := os.ReadFile("../../adapters/cromwellclient/testdata/metadata.json")
+	content, err := os.ReadFile(metadataResponsePath)
 	if err != nil {
 		t.Fatal(err)
 	}

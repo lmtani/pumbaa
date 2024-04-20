@@ -7,7 +7,7 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/adapters/cromwellclient"
 	"github.com/lmtani/pumbaa/internal/adapters/filesystem"
-	"github.com/lmtani/pumbaa/internal/adapters/google"
+	"github.com/lmtani/pumbaa/internal/adapters/gcp"
 	"github.com/lmtani/pumbaa/internal/adapters/http"
 	"github.com/lmtani/pumbaa/internal/adapters/logger"
 	"github.com/lmtani/pumbaa/internal/adapters/mysql"
@@ -23,15 +23,18 @@ import (
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
-func DefaultCromwell(h, iap string) *cromwell.Cromwell {
-	var gcp ports.GoogleCloudPlatform
-	if iap != "" {
-		gcp = google.NewGoogleCloud(iap)
+func DefaultCromwell(h, aud string) *cromwell.Cromwell {
+	var googleCloud ports.GoogleCloudPlatform
+	if aud != "" {
+		googleCloud = DefaultGcp(aud)
 	}
 
-	client := cromwellclient.NewCromwellClient(h, gcp)
-	logger := logger.Logger{}
-	return cromwell.NewCromwell(client, &logger)
+	client := cromwellclient.NewCromwellClient(h, googleCloud)
+	return cromwell.NewCromwell(client, &logger.Logger{})
+}
+
+func DefaultGcp(aud string) ports.GoogleCloudPlatform {
+	return gcp.NewGoogleCloud(aud, &gcp.Wrapper{})
 }
 
 type Handler struct {
@@ -108,10 +111,10 @@ func (h *Handler) gcpResources(c *urfaveCli.Context) error {
 }
 
 func build(c *urfaveCli.Context) error {
-	wdl := wdl.RegexWdlPArser{}
+	parser := wdl.RegexWdlPArser{}
 	l := logger.Logger{}
 	fs := filesystem.NewLocalFilesystem(&l)
-	releaser := local.NewBuilder(&wdl, fs)
+	releaser := local.NewBuilder(&parser, fs)
 	err := releaser.WorkflowDist(c.String("wdl"), c.String("out"))
 	return err
 }
@@ -124,8 +127,8 @@ func getVersion(b *Build) error {
 }
 
 func navigate(c *urfaveCli.Context) error {
-	gcp := google.NewGoogleCloud(c.String("iap"))
-	cc := cromwellclient.NewCromwellClient(c.String("host"), gcp)
+	googleClient := DefaultGcp(c.String("iap"))
+	cc := cromwellclient.NewCromwellClient(c.String("host"), googleClient)
 	w := writer.NewColoredWriter(os.Stdout)
 	ui := prompt.Ui{}
 	n := interactive.NewNavigate(cc, w, &ui)
@@ -135,11 +138,11 @@ func navigate(c *urfaveCli.Context) error {
 func localDeploy(c *urfaveCli.Context) error {
 	config := ParseCliParams(c)
 	db := mysql.NewMysql(config.Database)
-	gcs := google.NewGoogleCloud("")
+	googleClient := DefaultGcp("")
 	l := logger.Logger{}
 	fs := filesystem.NewLocalFilesystem(&l)
 	h := http.NewDefaultHTTP()
-	ld := local.NewDeployer(fs, db, gcs, h, config)
+	ld := local.NewDeployer(fs, db, googleClient, h, config)
 	return ld.Deploy()
 }
 

@@ -12,6 +12,27 @@ import (
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
+var outputsResponse = types.OutputsResponse{
+	ID: "operation",
+	Outputs: map[string]interface{}{
+		"output": "output",
+	},
+}
+
+var queryResponse = types.QueryResponse{
+	Results: []types.QueryResponseWorkflow{
+		{
+			ID:                    "operation",
+			Name:                  "TestWorkflow",
+			Status:                "status",
+			Submission:            "submission",
+			Start:                 time.Now(),
+			End:                   time.Now(),
+			MetadataArchiveStatus: "metadata",
+		},
+	},
+}
+
 func TestCromwell_Outputs(t *testing.T) {
 	type fields struct {
 		s ports.CromwellServer
@@ -29,14 +50,7 @@ func TestCromwell_Outputs(t *testing.T) {
 		{
 			name: "Test Outputs",
 			fields: fields{
-				s: &test.FakeCromwell{
-					OutputsResponse: types.OutputsResponse{
-						ID: "operation",
-						Outputs: map[string]interface{}{
-							"output": "output",
-						},
-					},
-				},
+				s: &test.FakeCromwell{OutputsResponse: outputsResponse},
 				w: writer.NewColoredWriter(os.Stdout),
 			},
 			args: args{
@@ -81,21 +95,7 @@ func TestCromwell_QueryWorkflow(t *testing.T) {
 		{
 			name: "Test QueryWorkflow",
 			fields: fields{
-				s: &test.FakeCromwell{
-					QueryResponse: types.QueryResponse{
-						Results: []types.QueryResponseWorkflow{
-							{
-								ID:                    "operation",
-								Name:                  "TestWorkflow",
-								Status:                "status",
-								Submission:            "submission",
-								Start:                 time.Now(),
-								End:                   time.Now(),
-								MetadataArchiveStatus: "metadata",
-							},
-						},
-					},
-				},
+				s: &test.FakeCromwell{QueryResponse: queryResponse},
 				w: writer.NewColoredWriter(os.Stdout),
 			},
 		},

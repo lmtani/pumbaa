@@ -7,11 +7,12 @@ import (
 	"net/http/httptest"
 	"os"
 
+	"github.com/lmtani/pumbaa/internal/adapters/gcp"
+
 	"github.com/lmtani/pumbaa/internal/adapters/cromwellclient"
 	"github.com/lmtani/pumbaa/internal/adapters/logger"
 	"github.com/lmtani/pumbaa/internal/adapters/writer"
 
-	"github.com/lmtani/pumbaa/internal/adapters/test"
 	"github.com/lmtani/pumbaa/internal/core/cromwell"
 
 	"github.com/lmtani/pumbaa/internal/core/interactive"
@@ -46,8 +47,12 @@ var QueryResponse = `{
 }`
 
 func NewTestHandler(h string) *Handler {
-	gcp := test.NewFakeGoogleCloud()
-	client := cromwellclient.NewCromwellClient(h, gcp)
+	googleClient := gcp.GCP{
+		Aud:     "",
+		Factory: &gcp.MockDependencyFactory{},
+	}
+
+	client := cromwellclient.NewCromwellClient(h, &googleClient)
 	c := cromwell.NewCromwell(client, logger.NewLogger(logger.InfoLevel))
 	return &Handler{c: c, w: writer.NewColoredWriter(os.Stdout)}
 }
@@ -325,13 +330,13 @@ func Example_navigate() {
 	ts := BuildTestServer("/api/workflows/v1/"+operation+"/metadata", string(content), http.StatusOK)
 	defer ts.Close()
 	cromwellClient := cromwellclient.NewCromwellClient(ts.URL, nil)
-	writer := writer.NewColoredWriter(os.Stdout)
+	w := writer.NewColoredWriter(os.Stdout)
 	mockedPrompt := MockedPrompt{
 		indexToReturn: 1,
 		keyToReturn:   "SayGoodbye",
 	}
 
-	n := interactive.NewNavigate(cromwellClient, writer, &mockedPrompt)
+	n := interactive.NewNavigate(cromwellClient, w, &mockedPrompt)
 
 	err = n.Navigate(operation)
 	if err != nil {

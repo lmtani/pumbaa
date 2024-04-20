@@ -2,6 +2,7 @@ package cromwellclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -159,7 +160,8 @@ func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buff
 
 func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.Gcp != nil {
-		token, err := c.Gcp.GetIAPToken()
+		ctx := context.Background()
+		token, err := c.Gcp.GetIAPToken(ctx)
 		if err != nil {
 			return &http.Response{}, err
 		}

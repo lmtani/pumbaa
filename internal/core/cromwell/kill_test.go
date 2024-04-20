@@ -10,13 +10,14 @@ import (
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
+var submitResponse = types.SubmitResponse{
+	ID:     "fake-id",
+	Status: "fake-status",
+}
+
 func TestKill_Kill(t *testing.T) {
-	expected := types.SubmitResponse{
-		ID:     "fake-id",
-		Status: "fake-status",
-	}
 	fakeCromwell := test.FakeCromwell{
-		SubmitResponse: expected,
+		SubmitResponse: submitResponse,
 	}
 	l := logger.NewLogger(logger.InfoLevel)
 
@@ -27,12 +28,11 @@ func TestKill_Kill(t *testing.T) {
 		t.Error(err)
 	}
 
-	if resp != expected {
-		t.Errorf("Expected %v, got %v", expected, i)
+	if resp != submitResponse {
+		t.Errorf("Expected %v, got %v", submitResponse, i)
 	}
 
 	if !fakeCromwell.AbortCalled {
 		t.Errorf("Expected MetadataCalled to be true, found %v", fakeCromwell.MetadataCalled)
 	}
-
 }

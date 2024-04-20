@@ -1,6 +1,7 @@
 package local
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"net/http"
@@ -36,7 +37,9 @@ func (l *Deployer) Deploy() error {
 		return err
 	}
 
-	_, err = l.gs.GetStorageClient()
+	// crete new context
+	ctx := context.Background()
+	_, err = l.gs.GetStorageClient(ctx)
 	if err != nil {
 		fmt.Println(ErrorGoogleCredentials)
 		l.c.Engine.GcsFilesystem.Enabled = false

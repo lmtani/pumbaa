@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lmtani/pumbaa/internal/adapters/test"
+	"github.com/lmtani/pumbaa/internal/adapters/gcp"
 
 	"github.com/lmtani/pumbaa/internal/types"
 )
@@ -28,10 +28,13 @@ func buildTestServer(url, resp string) *httptest.Server {
 }
 
 func NewTestCromwellClient(h string) *CromwellClient {
-	gcp := test.NewFakeGoogleCloud()
+	googleClient := gcp.GCP{
+		Aud:     "fake-aud",
+		Factory: &gcp.MockDependencyFactory{},
+	}
 	return &CromwellClient{
 		Host:   h,
-		Gcp:    gcp,
+		Gcp:    &googleClient,
 		Logger: log.New(os.Stderr, "", log.LstdFlags),
 	}
 }
