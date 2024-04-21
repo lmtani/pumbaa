@@ -265,3 +265,101 @@ func TestCromwell_ResourceUsages(t *testing.T) {
 		})
 	}
 }
+
+func TestCromwell_SubmitWorkflow(t *testing.T) {
+	type fields struct {
+		s ports.CromwellServer
+		l ports.Logger
+	}
+	type args struct {
+		wdl          string
+		inputs       string
+		dependencies string
+		options      string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    types.SubmitResponse
+		wantErr bool
+	}{
+		{
+			name: "Test SubmitWorkflow",
+			fields: fields{
+				s: &test.FakeCromwell{SubmitResponse: types.SubmitResponse{
+					ID: "operation",
+				}},
+				l: logger.NewLogger(logger.InfoLevel),
+			},
+			args: args{
+				wdl:          "wdl",
+				inputs:       "inputs",
+				dependencies: "dependencies",
+				options:      "options",
+			},
+			want: types.SubmitResponse{
+				ID: "operation",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Cromwell{
+				s: tt.fields.s,
+				l: tt.fields.l,
+			}
+			got, err := c.SubmitWorkflow(tt.args.wdl, tt.args.inputs, tt.args.dependencies, tt.args.options)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SubmitWorkflow() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SubmitWorkflow() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCromwell_Wait(t *testing.T) {
+	type fields struct {
+		s ports.CromwellServer
+		l ports.Logger
+	}
+	type args struct {
+		operation string
+		sleep     int
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Test Wait",
+			fields: fields{
+				s: &test.FakeCromwell{SubmitResponse: types.SubmitResponse{
+					ID:     "operation",
+					Status: "Succeeded",
+				}},
+				l: logger.NewLogger(logger.InfoLevel),
+			},
+			args: args{
+				operation: "operation",
+				sleep:     1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Cromwell{
+				s: tt.fields.s,
+				l: tt.fields.l,
+			}
+			if err := c.Wait(tt.args.operation, tt.args.sleep); (err != nil) != tt.wantErr {
+				t.Errorf("Wait() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
