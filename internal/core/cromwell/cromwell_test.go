@@ -1,9 +1,13 @@
 package cromwell
 
 import (
+	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/adapters/logger"
 
 	"github.com/lmtani/pumbaa/internal/adapters/writer"
 
@@ -129,6 +133,134 @@ func TestCromwell_QueryWorkflow(t *testing.T) {
 			}
 			if data.Results[0].MetadataArchiveStatus != tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].MetadataArchiveStatus {
 				t.Errorf("QueryWorkflow() = %v, want %v", data.Results[0].MetadataArchiveStatus, tt.fields.s.(*test.FakeCromwell).QueryResponse.Results[0].MetadataArchiveStatus)
+			}
+		})
+	}
+}
+
+func TestCromwell_Metadata(t *testing.T) {
+	type fields struct {
+		s ports.CromwellServer
+		l ports.Logger
+	}
+	type args struct {
+		o string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    types.MetadataResponse
+		wantErr bool
+	}{
+		{
+			name: "Test Metadata",
+			fields: fields{
+				s: &test.FakeCromwell{MetadataResponse: types.MetadataResponse{
+					WorkflowName: "Teste",
+					Inputs: map[string]interface{}{
+						"input": "input",
+					},
+				}},
+				l: logger.NewLogger(logger.InfoLevel),
+			},
+			args: args{
+				o: "operation",
+			},
+			want: types.MetadataResponse{
+				WorkflowName: "Teste",
+				Inputs: map[string]interface{}{
+					"input": "input",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Cromwell{
+				s: tt.fields.s,
+				l: tt.fields.l,
+			}
+			got, err := c.Metadata(tt.args.o)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Metadata() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Metadata() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func loadMetadataJson() types.MetadataResponse {
+	// Load a json file in project root and return the type
+	// internal/adapters/cromwellclient/testdata/metadata.json
+	// load file
+	content, err := os.ReadFile("../../adapters/cromwellclient/testdata/metadata.json")
+	if err != nil {
+		panic(err)
+	}
+	// load content into metadataresponse
+	var metadata types.MetadataResponse
+	err = json.Unmarshal(content, &metadata)
+	if err != nil {
+		panic(err)
+	}
+	return metadata
+}
+
+func TestCromwell_ResourceUsages(t *testing.T) {
+	type fields struct {
+		s ports.CromwellServer
+		l ports.Logger
+	}
+	type args struct {
+		o string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    types.TotalResources
+		wantErr bool
+	}{
+		{
+			name: "Test ResourceUsages",
+			fields: fields{
+				s: &test.FakeCromwell{MetadataResponse: loadMetadataJson()},
+				l: logger.NewLogger(logger.InfoLevel),
+			},
+			args: args{
+				o: "operation",
+			},
+			want: types.TotalResources{
+				PreemptHdd:    20,
+				PreemptMemory: 2880,
+				PreemptSsd:    20,
+				PreemptCPU:    1440,
+				Hdd:           0,
+				Memory:        1440,
+				CPU:           720,
+				Ssd:           20,
+				TotalTime:     7776000000000000,
+				CachedCalls:   1,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Cromwell{
+				s: tt.fields.s,
+				l: tt.fields.l,
+			}
+			got, err := c.ResourceUsages(tt.args.o)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResourceUsages() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ResourceUsages() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
