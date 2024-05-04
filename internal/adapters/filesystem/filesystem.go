@@ -122,3 +122,8 @@ func (l *LocalFilesystem) CreateZip(destinationPath string, filePaths []string) 
 	// Make sure to check for errors from closing the zip writer.
 	return zipWriter.Close()
 }
+
+func (l *LocalFilesystem) FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}

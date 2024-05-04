@@ -187,7 +187,6 @@ func setupApp(b *Build) *urfaveCli.App {
 				&urfaveCli.Int64Flag{Name: "mysql-port", Required: false, Value: 3306, Usage: "Your MySQL port"},
 				&urfaveCli.Int64Flag{Name: "port", Required: false, Value: 8000, Usage: "Port to bind Cromwell Server"},
 				&urfaveCli.Int64Flag{Name: "max-jobs", Required: false, Value: 1, Usage: "Maximum number of jobs to run in parallel"},
-				&urfaveCli.Int64Flag{Name: "replace-config", Required: false, Value: 1, Usage: "Maximum number of jobs to run in parallel"},
 				&urfaveCli.BoolFlag{Name: "override", Required: false, Usage: "Override the existing configuration file"},
 			},
 			Action: func(c *urfaveCli.Context) error {

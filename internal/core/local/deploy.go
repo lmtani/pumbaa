@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +13,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
-const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-85.jar"
+const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-86.jar"
 
 //go:embed templates/config.tmpl
 var ConfigTmpl string
@@ -27,7 +26,13 @@ type Deployer struct {
 	c    types.Config
 }
 
-func NewDeployer(fl ports.Filesystem, sql ports.Sql, gs ports.GoogleCloudPlatform, h ports.HTTPClient, c types.Config) *Deployer {
+func NewDeployer(
+	fl ports.Filesystem,
+	sql ports.Sql,
+	gs ports.GoogleCloudPlatform,
+	h ports.HTTPClient,
+	c types.Config,
+) *Deployer {
 	return &Deployer{fl: fl, sql: sql, c: c, gs: gs, http: h}
 }
 
@@ -38,10 +43,8 @@ func (l *Deployer) Deploy() error {
 	}
 
 	// crete new context
-	ctx := context.Background()
-	_, err = l.gs.GetStorageClient(ctx)
+	_, err = l.gs.GetStorageClient(context.Background())
 	if err != nil {
-		fmt.Println(ErrorGoogleCredentials)
 		l.c.Engine.GcsFilesystem.Enabled = false
 	}
 
@@ -52,11 +55,9 @@ func (l *Deployer) Deploy() error {
 	}
 
 	// Downloads Cromwell if it does not exist
-	_, err = os.Stat(savePath)
-	if os.IsNotExist(err) {
+	if !l.fl.FileExists(savePath) {
 		err = l.http.DownloadWithProgress(jarUrl, savePath)
 		if err != nil {
-			err = os.Remove(savePath)
 			return err
 		}
 	}
@@ -65,7 +66,7 @@ func (l *Deployer) Deploy() error {
 	config := filepath.Join(basePath, "cromwell.conf")
 
 	// Check for the existence of the config file or if override is enabled
-	if _, err := os.Stat(config); os.IsNotExist(err) || l.c.Override {
+	if !l.fl.FileExists(config) || l.c.Override {
 		if err := l.createCromwellConfig(config); err != nil {
 			return err
 		}
@@ -90,11 +91,10 @@ func (l *Deployer) checkRequirements() error {
 
 	err = l.sql.CheckConnection()
 	if err != nil {
-		fmt.Println(err)
 		return ErrorMysqlNotInstalled
 	}
 	// check if it has an internet connection
-	_, err = http.Get("https://www.google.com")
+	_, err = l.http.Get("https://www.google.com")
 	if err != nil {
 		return ErrorNoInternetConnection
 	}
@@ -163,7 +163,6 @@ var (
 	ErrorWindowsNotSupported  = fmt.Errorf("windows is not supported. please use linux or macos")
 	ErrorDockerNotInstalled   = fmt.Errorf("docker is not installed. please install docker first")
 	ErrorJavaNotInstalled     = fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
-	ErrorGoogleCredentials    = fmt.Errorf("google Cloud Default credentials not found. Disabling GCS filesystem")
 	ErrorMysqlNotInstalled    = fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
 
 			Start a new mysql server with:

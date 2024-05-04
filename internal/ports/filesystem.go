@@ -7,4 +7,5 @@ type Filesystem interface {
 	ReadFile(path string) (string, error)
 	WriteFile(path, contents string) error
 	CreateZip(destinationPath string, filePaths []string) error
+	FileExists(path string) bool
 }
