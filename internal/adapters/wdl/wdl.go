@@ -13,7 +13,8 @@ func (r *RegexWdlPArser) GetDependencies(contents string) ([]string, error) {
 	re := regexp.MustCompile(`import\s+["'](.+?)["']`)
 
 	// Find all import paths and store them in a slice of strings
-	matches := r.secondElementOfListOfLists(re.FindAllStringSubmatch(contents, -1))
+	dependencies := re.FindAllStringSubmatch(contents, -1)
+	matches := r.secondElementOfListOfLists(dependencies)
 	return matches, nil
 }
 
@@ -53,7 +54,6 @@ func (r *RegexWdlPArser) secondElementOfListOfLists(lol [][]string) []string {
 	}
 	var secondElements []string
 	for _, l := range lol {
-		fmt.Println("Second element of list of lists: ", l[1])
 		secondElements = append(secondElements, l[1])
 	}
 	return secondElements
