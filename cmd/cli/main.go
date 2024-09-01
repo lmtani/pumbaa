@@ -83,7 +83,7 @@ func setupApp(b *Build) *urfaveCli.App {
 			Category: generalCategory,
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true, Usage: "Path to the WDL file"},
-				&urfaveCli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: true, Usage: "Path to the inputs JSOM file"},
+				&urfaveCli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: false, Usage: "Path to the inputs JSOM file"},
 				&urfaveCli.StringFlag{Name: "dependencies", Aliases: []string{"d"}, Required: false, Usage: "Path to the dependencies .zip file"},
 				&urfaveCli.StringFlag{Name: "options", Aliases: []string{"o"}, Required: false, Usage: "Path to the options JSON file"},
 			},

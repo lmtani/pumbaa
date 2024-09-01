@@ -74,7 +74,9 @@ func (c *CromwellClient) Submit(wdl, inputs, dependencies, options string) (type
 	route := "/api/workflows/v1"
 	fileParams := map[string]string{
 		"workflowSource": wdl,
-		"workflowInputs": inputs,
+	}
+	if inputs != "" {
+		fileParams["workflowInputs"] = inputs
 	}
 	if dependencies != "" {
 		fileParams["workflowDependencies"] = dependencies
