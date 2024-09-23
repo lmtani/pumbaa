@@ -1,11 +1,16 @@
 package local
 
 import (
+	"crypto/md5"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+
+	"github.com/lmtani/pumbaa/internal/share/informativeMessage"
 
 	"github.com/fatih/color"
 	"github.com/lmtani/pumbaa/internal/ports"
@@ -18,13 +23,6 @@ type Builder struct {
 
 func NewBuilder(wdl ports.Wdl, fs ports.Filesystem) *Builder {
 	return &Builder{wdl: wdl, fs: fs}
-}
-
-func InformativeMessage(c color.Attribute, message string) {
-	_, err := color.New(c).Println(message)
-	if err != nil {
-		fmt.Println(message)
-	}
 }
 
 func (r *Builder) findDependencies(wdlPath string) ([]string, error) {
@@ -65,17 +63,18 @@ func (r *Builder) PackDependencies(workflowPath, outDir string) error {
 		return nil
 	}
 
-	if hasDuplicates(filesToZip) {
+	filesToZip, err = getUniqueFiles(filesToZip)
+	if err != nil {
 		return errors.New("duplicate files found in dependencies folder")
 	}
 
-	InformativeMessage(color.FgGreen, "Dependencies for "+workflowPath)
+	informativeMessage.InformativeMessage(color.FgGreen, "Dependencies for "+workflowPath)
 
 	wdlDist, err := r.ReplaceImportsAndWrite(workflowPath, outDir)
 	if err != nil {
 		return fmt.Errorf("failed to replace imports and write: %w", err)
 	}
-
+	sort.Strings(filesToZip)
 	toZip := []string{}
 	for _, file := range filesToZip {
 		fmt.Println("  -", file)
@@ -99,8 +98,8 @@ func (r *Builder) PackDependencies(workflowPath, outDir string) error {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}
 
-	fmt.Println("\nNow you can submit the workflow with:")
-	InformativeMessage(color.FgHiMagenta, "pumbaa submit --wdl "+wdlDist+" --dependencies "+zipPath)
+	fmt.Println("\nNow you can submit the workflow with something like:")
+	informativeMessage.InformativeMessage(color.FgHiMagenta, "pumbaa submit --wdl "+wdlDist+" --dependencies "+zipPath+" <...>")
 	return nil
 }
 
@@ -128,17 +127,43 @@ func (r *Builder) ReplaceImportsAndWrite(workflowPath, outDir string) (string, e
 	return output, nil
 }
 
-func hasDuplicates(toZip []string) bool {
-	occurs := make(map[string]struct{})
+func getUniqueFiles(toZip []string) ([]string, error) {
+	occurs := make(map[string]string)
+	var uniqueFiles []string
+
 	for _, file := range toZip {
-		if _, exists := occurs[file]; exists {
-			return true
+		fileName := filepath.Base(file)
+		checksum, err := computeMD5(file)
+		if err != nil {
+			return nil, fmt.Errorf("error computing MD5 for file %s: %v", file, err)
 		}
-		occurs[file] = struct{}{}
+		if existingChecksum, exists := occurs[fileName]; exists {
+			if existingChecksum != checksum {
+				return nil, fmt.Errorf("duplicate files found with different checksums: %s", fileName)
+			}
+		} else {
+			occurs[fileName] = checksum
+			uniqueFiles = append(uniqueFiles, file)
+		}
 	}
-	return false
+	return uniqueFiles, nil
 }
 
 func resolvePath(basePath, relativePath string) string {
 	return filepath.Join(filepath.Dir(basePath), relativePath)
+}
+
+func computeMD5(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }

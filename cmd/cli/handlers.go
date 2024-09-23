@@ -127,11 +127,16 @@ func getVersion(b *Build) error {
 }
 
 func navigate(c *urfaveCli.Context) error {
-	googleClient := DefaultGcp(c.String("iap"))
-	cc := cromwellclient.NewCromwellClient(c.String("host"), googleClient)
+	host, aud := c.String("host"), c.String("iap")
+	var googleCloud ports.GoogleCloudPlatform
+	if aud != "" {
+		googleCloud = DefaultGcp(aud)
+	}
+
+	client := cromwellclient.NewCromwellClient(host, googleCloud)
 	w := writer.NewColoredWriter(os.Stdout)
 	ui := prompt.Ui{}
-	n := interactive.NewNavigate(cc, w, &ui)
+	n := interactive.NewNavigate(client, w, &ui)
 	return n.Navigate(c.String("operation"))
 }
 

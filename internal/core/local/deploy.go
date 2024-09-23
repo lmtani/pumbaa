@@ -9,11 +9,14 @@ import (
 	"path/filepath"
 	"text/template"
 
+	"github.com/fatih/color"
+
 	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/share/informativeMessage"
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
-const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/85/cromwell-86.jar"
+const jarUrl = "https://github.com/broadinstitute/cromwell/releases/download/87/cromwell-87.jar"
 
 //go:embed templates/config.tmpl
 var ConfigTmpl string
@@ -91,6 +94,14 @@ func (l *Deployer) checkRequirements() error {
 
 	err = l.sql.CheckConnection()
 	if err != nil {
+		informativeMessage.InformativeMessage(color.FgHiRed, "Error connecting to MySQL")
+		fmt.Println("💡 Tips to start your database:")
+		fmt.Println("- Create a new MySQL container:")
+		fmt.Println("  docker run -d --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0")
+		fmt.Println("- Stop it later with:")
+		fmt.Println("  docker stop cromwell-db")
+		fmt.Println("- Start it again with:")
+		fmt.Println("  docker start cromwell-db")
 		return ErrorMysqlNotInstalled
 	}
 	// check if it has an internet connection
@@ -163,13 +174,5 @@ var (
 	ErrorWindowsNotSupported  = fmt.Errorf("windows is not supported. please use linux or macos")
 	ErrorDockerNotInstalled   = fmt.Errorf("docker is not installed. please install docker first")
 	ErrorJavaNotInstalled     = fmt.Errorf("java is not installed. please install java first. ex. for debian based linux: sudo apt install default-jre")
-	ErrorMysqlNotInstalled    = fmt.Errorf(`cannot connect to mysql. please check your mysql and database (cromwell).
-
-			Start a new mysql server with:
-			  - docker run -d --env MYSQL_ROOT_PASSWORD=1234 --env MYSQL_DATABASE=cromwell --name cromwell-db -p 3306:3306 mysql:8.0
-			Stop it later with:
-			  - docker stop cromwell-db
-			Start it again with:
-			  - docker start cromwell-db
-		`)
+	ErrorMysqlNotInstalled    = fmt.Errorf("cannot connect to mysql. please check your mysql and database (cromwell)")
 )
