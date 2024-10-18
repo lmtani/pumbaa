@@ -60,6 +60,12 @@ func (r *Builder) PackDependencies(workflowPath, outDir string) error {
 		return err
 	}
 	if len(filesToZip) == 0 {
+		// just the workflow, nothing to pack
+		// so, just write in the output directory
+		_, err := r.ReplaceImportsAndWrite(workflowPath, outDir)
+		if err != nil {
+			return fmt.Errorf("failed to replace imports and write: %w", err)
+		}
 		return nil
 	}
 
