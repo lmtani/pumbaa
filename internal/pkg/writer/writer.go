@@ -7,9 +7,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/lmtani/pumbaa/internal/ports"
-
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 
 	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
@@ -21,11 +19,6 @@ var (
 	NoColor     = os.Getenv("TERM") == "dumb" ||
 		(!isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()))
 )
-
-type Table interface {
-	Header() []string
-	Rows() [][]string
-}
 
 type ColoredWriter struct {
 	table *tablewriter.Table
@@ -63,7 +56,7 @@ func (w ColoredWriter) colorPrint(c, s string) {
 	}
 }
 
-func (w ColoredWriter) Table(table types.Table) {
+func (w ColoredWriter) Table(table entities.Table) {
 	w.table.SetHeader(table.Header())
 	w.table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
 	w.table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -81,27 +74,27 @@ func (w ColoredWriter) Json(i interface{}) error {
 	return err
 }
 
-func (w ColoredWriter) QueryTable(d types.QueryResponse) {
-	var qtr = types.QueryTableResponse(d)
+func (w ColoredWriter) QueryTable(d entities.QueryResponse) {
+	var qtr = QueryTableResponse(d)
 
 	w.Table(qtr)
 	w.Accent(fmt.Sprintf("- Found %d workflows", d.TotalResultsCount))
 }
 
-func (w ColoredWriter) ResourceTable(d types.TotalResources) {
-	var rtr = types.ResourceTableResponse{Total: d}
+func (w ColoredWriter) ResourceTable(d entities.TotalResources) {
+	var rtr = ResourceTableResponse{Total: d}
 	w.Table(rtr)
 	w.Accent(fmt.Sprintf("- Tasks with cache hit: %d", d.CachedCalls))
 	w.Accent(fmt.Sprintf("- Total time with running VMs: %.0fh", d.TotalTime.Hours()))
 }
 
-func (w ColoredWriter) MetadataTable(d types.MetadataResponse) error {
+func (w ColoredWriter) MetadataTable(d entities.MetadataResponse) error {
 
-	var mtr = types.MetadataTableResponse{Metadata: d}
+	var mtr = MetadataTableResponse{Metadata: d}
 	w.Table(mtr)
 	if len(d.Failures) > 0 {
 		w.Error(hasFailureMsg(d.Failures))
-		recursiveFailureParse(d.Failures, w)
+		w.recursiveFailureParse(d.Failures)
 	}
 
 	items, err := showCustomOptions(d.SubmittedFiles)
@@ -119,7 +112,7 @@ func (w ColoredWriter) MetadataTable(d types.MetadataResponse) error {
 	return nil
 }
 
-func showCustomOptions(s types.SubmittedFiles) ([]string, error) {
+func showCustomOptions(s entities.SubmittedFiles) ([]string, error) {
 	items := make([]string, 0)
 
 	var options map[string]interface{}
@@ -156,14 +149,14 @@ func sortOptionsKeys(f map[string]interface{}) []string {
 	return keys
 }
 
-func recursiveFailureParse(f []types.Failure, w ports.Writer) {
+func (w ColoredWriter) recursiveFailureParse(f []entities.Failure) {
 	for idx := range f {
 		w.Primary(" - " + f[idx].Message)
-		recursiveFailureParse(f[idx].CausedBy, w)
+		w.recursiveFailureParse(f[idx].CausedBy)
 	}
 }
 
-func hasFailureMsg(fails []types.Failure) string {
+func hasFailureMsg(fails []entities.Failure) string {
 	m := "issue"
 	if len(fails) > 1 {
 		m = "issues"

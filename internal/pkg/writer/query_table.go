@@ -1,12 +1,14 @@
-package types
+package writer
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 type QueryTableResponse struct {
-	Results           []QueryResponseWorkflow
+	Results           []entities.QueryResponseWorkflow
 	TotalResultsCount int
 }
 

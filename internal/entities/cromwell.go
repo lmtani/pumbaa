@@ -1,4 +1,4 @@
-package types
+package entities
 
 import "time"
 
@@ -111,19 +111,6 @@ type SubmitRequest struct {
 	WorkflowInputs       string
 	WorkflowDependencies string
 	WorkflowOptions      string
-}
-
-type TotalResources struct {
-	PreemptHdd    float64
-	PreemptSsd    float64
-	PreemptCPU    float64
-	PreemptMemory float64
-	Hdd           float64
-	Ssd           float64
-	CPU           float64
-	Memory        float64
-	CachedCalls   int
-	TotalTime     time.Duration
 }
 
 type ParsedCallAttributes struct {

@@ -1,19 +1,19 @@
 package cli
 
 import (
-	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/entities"
 	"github.com/lmtani/pumbaa/internal/usecase"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 type WDLHandler struct {
-	DB         ports.Sql
-	FileSystem ports.Filesystem
-	HTTP       ports.HTTPClient
-	gcs        ports.GoogleCloudPlatform
+	DB         entities.Sql
+	FileSystem entities.Filesystem
+	HTTP       entities.HTTPClient
+	gcs        entities.GoogleCloudPlatform
 }
 
-func NewWdlHandler(fs ports.Filesystem, http ports.HTTPClient, gcs ports.GoogleCloudPlatform) *WDLHandler {
+func NewWdlHandler(fs entities.Filesystem, http entities.HTTPClient, gcs entities.GoogleCloudPlatform) *WDLHandler {
 	return &WDLHandler{FileSystem: fs, HTTP: http, gcs: gcs}
 }
 

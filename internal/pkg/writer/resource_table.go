@@ -1,12 +1,13 @@
-package types
+package writer
 
-type Table interface {
-	Header() []string
-	Rows() [][]string
-}
+import (
+	"fmt"
+
+	"github.com/lmtani/pumbaa/internal/entities"
+)
 
 type ResourceTableResponse struct {
-	Total TotalResources
+	Total entities.TotalResources
 }
 
 func (ResourceTableResponse) Header() []string {
@@ -41,4 +42,12 @@ func (rtr ResourceTableResponse) Rows() [][]string {
 		},
 	}
 	return rows
+}
+
+func dashIfZero(v float64) string {
+	s := fmt.Sprintf("%.2f", v)
+	if v == 0.0 {
+		s = "-"
+	}
+	return s
 }

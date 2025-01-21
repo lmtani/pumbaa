@@ -1,4 +1,4 @@
-package cromwellclient
+package cromwell
 
 import (
 	"bytes"
@@ -12,65 +12,65 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lmtani/pumbaa/internal/entities"
+
 	"github.com/google/go-querystring/query"
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
 )
 
-type CromwellClient struct {
+type Cromwell struct {
 	Host   string
-	Gcp    ports.GoogleCloudPlatform
+	Gcp    entities.GoogleCloudPlatform
 	Logger *log.Logger
 	aud    string
 }
 
-func NewCromwellClient(h string, gcp ports.GoogleCloudPlatform) *CromwellClient {
-	return &CromwellClient{
+func NewCromwellClient(h string, gcp entities.GoogleCloudPlatform) *Cromwell {
+	return &Cromwell{
 		Host:   h,
 		Gcp:    gcp,
 		Logger: log.New(os.Stderr, "", log.LstdFlags),
 	}
 }
 
-func (c *CromwellClient) Kill(o string) (types.SubmitResponse, error) {
-	var sr types.SubmitResponse
+func (c *Cromwell) Kill(o string) (entities.SubmitResponse, error) {
+	var sr entities.SubmitResponse
 
 	route := fmt.Sprintf("/api/workflows/v1/%s/abort", o)
 	err := c.iapAwareRequest("POST", route, nil, nil, &sr)
 	return sr, err
 }
 
-func (c *CromwellClient) Status(o string) (types.SubmitResponse, error) {
+func (c *Cromwell) Status(o string) (entities.SubmitResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/status", o)
-	var or types.SubmitResponse
+	var or entities.SubmitResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	return or, err
 }
 
-func (c *CromwellClient) Outputs(o string) (types.OutputsResponse, error) {
+func (c *Cromwell) Outputs(o string) (entities.OutputsResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/outputs", o)
-	var or types.OutputsResponse
+	var or entities.OutputsResponse
 	err := c.iapAwareRequest("GET", route, nil, nil, &or)
 	return or, err
 }
 
-func (c *CromwellClient) Query(p *types.ParamsQueryGet) (types.QueryResponse, error) {
+func (c *Cromwell) Query(p *entities.ParamsQueryGet) (entities.QueryResponse, error) {
 	route := "/api/workflows/v1/query"
-	var qr types.QueryResponse
+	var qr entities.QueryResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &qr)
 	return qr, err
 }
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
 // Be aware of this limitation: https://github.com/broadinstitute/cromwell/issues/4124
-func (c *CromwellClient) Metadata(o string, p *types.ParamsMetadataGet) (types.MetadataResponse, error) {
+func (c *Cromwell) Metadata(o string, p *entities.ParamsMetadataGet) (entities.MetadataResponse, error) {
 	route := fmt.Sprintf("/api/workflows/v1/%s/metadata", o)
-	var mr types.MetadataResponse
+	var mr entities.MetadataResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &mr)
 	return mr, err
 }
 
-func (c *CromwellClient) Submit(wdl, inputs, dependencies, options string) (types.SubmitResponse, error) {
+func (c *Cromwell) Submit(wdl, inputs, dependencies, options string) (entities.SubmitResponse, error) {
 	route := "/api/workflows/v1"
 	fileParams := map[string]string{
 		"workflowSource": wdl,
@@ -84,12 +84,12 @@ func (c *CromwellClient) Submit(wdl, inputs, dependencies, options string) (type
 	if options != "" {
 		fileParams["workflowOptions"] = options
 	}
-	var sr types.SubmitResponse
+	var sr entities.SubmitResponse
 	err := c.iapAwareRequest("POST", route, nil, fileParams, &sr)
 	return sr, err
 }
 
-func (c *CromwellClient) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
+func (c *Cromwell) iapAwareRequest(method, route string, urlParams interface{}, files map[string]string, resp interface{}) error {
 	var body bytes.Buffer
 
 	ct := "application/json"
@@ -132,7 +132,7 @@ func (c *CromwellClient) iapAwareRequest(method, route string, urlParams interfa
 	return err
 }
 
-func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
+func (*Cromwell) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
 	w := multipart.NewWriter(body)
 
 	for field, path := range files {
@@ -160,11 +160,11 @@ func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buff
 	return w, nil
 }
 
-func (c *CromwellClient) setAudience(aud string) {
+func (c *Cromwell) setAudience(aud string) {
 	c.aud = aud
 }
 
-func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) {
+func (c *Cromwell) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.Gcp != nil {
 		ctx := context.Background()
 		token, err := c.Gcp.GetIAPToken(ctx, c.aud)
@@ -189,7 +189,7 @@ func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) 
 }
 
 func errorHandler(r *http.Response) error {
-	er := types.ErrorResponse{
+	er := entities.ErrorResponse{
 		HTTPStatus: r.Status,
 	}
 	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {

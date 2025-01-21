@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 // WorkflowWaitInputDTO - Input
@@ -15,11 +15,11 @@ type WorkflowWaitInputDTO struct {
 
 // WorkflowWaitUseCase is a usecase to wait for a workflow operation to complete
 type WorkflowWaitUseCase struct {
-	CromwellClient ports.CromwellServer
+	CromwellClient entities.CromwellServer
 }
 
 // NewWorkflowWait creates a new WorkflowWait usecase
-func NewWorkflowWait(c ports.CromwellServer) *WorkflowWaitUseCase {
+func NewWorkflowWait(c entities.CromwellServer) *WorkflowWaitUseCase {
 	return &WorkflowWaitUseCase{CromwellClient: c}
 }
 

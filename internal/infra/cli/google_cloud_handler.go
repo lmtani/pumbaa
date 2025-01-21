@@ -1,20 +1,19 @@
 package cli
 
 import (
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 	"github.com/lmtani/pumbaa/internal/usecase"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 // GoogleCloudHandler is a handler for Google Cloud
 type GoogleCloudHandler struct {
-	CromwellServer ports.CromwellServer
-	Writer         ports.Writer
+	CromwellServer entities.CromwellServer
+	Writer         entities.Writer
 }
 
 // NewGoogleCloudHandler creates a new GoogleCloudHandler
-func NewGoogleCloudHandler(c ports.CromwellServer, w ports.Writer) *GoogleCloudHandler {
+func NewGoogleCloudHandler(c entities.CromwellServer, w entities.Writer) *GoogleCloudHandler {
 	return &GoogleCloudHandler{
 		CromwellServer: c, Writer: w,
 	}
@@ -31,7 +30,7 @@ func (g *GoogleCloudHandler) GetComputeUsageForPricing(c *urfaveCli.Context) err
 		return err
 	}
 
-	wdto := types.TotalResources{
+	wdto := entities.TotalResources{
 		PreemptHdd:    output.PreemptHdd,
 		PreemptSsd:    output.PreemptSsd,
 		PreemptCPU:    output.PreemptCPU,

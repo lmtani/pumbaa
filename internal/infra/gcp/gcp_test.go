@@ -4,12 +4,14 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 func TestGCP_GetIAPToken(t *testing.T) {
 	type fields struct {
 		Aud     string
-		Factory DependencyFactory
+		Factory entities.DependencyFactory
 	}
 	type args struct {
 		ctx context.Context
@@ -55,7 +57,7 @@ func TestGCP_GetIAPToken(t *testing.T) {
 func TestGCP_GetStorageClient(t *testing.T) {
 	type fields struct {
 		Aud     string
-		Factory DependencyFactory
+		Factory entities.DependencyFactory
 	}
 	type args struct {
 		ctx context.Context
@@ -64,7 +66,7 @@ func TestGCP_GetStorageClient(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    CloudStorageClient
+		want    entities.CloudStorageClient
 		wantErr bool
 	}{
 		{
@@ -101,7 +103,7 @@ func TestGCP_GetStorageClient(t *testing.T) {
 func TestNewGoogleCloud(t *testing.T) {
 	type args struct {
 		aud     string
-		factory DependencyFactory
+		factory entities.DependencyFactory
 	}
 	tests := []struct {
 		name string

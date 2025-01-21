@@ -1,8 +1,7 @@
 package usecase
 
 import (
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 // WorkflowMetadataInputDTO - Input
@@ -13,22 +12,22 @@ type WorkflowMetadataInputDTO struct {
 // WorkflowMetadataOutputDTO - Output
 type WorkflowMetadataOutputDTO struct {
 	WorkflowID string
-	Metadata   types.MetadataResponse
+	Metadata   entities.MetadataResponse
 }
 
 // WorkflowMetadataUseCase is a usecase to get metadata from Cromwell
 type WorkflowMetadataUseCase struct {
-	CromwellClient ports.CromwellServer
+	CromwellClient entities.CromwellServer
 }
 
 // NewWorkflowMetadata creates a new WorkflowMetadata usecase
-func NewWorkflowMetadata(c ports.CromwellServer) *WorkflowMetadataUseCase {
+func NewWorkflowMetadata(c entities.CromwellServer) *WorkflowMetadataUseCase {
 	return &WorkflowMetadataUseCase{CromwellClient: c}
 }
 
 // Execute gets metadata from Cromwell
 func (w *WorkflowMetadataUseCase) Execute(i *WorkflowMetadataInputDTO) (*WorkflowMetadataOutputDTO, error) {
-	params := types.ParamsMetadataGet{
+	params := entities.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "jes", "inputs"},
 	}
 	result, err := w.CromwellClient.Metadata(i.WorkflowID, &params)

@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 type LocalFilesystem struct {
-	l ports.Logger
+	l entities.Logger
 }
 
-func NewLocalFilesystem(l ports.Logger) *LocalFilesystem {
+func NewLocalFilesystem(l entities.Logger) *LocalFilesystem {
 	return &LocalFilesystem{l: l}
 }
 

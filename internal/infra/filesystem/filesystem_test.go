@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 func randomString(length int) string {
@@ -22,7 +22,7 @@ func randomString(length int) string {
 
 func TestLocalFilesystem_CreateDirectory(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	type args struct {
 		dir string
@@ -64,7 +64,7 @@ func TestLocalFilesystem_CreateDirectory(t *testing.T) {
 
 func TestLocalFilesystem_HomeDir(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	tests := []struct {
 		name    string
@@ -100,7 +100,7 @@ func TestLocalFilesystem_HomeDir(t *testing.T) {
 
 func TestLocalFilesystem_MoveFile(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	type args struct {
 		srcPath  string
@@ -150,7 +150,7 @@ func TestLocalFilesystem_MoveFile(t *testing.T) {
 
 func TestLocalFilesystem_ReadFile(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	type args struct {
 		path string
@@ -199,7 +199,7 @@ func TestLocalFilesystem_ReadFile(t *testing.T) {
 
 func TestLocalFilesystem_WriteFile(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	type args struct {
 		path     string
@@ -253,7 +253,7 @@ func TestLocalFilesystem_WriteFile(t *testing.T) {
 
 func TestLocalFilesystem_CreateZip(t *testing.T) {
 	type fields struct {
-		l ports.Logger
+		l entities.Logger
 	}
 	type args struct {
 		destinationPath string

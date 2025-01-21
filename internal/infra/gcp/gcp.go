@@ -5,22 +5,24 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/storage"
+
+	"github.com/lmtani/pumbaa/internal/entities"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/idtoken"
 )
 
 type GCP struct {
 	Aud     string
-	Factory DependencyFactory
+	Factory entities.DependencyFactory
 }
 
-func NewGoogleCloud(factory DependencyFactory) *GCP {
+func NewGoogleCloud(factory entities.DependencyFactory) *GCP {
 	return &GCP{
 		Factory: factory,
 	}
 }
 
-func (gc *GCP) GetStorageClient(ctx context.Context) (CloudStorageClient, error) {
+func (gc *GCP) GetStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
 	client, err := gc.Factory.NewStorageClient(ctx)
 	if err != nil {
 		return nil, err
@@ -44,7 +46,7 @@ func (gc *GCP) GetIAPToken(ctx context.Context, aud string) (string, error) {
 // Wrapper wraps the dependencies used in this package
 type Wrapper struct{}
 
-func (r *Wrapper) NewStorageClient(ctx context.Context) (CloudStorageClient, error) {
+func (r *Wrapper) NewStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
 	return storage.NewClient(ctx)
 }
 
@@ -55,7 +57,7 @@ func (r *Wrapper) NewTokenSource(ctx context.Context, aud string) (oauth2.TokenS
 // MockDependencyFactory implementations for testing
 type MockDependencyFactory struct{}
 
-func (m *MockDependencyFactory) NewStorageClient(ctx context.Context) (CloudStorageClient, error) {
+func (m *MockDependencyFactory) NewStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
 	return &mockStorageClient{}, nil
 }
 

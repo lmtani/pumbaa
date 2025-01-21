@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
+
 	"github.com/lmtani/pumbaa/internal/usecase"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 // WorkflowHandler is a handler for workflows
 type WorkflowHandler struct {
-	CromwellClient ports.CromwellServer
-	Writer         ports.Writer
+	CromwellClient entities.CromwellServer
+	Writer         entities.Writer
 }
 
 // NewWorkflowHandler creates a new WorkflowHandler
-func NewWorkflowHandler(c ports.CromwellServer, w ports.Writer) *WorkflowHandler {
+func NewWorkflowHandler(c entities.CromwellServer, w entities.Writer) *WorkflowHandler {
 	return &WorkflowHandler{CromwellClient: c, Writer: w}
 }
 
@@ -34,9 +34,9 @@ func (w *WorkflowHandler) Query(c *urfaveCli.Context) error {
 		return err
 	}
 
-	workflows := []types.QueryResponseWorkflow{}
+	workflows := []entities.QueryResponseWorkflow{}
 	for _, w := range output.Workflows {
-		workflows = append(workflows, types.QueryResponseWorkflow{
+		workflows = append(workflows, entities.QueryResponseWorkflow{
 			ID:                    w.ID,
 			Name:                  w.Name,
 			Status:                w.Status,
@@ -46,7 +46,7 @@ func (w *WorkflowHandler) Query(c *urfaveCli.Context) error {
 			MetadataArchiveStatus: w.MetadataArchiveStatus,
 		})
 	}
-	table := types.QueryResponse{
+	table := entities.QueryResponse{
 		Results:           workflows,
 		TotalResultsCount: len(workflows),
 	}
@@ -101,7 +101,7 @@ func (w *WorkflowHandler) Metadata(c *urfaveCli.Context) error {
 	}
 
 	// Cast to types.MetadataResponse
-	metadata := types.MetadataResponse{
+	metadata := entities.MetadataResponse{
 		WorkflowName:   output.Metadata.WorkflowName,
 		SubmittedFiles: output.Metadata.SubmittedFiles,
 		RootWorkflowID: output.Metadata.RootWorkflowID,

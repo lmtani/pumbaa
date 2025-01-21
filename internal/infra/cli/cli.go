@@ -3,37 +3,37 @@ package cli
 import (
 	"os"
 
-	"github.com/lmtani/pumbaa/internal/adapters/cromwellclient"
-	"github.com/lmtani/pumbaa/internal/adapters/filesystem"
-	"github.com/lmtani/pumbaa/internal/adapters/gcp"
-	"github.com/lmtani/pumbaa/internal/adapters/http"
-	"github.com/lmtani/pumbaa/internal/adapters/logger"
-	"github.com/lmtani/pumbaa/internal/adapters/prompt"
-	"github.com/lmtani/pumbaa/internal/adapters/writer"
+	"github.com/lmtani/pumbaa/internal/infra/cromwell"
+	"github.com/lmtani/pumbaa/internal/infra/filesystem"
+	"github.com/lmtani/pumbaa/internal/infra/gcp"
+	"github.com/lmtani/pumbaa/internal/infra/http"
+	"github.com/lmtani/pumbaa/internal/pkg/logger"
+	"github.com/lmtani/pumbaa/internal/pkg/prompt"
+	"github.com/lmtani/pumbaa/internal/pkg/writer"
+
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 // NewCli creates a new CLI
 func NewCli() *urfaveCli.App {
-	cromwellClient := cromwellclient.NewCromwellClient("http://localhost:8000", nil)
-	writer := writer.NewColoredWriter(os.Stdout)
-	googleClient := gcp.NewGoogleCloud(&gcp.Wrapper{})
-	l := logger.Logger{}
-	fs := filesystem.NewLocalFilesystem(&l)
+	cromwellClient := cromwell.NewCromwellClient("http://localhost:8000", nil)
+	w := writer.NewColoredWriter(os.Stdout)
+	gc := gcp.NewGoogleCloud(&gcp.Wrapper{})
+	l := logger.NewLogger(logger.InfoLevel)
+	fs := filesystem.NewLocalFilesystem(l)
 	h := http.NewDefaultHTTP()
+	p := prompt.NewPrompt()
 
-	WorkflowHandler := NewWorkflowHandler(cromwellClient, writer)
-	InteractiveHandler := NewInteractiveHandler(cromwellClient, writer, &prompt.Ui{})
-	googleCloudHandler := NewGoogleCloudHandler(cromwellClient, writer)
-	WDLHandler := NewWdlHandler(fs, h, googleClient)
+	WorkflowHandler := NewWorkflowHandler(cromwellClient, w)
+	InteractiveHandler := NewInteractiveHandler(cromwellClient, w, p)
+	GoogleCloudHandler := NewGoogleCloudHandler(cromwellClient, w)
+	WDLHandler := NewWdlHandler(fs, h, gc)
 
-	generalCategory := "General"
 	cmds := []*urfaveCli.Command{
 		{
-			Name:     "query",
-			Aliases:  []string{"q"},
-			Usage:    "Query workflows",
-			Category: generalCategory,
+			Name:    "query",
+			Aliases: []string{"q"},
+			Usage:   "Query workflows",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "name", Aliases: []string{"n"}, Required: false, Value: "", Usage: "Filter by workflow name"},
 				&urfaveCli.Int64Flag{Name: "days", Aliases: []string{"d"}, Required: false, Value: 7, Usage: "Show workflows from the last N days. Use 0 to show all workflows"},
@@ -41,10 +41,9 @@ func NewCli() *urfaveCli.App {
 			Action: WorkflowHandler.Query,
 		},
 		{
-			Name:     "submit",
-			Aliases:  []string{"s"},
-			Usage:    "Submit a workflow and its inputs to Cromwell",
-			Category: generalCategory,
+			Name:    "submit",
+			Aliases: []string{"s"},
+			Usage:   "Submit a workflow and its inputs to Cromwell",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true, Usage: "Path to the WDL file"},
 				&urfaveCli.StringFlag{Name: "inputs", Aliases: []string{"i"}, Required: false, Usage: "Path to the inputs JSOM file"},
@@ -54,60 +53,54 @@ func NewCli() *urfaveCli.App {
 			Action: WorkflowHandler.Submit,
 		},
 		{
-			Name:     "kill",
-			Aliases:  []string{"k"},
-			Category: generalCategory,
-			Usage:    "Kill a running job",
+			Name:    "kill",
+			Aliases: []string{"k"},
+			Usage:   "Kill a running job",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: WorkflowHandler.Kill,
 		},
 		{
-			Name:     "metadata",
-			Aliases:  []string{"m"},
-			Category: generalCategory,
-			Usage:    "Inspect workflow details (table)",
+			Name:    "metadata",
+			Aliases: []string{"m"},
+			Usage:   "Inspect workflow details (table)",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: WorkflowHandler.Metadata,
 		},
 		{
-			Name:     "outputs",
-			Aliases:  []string{"o"},
-			Category: generalCategory,
-			Usage:    "Query workflow outputs",
+			Name:    "outputs",
+			Aliases: []string{"o"},
+			Usage:   "Query workflow outputs",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: WorkflowHandler.Outputs,
 		},
 		{
-			Name:     "inputs",
-			Aliases:  []string{"i"},
-			Usage:    "Recover inputs from the specified workflow (JSON)",
-			Category: generalCategory,
+			Name:    "inputs",
+			Aliases: []string{"i"},
+			Usage:   "Recover inputs from the specified workflow (JSON)",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: WorkflowHandler.Inputs,
 		},
 		{
-			Name:     "navigate",
-			Aliases:  []string{"n"},
-			Category: generalCategory,
-			Usage:    "Navigate through metadata data",
+			Name:    "navigate",
+			Aliases: []string{"n"},
+			Usage:   "Navigate through metadata data",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 			},
 			Action: InteractiveHandler.Navigate,
 		},
 		{
-			Name:     "wait",
-			Aliases:  []string{"w"},
-			Category: generalCategory,
-			Usage:    "Wait for operation until it is complete",
+			Name:    "wait",
+			Aliases: []string{"w"},
+			Usage:   "Wait for operation until it is complete",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 				&urfaveCli.IntFlag{Name: "sleep", Aliases: []string{"s"}, Required: false, Value: 60, Usage: "Sleep time in seconds"},
@@ -140,7 +133,7 @@ func NewCli() *urfaveCli.App {
 					Flags: []urfaveCli.Flag{
 						&urfaveCli.StringFlag{Name: "operation", Aliases: []string{"o"}, Required: true, Usage: "Operation ID"},
 					},
-					Action: googleCloudHandler.GetComputeUsageForPricing,
+					Action: GoogleCloudHandler.GetComputeUsageForPricing,
 				},
 			},
 		},

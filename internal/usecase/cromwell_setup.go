@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/lmtani/pumbaa/internal/ports"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 const jarURL = "https://github.com/broadinstitute/cromwell/releases/download/87/cromwell-87.jar"
@@ -85,12 +85,12 @@ type CromwellSetupInputDTO struct {
 type CromwellSetupOutputDTO struct{}
 
 type CromwellSetup struct {
-	fs   ports.Filesystem
-	http ports.HTTPClient
-	gs   ports.GoogleCloudPlatform
+	fs   entities.Filesystem
+	http entities.HTTPClient
+	gs   entities.GoogleCloudPlatform
 }
 
-func NewCromwellSetup(fs ports.Filesystem, sql ports.Sql, h ports.HTTPClient, g ports.GoogleCloudPlatform) *CromwellSetup {
+func NewCromwellSetup(fs entities.Filesystem, sql entities.Sql, h entities.HTTPClient, g entities.GoogleCloudPlatform) *CromwellSetup {
 	return &CromwellSetup{fs: fs, http: h, gs: g}
 }
 

@@ -1,4 +1,4 @@
-package cromwellclient
+package cromwell
 
 import (
 	"log"
@@ -7,9 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lmtani/pumbaa/internal/adapters/gcp"
-
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/infra/gcp"
 )
 
 const operation string = "aaa-bbb-ccc"
@@ -27,12 +26,12 @@ func buildTestServer(url, resp string) *httptest.Server {
 	return ts
 }
 
-func NewTestCromwellClient(h string) *CromwellClient {
+func NewTestCromwellClient(h string) *Cromwell {
 	googleClient := gcp.GCP{
 		Aud:     "fake-aud",
 		Factory: &gcp.MockDependencyFactory{},
 	}
-	return &CromwellClient{
+	return &Cromwell{
 		Host:   h,
 		Gcp:    &googleClient,
 		Logger: log.New(os.Stderr, "", log.LstdFlags),
@@ -79,7 +78,7 @@ func TestClientSubmit(t *testing.T) {
 	defer ts.Close()
 	client := NewTestCromwellClient(ts.URL)
 
-	r := types.SubmitRequest{
+	r := entities.SubmitRequest{
 		WorkflowSource:       "../../../assets/workflow.wdl",
 		WorkflowInputs:       "../../../assets/workflow.inputs.json",
 		WorkflowDependencies: "../../../assets/workflow.wdl",
@@ -120,7 +119,7 @@ func TestClientQuery(t *testing.T) {
 	defer ts.Close()
 	client := NewTestCromwellClient(ts.URL)
 
-	resp, _ := client.Query(&types.ParamsQueryGet{})
+	resp, _ := client.Query(&entities.ParamsQueryGet{})
 
 	expectedCount := 1
 	if resp.TotalResultsCount != expectedCount {
@@ -145,7 +144,7 @@ func TestClientMetadata(t *testing.T) {
 	defer ts.Close()
 	client := NewTestCromwellClient(ts.URL)
 
-	resp, _ := client.Metadata(operation, &types.ParamsMetadataGet{})
+	resp, _ := client.Metadata(operation, &entities.ParamsMetadataGet{})
 
 	expectedWorkflowName := "HelloHere"
 	if resp.WorkflowName != expectedWorkflowName {

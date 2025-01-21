@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 // WorkflowNavigateInputDTO - Input
@@ -16,26 +15,26 @@ type WorkflowNavigateInputDTO struct {
 
 // WorkflowNavigate - UseCase
 type WorkflowNavigate struct {
-	c ports.CromwellServer
-	w ports.Writer
-	p ports.Prompt
+	c entities.CromwellServer
+	w entities.Writer
+	p entities.Prompt
 }
 
 // NewWorkflowNavigate - Constructor
-func NewWorkflowNavigate(c ports.CromwellServer, w ports.Writer, p ports.Prompt) *WorkflowNavigate {
+func NewWorkflowNavigate(c entities.CromwellServer, w entities.Writer, p entities.Prompt) *WorkflowNavigate {
 	return &WorkflowNavigate{c: c, w: w, p: p}
 }
 
 // Execute - UseCase
 func (wo *WorkflowNavigate) Execute(input *WorkflowNavigateInputDTO) error {
-	params := types.ParamsMetadataGet{
+	params := entities.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
 	resp, err := wo.c.Metadata(input.WorkflowID, &params)
 	if err != nil {
 		return err
 	}
-	var item types.CallItem
+	var item entities.CallItem
 	for {
 		task, err := wo.selectDesiredTask(&resp)
 		if err != nil {
@@ -67,9 +66,9 @@ func (wo *WorkflowNavigate) Execute(input *WorkflowNavigateInputDTO) error {
 	return nil
 }
 
-func (wo *WorkflowNavigate) selectDesiredTask(m *types.MetadataResponse) ([]types.CallItem, error) {
+func (wo *WorkflowNavigate) selectDesiredTask(m *entities.MetadataResponse) ([]entities.CallItem, error) {
 	var taskOptions []string
-	calls := make(map[string][]types.CallItem)
+	calls := make(map[string][]entities.CallItem)
 	for key, value := range m.Calls {
 		sliceName := strings.Split(key, ".")
 		taskName := sliceName[len(sliceName)-1]
@@ -87,12 +86,12 @@ func (wo *WorkflowNavigate) selectDesiredTask(m *types.MetadataResponse) ([]type
 	taskName, err := wo.p.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Ui failed %v\n", err)
-		return []types.CallItem{}, err
+		return []entities.CallItem{}, err
 	}
 	return calls[taskName], nil
 }
 
-func (wo *WorkflowNavigate) selectDesiredShard(shards []types.CallItem) (types.CallItem, error) {
+func (wo *WorkflowNavigate) selectDesiredShard(shards []entities.CallItem) (entities.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -105,7 +104,7 @@ func (wo *WorkflowNavigate) selectDesiredShard(shards []types.CallItem) (types.C
 
 	i, err := wo.p.SelectByIndex(searcher, shards)
 	if err != nil {
-		return types.CallItem{}, err
+		return entities.CallItem{}, err
 	}
 
 	return shards[i], err

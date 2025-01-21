@@ -3,8 +3,7 @@ package usecase
 import (
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 // WorkflowQueryInputDTO - Input
@@ -31,11 +30,11 @@ type WorkflowQueryOutputDTO struct {
 
 // WorkflowQueryUseCase is a usecase to query workflows from Cromwell
 type WorkflowQueryUseCase struct {
-	CromwellClient ports.CromwellServer
+	CromwellClient entities.CromwellServer
 }
 
 // NewWorkflowQuery creates a new WorkflowQuery usecase
-func NewWorkflowQuery(c ports.CromwellServer) *WorkflowQueryUseCase {
+func NewWorkflowQuery(c entities.CromwellServer) *WorkflowQueryUseCase {
 	return &WorkflowQueryUseCase{CromwellClient: c}
 }
 
@@ -45,7 +44,7 @@ func (w *WorkflowQueryUseCase) Execute(i *WorkflowQueryInputDTO) (*WorkflowQuery
 	if i.Days != 0 {
 		submission = time.Now().Add(-time.Hour * 24 * i.Days)
 	}
-	params := types.ParamsQueryGet{
+	params := entities.ParamsQueryGet{
 		Submission: submission,
 		Name:       i.Name,
 	}

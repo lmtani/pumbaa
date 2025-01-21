@@ -6,8 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/ports"
-	"github.com/lmtani/pumbaa/internal/types"
+	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 // WorkflowGCEUsageInputDTO is the input data for the WorkflowGCEUsage usecase
@@ -31,18 +30,18 @@ type WorkflowGCEUsageOutputDTO struct {
 
 // WorkflowGCEUsage is a usecase that calculates the GCE usage of a workflow
 type WorkflowGCEUsage struct {
-	cromwellClient ports.CromwellServer
+	cromwellClient entities.CromwellServer
 }
 
 // NewWorkflowGCEUsage creates a new WorkflowGCEUsage usecase
-func NewWorkflowGCEUsage(c ports.CromwellServer) *WorkflowGCEUsage {
+func NewWorkflowGCEUsage(c entities.CromwellServer) *WorkflowGCEUsage {
 	return &WorkflowGCEUsage{cromwellClient: c}
 }
 
 // Execute calculates the GCE usage of a workflow
 func (w *WorkflowGCEUsage) Execute(i *WorkflowGCEUsageInputDTO) (*WorkflowGCEUsageOutputDTO, error) {
 	var output WorkflowGCEUsageOutputDTO
-	result, err := w.cromwellClient.Metadata(i.WorkflowID, &types.ParamsMetadataGet{ExpandSubWorkflows: true})
+	result, err := w.cromwellClient.Metadata(i.WorkflowID, &entities.ParamsMetadataGet{ExpandSubWorkflows: true})
 	if err != nil {
 		return nil, err
 	}
@@ -54,23 +53,23 @@ func (w *WorkflowGCEUsage) Execute(i *WorkflowGCEUsageInputDTO) (*WorkflowGCEUsa
 	return &output, nil
 }
 
-func (w *WorkflowGCEUsage) iterateOverTasks(data types.CallItemSet, t *WorkflowGCEUsageOutputDTO) {
+func (w *WorkflowGCEUsage) iterateOverTasks(data entities.CallItemSet, t *WorkflowGCEUsageOutputDTO) {
 	for key := range data {
 		w.iterateOverElements(data[key], t)
 	}
 }
 
-func (w *WorkflowGCEUsage) iterateOverElement(call *types.CallItem) (types.ParsedCallAttributes, error) {
+func (w *WorkflowGCEUsage) iterateOverElement(call *entities.CallItem) (entities.ParsedCallAttributes, error) {
 	runtimeAttrs := call.RuntimeAttributes
 	size, diskType, err := w.parseDisk(runtimeAttrs)
 	if err != nil {
-		return types.ParsedCallAttributes{}, err
+		return entities.ParsedCallAttributes{}, err
 	}
 	totalSsd, totalHdd := w.calculateDiskSize(diskType, size)
 	cpus, _ := strconv.ParseFloat(runtimeAttrs.CPU, 32)
 	memory, _ := w.parseMemory(runtimeAttrs)
 
-	parsed := types.ParsedCallAttributes{
+	parsed := entities.ParsedCallAttributes{
 		Preempt:  runtimeAttrs.Preemptible != "0",
 		Hdd:      totalHdd,
 		Ssd:      totalSsd,
@@ -82,7 +81,7 @@ func (w *WorkflowGCEUsage) iterateOverElement(call *types.CallItem) (types.Parse
 	return parsed, nil
 }
 
-func (w *WorkflowGCEUsage) iterateOverElements(c []types.CallItem, t *WorkflowGCEUsageOutputDTO) {
+func (w *WorkflowGCEUsage) iterateOverElements(c []entities.CallItem, t *WorkflowGCEUsageOutputDTO) {
 	HoursInMonth := 720.0
 
 	for i := range c {
@@ -116,7 +115,7 @@ func (w *WorkflowGCEUsage) iterateOverElements(c []types.CallItem, t *WorkflowGC
 	}
 }
 
-func (w *WorkflowGCEUsage) parseDisk(runtimeAttrs types.RuntimeAttributes) (float64, string, error) {
+func (w *WorkflowGCEUsage) parseDisk(runtimeAttrs entities.RuntimeAttributes) (float64, string, error) {
 	workDisk := strings.Fields(runtimeAttrs.Disks)
 	if len(workDisk) == 0 {
 		return 0, "", fmt.Errorf("no disks, found: %#v", runtimeAttrs.Disks)
@@ -146,7 +145,7 @@ func (w *WorkflowGCEUsage) calculateDiskSize(diskType string, size float64) (flo
 	return totalSsd, totalHdd
 }
 
-func (w *WorkflowGCEUsage) parseMemory(runtimeAttrs types.RuntimeAttributes) (float64, error) {
+func (w *WorkflowGCEUsage) parseMemory(runtimeAttrs entities.RuntimeAttributes) (float64, error) {
 	memory := strings.Fields(runtimeAttrs.Memory)
 	if len(memory) == 0 {
 		return 0, fmt.Errorf("no memory, found: %#v", runtimeAttrs.Memory)

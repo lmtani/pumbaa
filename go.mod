@@ -4,7 +4,6 @@ go 1.22
 
 require (
 	cloud.google.com/go/storage v1.35.1
-	github.com/fatih/color v1.17.0
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/google/go-querystring v1.1.0
 	github.com/manifoldco/promptui v0.9.0
@@ -29,7 +28,6 @@ require (
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

@@ -5,27 +5,26 @@ import (
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/lmtani/pumbaa/internal/types"
 )
 
 type Mysql struct {
 	Host     string
-	Port     int
+	Port     string
 	User     string
 	Password string
 }
 
-func NewMysql(db types.Database) *Mysql {
+func NewMysql(host, port, user, password string) *Mysql {
 	return &Mysql{
-		Host:     db.Host,
-		Port:     db.Port,
-		User:     db.User,
-		Password: db.Password,
+		Host:     host,
+		Port:     port,
+		User:     user,
+		Password: password,
 	}
 }
 
 func (m *Mysql) CheckConnection() error {
-	dbConn := fmt.Sprintf("%s:%s@tcp(%s:%d)/", m.User, m.Password, m.Host, m.Port)
+	dbConn := fmt.Sprintf("%s:%s@tcp(%s:%s)/", m.User, m.Password, m.Host, m.Port)
 	db, err := sql.Open("mysql", dbConn)
 	if err != nil {
 		return err
