@@ -1,4 +1,4 @@
-package interactive
+package usecase
 
 import (
 	"fmt"
@@ -9,77 +9,65 @@ import (
 	"github.com/lmtani/pumbaa/internal/types"
 )
 
-type Navigate struct {
+// WorkflowNavigateInputDTO - Input
+type WorkflowNavigateInputDTO struct {
+	WorkflowID string
+}
+
+// WorkflowNavigate - UseCase
+type WorkflowNavigate struct {
 	c ports.CromwellServer
 	w ports.Writer
 	p ports.Prompt
 }
 
-func NewNavigate(c ports.CromwellServer, w ports.Writer, p ports.Prompt) *Navigate {
-	return &Navigate{c: c, w: w, p: p}
+// NewWorkflowNavigate - Constructor
+func NewWorkflowNavigate(c ports.CromwellServer, w ports.Writer, p ports.Prompt) *WorkflowNavigate {
+	return &WorkflowNavigate{c: c, w: w, p: p}
 }
 
-func (n *Navigate) Navigate(operation string) error {
+// Execute - UseCase
+func (wo *WorkflowNavigate) Execute(input *WorkflowNavigateInputDTO) error {
 	params := types.ParamsMetadataGet{
 		ExcludeKey: []string{"executionEvents", "submittedFiles", "jes", "inputs"},
 	}
-	resp, err := n.c.Metadata(operation, &params)
+	resp, err := wo.c.Metadata(input.WorkflowID, &params)
 	if err != nil {
 		return err
 	}
 	var item types.CallItem
 	for {
-		task, err := n.selectDesiredTask(&resp)
+		task, err := wo.selectDesiredTask(&resp)
 		if err != nil {
 			return err
 		}
-		item, err = n.selectDesiredShard(task)
+		item, err = wo.selectDesiredShard(task)
 		if err != nil {
 			return err
 		}
 		if item.SubWorkflowID == "" {
 			break
 		}
-		resp, err = n.c.Metadata(item.SubWorkflowID, &params)
+		resp, err = wo.c.Metadata(item.SubWorkflowID, &params)
 		if err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("Command status: %s\n", item.ExecutionStatus)
+	wo.w.Accent(item.ExecutionStatus)
 	if item.ExecutionStatus == "QueuedInCromwell" {
 		return nil
 	}
 	if item.CallCaching.Hit {
-		n.w.Accent(item.CallCaching.Result)
+		wo.w.Accent(item.CallCaching.Result)
 	} else {
-		n.w.Accent(item.CommandLine)
+		wo.w.Accent(item.CommandLine)
 	}
 
-	fmt.Printf("Logs:\n")
-	n.w.Accent(fmt.Sprintf("%s\n%s\n", item.Stderr, item.Stdout))
-	if item.MonitoringLog != "" {
-		n.w.Accent(fmt.Sprintf("%s\n", item.MonitoringLog))
-	}
-	if item.BackendLogs.Log != "" {
-		n.w.Accent(fmt.Sprintf("%s\n", item.BackendLogs.Log))
-	}
-
-	fmt.Printf("🐋 Docker image:\n")
-	n.w.Accent(fmt.Sprintf("%s\n", item.RuntimeAttributes.Docker))
 	return nil
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
-func (n *Navigate) selectDesiredTask(m *types.MetadataResponse) ([]types.CallItem, error) {
+func (wo *WorkflowNavigate) selectDesiredTask(m *types.MetadataResponse) ([]types.CallItem, error) {
 	var taskOptions []string
 	calls := make(map[string][]types.CallItem)
 	for key, value := range m.Calls {
@@ -94,9 +82,9 @@ func (n *Navigate) selectDesiredTask(m *types.MetadataResponse) ([]types.CallIte
 	if m.RootWorkflowID != "" {
 		cat = "SubWorkflow"
 	}
-	n.w.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
+	wo.w.Accent(fmt.Sprintf("%s: %s\n", cat, m.WorkflowName))
 
-	taskName, err := n.p.SelectByKey(taskOptions)
+	taskName, err := wo.p.SelectByKey(taskOptions)
 	if err != nil {
 		fmt.Printf("Ui failed %v\n", err)
 		return []types.CallItem{}, err
@@ -104,7 +92,7 @@ func (n *Navigate) selectDesiredTask(m *types.MetadataResponse) ([]types.CallIte
 	return calls[taskName], nil
 }
 
-func (n *Navigate) selectDesiredShard(shards []types.CallItem) (types.CallItem, error) {
+func (wo *WorkflowNavigate) selectDesiredShard(shards []types.CallItem) (types.CallItem, error) {
 	if len(shards) == 1 {
 		return shards[0], nil
 	}
@@ -115,10 +103,19 @@ func (n *Navigate) selectDesiredShard(shards []types.CallItem) (types.CallItem, 
 		return name == input
 	}
 
-	i, err := n.p.SelectByIndex(searcher, shards)
+	i, err := wo.p.SelectByIndex(searcher, shards)
 	if err != nil {
 		return types.CallItem{}, err
 	}
 
 	return shards[i], err
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

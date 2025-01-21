@@ -14,9 +14,8 @@ type GCP struct {
 	Factory DependencyFactory
 }
 
-func NewGoogleCloud(aud string, factory DependencyFactory) *GCP {
+func NewGoogleCloud(factory DependencyFactory) *GCP {
 	return &GCP{
-		Aud:     aud,
 		Factory: factory,
 	}
 }
@@ -30,8 +29,8 @@ func (gc *GCP) GetStorageClient(ctx context.Context) (CloudStorageClient, error)
 	return client, nil
 }
 
-func (gc *GCP) GetIAPToken(ctx context.Context) (string, error) {
-	ts, err := gc.Factory.NewTokenSource(ctx, gc.Aud)
+func (gc *GCP) GetIAPToken(ctx context.Context, aud string) (string, error) {
+	ts, err := gc.Factory.NewTokenSource(ctx, aud)
 	if err != nil {
 		return "", err
 	}

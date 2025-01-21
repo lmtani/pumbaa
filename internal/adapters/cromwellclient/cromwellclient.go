@@ -21,6 +21,7 @@ type CromwellClient struct {
 	Host   string
 	Gcp    ports.GoogleCloudPlatform
 	Logger *log.Logger
+	aud    string
 }
 
 func NewCromwellClient(h string, gcp ports.GoogleCloudPlatform) *CromwellClient {
@@ -58,7 +59,6 @@ func (c *CromwellClient) Query(p *types.ParamsQueryGet) (types.QueryResponse, er
 	var qr types.QueryResponse
 	err := c.iapAwareRequest("GET", route, p, nil, &qr)
 	return qr, err
-
 }
 
 // Metadata uses the Cromwell Server metadata endpoint to get the metadata for a workflow
@@ -133,7 +133,7 @@ func (c *CromwellClient) iapAwareRequest(method, route string, urlParams interfa
 }
 
 func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buffer) (*multipart.Writer, error) {
-	var w = multipart.NewWriter(body)
+	w := multipart.NewWriter(body)
 
 	for field, path := range files {
 
@@ -160,10 +160,14 @@ func (*CromwellClient) prepareFormData(files map[string]string, body *bytes.Buff
 	return w, nil
 }
 
+func (c *CromwellClient) setAudience(aud string) {
+	c.aud = aud
+}
+
 func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) {
 	if c.Gcp != nil {
 		ctx := context.Background()
-		token, err := c.Gcp.GetIAPToken(ctx)
+		token, err := c.Gcp.GetIAPToken(ctx, c.aud)
 		if err != nil {
 			return &http.Response{}, err
 		}
@@ -185,7 +189,7 @@ func (c *CromwellClient) makeRequest(req *http.Request) (*http.Response, error) 
 }
 
 func errorHandler(r *http.Response) error {
-	var er = types.ErrorResponse{
+	er := types.ErrorResponse{
 		HTTPStatus: r.Status,
 	}
 	if err := json.NewDecoder(r.Body).Decode(&er); err != nil {

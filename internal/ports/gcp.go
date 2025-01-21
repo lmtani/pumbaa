@@ -8,5 +8,5 @@ import (
 
 type GoogleCloudPlatform interface {
 	GetStorageClient(ctx context.Context) (gcp.CloudStorageClient, error)
-	GetIAPToken(ctx context.Context) (string, error)
+	GetIAPToken(ctx context.Context, aud string) (string, error)
 }

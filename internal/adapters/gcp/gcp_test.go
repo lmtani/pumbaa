@@ -40,7 +40,7 @@ func TestGCP_GetIAPToken(t *testing.T) {
 				Aud:     tt.fields.Aud,
 				Factory: tt.fields.Factory,
 			}
-			got, err := gc.GetIAPToken(tt.args.ctx)
+			got, err := gc.GetIAPToken(tt.args.ctx, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetIAPToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -111,18 +111,18 @@ func TestNewGoogleCloud(t *testing.T) {
 		{
 			name: "NewGoogleCloud",
 			args: args{
-				aud:     "fake-aud",
+				aud:     "",
 				factory: &MockDependencyFactory{},
 			},
 			want: &GCP{
-				Aud:     "fake-aud",
+				Aud:     "",
 				Factory: &MockDependencyFactory{},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewGoogleCloud(tt.args.aud, tt.args.factory); !reflect.DeepEqual(got, tt.want) {
+			if got := NewGoogleCloud(tt.args.factory); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewGoogleCloud() = %v, want %v", got, tt.want)
 			}
 		})
