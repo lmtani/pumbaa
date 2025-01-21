@@ -21,7 +21,7 @@ func TestRegexWdlPArser_GetDependencies(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RegexWdlPArser{}
+			r := &RegexWDLParser{}
 			got, err := r.GetDependencies(tt.args.contents)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetDependencies() error = %v, wantErr %v", err, tt.wantErr)
@@ -49,7 +49,7 @@ func TestRegexWdlPArser_ReplaceImports(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &RegexWdlPArser{}
+			r := &RegexWDLParser{}
 			got, err := r.ReplaceImports(tt.args.contents)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReplaceImports() error = %v, wantErr %v", err, tt.wantErr)

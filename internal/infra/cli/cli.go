@@ -9,6 +9,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infra/http"
 	"github.com/lmtani/pumbaa/internal/pkg/logger"
 	"github.com/lmtani/pumbaa/internal/pkg/prompt"
+	"github.com/lmtani/pumbaa/internal/pkg/wdl"
 	"github.com/lmtani/pumbaa/internal/pkg/writer"
 
 	urfaveCli "github.com/urfave/cli/v2"
@@ -23,11 +24,12 @@ func NewCli() *urfaveCli.App {
 	fs := filesystem.NewLocalFilesystem(l)
 	h := http.NewDefaultHTTP()
 	p := prompt.NewPrompt()
+	wdl := wdl.NewRegexWdlParser()
 
 	WorkflowHandler := NewWorkflowHandler(cromwellClient, w)
 	InteractiveHandler := NewInteractiveHandler(cromwellClient, w, p)
 	GoogleCloudHandler := NewGoogleCloudHandler(cromwellClient, w)
-	WDLHandler := NewWdlHandler(fs, h, gc)
+	WDLHandler := NewWdlHandler(fs, h, gc, wdl)
 
 	workflowCategory := "Workflow"
 	cromwellCategory := "Cromwell"
@@ -122,7 +124,7 @@ func NewCli() *urfaveCli.App {
 			Name:     "local-deploy",
 			Aliases:  []string{"ld"},
 			Category: cromwellCategory,
-			Usage:    "Install Cromwell Server locally with default configuration and start it",
+			Usage:    "Install Cromwell Server locally with default configuration",
 			Flags: []urfaveCli.Flag{
 				&urfaveCli.StringFlag{Name: "mysql-host", Required: false, Value: "127.0.0.1", Usage: "Your MySQL host"},
 				&urfaveCli.StringFlag{Name: "mysql-passwd", Aliases: []string{"d"}, Required: false, Value: "1234", Usage: "Your MySQL password"},
@@ -149,6 +151,17 @@ func NewCli() *urfaveCli.App {
 					Action: GoogleCloudHandler.GetComputeUsageForPricing,
 				},
 			},
+		},
+		{
+			Name:     "build",
+			Aliases:  []string{"b"},
+			Usage:    "Build a zip file with all dependencies",
+			Category: cromwellCategory,
+			Flags: []urfaveCli.Flag{
+				&urfaveCli.StringFlag{Name: "wdl", Aliases: []string{"w"}, Required: true, Usage: "Path to the WDL file"},
+				&urfaveCli.StringFlag{Name: "out", Aliases: []string{"o"}, Required: true, Usage: "Path to the output directory"},
+			},
+			Action: WDLHandler.Build,
 		},
 	}
 	return &urfaveCli.App{

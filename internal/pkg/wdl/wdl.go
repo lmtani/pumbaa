@@ -6,9 +6,13 @@ import (
 	"strings"
 )
 
-type RegexWdlPArser struct{}
+type RegexWDLParser struct{}
 
-func (r *RegexWdlPArser) GetDependencies(contents string) ([]string, error) {
+func NewRegexWdlParser() *RegexWDLParser {
+	return &RegexWDLParser{}
+}
+
+func (r *RegexWDLParser) GetDependencies(contents string) ([]string, error) {
 	// Define a regular expression to match import statements
 	re := regexp.MustCompile(`import\s+["'](.+?)["']`)
 
@@ -18,7 +22,7 @@ func (r *RegexWdlPArser) GetDependencies(contents string) ([]string, error) {
 	return matches, nil
 }
 
-func (r *RegexWdlPArser) ReplaceImports(contents string) (string, error) {
+func (r *RegexWDLParser) ReplaceImports(contents string) (string, error) {
 	importRegex := regexp.MustCompile(`import\s+["'].*\/(.+)["']`)
 	var builder strings.Builder
 
@@ -48,7 +52,7 @@ func (r *RegexWdlPArser) ReplaceImports(contents string) (string, error) {
 	return builder.String(), nil
 }
 
-func (r *RegexWdlPArser) secondElementOfListOfLists(lol [][]string) []string {
+func (r *RegexWDLParser) secondElementOfListOfLists(lol [][]string) []string {
 	if len(lol) == 0 {
 		return nil
 	}

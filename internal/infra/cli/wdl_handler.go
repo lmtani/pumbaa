@@ -11,15 +11,25 @@ type WDLHandler struct {
 	FileSystem entities.Filesystem
 	HTTP       entities.HTTPClient
 	gcs        entities.GoogleCloudPlatform
+	WDL        entities.Wdl
 }
 
-func NewWdlHandler(fs entities.Filesystem, http entities.HTTPClient, gcs entities.GoogleCloudPlatform) *WDLHandler {
-	return &WDLHandler{FileSystem: fs, HTTP: http, gcs: gcs}
+func NewWdlHandler(fs entities.Filesystem, http entities.HTTPClient, gcs entities.GoogleCloudPlatform, wdl entities.Wdl) *WDLHandler {
+	return &WDLHandler{FileSystem: fs, HTTP: http, gcs: gcs, WDL: wdl}
 }
 
 func (h *WDLHandler) Deploy(c *urfaveCli.Context) error {
 	input := ParseCliParams(c)
 	cromwellSetup := usecase.NewCromwellSetup(h.FileSystem, h.DB, h.HTTP, h.gcs)
+	return cromwellSetup.Execute(input)
+}
+
+func (h *WDLHandler) Build(c *urfaveCli.Context) error {
+	input := usecase.BuildInputDTO{
+		WDLPath: c.String("wdl"),
+		OutPath: c.String("out"),
+	}
+	cromwellSetup := usecase.NewWDLBuilder(h.FileSystem, h.WDL)
 	return cromwellSetup.Execute(input)
 }
 
