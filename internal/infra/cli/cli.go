@@ -24,12 +24,12 @@ func NewCli() *urfaveCli.App {
 	fs := filesystem.NewLocalFilesystem(l)
 	h := http.NewDefaultHTTP()
 	p := prompt.NewPrompt()
-	wdl := wdl.NewRegexWdlParser()
+	wdlParser := wdl.NewRegexWdlParser()
 
 	WorkflowHandler := NewWorkflowHandler(cromwellClient, w)
 	InteractiveHandler := NewInteractiveHandler(cromwellClient, w, p)
 	GoogleCloudHandler := NewGoogleCloudHandler(cromwellClient, w)
-	WDLHandler := NewWdlHandler(fs, h, gc, wdl)
+	WDLHandler := NewWdlHandler(fs, h, gc, wdlParser)
 
 	workflowCategory := "Workflow"
 	cromwellCategory := "Cromwell"
