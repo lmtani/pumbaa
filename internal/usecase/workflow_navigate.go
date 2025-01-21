@@ -85,7 +85,6 @@ func (wo *WorkflowNavigate) selectDesiredTask(m *entities.MetadataResponse) ([]e
 
 	taskName, err := wo.p.SelectByKey(taskOptions)
 	if err != nil {
-		fmt.Printf("Ui failed %v\n", err)
 		return []entities.CallItem{}, err
 	}
 	return calls[taskName], nil
