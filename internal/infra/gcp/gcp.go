@@ -3,26 +3,26 @@ package gcp
 import (
 	"context"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 
 	"cloud.google.com/go/storage"
 
-	"github.com/lmtani/pumbaa/internal/entities"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/idtoken"
 )
 
 type GCP struct {
 	Aud     string
-	Factory entities.DependencyFactory
+	Factory interfaces.DependencyFactory
 }
 
-func NewGoogleCloud(factory entities.DependencyFactory) *GCP {
+func NewGoogleCloud(factory interfaces.DependencyFactory) *GCP {
 	return &GCP{
 		Factory: factory,
 	}
 }
 
-func (gc *GCP) GetStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
+func (gc *GCP) GetStorageClient(ctx context.Context) (interfaces.CloudStorageClient, error) {
 	client, err := gc.Factory.NewStorageClient(ctx)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (gc *GCP) GetIAPToken(ctx context.Context, aud string) (string, error) {
 // Wrapper wraps the dependencies used in this package
 type Wrapper struct{}
 
-func (r *Wrapper) NewStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
+func (r *Wrapper) NewStorageClient(ctx context.Context) (interfaces.CloudStorageClient, error) {
 	return storage.NewClient(ctx)
 }
 
@@ -57,7 +57,7 @@ func (r *Wrapper) NewTokenSource(ctx context.Context, aud string) (oauth2.TokenS
 // MockDependencyFactory implementations for testing
 type MockDependencyFactory struct{}
 
-func (m *MockDependencyFactory) NewStorageClient(ctx context.Context) (entities.CloudStorageClient, error) {
+func (m *MockDependencyFactory) NewStorageClient(ctx context.Context) (interfaces.CloudStorageClient, error) {
 	return &mockStorageClient{}, nil
 }
 

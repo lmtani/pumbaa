@@ -1,10 +1,10 @@
-package entities
+package interfaces
 
 import (
 	"context"
-	"net/http"
-
+	"github.com/lmtani/pumbaa/internal/entities"
 	"golang.org/x/oauth2"
+	"net/http"
 )
 
 type Filesystem interface {
@@ -40,12 +40,12 @@ type Prompt interface {
 }
 
 type CromwellServer interface {
-	Kill(o string) (SubmitResponse, error)
-	Status(o string) (SubmitResponse, error)
-	Outputs(o string) (OutputsResponse, error)
-	Query(params *ParamsQueryGet) (QueryResponse, error)
-	Metadata(o string, params *ParamsMetadataGet) (MetadataResponse, error)
-	Submit(wdl, inputs, dependencies, options string) (SubmitResponse, error)
+	Kill(o string) (entities.SubmitResponse, error)
+	Status(o string) (entities.SubmitResponse, error)
+	Outputs(o string) (entities.OutputsResponse, error)
+	Query(params *entities.ParamsQueryGet) (entities.QueryResponse, error)
+	Metadata(o string, params *entities.ParamsMetadataGet) (entities.MetadataResponse, error)
+	Submit(wdl, inputs, dependencies, options string) (entities.SubmitResponse, error)
 }
 
 type Sql interface {
@@ -63,9 +63,9 @@ type Writer interface {
 	Message(string)
 	Error(string)
 	Table(table Table)
-	QueryTable(table QueryResponse)
-	ResourceTable(table TotalResources)
-	MetadataTable(d MetadataResponse) error
+	QueryTable(table entities.QueryResponse)
+	ResourceTable(table entities.TotalResources)
+	MetadataTable(d entities.MetadataResponse) error
 	Json(interface{}) error
 }
 

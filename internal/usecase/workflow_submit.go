@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 )
 
 // WorkflowSubmitInputDTO - Input
@@ -20,11 +20,11 @@ type WorkflowSubmitOutputDTO struct {
 
 // WorkflowSubmitUseCase is a usecase to submit a workflow to Cromwell
 type WorkflowSubmitUseCase struct {
-	CromwellClient entities.CromwellServer
+	CromwellClient interfaces.CromwellServer
 }
 
 // NewWorkflowSubmit creates a new WorkflowSubmit usecase
-func NewWorkflowSubmit(c entities.CromwellServer) *WorkflowSubmitUseCase {
+func NewWorkflowSubmit(c interfaces.CromwellServer) *WorkflowSubmitUseCase {
 	return &WorkflowSubmitUseCase{CromwellClient: c}
 }
 

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"strconv"
 	"strings"
 	"time"
@@ -30,11 +31,11 @@ type WorkflowGCEUsageOutputDTO struct {
 
 // WorkflowGCEUsage is a usecase that calculates the GCE usage of a workflow
 type WorkflowGCEUsage struct {
-	cromwellClient entities.CromwellServer
+	cromwellClient interfaces.CromwellServer
 }
 
 // NewWorkflowGCEUsage creates a new WorkflowGCEUsage usecase
-func NewWorkflowGCEUsage(c entities.CromwellServer) *WorkflowGCEUsage {
+func NewWorkflowGCEUsage(c interfaces.CromwellServer) *WorkflowGCEUsage {
 	return &WorkflowGCEUsage{cromwellClient: c}
 }
 

@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 )
 
 // WorkflowKillInputDTO - Input
@@ -17,11 +17,11 @@ type WorkflowKillOutputDTO struct {
 
 // WorkflowKillUseCase is a usecase to kill a workflow in Cromwell
 type WorkflowKillUseCase struct {
-	CromwellClient entities.CromwellServer
+	CromwellClient interfaces.CromwellServer
 }
 
 // NewWorkflowKill creates a new WorkflowKill usecase
-func NewWorkflowKill(c entities.CromwellServer) *WorkflowKillUseCase {
+func NewWorkflowKill(c interfaces.CromwellServer) *WorkflowKillUseCase {
 	return &WorkflowKillUseCase{CromwellClient: c}
 }
 

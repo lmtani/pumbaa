@@ -4,12 +4,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"text/template"
-
-	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 const jarURL = "https://github.com/broadinstitute/cromwell/releases/download/87/cromwell-87.jar"
@@ -85,12 +84,12 @@ type CromwellSetupInputDTO struct {
 type CromwellSetupOutputDTO struct{}
 
 type CromwellSetup struct {
-	fs   entities.Filesystem
-	http entities.HTTPClient
-	gs   entities.GoogleCloudPlatform
+	fs   interfaces.Filesystem
+	http interfaces.HTTPClient
+	gs   interfaces.GoogleCloudPlatform
 }
 
-func NewCromwellSetup(fs entities.Filesystem, sql entities.Sql, h entities.HTTPClient, g entities.GoogleCloudPlatform) *CromwellSetup {
+func NewCromwellSetup(fs interfaces.Filesystem, sql interfaces.Sql, h interfaces.HTTPClient, g interfaces.GoogleCloudPlatform) *CromwellSetup {
 	return &CromwellSetup{fs: fs, http: h, gs: g}
 }
 

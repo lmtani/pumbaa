@@ -1,18 +1,18 @@
 package cli
 
 import (
-	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"github.com/lmtani/pumbaa/internal/usecase"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 type InteractiveHandler struct {
-	c entities.CromwellServer
-	w entities.Writer
-	p entities.Prompt
+	c interfaces.CromwellServer
+	w interfaces.Writer
+	p interfaces.Prompt
 }
 
-func NewInteractiveHandler(c entities.CromwellServer, w entities.Writer, p entities.Prompt) *InteractiveHandler {
+func NewInteractiveHandler(c interfaces.CromwellServer, w interfaces.Writer, p interfaces.Prompt) *InteractiveHandler {
 	return &InteractiveHandler{c: c, w: w, p: p}
 }
 

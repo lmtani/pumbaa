@@ -2,18 +2,19 @@ package cli
 
 import (
 	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"github.com/lmtani/pumbaa/internal/usecase"
 	urfaveCli "github.com/urfave/cli/v2"
 )
 
 // GoogleCloudHandler is a handler for Google Cloud
 type GoogleCloudHandler struct {
-	CromwellServer entities.CromwellServer
-	Writer         entities.Writer
+	CromwellServer interfaces.CromwellServer
+	Writer         interfaces.Writer
 }
 
 // NewGoogleCloudHandler creates a new GoogleCloudHandler
-func NewGoogleCloudHandler(c entities.CromwellServer, w entities.Writer) *GoogleCloudHandler {
+func NewGoogleCloudHandler(c interfaces.CromwellServer, w interfaces.Writer) *GoogleCloudHandler {
 	return &GoogleCloudHandler{
 		CromwellServer: c, Writer: w,
 	}

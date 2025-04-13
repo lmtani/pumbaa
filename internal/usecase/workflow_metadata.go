@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"github.com/lmtani/pumbaa/internal/entities"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 )
 
 // WorkflowMetadataInputDTO - Input
@@ -17,11 +18,11 @@ type WorkflowMetadataOutputDTO struct {
 
 // WorkflowMetadataUseCase is a usecase to get metadata from Cromwell
 type WorkflowMetadataUseCase struct {
-	CromwellClient entities.CromwellServer
+	CromwellClient interfaces.CromwellServer
 }
 
 // NewWorkflowMetadata creates a new WorkflowMetadata usecase
-func NewWorkflowMetadata(c entities.CromwellServer) *WorkflowMetadataUseCase {
+func NewWorkflowMetadata(c interfaces.CromwellServer) *WorkflowMetadataUseCase {
 	return &WorkflowMetadataUseCase{CromwellClient: c}
 }
 

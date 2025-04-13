@@ -3,6 +3,7 @@ package writer
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"io"
 	"os"
 	"sort"
@@ -56,7 +57,7 @@ func (w ColoredWriter) colorPrint(c, s string) {
 	}
 }
 
-func (w ColoredWriter) Table(table entities.Table) {
+func (w ColoredWriter) Table(table interfaces.Table) {
 	w.table.SetHeader(table.Header())
 	w.table.SetBorders(tablewriter.Border{Left: true, Top: true, Right: true, Bottom: true})
 	w.table.SetAlignment(tablewriter.ALIGN_LEFT)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"io"
 	"log"
 	"mime/multipart"
@@ -19,12 +20,12 @@ import (
 
 type Cromwell struct {
 	Host   string
-	Gcp    entities.GoogleCloudPlatform
+	Gcp    interfaces.GoogleCloudPlatform
 	Logger *log.Logger
 	aud    string
 }
 
-func NewCromwellClient(h string, gcp entities.GoogleCloudPlatform) *Cromwell {
+func NewCromwellClient(h string, gcp interfaces.GoogleCloudPlatform) *Cromwell {
 	return &Cromwell{
 		Host:   h,
 		Gcp:    gcp,

@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/entities"
@@ -30,11 +31,11 @@ type WorkflowQueryOutputDTO struct {
 
 // WorkflowQueryUseCase is a usecase to query workflows from Cromwell
 type WorkflowQueryUseCase struct {
-	CromwellClient entities.CromwellServer
+	CromwellClient interfaces.CromwellServer
 }
 
 // NewWorkflowQuery creates a new WorkflowQuery usecase
-func NewWorkflowQuery(c entities.CromwellServer) *WorkflowQueryUseCase {
+func NewWorkflowQuery(c interfaces.CromwellServer) *WorkflowQueryUseCase {
 	return &WorkflowQueryUseCase{CromwellClient: c}
 }
 

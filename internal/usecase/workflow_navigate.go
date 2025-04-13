@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"strconv"
 	"strings"
 
@@ -15,13 +16,13 @@ type WorkflowNavigateInputDTO struct {
 
 // WorkflowNavigate - UseCase
 type WorkflowNavigate struct {
-	c entities.CromwellServer
-	w entities.Writer
-	p entities.Prompt
+	c interfaces.CromwellServer
+	w interfaces.Writer
+	p interfaces.Prompt
 }
 
 // NewWorkflowNavigate - Constructor
-func NewWorkflowNavigate(c entities.CromwellServer, w entities.Writer, p entities.Prompt) *WorkflowNavigate {
+func NewWorkflowNavigate(c interfaces.CromwellServer, w interfaces.Writer, p interfaces.Prompt) *WorkflowNavigate {
 	return &WorkflowNavigate{c: c, w: w, p: p}
 }
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/entities"
@@ -12,12 +13,12 @@ import (
 
 // WorkflowHandler is a handler for workflows
 type WorkflowHandler struct {
-	CromwellClient entities.CromwellServer
-	Writer         entities.Writer
+	CromwellClient interfaces.CromwellServer
+	Writer         interfaces.Writer
 }
 
 // NewWorkflowHandler creates a new WorkflowHandler
-func NewWorkflowHandler(c entities.CromwellServer, w entities.Writer) *WorkflowHandler {
+func NewWorkflowHandler(c interfaces.CromwellServer, w interfaces.Writer) *WorkflowHandler {
 	return &WorkflowHandler{CromwellClient: c, Writer: w}
 }
 

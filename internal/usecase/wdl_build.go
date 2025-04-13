@@ -8,13 +8,12 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"github.com/lmtani/pumbaa/internal/entities"
 )
 
 type BuildInputDTO struct {
@@ -23,11 +22,11 @@ type BuildInputDTO struct {
 }
 
 type WDLBuilder struct {
-	FileSystem entities.Filesystem
-	WDL        entities.Wdl
+	FileSystem interfaces.Filesystem
+	WDL        interfaces.Wdl
 }
 
-func NewWDLBuilder(fs entities.Filesystem, wdl entities.Wdl) *WDLBuilder {
+func NewWDLBuilder(fs interfaces.Filesystem, wdl interfaces.Wdl) *WDLBuilder {
 	return &WDLBuilder{FileSystem: fs, WDL: wdl}
 }
 

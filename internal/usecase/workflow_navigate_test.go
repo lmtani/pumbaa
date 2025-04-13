@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"github.com/lmtani/pumbaa/internal/interfaces"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/entities"
@@ -30,7 +31,7 @@ func (m *mockWriter) Error(msg string) {
 	m.Called(msg)
 }
 
-func (m *mockWriter) Table(table entities.Table) {
+func (m *mockWriter) Table(table interfaces.Table) {
 	m.Called(table)
 }
 
