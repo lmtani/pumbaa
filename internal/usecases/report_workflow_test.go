@@ -36,11 +36,11 @@ func TestReportWorkflow_Execute_Success(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, "workflow-123", result.WorkflowID)
+	assert.Equal(t, "workflow-123", result.ID)
 	assert.Equal(t, "Test Workflow", result.Name)
 	assert.Equal(t, "Succeeded", result.Status)
-	assert.Equal(t, now.Format(time.RFC3339), result.Start)
-	assert.Equal(t, now.Add(time.Hour*2).Format(time.RFC3339), result.End)
+	assert.Equal(t, now, result.Start)
+	assert.Equal(t, now.Add(time.Hour*2), result.End)
 
 	// Verify expectations
 	mockProvider.AssertExpectations(t)
@@ -116,7 +116,7 @@ func TestReportWorkflow_Execute_DifferentWorkflowIDs(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, "workflow-456", result.WorkflowID)
+	assert.Equal(t, "workflow-456", result.ID)
 	assert.Equal(t, "Another Workflow", result.Name)
 	assert.Equal(t, "Running", result.Status)
 

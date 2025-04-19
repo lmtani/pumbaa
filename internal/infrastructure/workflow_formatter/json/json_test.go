@@ -71,7 +71,7 @@ func TestWorkflowJsonFormatter_Report(t *testing.T) {
 	}
 
 	// Act
-	err := formatter.Report(workflow)
+	err := formatter.Report(&workflow)
 
 	// Assert
 	assert.NoError(t, err)

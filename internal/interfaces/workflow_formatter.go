@@ -5,6 +5,6 @@ import (
 )
 
 type WorkflowFormatter interface {
-	Report(workflow entities.Workflow) error
+	Report(workflow *entities.Workflow) error
 	Query(workflows []entities.Workflow) error
 }

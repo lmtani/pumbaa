@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/lmtani/pumbaa/internal/entities"
 	"github.com/lmtani/pumbaa/internal/interfaces"
@@ -25,8 +24,6 @@ func (w *ReportWorkflow) Execute(uuid string) (*entities.Workflow, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Print whole workflow struct
-	fmt.Printf("Workflow: %+v\n", workflow)
 
 	if workflow.ID == "" {
 		return nil, errors.New("workflow not found")

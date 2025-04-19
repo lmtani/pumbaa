@@ -1,12 +1,10 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"fmt"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/workflow_formatter/table"
+	"github.com/lmtani/pumbaa/internal/entities"
+	workflowformatter "github.com/lmtani/pumbaa/internal/infrastructure/workflow_formatter"
 	"github.com/lmtani/pumbaa/internal/infrastructure/workflow_provider/cromwell"
 	"github.com/lmtani/pumbaa/internal/usecases"
 	"github.com/spf13/cobra"
@@ -27,8 +25,18 @@ var queryCmd = &cobra.Command{
 			return
 		}
 
-		workflowFormatter := table.NewWorkflowTableFormatter()
-		err = workflowFormatter.Query(workflows.Workflows)
+		jsonFlag, err := cmd.Flags().GetBool("json")
+		if err != nil {
+			fmt.Println("Error getting json flag:", err)
+			return
+		}
+
+		output := map[bool]entities.FormatType{
+			true:  entities.JSONFormat,
+			false: entities.TableFormat,
+		}
+		formatter := workflowformatter.GetFormatter(output[jsonFlag], nil)
+		err = formatter.Query(workflows.Workflows)
 		if err != nil {
 			fmt.Println("Error formatting workflows:", err)
 			return
@@ -38,5 +46,6 @@ var queryCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(queryCmd)
+	queryCmd.Flags().Bool("json", false, "Output in JSON format")
 	// queryCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

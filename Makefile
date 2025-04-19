@@ -13,4 +13,4 @@ format:
 
 build:
 	@echo "Building Go project..."
-	go build -o dist/pumbaa cmd/cli/main.go
+	GOOS=linux CGO_ENABLED=0 go build -ldflags="-w -s" -o dist/pumbaa main.go

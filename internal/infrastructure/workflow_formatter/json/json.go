@@ -32,7 +32,7 @@ func (f *WorkflowJsonFormatter) Query(workflows []entities.Workflow) error {
 }
 
 // Report formats and writes a single workflow as JSON
-func (f *WorkflowJsonFormatter) Report(workflow entities.Workflow) error {
+func (f *WorkflowJsonFormatter) Report(workflow *entities.Workflow) error {
 	encoder := json.NewEncoder(f.Output)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(workflow)
