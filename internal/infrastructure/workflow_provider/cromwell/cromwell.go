@@ -17,9 +17,8 @@ func NewCromwellWorkflowProvider(host string) *CromwellWorkflowProvider {
 	}
 }
 
-func (c *CromwellWorkflowProvider) Get(uuid string, expandSubworkflow bool) (entities.Workflow, error) {
+func (c *CromwellWorkflowProvider) Get(uuid string) (entities.Workflow, error) {
 	urlParams := map[string]string{
-		// "expandSubworkflows": fmt.Sprintf("%t", expandSubworkflow),
 		"expandSubworkflows": fmt.Sprintf("%t", false),
 	}
 	metadata, err := c.c.Metadata(uuid, urlParams)
@@ -32,11 +31,12 @@ func (c *CromwellWorkflowProvider) Get(uuid string, expandSubworkflow bool) (ent
 	for callName, callList := range metadata.Calls {
 		for _, call := range callList {
 			step := entities.Step{
-				Name:   callName,
-				Status: call.ExecutionStatus,
-				Start:  call.Start.String(),
-				End:    call.End.String(),
-				Spot:   call.CallCaching.Hit,
+				Name:    callName,
+				Status:  call.ExecutionStatus,
+				Start:   call.Start.String(),
+				End:     call.End.String(),
+				Spot:    call.CallCaching.Hit,
+				Command: call.CommandLine,
 			}
 			steps[callName] = append(steps[callName], step)
 		}

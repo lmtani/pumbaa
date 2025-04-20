@@ -20,7 +20,7 @@ type ReportDTOOutput struct {
 }
 
 func (w *ReportWorkflow) Execute(uuid string) (*entities.Workflow, error) {
-	workflow, err := w.WorkflowProvider.Get(uuid, true)
+	workflow, err := w.WorkflowProvider.Get(uuid)
 	if err != nil {
 		return nil, err
 	}

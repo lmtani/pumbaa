@@ -22,7 +22,7 @@ func (m *MockWorkflowProvider) Query() ([]entities.Workflow, error) {
 }
 
 // Get mocks the Get method of WorkflowProvider
-func (m *MockWorkflowProvider) Get(uuid string, expandSubworkflows bool) (entities.Workflow, error) {
+func (m *MockWorkflowProvider) Get(uuid string) (entities.Workflow, error) {
 	args := m.Called(uuid)
 	return args.Get(0).(entities.Workflow), args.Error(1)
 }
