@@ -17,8 +17,11 @@ func NewCromwellWorkflowProvider(host string) *CromwellWorkflowProvider {
 	}
 }
 
-func (c *CromwellWorkflowProvider) Get(uuid string) (entities.Workflow, error) {
-	urlParams := map[string]string{}
+func (c *CromwellWorkflowProvider) Get(uuid string, expandSubworkflow bool) (entities.Workflow, error) {
+	urlParams := map[string]string{
+		// "expandSubworkflows": fmt.Sprintf("%t", expandSubworkflow),
+		"expandSubworkflows": fmt.Sprintf("%t", false),
+	}
 	metadata, err := c.c.Metadata(uuid, urlParams)
 	if err != nil {
 		return entities.Workflow{}, err

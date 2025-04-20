@@ -3,7 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/workflow_formatter/table"
+	"github.com/lmtani/pumbaa/internal/entities"
+	workflowformatter "github.com/lmtani/pumbaa/internal/infrastructure/workflow_formatter"
 	"github.com/lmtani/pumbaa/internal/infrastructure/workflow_provider/cromwell"
 	"github.com/lmtani/pumbaa/internal/usecases"
 	"github.com/spf13/cobra"
@@ -45,9 +46,20 @@ var summaryCmd = &cobra.Command{
 			return
 		}
 
-		workflowFormatter := table.NewWorkflowTableFormatter()
-		if err := workflowFormatter.Report(summaryResult); err != nil {
-			fmt.Println("Error formatting summary:", err)
+		jsonFlag, err := cmd.Flags().GetBool("json")
+		if err != nil {
+			fmt.Println("Error getting json flag:", err)
+			return
+		}
+
+		output := map[bool]entities.FormatType{
+			true:  entities.JSONFormat,
+			false: entities.TableFormat,
+		}
+		formatter := workflowformatter.GetFormatter(output[jsonFlag], nil)
+		err = formatter.Report(summaryResult)
+		if err != nil {
+			fmt.Println("Error formatting workflows:", err)
 			return
 		}
 	},
@@ -62,5 +74,6 @@ func init() {
 	}
 	// Optional flag with host defaulting to "localhost"
 	summaryCmd.Flags().StringP("host", "H", "http://localhost:8000", "Host of the Cromwell server")
+	summaryCmd.Flags().Bool("json", false, "Output in JSON format")
 	rootCmd.AddCommand(summaryCmd)
 }
