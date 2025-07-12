@@ -45,26 +45,6 @@ This way you don't need to provide privileged access.
 - [x] For Google Cloud backend jobs: estimate resource usage
 - [x] Have a cool name
 
-## Examples
-
-_Obs:_ the examples below are from a previous release, but the commands are the same. I will update them soon.
-
-### Local server deploy
-
-You need to open a new terminal after starting the server. Press CTRL+c when you want to shut it down.
-[![asciicast](https://asciinema.org/a/9oHGhq7t2CGpBMl3M0vicA67Q.svg)](https://asciinema.org/a/9oHGhq7t2CGpBMl3M0vicA67Q)
-
-### Submit workflow
-
-[![asciicast](https://asciinema.org/a/rSGGiYwAOITWNx4gX4Qtq8h8F.svg)](https://asciinema.org/a/rSGGiYwAOITWNx4gX4Qtq8h8F)
-
-### Query workflows
-[![asciicast](https://asciinema.org/a/JTQR8Va7bnHhYIZ5uxSWfZBse.svg)](https://asciinema.org/a/JTQR8Va7bnHhYIZ5uxSWfZBse)
-
-### Navigate through workflow metadata
-
-[![asciicast](https://asciinema.org/a/yxDZp4H2DYAWStjS2nPvsAIqM.svg)](https://asciinema.org/a/yxDZp4H2DYAWStjS2nPvsAIqM)
-
 
 ### Cromwell behind Google Identity Aware Proxy
 
