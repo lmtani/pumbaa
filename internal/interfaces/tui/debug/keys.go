@@ -19,6 +19,7 @@ type KeyMap struct {
 	Logs        key.Binding
 	Inputs      key.Binding
 	Outputs     key.Binding
+	Options     key.Binding
 	Timeline    key.Binding
 	CopyStdout  key.Binding
 	CopyStderr  key.Binding
@@ -83,8 +84,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("c", "view command"),
 		),
 		Logs: key.NewBinding(
-			key.WithKeys("L"),
-			key.WithHelp("L", "view logs"),
+			key.WithKeys("l"),
+			key.WithHelp("l", "view logs"),
 		),
 		Inputs: key.NewBinding(
 			key.WithKeys("i"),
@@ -93,6 +94,10 @@ func DefaultKeyMap() KeyMap {
 		Outputs: key.NewBinding(
 			key.WithKeys("o"),
 			key.WithHelp("o", "view outputs"),
+		),
+		Options: key.NewBinding(
+			key.WithKeys("O"),
+			key.WithHelp("O", "view options"),
 		),
 		Timeline: key.NewBinding(
 			key.WithKeys("t"),

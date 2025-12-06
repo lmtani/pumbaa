@@ -2,9 +2,11 @@ package debug
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -55,6 +57,14 @@ type Model struct {
 	logModalLoading  bool
 	logModalViewport viewport.Model
 	logCursor        int // 0 = stdout, 1 = stderr
+
+	// Inputs/Outputs modal state
+	showInputsModal      bool
+	showOutputsModal     bool
+	showOptionsModal     bool
+	inputsModalViewport  viewport.Model
+	outputsModalViewport viewport.Model
+	optionsModalViewport viewport.Model
 
 	// Components
 	keys           KeyMap
@@ -189,6 +199,69 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle inputs modal
+		if m.showInputsModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showInputsModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.inputsModalViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.inputsModalViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.inputsModalViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.inputsModalViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.inputsModalViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.inputsModalViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
+		// Handle outputs modal
+		if m.showOutputsModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showOutputsModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.outputsModalViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.outputsModalViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.outputsModalViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.outputsModalViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.outputsModalViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.outputsModalViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
+		// Handle options modal
+		if m.showOptionsModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showOptionsModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.optionsModalViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.optionsModalViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.optionsModalViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.optionsModalViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.optionsModalViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.optionsModalViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
 		if m.showHelp {
 			if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
 				m.showHelp = false
@@ -310,12 +383,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateDetailsContent()
 
 		case key.Matches(msg, m.keys.Inputs):
-			m.viewMode = ViewModeInputs
-			m.updateDetailsContent()
+			if len(m.metadata.Inputs) > 0 {
+				m.showInputsModal = true
+				m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
+				m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
+			} else {
+				m.statusMessage = "No inputs available for this workflow"
+			}
 
 		case key.Matches(msg, m.keys.Outputs):
-			m.viewMode = ViewModeOutputs
-			m.updateDetailsContent()
+			if len(m.metadata.Outputs) > 0 {
+				m.showOutputsModal = true
+				m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
+				m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
+			} else {
+				m.statusMessage = "No outputs available for this workflow"
+			}
+
+		case key.Matches(msg, m.keys.Options):
+			if m.metadata.SubmittedOptions != "" {
+				m.showOptionsModal = true
+				m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
+				m.optionsModalViewport.SetContent(m.formatOptionsForModal())
+			} else {
+				m.statusMessage = "No options available for this workflow"
+			}
 
 		case key.Matches(msg, m.keys.Timeline):
 			m.viewMode = ViewModeTimeline
@@ -420,6 +512,18 @@ func (m Model) View() string {
 
 	if m.showLogModal {
 		return m.renderLogModal()
+	}
+
+	if m.showInputsModal {
+		return m.renderInputsModal()
+	}
+
+	if m.showOutputsModal {
+		return m.renderOutputsModal()
+	}
+
+	if m.showOptionsModal {
+		return m.renderOptionsModal()
 	}
 
 	if m.showHelp {
@@ -821,7 +925,7 @@ func (m Model) renderFooter() string {
 	if m.statusMessage != "" {
 		footer = warningStyle.Render(m.statusMessage)
 	} else {
-		footer = " ↑↓ navigate • enter expand • tab switch panel • d details • c command • L logs • ? help • q quit"
+		footer = " ↑↓ navigate • enter expand • tab switch • d details • c cmd • l logs • i inputs • o outputs • O options • ? help • q quit"
 	}
 	return helpBarStyle.Width(m.width - 2).Render(footer)
 }
@@ -1088,4 +1192,310 @@ func wrapText(text string, maxWidth int) string {
 	}
 
 	return result.String()
+}
+
+// formatInputsForModal formats inputs for display in the modal.
+func (m Model) formatInputsForModal(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Inputs) == 0 {
+		return mutedStyle.Render("No inputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(node.CallData.Inputs))
+	for k := range node.CallData.Inputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := node.CallData.Inputs[k]
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatOutputsForModal formats outputs for display in the modal.
+func (m Model) formatOutputsForModal(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Outputs) == 0 {
+		return mutedStyle.Render("No outputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(node.CallData.Outputs))
+	for k := range node.CallData.Outputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := node.CallData.Outputs[k]
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatWorkflowInputsForModal formats workflow inputs for display in the modal.
+func (m Model) formatWorkflowInputsForModal() string {
+	if len(m.metadata.Inputs) == 0 {
+		return mutedStyle.Render("No inputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(m.metadata.Inputs))
+	for k := range m.metadata.Inputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := m.metadata.Inputs[k]
+		// Skip null values
+		if v == nil {
+			continue
+		}
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatWorkflowOutputsForModal formats workflow outputs for display in the modal.
+func (m Model) formatWorkflowOutputsForModal() string {
+	if len(m.metadata.Outputs) == 0 {
+		return mutedStyle.Render("No outputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(m.metadata.Outputs))
+	for k := range m.metadata.Outputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := m.metadata.Outputs[k]
+		// Skip null values
+		if v == nil {
+			continue
+		}
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatOptionsForModal formats workflow options for display in the modal.
+func (m Model) formatOptionsForModal() string {
+	if m.metadata.SubmittedOptions == "" {
+		return mutedStyle.Render("No options available")
+	}
+
+	// Parse the JSON options
+	var options map[string]interface{}
+	if err := json.Unmarshal([]byte(m.metadata.SubmittedOptions), &options); err != nil {
+		// If it's not valid JSON, just return the raw string formatted
+		return valueStyle.Render(m.metadata.SubmittedOptions)
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(options))
+	for k := range options {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := options[k]
+		// Skip null values
+		if v == nil {
+			continue
+		}
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatValue formats a value for human-readable display.
+func formatValue(v interface{}, maxWidth int) string {
+	switch val := v.(type) {
+	case nil:
+		return mutedStyle.Render("  null")
+	case bool:
+		return valueStyle.Render(fmt.Sprintf("  %v", val))
+	case float64:
+		// Check if it's an integer
+		if val == float64(int64(val)) {
+			return valueStyle.Render(fmt.Sprintf("  %d", int64(val)))
+		}
+		return valueStyle.Render(fmt.Sprintf("  %g", val))
+	case string:
+		// Handle GCS paths with special styling
+		if strings.HasPrefix(val, "gs://") {
+			return pathStyle.Render("  " + val)
+		}
+		// Handle local paths
+		if strings.HasPrefix(val, "/") {
+			return pathStyle.Render("  " + val)
+		}
+		// Wrap long strings
+		if len(val) > maxWidth-2 {
+			return valueStyle.Render("  " + wrapText(val, maxWidth-2))
+		}
+		return valueStyle.Render("  " + val)
+	case []interface{}:
+		if len(val) == 0 {
+			return mutedStyle.Render("  []")
+		}
+		var sb strings.Builder
+		for i, item := range val {
+			prefix := "  "
+			if i == 0 {
+				prefix = "  - "
+			} else {
+				prefix = "  - "
+			}
+			itemStr := formatValue(item, maxWidth-4)
+			// Remove leading spaces from nested formatValue
+			itemStr = strings.TrimPrefix(itemStr, "  ")
+			sb.WriteString(prefix + itemStr)
+			if i < len(val)-1 {
+				sb.WriteString("\n")
+			}
+		}
+		return sb.String()
+	case map[string]interface{}:
+		// Pretty print maps with indentation
+		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
+		if err != nil {
+			return mutedStyle.Render("  [complex object]")
+		}
+		return valueStyle.Render("  " + string(jsonBytes))
+	default:
+		// Fallback to JSON for unknown types
+		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
+		if err != nil {
+			return valueStyle.Render(fmt.Sprintf("  %v", val))
+		}
+		return valueStyle.Render("  " + string(jsonBytes))
+	}
+}
+
+// renderInputsModal renders the inputs modal.
+func (m Model) renderInputsModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	title := titleStyle.Render("📥 Workflow Inputs: " + m.metadata.Name)
+
+	content := m.inputsModalViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+// renderOutputsModal renders the outputs modal.
+func (m Model) renderOutputsModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	title := titleStyle.Render("📤 Workflow Outputs: " + m.metadata.Name)
+
+	content := m.outputsModalViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+// renderOptionsModal renders the options modal.
+func (m Model) renderOptionsModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	title := titleStyle.Render("⚙️  Workflow Options: " + m.metadata.Name)
+
+	content := m.optionsModalViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
 }
