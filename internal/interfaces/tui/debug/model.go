@@ -11,10 +11,16 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// MetadataFetcher is an interface for fetching workflow metadata.
+type MetadataFetcher interface {
+	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
+}
 
 // Model is the main model for the debug TUI.
 type Model struct {
@@ -22,6 +28,9 @@ type Model struct {
 	metadata *WorkflowMetadata
 	tree     *TreeNode
 	nodes    []*TreeNode
+
+	// Metadata fetcher for on-demand subworkflow loading
+	fetcher MetadataFetcher
 
 	// UI state
 	cursor       int
@@ -32,6 +41,11 @@ type Model struct {
 	height       int
 	treeWidth    int
 	detailsWidth int
+
+	// Loading state
+	isLoading      bool
+	loadingMessage string
+	loadingSpinner spinner.Model
 
 	// Log modal state
 	showLogModal     bool
@@ -53,25 +67,36 @@ type Model struct {
 
 // NewModel creates a new debug TUI model.
 func NewModel(metadata *WorkflowMetadata) Model {
+	return NewModelWithFetcher(metadata, nil)
+}
+
+// NewModelWithFetcher creates a new debug TUI model with a metadata fetcher.
+func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Model {
 	tree := BuildTree(metadata)
 	nodes := GetVisibleNodes(tree)
+
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
 
 	return Model{
 		metadata:       metadata,
 		tree:           tree,
 		nodes:          nodes,
+		fetcher:        fetcher,
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,
 		keys:           DefaultKeyMap(),
 		help:           help.New(),
 		detailViewport: viewport.New(80, 20),
+		loadingSpinner: s,
 	}
 }
 
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.loadingSpinner.Tick
 }
 
 // Update handles messages and updates the model.
@@ -79,7 +104,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		m.loadingSpinner, cmd = m.loadingSpinner.Update(msg)
+		return m, cmd
+
+	case subWorkflowLoadedMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		// Find the node and add children
+		node := m.findNodeByID(m.tree, msg.nodeID)
+		if node != nil && node.CallData != nil {
+			node.CallData.SubWorkflowMetadata = msg.metadata
+			// Rebuild children for this node
+			addSubWorkflowChildren(node, msg.metadata, node.Depth+1)
+			node.Expanded = true
+			m.nodes = GetVisibleNodes(m.tree)
+			m.updateDetailsContent()
+		}
+		return m, nil
+
+	case subWorkflowErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.statusMessage = fmt.Sprintf("Error loading subworkflow: %s", msg.err.Error())
+		return m, nil
+
 	case logLoadedMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
 		m.logModalContent = msg.content
 		m.logModalTitle = msg.title
 		m.logModalError = ""
@@ -91,6 +143,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case logErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
 		m.logModalError = msg.err.Error()
 		m.logModalLoading = false
 		m.showLogModal = true
@@ -209,12 +263,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						logPath = node.CallData.Stderr
 					}
 					if logPath != "" {
-						return m, m.openLogFile(logPath)
+						m.isLoading = true
+						m.loadingMessage = "Loading log file..."
+						return m, tea.Batch(m.loadingSpinner.Tick, m.openLogFile(logPath))
 					}
 				}
 			} else if m.focus == FocusTree && m.cursor < len(m.nodes) {
 				node := m.nodes[m.cursor]
-				if len(node.Children) > 0 {
+				// Check if this is a subworkflow that needs to fetch metadata
+				if node.Type == NodeTypeSubWorkflow && len(node.Children) == 0 && node.SubWorkflowID != "" {
+					if node.CallData != nil && node.CallData.SubWorkflowMetadata == nil {
+						// Need to fetch subworkflow metadata
+						if m.fetcher != nil {
+							m.isLoading = true
+							m.loadingMessage = "Loading subworkflow metadata..."
+							return m, tea.Batch(m.loadingSpinner.Tick, m.fetchSubWorkflowMetadata(node))
+						} else {
+							m.statusMessage = "Cannot fetch subworkflow: no server connection (use --id flag)"
+						}
+					}
+				} else if len(node.Children) > 0 {
 					node.Expanded = !node.Expanded
 					m.nodes = GetVisibleNodes(m.tree)
 				}
@@ -327,10 +395,27 @@ func (m *Model) collapseAll(node *TreeNode) {
 	}
 }
 
+// findNodeByID finds a node by its ID in the tree
+func (m Model) findNodeByID(node *TreeNode, id string) *TreeNode {
+	if node.ID == id {
+		return node
+	}
+	for _, child := range node.Children {
+		if found := m.findNodeByID(child, id); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
 // View renders the model.
 func (m Model) View() string {
 	if m.width == 0 {
 		return "Loading..."
+	}
+
+	if m.isLoading {
+		return m.renderLoading()
 	}
 
 	if m.showLogModal {
@@ -558,16 +643,22 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 	sb.WriteString(labelStyle.Render("Task: ") + valueStyle.Render(node.Name) + "\n")
 	sb.WriteString(labelStyle.Render("Status: ") + StatusStyle(cd.ExecutionStatus).Render(cd.ExecutionStatus) + "\n")
 
-	// SubWorkflow warning
+	// SubWorkflow info
 	if node.Type == NodeTypeSubWorkflow {
 		if cd.SubWorkflowMetadata == nil && cd.SubWorkflowID != "" {
 			sb.WriteString("\n")
-			sb.WriteString(warningStyle.Render("⚠ SubWorkflow metadata not available") + "\n")
-			sb.WriteString(mutedStyle.Render("  ID: "+cd.SubWorkflowID) + "\n")
-			sb.WriteString(mutedStyle.Render("  Use --expand-subworkflows to fetch details") + "\n")
+			sb.WriteString(titleStyle.Render("📂 SubWorkflow") + "\n")
+			sb.WriteString(labelStyle.Render("ID: ") + valueStyle.Render(cd.SubWorkflowID) + "\n")
+			if m.fetcher != nil {
+				sb.WriteString(mutedStyle.Render("  Press Enter/→ to load subworkflow details") + "\n")
+			} else {
+				sb.WriteString(warningStyle.Render("  ⚠ Cannot load: use --id flag to enable server connection") + "\n")
+			}
 		} else if cd.SubWorkflowMetadata != nil {
-			sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(cd.SubWorkflowMetadata.ID) + "\n")
-			sb.WriteString(labelStyle.Render("SubWorkflow Tasks: ") + valueStyle.Render(fmt.Sprintf("%d", len(cd.SubWorkflowMetadata.Calls))) + "\n")
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("📂 SubWorkflow") + "\n")
+			sb.WriteString(labelStyle.Render("ID: ") + valueStyle.Render(cd.SubWorkflowMetadata.ID) + "\n")
+			sb.WriteString(labelStyle.Render("Tasks: ") + valueStyle.Render(fmt.Sprintf("%d", len(cd.SubWorkflowMetadata.Calls))) + "\n")
 		}
 	}
 
@@ -726,12 +817,33 @@ func (m Model) renderTimeline(node *TreeNode) string {
 }
 
 func (m Model) renderFooter() string {
-	helpText := " ↑↓ navigate • enter expand • tab switch panel • d details • c command • L logs • ? help • q quit"
-	return helpBarStyle.Width(m.width - 2).Render(helpText)
+	var footer string
+	if m.statusMessage != "" {
+		footer = warningStyle.Render(m.statusMessage)
+	} else {
+		footer = " ↑↓ navigate • enter expand • tab switch panel • d details • c command • L logs • ? help • q quit"
+	}
+	return helpBarStyle.Width(m.width - 2).Render(footer)
 }
 
 func (m Model) renderHelp() string {
 	return m.help.View(m.keys)
+}
+
+func (m Model) renderLoading() string {
+	loadingBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#7D56F4")).
+		Padding(2, 4).
+		Render(m.loadingSpinner.View() + "  " + m.loadingMessage)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		loadingBox,
+	)
 }
 
 func (m Model) renderLogModal() string {
@@ -799,7 +911,7 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
-// Message types for async log loading
+// Message types for async operations
 type logLoadedMsg struct {
 	content string
 	title   string
@@ -809,8 +921,43 @@ type logErrorMsg struct {
 	err error
 }
 
+type subWorkflowLoadedMsg struct {
+	nodeID   string
+	metadata *WorkflowMetadata
+}
+
+type subWorkflowErrorMsg struct {
+	nodeID string
+	err    error
+}
+
 // maxLogSize is the maximum log file size we'll read (1 MB)
 const maxLogSize = 1 * 1024 * 1024
+
+// fetchSubWorkflowMetadata returns a command to fetch subworkflow metadata
+func (m Model) fetchSubWorkflowMetadata(node *TreeNode) tea.Cmd {
+	if m.fetcher == nil || node.SubWorkflowID == "" {
+		return nil
+	}
+
+	workflowID := node.SubWorkflowID
+	nodeID := node.ID
+
+	return func() tea.Msg {
+		ctx := context.Background()
+		data, err := m.fetcher.GetRawMetadataWithOptions(ctx, workflowID, false)
+		if err != nil {
+			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
+		}
+
+		metadata, err := ParseMetadata(data)
+		if err != nil {
+			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
+		}
+
+		return subWorkflowLoadedMsg{nodeID: nodeID, metadata: metadata}
+	}
+}
 
 // openLogFile returns a command to load a log file asynchronously
 func (m Model) openLogFile(path string) tea.Cmd {

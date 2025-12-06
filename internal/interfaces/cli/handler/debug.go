@@ -68,8 +68,8 @@ KEY BINDINGS:
 			&cli.BoolFlag{
 				Name:    "expand-subworkflows",
 				Aliases: []string{"e"},
-				Usage:   "Expand subworkflows metadata (only when using --id)",
-				Value:   true,
+				Usage:   "Pre-expand all subworkflows metadata (may be slow for large workflows)",
+				Value:   false,
 			},
 		},
 		Action: h.handle,
@@ -109,7 +109,13 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	}
 
 	// Create and run the TUI
-	model := debug.NewModel(wm)
+	// Pass the client as fetcher only if we're using --id (server mode)
+	var model debug.Model
+	if workflowID != "" {
+		model = debug.NewModelWithFetcher(wm, h.client)
+	} else {
+		model = debug.NewModel(wm)
+	}
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
