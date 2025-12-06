@@ -36,6 +36,7 @@ type Container struct {
 	AbortHandler    *handler.AbortHandler
 	QueryHandler    *handler.QueryHandler
 	BundleHandler   *handler.BundleHandler
+	DebugHandler    *handler.DebugHandler
 }
 
 // New creates a new dependency injection container.
@@ -66,6 +67,7 @@ func New(cfg *config.Config) *Container {
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient)
 
 	return c
 }

@@ -59,6 +59,7 @@ func main() {
 				cont.MetadataHandler.Command(),
 				cont.AbortHandler.Command(),
 				cont.QueryHandler.Command(),
+				cont.DebugHandler.Command(),
 			},
 		},
 		cont.BundleHandler.Command(),

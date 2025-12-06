@@ -376,6 +376,36 @@ func (c *Client) GetLogs(ctx context.Context, workflowID string) (map[string][]w
 	return logs, nil
 }
 
+// GetRawMetadata retrieves the raw JSON metadata for a workflow.
+func (c *Client) GetRawMetadata(ctx context.Context, workflowID string) ([]byte, error) {
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.baseURL, workflowID)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, workflow.ErrWorkflowNotFound
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, workflow.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(bodyBytes),
+		}
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
 // addFileField adds a file field to a multipart form.
 func (c *Client) addFileField(writer *multipart.Writer, fieldName, fileName string, data []byte) error {
 	part, err := writer.CreateFormFile(fieldName, fileName)

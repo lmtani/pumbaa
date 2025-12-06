@@ -1,0 +1,112 @@
+package handler
+
+import (
+	"fmt"
+	"os"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
+	"github.com/urfave/cli/v2"
+)
+
+// DebugHandler handles workflow debug TUI commands.
+type DebugHandler struct {
+	client *cromwell.Client
+}
+
+// NewDebugHandler creates a new debug handler.
+func NewDebugHandler(client *cromwell.Client) *DebugHandler {
+	return &DebugHandler{
+		client: client,
+	}
+}
+
+// Command returns the CLI command for debug.
+func (h *DebugHandler) Command() *cli.Command {
+	return &cli.Command{
+		Name:  "debug",
+		Usage: "Interactive TUI for debugging workflow execution",
+		Description: `Opens an interactive terminal UI to explore workflow metadata.
+
+Navigate through the call tree, view task details, commands, inputs,
+outputs, and execution timeline.
+
+USAGE EXAMPLES:
+  # Debug a workflow by ID (fetches metadata from Cromwell)
+  pumbaa workflow debug --id abc123
+
+  # Debug from a local metadata JSON file
+  pumbaa workflow debug --file metadata.json
+
+KEY BINDINGS:
+  ↑/↓ or j/k    Navigate through the tree
+  ←/→ or h/l    Collapse/expand nodes
+  Enter/Space   Toggle expand
+  Tab           Switch between tree and details panel
+  c             View task command
+  L             View log paths (stdout/stderr)
+  i             View task inputs
+  o             View task outputs
+  t             View execution timeline
+  E             Expand all nodes
+  C             Collapse all nodes
+  ?             Show help
+  q             Quit`,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "id",
+				Aliases: []string{"i"},
+				Usage:   "[optional] Workflow ID to debug",
+			},
+			&cli.StringFlag{
+				Name:    "file",
+				Aliases: []string{"f"},
+				Usage:   "[optional] Path to metadata JSON file",
+			},
+		},
+		Action: h.handle,
+	}
+}
+
+func (h *DebugHandler) handle(c *cli.Context) error {
+	workflowID := c.String("id")
+	filePath := c.String("file")
+
+	if workflowID == "" && filePath == "" {
+		return fmt.Errorf("either --id or --file must be provided")
+	}
+
+	var metadataBytes []byte
+	var err error
+
+	if filePath != "" {
+		// Load from file
+		metadataBytes, err = os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read file: %w", err)
+		}
+	} else {
+		// Fetch from Cromwell
+		metadataBytes, err = h.client.GetRawMetadata(c.Context, workflowID)
+		if err != nil {
+			return fmt.Errorf("failed to fetch metadata: %w", err)
+		}
+	}
+
+	// Parse metadata
+	wm, err := debug.ParseMetadata(metadataBytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse metadata: %w", err)
+	}
+
+	// Create and run the TUI
+	model := debug.NewModel(wm)
+	p := tea.NewProgram(model, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("error running TUI: %w", err)
+	}
+
+	return nil
+}
