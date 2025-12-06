@@ -1,6 +1,7 @@
 coverage.out
 .devcontainer/
 .idea/
+build/
 
 # ANTLR jar file (download when needed for parser regeneration)
 antlr-*.jar
