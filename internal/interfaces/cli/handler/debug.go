@@ -44,6 +44,7 @@ KEY BINDINGS:
   ←/→ or h/l    Collapse/expand nodes
   Enter/Space   Toggle expand
   Tab           Switch between tree and details panel
+  d             View details (default view)
   c             View task command
   L             View log paths (stdout/stderr)
   i             View task inputs
@@ -64,6 +65,12 @@ KEY BINDINGS:
 				Aliases: []string{"f"},
 				Usage:   "[optional] Path to metadata JSON file",
 			},
+			&cli.BoolFlag{
+				Name:    "expand-subworkflows",
+				Aliases: []string{"e"},
+				Usage:   "Expand subworkflows metadata (only when using --id)",
+				Value:   true,
+			},
 		},
 		Action: h.handle,
 	}
@@ -72,6 +79,7 @@ KEY BINDINGS:
 func (h *DebugHandler) handle(c *cli.Context) error {
 	workflowID := c.String("id")
 	filePath := c.String("file")
+	expandSubWorkflows := c.Bool("expand-subworkflows")
 
 	if workflowID == "" && filePath == "" {
 		return fmt.Errorf("either --id or --file must be provided")
@@ -88,7 +96,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	} else {
 		// Fetch from Cromwell
-		metadataBytes, err = h.client.GetRawMetadata(c.Context, workflowID)
+		metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
 		if err != nil {
 			return fmt.Errorf("failed to fetch metadata: %w", err)
 		}

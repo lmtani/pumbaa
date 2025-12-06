@@ -90,7 +90,8 @@ type CallDetails struct {
 	Labels map[string]string
 
 	// SubWorkflow
-	SubWorkflowID string
+	SubWorkflowID       string
+	SubWorkflowMetadata *WorkflowMetadata
 }
 
 // ExecutionEvent represents a single execution event in the timeline.

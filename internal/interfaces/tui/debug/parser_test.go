@@ -77,6 +77,26 @@ func TestParseMetadata(t *testing.T) {
 	if ehCalls[0].SubWorkflowID != "bddb1ecd-72d8-4607-ad51-7f5def9f460f" {
 		t.Errorf("Expected subworkflow ID 'bddb1ecd-72d8-4607-ad51-7f5def9f460f', got '%s'", ehCalls[0].SubWorkflowID)
 	}
+
+	// Verify subworkflow metadata is parsed
+	if ehCalls[0].SubWorkflowMetadata == nil {
+		t.Error("Expected subworkflow metadata to be parsed")
+	} else {
+		subWM := ehCalls[0].SubWorkflowMetadata
+		if subWM.Name != "ExpansionHunterWorkflow" {
+			t.Errorf("Expected subworkflow name 'ExpansionHunterWorkflow', got '%s'", subWM.Name)
+		}
+		if len(subWM.Calls) != 2 {
+			t.Errorf("Expected 2 calls in subworkflow, got %d", len(subWM.Calls))
+		}
+		// Check that the nested calls exist
+		if _, ok := subWM.Calls["ExpansionHunterWorkflow.RunExpansionHunter"]; !ok {
+			t.Error("Expected 'RunExpansionHunter' call in subworkflow")
+		}
+		if _, ok := subWM.Calls["ExpansionHunterWorkflow.SamtoolsSort"]; !ok {
+			t.Error("Expected 'SamtoolsSort' call in subworkflow")
+		}
+	}
 }
 
 func TestBuildTree(t *testing.T) {
@@ -130,6 +150,36 @@ func TestBuildTree(t *testing.T) {
 
 	if callCount == 0 {
 		t.Error("Expected at least one call node")
+	}
+
+	// Find the ExpansionHunterWorkflow node and verify it has children
+	var ehNode *TreeNode
+	for _, child := range tree.Children {
+		if child.Name == "ExpansionHunterWorkflow" && child.Type == NodeTypeSubWorkflow {
+			ehNode = child
+			break
+		}
+	}
+
+	if ehNode == nil {
+		t.Fatal("Expected to find ExpansionHunterWorkflow node")
+	}
+
+	// Verify subworkflow has children from its embedded metadata
+	if len(ehNode.Children) != 2 {
+		t.Errorf("Expected ExpansionHunterWorkflow to have 2 children, got %d", len(ehNode.Children))
+	}
+
+	// Verify child names
+	childNames := make(map[string]bool)
+	for _, child := range ehNode.Children {
+		childNames[child.Name] = true
+	}
+	if !childNames["RunExpansionHunter"] {
+		t.Error("Expected 'RunExpansionHunter' as child of subworkflow")
+	}
+	if !childNames["SamtoolsSort"] {
+		t.Error("Expected 'SamtoolsSort' as child of subworkflow")
 	}
 }
 

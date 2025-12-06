@@ -558,6 +558,19 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 	sb.WriteString(labelStyle.Render("Task: ") + valueStyle.Render(node.Name) + "\n")
 	sb.WriteString(labelStyle.Render("Status: ") + StatusStyle(cd.ExecutionStatus).Render(cd.ExecutionStatus) + "\n")
 
+	// SubWorkflow warning
+	if node.Type == NodeTypeSubWorkflow {
+		if cd.SubWorkflowMetadata == nil && cd.SubWorkflowID != "" {
+			sb.WriteString("\n")
+			sb.WriteString(warningStyle.Render("⚠ SubWorkflow metadata not available") + "\n")
+			sb.WriteString(mutedStyle.Render("  ID: "+cd.SubWorkflowID) + "\n")
+			sb.WriteString(mutedStyle.Render("  Use --expand-subworkflows to fetch details") + "\n")
+		} else if cd.SubWorkflowMetadata != nil {
+			sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(cd.SubWorkflowMetadata.ID) + "\n")
+			sb.WriteString(labelStyle.Render("SubWorkflow Tasks: ") + valueStyle.Render(fmt.Sprintf("%d", len(cd.SubWorkflowMetadata.Calls))) + "\n")
+		}
+	}
+
 	if cd.ReturnCode != nil {
 		sb.WriteString(labelStyle.Render("Return Code: ") + valueStyle.Render(fmt.Sprintf("%d", *cd.ReturnCode)) + "\n")
 	}
@@ -633,7 +646,9 @@ func (m Model) renderCommand(node *TreeNode) string {
 	if node.CallData == nil || node.CallData.CommandLine == "" {
 		return mutedStyle.Render("No command available")
 	}
-	return commandStyle.Render(node.CallData.CommandLine)
+	// Wrap text to fit the viewport width
+	wrapped := wrapText(node.CallData.CommandLine, m.detailsWidth-8)
+	return commandStyle.Render(wrapped)
 }
 
 func (m Model) renderLogs(node *TreeNode) string {
@@ -883,4 +898,47 @@ func readLocalFile(path string) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+// wrapText wraps text to fit within maxWidth characters.
+// It respects existing line breaks and wraps long lines.
+func wrapText(text string, maxWidth int) string {
+	if maxWidth <= 0 {
+		maxWidth = 80
+	}
+
+	var result strings.Builder
+	lines := strings.Split(text, "\n")
+
+	for i, line := range lines {
+		if i > 0 {
+			result.WriteString("\n")
+		}
+
+		if len(line) <= maxWidth {
+			result.WriteString(line)
+			continue
+		}
+
+		// Wrap long lines
+		for len(line) > maxWidth {
+			// Try to find a good break point (space)
+			breakPoint := maxWidth
+			for j := maxWidth; j > maxWidth/2; j-- {
+				if line[j] == ' ' {
+					breakPoint = j
+					break
+				}
+			}
+
+			result.WriteString(line[:breakPoint])
+			result.WriteString("\n")
+			line = strings.TrimLeft(line[breakPoint:], " ")
+		}
+		if len(line) > 0 {
+			result.WriteString(line)
+		}
+	}
+
+	return result.String()
 }

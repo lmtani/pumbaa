@@ -68,7 +68,14 @@ func ParseMetadata(data []byte) (*WorkflowMetadata, error) {
 				var details []CallDetails
 				for _, item := range list {
 					if callMap, ok := item.(map[string]interface{}); ok {
-						details = append(details, parseCallDetails(callMap))
+						cd := parseCallDetails(callMap)
+						// Parse embedded subworkflow metadata if present
+						if subMeta, ok := callMap["subWorkflowMetadata"].(map[string]interface{}); ok {
+							subWM := parseSubWorkflowMetadata(subMeta)
+							cd.SubWorkflowMetadata = subWM
+							cd.SubWorkflowID = subWM.ID
+						}
+						details = append(details, cd)
 					}
 				}
 				wm.Calls[callName] = details
@@ -77,6 +84,60 @@ func ParseMetadata(data []byte) (*WorkflowMetadata, error) {
 	}
 
 	return wm, nil
+}
+
+// parseSubWorkflowMetadata parses embedded subworkflow metadata
+func parseSubWorkflowMetadata(raw map[string]interface{}) *WorkflowMetadata {
+	wm := &WorkflowMetadata{
+		Calls:   make(map[string][]CallDetails),
+		Outputs: make(map[string]interface{}),
+		Inputs:  make(map[string]interface{}),
+		Labels:  make(map[string]string),
+	}
+
+	// Basic fields
+	wm.ID = getString(raw, "id")
+	wm.Name = getString(raw, "workflowName")
+	wm.Status = getString(raw, "status")
+	wm.WorkflowRoot = getString(raw, "workflowRoot")
+
+	// Parse timestamps
+	wm.Start = parseTime(getString(raw, "start"))
+	wm.End = parseTime(getString(raw, "end"))
+
+	// Parse outputs
+	if outputs, ok := raw["outputs"].(map[string]interface{}); ok {
+		wm.Outputs = outputs
+	}
+
+	// Parse inputs
+	if inputs, ok := raw["inputs"].(map[string]interface{}); ok {
+		wm.Inputs = inputs
+	}
+
+	// Parse calls recursively
+	if calls, ok := raw["calls"].(map[string]interface{}); ok {
+		for callName, callList := range calls {
+			if list, ok := callList.([]interface{}); ok {
+				var details []CallDetails
+				for _, item := range list {
+					if callMap, ok := item.(map[string]interface{}); ok {
+						cd := parseCallDetails(callMap)
+						// Recursively parse nested subworkflow metadata
+						if subMeta, ok := callMap["subWorkflowMetadata"].(map[string]interface{}); ok {
+							subWM := parseSubWorkflowMetadata(subMeta)
+							cd.SubWorkflowMetadata = subWM
+							cd.SubWorkflowID = subWM.ID
+						}
+						details = append(details, cd)
+					}
+				}
+				wm.Calls[callName] = details
+			}
+		}
+	}
+
+	return wm
 }
 
 func parseCallDetails(m map[string]interface{}) CallDetails {
@@ -188,6 +249,11 @@ func parseCallDetails(m map[string]interface{}) CallDetails {
 
 // BuildTree builds a tree structure from WorkflowMetadata.
 func BuildTree(wm *WorkflowMetadata) *TreeNode {
+	return buildTreeWithDepth(wm, 0, nil)
+}
+
+// buildTreeWithDepth recursively builds a tree with proper depth tracking
+func buildTreeWithDepth(wm *WorkflowMetadata, baseDepth int, parent *TreeNode) *TreeNode {
 	root := &TreeNode{
 		ID:       wm.ID,
 		Name:     wm.Name,
@@ -196,9 +262,10 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 		Start:    wm.Start,
 		End:      wm.End,
 		Duration: wm.End.Sub(wm.Start),
-		Expanded: true,
+		Expanded: baseDepth == 0, // Only expand root workflow
 		Children: []*TreeNode{},
-		Depth:    0,
+		Parent:   parent,
+		Depth:    baseDepth,
 	}
 
 	// Sort call names for consistent ordering
@@ -219,8 +286,9 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 		// If there's only one call without shards, add it directly
 		if len(calls) == 1 && calls[0].ShardIndex == -1 {
 			call := calls[0]
+			isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
 			nodeType := NodeTypeCall
-			if call.SubWorkflowID != "" {
+			if isSubWorkflow {
 				nodeType = NodeTypeSubWorkflow
 			}
 
@@ -236,8 +304,15 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 				Parent:        root,
 				CallData:      &call,
 				SubWorkflowID: call.SubWorkflowID,
-				Depth:         1,
+				Depth:         baseDepth + 1,
+				Children:      []*TreeNode{},
 			}
+
+			// If this is a subworkflow with embedded metadata, build its children
+			if isSubWorkflow && call.SubWorkflowMetadata != nil {
+				addSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+2)
+			}
+
 			root.Children = append(root.Children, child)
 		} else {
 			// Multiple shards - create a parent node
@@ -251,7 +326,7 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 				Expanded: false,
 				Parent:   root,
 				Children: []*TreeNode{},
-				Depth:    1,
+				Depth:    baseDepth + 1,
 			}
 			parent.Duration = parent.End.Sub(parent.Start)
 
@@ -270,18 +345,32 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 					shardName += fmt.Sprintf(" (attempt %d)", call.Attempt)
 				}
 
-				child := &TreeNode{
-					ID:       fmt.Sprintf("%s_%d", callName, call.ShardIndex),
-					Name:     shardName,
-					Type:     NodeTypeShard,
-					Status:   call.ExecutionStatus,
-					Start:    call.Start,
-					End:      call.End,
-					Duration: call.End.Sub(call.Start),
-					Parent:   parent,
-					CallData: &call,
-					Depth:    2,
+				isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
+				nodeType := NodeTypeShard
+				if isSubWorkflow {
+					nodeType = NodeTypeSubWorkflow
 				}
+
+				child := &TreeNode{
+					ID:            fmt.Sprintf("%s_%d", callName, call.ShardIndex),
+					Name:          shardName,
+					Type:          nodeType,
+					Status:        call.ExecutionStatus,
+					Start:         call.Start,
+					End:           call.End,
+					Duration:      call.End.Sub(call.Start),
+					Parent:        parent,
+					CallData:      &call,
+					SubWorkflowID: call.SubWorkflowID,
+					Depth:         baseDepth + 2,
+					Children:      []*TreeNode{},
+				}
+
+				// If this is a subworkflow with embedded metadata, build its children
+				if isSubWorkflow && call.SubWorkflowMetadata != nil {
+					addSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+3)
+				}
+
 				parent.Children = append(parent.Children, child)
 			}
 			root.Children = append(root.Children, parent)
@@ -294,6 +383,120 @@ func BuildTree(wm *WorkflowMetadata) *TreeNode {
 	})
 
 	return root
+}
+
+// addSubWorkflowChildren adds the calls from a subworkflow as children of the given node
+func addSubWorkflowChildren(node *TreeNode, subWM *WorkflowMetadata, baseDepth int) {
+	// Sort call names for consistent ordering
+	var callNames []string
+	for name := range subWM.Calls {
+		callNames = append(callNames, name)
+	}
+	sort.Strings(callNames)
+
+	for _, callName := range callNames {
+		calls := subWM.Calls[callName]
+		// Extract task name from full call name (WorkflowName.TaskName)
+		taskName := callName
+		if idx := strings.LastIndex(callName, "."); idx != -1 {
+			taskName = callName[idx+1:]
+		}
+
+		if len(calls) == 1 && calls[0].ShardIndex == -1 {
+			call := calls[0]
+			isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
+			nodeType := NodeTypeCall
+			if isSubWorkflow {
+				nodeType = NodeTypeSubWorkflow
+			}
+
+			child := &TreeNode{
+				ID:            callName,
+				Name:          taskName,
+				Type:          nodeType,
+				Status:        call.ExecutionStatus,
+				Start:         call.Start,
+				End:           call.End,
+				Duration:      call.End.Sub(call.Start),
+				Expanded:      false,
+				Parent:        node,
+				CallData:      &call,
+				SubWorkflowID: call.SubWorkflowID,
+				Depth:         baseDepth,
+				Children:      []*TreeNode{},
+			}
+
+			// Recursively add children for nested subworkflows
+			if isSubWorkflow && call.SubWorkflowMetadata != nil {
+				addSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+1)
+			}
+
+			node.Children = append(node.Children, child)
+		} else {
+			// Multiple shards
+			parent := &TreeNode{
+				ID:       callName,
+				Name:     taskName,
+				Type:     NodeTypeCall,
+				Status:   aggregateStatus(calls),
+				Start:    earliestStart(calls),
+				End:      latestEnd(calls),
+				Expanded: false,
+				Parent:   node,
+				Children: []*TreeNode{},
+				Depth:    baseDepth,
+			}
+			parent.Duration = parent.End.Sub(parent.Start)
+
+			sort.Slice(calls, func(i, j int) bool {
+				return calls[i].ShardIndex < calls[j].ShardIndex
+			})
+
+			for i := range calls {
+				call := calls[i]
+				shardName := taskName
+				if call.ShardIndex >= 0 {
+					shardName = fmt.Sprintf("%s [shard %d]", taskName, call.ShardIndex)
+				}
+				if call.Attempt > 1 {
+					shardName += fmt.Sprintf(" (attempt %d)", call.Attempt)
+				}
+
+				isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
+				childType := NodeTypeShard
+				if isSubWorkflow {
+					childType = NodeTypeSubWorkflow
+				}
+
+				child := &TreeNode{
+					ID:            fmt.Sprintf("%s_%d", callName, call.ShardIndex),
+					Name:          shardName,
+					Type:          childType,
+					Status:        call.ExecutionStatus,
+					Start:         call.Start,
+					End:           call.End,
+					Duration:      call.End.Sub(call.Start),
+					Parent:        parent,
+					CallData:      &call,
+					SubWorkflowID: call.SubWorkflowID,
+					Depth:         baseDepth + 1,
+					Children:      []*TreeNode{},
+				}
+
+				if isSubWorkflow && call.SubWorkflowMetadata != nil {
+					addSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+2)
+				}
+
+				parent.Children = append(parent.Children, child)
+			}
+			node.Children = append(node.Children, parent)
+		}
+	}
+
+	// Sort children by start time
+	sort.Slice(node.Children, func(i, j int) bool {
+		return node.Children[i].Start.Before(node.Children[j].Start)
+	})
 }
 
 // GetVisibleNodes returns a flat list of visible nodes for rendering.

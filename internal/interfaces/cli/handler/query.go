@@ -79,7 +79,7 @@ func (h *QueryHandler) handle(c *cli.Context) error {
 
 	for _, wf := range output.Workflows {
 		table.Append([]string{
-			wf.ID[:8] + "...", // Truncate ID for display
+			wf.ID, // Full UUID
 			wf.Name,
 			h.presenter.StatusColor(wf.Status),
 			h.presenter.FormatTime(wf.SubmittedAt),

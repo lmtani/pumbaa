@@ -117,6 +117,11 @@ var (
 			Foreground(statusFailed).
 			Bold(true)
 
+	// Warning style
+	warningStyle = lipgloss.NewStyle().
+			Foreground(statusRunning).
+			Bold(true)
+
 	// Modal style
 	modalStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

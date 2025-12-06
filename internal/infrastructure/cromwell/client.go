@@ -378,7 +378,15 @@ func (c *Client) GetLogs(ctx context.Context, workflowID string) (map[string][]w
 
 // GetRawMetadata retrieves the raw JSON metadata for a workflow.
 func (c *Client) GetRawMetadata(ctx context.Context, workflowID string) ([]byte, error) {
+	return c.GetRawMetadataWithOptions(ctx, workflowID, false)
+}
+
+// GetRawMetadataWithOptions retrieves the raw JSON metadata for a workflow with options.
+func (c *Client) GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error) {
 	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.baseURL, workflowID)
+	if expandSubWorkflows {
+		url += "?expandSubWorkflows=true"
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
