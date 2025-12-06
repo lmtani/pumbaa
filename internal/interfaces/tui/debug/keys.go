@@ -14,6 +14,7 @@ type KeyMap struct {
 	Quit        key.Binding
 	Help        key.Binding
 	Escape      key.Binding
+	Details     key.Binding
 	Command     key.Binding
 	Logs        key.Binding
 	Inputs      key.Binding
@@ -27,6 +28,7 @@ type KeyMap struct {
 	End         key.Binding
 	PageUp      key.Binding
 	PageDown    key.Binding
+	OpenLog     key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -71,6 +73,10 @@ func DefaultKeyMap() KeyMap {
 		Escape: key.NewBinding(
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "back"),
+		),
+		Details: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "view details"),
 		),
 		Command: key.NewBinding(
 			key.WithKeys("c"),
@@ -124,6 +130,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("pgdown", "ctrl+d"),
 			key.WithHelp("pgdn", "page down"),
 		),
+		OpenLog: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "open log"),
+		),
 	}
 }
 
@@ -137,10 +147,10 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
-		{k.Command, k.Logs, k.Inputs, k.Outputs},
-		{k.Timeline, k.ExpandAll, k.CollapseAll},
+		{k.Details, k.Command, k.Logs, k.Inputs},
+		{k.Outputs, k.Timeline, k.ExpandAll, k.CollapseAll},
 		{k.Home, k.End, k.PageUp, k.PageDown},
-		{k.CopyStdout, k.CopyStderr},
+		{k.CopyStdout, k.CopyStderr, k.OpenLog},
 		{k.Help, k.Quit},
 	}
 }

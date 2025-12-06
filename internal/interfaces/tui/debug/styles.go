@@ -111,6 +111,23 @@ var (
 	// Muted style for less important text
 	mutedStyle = lipgloss.NewStyle().
 			Foreground(mutedColor)
+
+	// Error style
+	errorStyle = lipgloss.NewStyle().
+			Foreground(statusFailed).
+			Bold(true)
+
+	// Modal style
+	modalStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(primaryColor).
+			Background(lipgloss.Color("#1a1a1a")).
+			Padding(1, 2)
+
+	// Log content style (for log files)
+	logContentStyle = lipgloss.NewStyle().
+			Foreground(textColor).
+			Background(lipgloss.Color("#0a0a0a"))
 )
 
 // StatusStyle returns the appropriate style for a status.

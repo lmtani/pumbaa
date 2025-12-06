@@ -1,10 +1,14 @@
 package debug
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -28,6 +32,15 @@ type Model struct {
 	height       int
 	treeWidth    int
 	detailsWidth int
+
+	// Log modal state
+	showLogModal     bool
+	logModalContent  string
+	logModalTitle    string
+	logModalError    string
+	logModalLoading  bool
+	logModalViewport viewport.Model
+	logCursor        int // 0 = stdout, 1 = stderr
 
 	// Components
 	keys           KeyMap
@@ -66,6 +79,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case logLoadedMsg:
+		m.logModalContent = msg.content
+		m.logModalTitle = msg.title
+		m.logModalError = ""
+		m.logModalLoading = false
+		m.showLogModal = true
+		// Initialize the modal viewport
+		m.logModalViewport = viewport.New(m.width-10, m.height-8)
+		m.logModalViewport.SetContent(msg.content)
+		return m, nil
+
+	case logErrorMsg:
+		m.logModalError = msg.err.Error()
+		m.logModalLoading = false
+		m.showLogModal = true
+		m.logModalContent = ""
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -74,9 +105,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = m.width
 		m.detailViewport.Width = m.detailsWidth - 4
 		m.detailViewport.Height = m.height - 8
+		if m.showLogModal {
+			m.logModalViewport.Width = m.width - 10
+			m.logModalViewport.Height = m.height - 8
+		}
 		m.updateDetailsContent()
 
 	case tea.KeyMsg:
+		// Handle log modal first
+		if m.showLogModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showLogModal = false
+				m.logModalContent = ""
+				m.logModalError = ""
+			case key.Matches(msg, m.keys.Up):
+				m.logModalViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.logModalViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.logModalViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.logModalViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.logModalViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.logModalViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
 		if m.showHelp {
 			if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
 				m.showHelp = false
@@ -97,6 +155,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 					m.updateDetailsContent()
 				}
+			} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
+				if m.logCursor > 0 {
+					m.logCursor--
+					m.updateDetailsContent()
+				}
 			} else {
 				m.detailViewport.LineUp(1)
 			}
@@ -105,6 +168,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focus == FocusTree {
 				if m.cursor < len(m.nodes)-1 {
 					m.cursor++
+					m.updateDetailsContent()
+				}
+			} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
+				if m.logCursor < 1 { // 0 = stdout, 1 = stderr
+					m.logCursor++
 					m.updateDetailsContent()
 				}
 			} else {
@@ -130,7 +198,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.Right), key.Matches(msg, m.keys.Enter), key.Matches(msg, m.keys.Space):
-			if m.focus == FocusTree && m.cursor < len(m.nodes) {
+			// Handle opening log in logs view
+			if m.viewMode == ViewModeLogs && m.focus == FocusDetails && m.cursor < len(m.nodes) {
+				node := m.nodes[m.cursor]
+				if node.CallData != nil {
+					var logPath string
+					if m.logCursor == 0 {
+						logPath = node.CallData.Stdout
+					} else {
+						logPath = node.CallData.Stderr
+					}
+					if logPath != "" {
+						return m, m.openLogFile(logPath)
+					}
+				}
+			} else if m.focus == FocusTree && m.cursor < len(m.nodes) {
 				node := m.nodes[m.cursor]
 				if len(node.Children) > 0 {
 					node.Expanded = !node.Expanded
@@ -146,12 +228,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focus = FocusTree
 			}
 
+		case key.Matches(msg, m.keys.Details):
+			m.viewMode = ViewModeTree
+			m.updateDetailsContent()
+
 		case key.Matches(msg, m.keys.Command):
 			m.viewMode = ViewModeCommand
 			m.updateDetailsContent()
 
 		case key.Matches(msg, m.keys.Logs):
 			m.viewMode = ViewModeLogs
+			m.logCursor = 0
 			m.updateDetailsContent()
 
 		case key.Matches(msg, m.keys.Inputs):
@@ -246,6 +333,10 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
+	if m.showLogModal {
+		return m.renderLogModal()
+	}
+
 	if m.showHelp {
 		return m.renderHelp()
 	}
@@ -285,8 +376,32 @@ func (m Model) renderHeader() string {
 		duration = labelStyle.Render(" | Duration: ") + valueStyle.Render(formatDuration(dur))
 	}
 
-	headerContent := fmt.Sprintf("%s  %s  %s%s", title, status, id, duration)
+	// Calculate total cost
+	cost := ""
+	totalCost := m.calculateTotalCost()
+	if totalCost > 0 {
+		cost = labelStyle.Render(" | Cost: ") + valueStyle.Render(fmt.Sprintf("$%.4f", totalCost))
+	}
+
+	headerContent := fmt.Sprintf("%s  %s  %s%s%s", title, status, id, duration, cost)
 	return headerStyle.Width(m.width - 2).Render(headerContent)
+}
+
+// calculateTotalCost calculates the total cost of the workflow based on VM cost per hour and duration.
+func (m Model) calculateTotalCost() float64 {
+	var totalCost float64
+
+	for _, calls := range m.metadata.Calls {
+		for _, call := range calls {
+			if call.VMCostPerHour > 0 && !call.Start.IsZero() && !call.End.IsZero() {
+				duration := call.End.Sub(call.Start)
+				hours := duration.Hours()
+				totalCost += call.VMCostPerHour * hours
+			}
+		}
+	}
+
+	return totalCost
 }
 
 func (m Model) renderTree() string {
@@ -529,14 +644,29 @@ func (m Model) renderLogs(node *TreeNode) string {
 	var sb strings.Builder
 	cd := node.CallData
 
-	sb.WriteString(labelStyle.Render("stdout: ") + "\n")
-	sb.WriteString(pathStyle.Render(cd.Stdout) + "\n\n")
+	// Show selection indicator when details panel is focused
+	stdoutPrefix := "  "
+	stderrPrefix := "  "
+	if m.focus == FocusDetails {
+		if m.logCursor == 0 {
+			stdoutPrefix = "▶ "
+		} else {
+			stderrPrefix = "▶ "
+		}
+	}
 
-	sb.WriteString(labelStyle.Render("stderr: ") + "\n")
-	sb.WriteString(pathStyle.Render(cd.Stderr) + "\n\n")
+	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
+	sb.WriteString("  " + pathStyle.Render(cd.Stdout) + "\n\n")
 
-	sb.WriteString(labelStyle.Render("Call Root: ") + "\n")
-	sb.WriteString(pathStyle.Render(cd.CallRoot) + "\n")
+	sb.WriteString(stderrPrefix + labelStyle.Render("stderr: ") + "\n")
+	sb.WriteString("  " + pathStyle.Render(cd.Stderr) + "\n\n")
+
+	sb.WriteString("  " + labelStyle.Render("Call Root: ") + "\n")
+	sb.WriteString("  " + pathStyle.Render(cd.CallRoot) + "\n\n")
+
+	if m.focus == FocusDetails {
+		sb.WriteString(mutedStyle.Render("  Press Enter to view the selected log"))
+	}
 
 	return sb.String()
 }
@@ -581,12 +711,57 @@ func (m Model) renderTimeline(node *TreeNode) string {
 }
 
 func (m Model) renderFooter() string {
-	helpText := " ↑↓ navigate • enter expand • tab switch panel • c command • L logs • ? help • q quit"
+	helpText := " ↑↓ navigate • enter expand • tab switch panel • d details • c command • L logs • ? help • q quit"
 	return helpBarStyle.Width(m.width - 2).Render(helpText)
 }
 
 func (m Model) renderHelp() string {
 	return m.help.View(m.keys)
+}
+
+func (m Model) renderLogModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	// Modal title
+	title := titleStyle.Render("📄 " + m.logModalTitle)
+
+	// Modal content
+	var content string
+	if m.logModalError != "" {
+		content = errorStyle.Render("Error: " + m.logModalError)
+	} else if m.logModalLoading {
+		content = mutedStyle.Render("Loading...")
+	} else {
+		content = m.logModalViewport.View()
+	}
+
+	// Footer with instructions
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	// Build modal box
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	// Center the modal
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
 }
 
 // Helper functions
@@ -607,4 +782,105 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// Message types for async log loading
+type logLoadedMsg struct {
+	content string
+	title   string
+}
+
+type logErrorMsg struct {
+	err error
+}
+
+// maxLogSize is the maximum log file size we'll read (1 MB)
+const maxLogSize = 1 * 1024 * 1024
+
+// openLogFile returns a command to load a log file asynchronously
+func (m Model) openLogFile(path string) tea.Cmd {
+	return func() tea.Msg {
+		title := "stdout"
+		if m.logCursor == 1 {
+			title = "stderr"
+		}
+
+		if strings.HasPrefix(path, "gs://") {
+			// Read from Google Cloud Storage
+			content, err := readGCSFile(path)
+			if err != nil {
+				return logErrorMsg{err: err}
+			}
+			return logLoadedMsg{content: content, title: title}
+		}
+
+		// Read local file
+		content, err := readLocalFile(path)
+		if err != nil {
+			return logErrorMsg{err: err}
+		}
+		return logLoadedMsg{content: content, title: title}
+	}
+}
+
+// readGCSFile reads a file from Google Cloud Storage
+func readGCSFile(path string) (string, error) {
+	// Parse gs://bucket/object path
+	path = strings.TrimPrefix(path, "gs://")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid GCS path: gs://%s", path)
+	}
+	bucket := parts[0]
+	object := parts[1]
+
+	ctx := context.Background()
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCS client: %w", err)
+	}
+	defer client.Close()
+
+	// Get object attributes to check size
+	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get object attributes: %w", err)
+	}
+
+	if attrs.Size > maxLogSize {
+		return "", fmt.Errorf("log file too large (%.2f MB > 1 MB limit)", float64(attrs.Size)/(1024*1024))
+	}
+
+	// Read the object
+	rc, err := client.Bucket(bucket).Object(object).NewReader(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to open GCS object: %w", err)
+	}
+	defer rc.Close()
+
+	data, err := io.ReadAll(rc)
+	if err != nil {
+		return "", fmt.Errorf("failed to read GCS object: %w", err)
+	}
+
+	return string(data), nil
+}
+
+// readLocalFile reads a local file
+func readLocalFile(path string) (string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if info.Size() > maxLogSize {
+		return "", fmt.Errorf("log file too large (%.2f MB > 1 MB limit)", float64(info.Size())/(1024*1024))
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return string(data), nil
 }
