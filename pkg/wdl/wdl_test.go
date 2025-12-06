@@ -3,6 +3,7 @@ package wdl
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -598,36 +599,54 @@ task Help {
 	}
 
 	// Create bundle
-	bundlePath := filepath.Join(tmpDir, "bundle.zip")
-	err = CreateBundle(filepath.Join(tmpDir, "main.wdl"), bundlePath)
+	outputPath := filepath.Join(tmpDir, "bundle.zip")
+	result, err := CreateBundle(filepath.Join(tmpDir, "main.wdl"), outputPath)
 	if err != nil {
 		t.Fatalf("failed to create bundle: %v", err)
 	}
 
-	// Verify bundle exists
-	if _, err := os.Stat(bundlePath); os.IsNotExist(err) {
-		t.Error("bundle file was not created")
+	// Verify main WDL was created with rewritten imports
+	if _, err := os.Stat(result.MainWDLPath); os.IsNotExist(err) {
+		t.Error("main WDL file was not created")
 	}
 
-	// Extract and verify
+	// Read main WDL and verify imports were rewritten
+	mainContent, err := os.ReadFile(result.MainWDLPath)
+	if err != nil {
+		t.Fatalf("failed to read main WDL: %v", err)
+	}
+
+	// Should have flattened import path (no tasks/ prefix)
+	if !strings.Contains(string(mainContent), `import "helper.wdl"`) {
+		t.Errorf("expected import to be rewritten to 'helper.wdl', got:\n%s", string(mainContent))
+	}
+
+	// Verify ZIP exists and contains only dependencies
+	if _, err := os.Stat(result.DependenciesZipPath); os.IsNotExist(err) {
+		t.Error("dependencies ZIP file was not created")
+	}
+
+	// Extract and verify ZIP contents
 	extractDir := filepath.Join(tmpDir, "extracted")
-	if err := ExtractBundle(bundlePath, extractDir); err != nil {
+	if err := ExtractBundle(result.DependenciesZipPath, extractDir); err != nil {
 		t.Fatalf("failed to extract bundle: %v", err)
 	}
 
-	// Check files exist
-	if _, err := os.Stat(filepath.Join(extractDir, "main.wdl")); os.IsNotExist(err) {
-		t.Error("main.wdl not found in extracted bundle")
-	}
-	if _, err := os.Stat(filepath.Join(extractDir, "tasks", "helper.wdl")); os.IsNotExist(err) {
-		t.Error("tasks/helper.wdl not found in extracted bundle")
+	// ZIP should contain helper.wdl (flattened) and manifest.json
+	if _, err := os.Stat(filepath.Join(extractDir, "helper.wdl")); os.IsNotExist(err) {
+		t.Error("helper.wdl not found in extracted bundle")
 	}
 	if _, err := os.Stat(filepath.Join(extractDir, "manifest.json")); os.IsNotExist(err) {
 		t.Error("manifest.json not found in extracted bundle")
 	}
+
+	// ZIP should NOT contain main.wdl
+	if _, err := os.Stat(filepath.Join(extractDir, "main.wdl")); !os.IsNotExist(err) {
+		t.Error("main.wdl should NOT be in dependencies ZIP")
+	}
 }
 
-func TestBuildBundle(t *testing.T) {
+func TestCreateBundleNoDependencies(t *testing.T) {
 	// Create temp directory with test files
 	tmpDir, err := os.MkdirTemp("", "wdl-build-*")
 	if err != nil {
@@ -648,36 +667,33 @@ workflow Simple {
 		t.Fatal(err)
 	}
 
-	bundle, err := BuildBundle(filepath.Join(tmpDir, "simple.wdl"), DefaultBundleOptions())
+	outputPath := filepath.Join(tmpDir, "output.zip")
+	result, err := CreateBundle(filepath.Join(tmpDir, "simple.wdl"), outputPath)
 	if err != nil {
-		t.Fatalf("failed to build bundle: %v", err)
+		t.Fatalf("failed to create bundle: %v", err)
 	}
 
-	// Check bundle content
-	if len(bundle.Files) != 1 {
-		t.Errorf("expected 1 file in bundle, got %d", len(bundle.Files))
+	// Should only create main WDL, no ZIP
+	if _, err := os.Stat(result.MainWDLPath); os.IsNotExist(err) {
+		t.Error("main WDL file was not created")
 	}
 
-	content, err := bundle.GetMainWorkflowContent()
+	if result.DependenciesZipPath != "" {
+		t.Errorf("expected no dependencies ZIP for workflow without imports, got: %s", result.DependenciesZipPath)
+	}
+
+	if result.TotalFiles != 1 {
+		t.Errorf("expected 1 file, got %d", result.TotalFiles)
+	}
+
+	// Verify content is unchanged
+	content, err := os.ReadFile(result.MainWDLPath)
 	if err != nil {
-		t.Fatalf("failed to get main workflow content: %v", err)
+		t.Fatalf("failed to read main WDL: %v", err)
 	}
 
 	if string(content) != mainWDL {
 		t.Error("main workflow content mismatch")
-	}
-
-	// Check metadata
-	if bundle.Metadata == nil {
-		t.Fatal("expected metadata")
-	}
-
-	if bundle.Metadata.WDLVersion != "1.0" {
-		t.Errorf("WDL version = %q, want %q", bundle.Metadata.WDLVersion, "1.0")
-	}
-
-	if bundle.Metadata.MainWorkflow != "simple.wdl" {
-		t.Errorf("main workflow = %q, want %q", bundle.Metadata.MainWorkflow, "simple.wdl")
 	}
 }
 

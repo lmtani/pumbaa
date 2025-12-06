@@ -1,6 +1,7 @@
 // Code generated from WdlV1_1Parser.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser // WdlV1_1Parser
+
 import "github.com/antlr4-go/antlr/v4"
 
 type BaseWdlV1_1ParserVisitor struct {

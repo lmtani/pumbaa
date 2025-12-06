@@ -100,7 +100,7 @@ SQuoteCurlyString: '{' -> type(StringPart);
 SQuoteCommandStart: ('${' | '~{' ) -> pushMode(DEFAULT_MODE) , type(StringCommandStart);
 SQuoteUnicodeEscape: '\\u' (HexDigit (HexDigit (HexDigit HexDigit?)?)?)? -> type(StringPart);
 EndSquote: '\'' ->  popMode, type(SQUOTE);
-StringPart: ~[$~{\r\n']+;
+StringPart: ~[$~{\r\n'\\]+;
 
 mode DquoteInterpolatedString;
 
@@ -111,7 +111,7 @@ DQUoteCurlString: '{' -> type(StringPart);
 DQuoteCommandStart: ('${' | '~{' ) -> pushMode(DEFAULT_MODE), type(StringCommandStart);
 DQuoteUnicodeEscape: '\\u' (HexDigit (HexDigit (HexDigit HexDigit?)?)?) -> type(StringPart);
 EndDQuote: '"' ->  popMode, type(DQUOTE);
-DQuoteStringPart: ~[$~{\r\n"]+ -> type(StringPart);
+DQuoteStringPart: ~[$~{\r\n"\\]+ -> type(StringPart);
 
 mode Command;
 

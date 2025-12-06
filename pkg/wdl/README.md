@@ -152,7 +152,3 @@ To regenerate the parser from the grammar files:
 cd pkg/wdl/parser
 java -jar antlr-4.13.1-complete.jar -Dlanguage=Go -package parser -visitor -listener WdlV1_1Lexer.g4 WdlV1_1Parser.g4
 ```
-
-## License
-
-MIT
