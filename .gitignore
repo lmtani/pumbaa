@@ -2,6 +2,9 @@ coverage.out
 .devcontainer/
 .idea/
 
+# ANTLR jar file (download when needed for parser regeneration)
+antlr-*.jar
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
