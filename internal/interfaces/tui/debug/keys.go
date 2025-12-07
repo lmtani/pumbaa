@@ -30,6 +30,7 @@ type KeyMap struct {
 	PageUp      key.Binding
 	PageDown    key.Binding
 	OpenLog     key.Binding
+	Copy        key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -138,6 +139,10 @@ func DefaultKeyMap() KeyMap {
 		OpenLog: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "open log"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy to clipboard"),
 		),
 	}
 }

@@ -65,6 +65,9 @@ type Model struct {
 	callOutputsViewport  viewport.Model
 	callCommandViewport  viewport.Model
 
+	// Copy feedback message (shown in modal footer)
+	copyMessage string
+
 	// Components
 	keys           KeyMap
 	help           help.Model

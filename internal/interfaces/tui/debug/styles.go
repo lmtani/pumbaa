@@ -35,8 +35,8 @@ var (
 
 	// Header title style
 	headerTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FFFFFF"))
+				Bold(true).
+				Foreground(lipgloss.Color("#FFFFFF"))
 
 	// Badge styles for header
 	badgeStyle = lipgloss.NewStyle().
@@ -44,10 +44,10 @@ var (
 			MarginLeft(1)
 
 	durationBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#87CEEB")).
-			Padding(0, 1).
-			MarginLeft(1)
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#87CEEB")).
+				Padding(0, 1).
+				MarginLeft(1)
 
 	costBadgeStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).

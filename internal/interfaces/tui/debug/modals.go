@@ -9,6 +9,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// modalFooter generates the footer for modals, including copy feedback if present
+func (m Model) modalFooter() string {
+	baseFooter := "↑↓/PgUp/PgDn scroll • y copy • esc close"
+	if m.copyMessage != "" {
+		return mutedStyle.Render(baseFooter) + "  " + statusDoneStyle.Render(m.copyMessage)
+	}
+	return mutedStyle.Render(baseFooter)
+}
+
 // renderLogModal renders the log modal.
 func (m Model) renderLogModal() string {
 	modalWidth := m.width - 6
@@ -28,7 +37,7 @@ func (m Model) renderLogModal() string {
 	}
 
 	// Footer with instructions
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	// Build modal box
 	modalContent := lipgloss.JoinVertical(
@@ -64,7 +73,7 @@ func (m Model) renderInputsModal() string {
 
 	content := m.inputsModalViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -98,7 +107,7 @@ func (m Model) renderOutputsModal() string {
 
 	content := m.outputsModalViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -132,7 +141,7 @@ func (m Model) renderOptionsModal() string {
 
 	content := m.optionsModalViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -172,7 +181,7 @@ func (m Model) renderCallInputsModal() string {
 
 	content := m.callInputsViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -212,7 +221,7 @@ func (m Model) renderCallOutputsModal() string {
 
 	content := m.callOutputsViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -252,7 +261,7 @@ func (m Model) renderCallCommandModal() string {
 
 	content := m.callCommandViewport.View()
 
-	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	footer := m.modalFooter()
 
 	modalContent := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -495,6 +504,10 @@ func formatValueForModal(v interface{}, maxWidth int) string {
 
 // formatValueWithStyles formats a value using the provided styles.
 func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutStyle lipgloss.Style) string {
+	if maxWidth < 20 {
+		maxWidth = 80
+	}
+
 	switch val := v.(type) {
 	case nil:
 		return mutStyle.Render("  null")
@@ -507,19 +520,19 @@ func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutS
 		}
 		return valStyle.Render(fmt.Sprintf("  %g", val))
 	case string:
+		wrappedVal := val
+		if len(val) > maxWidth-4 {
+			wrappedVal = wrapText(val, maxWidth-4)
+		}
 		// Handle GCS paths with special styling
 		if strings.HasPrefix(val, "gs://") {
-			return pthStyle.Render("  " + val)
+			return pthStyle.Render("  " + wrappedVal)
 		}
 		// Handle local paths
 		if strings.HasPrefix(val, "/") {
-			return pthStyle.Render("  " + val)
+			return pthStyle.Render("  " + wrappedVal)
 		}
-		// Wrap long strings
-		if len(val) > maxWidth-2 {
-			return valStyle.Render("  " + wrapText(val, maxWidth-2))
-		}
-		return valStyle.Render("  " + val)
+		return valStyle.Render("  " + wrappedVal)
 	case []interface{}:
 		if len(val) == 0 {
 			return mutStyle.Render("  []")

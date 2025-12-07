@@ -1,13 +1,17 @@
 package debug
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
+	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/net/context"
 )
 
@@ -157,4 +161,114 @@ func readLocalFile(path string) (string, error) {
 	}
 
 	return string(data), nil
+}
+
+// clipboardCopiedMsg is sent when clipboard copy is complete
+type clipboardCopiedMsg struct {
+	success bool
+	err     error
+}
+
+// copyToClipboard creates a tea.Cmd that copies text to the system clipboard
+func copyToClipboard(text string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("pbcopy")
+		case "linux":
+			// Try xclip first, then xsel, then wl-copy (for Wayland)
+			if _, err := exec.LookPath("xclip"); err == nil {
+				cmd = exec.Command("xclip", "-selection", "clipboard")
+			} else if _, err := exec.LookPath("xsel"); err == nil {
+				cmd = exec.Command("xsel", "--clipboard", "--input")
+			} else if _, err := exec.LookPath("wl-copy"); err == nil {
+				cmd = exec.Command("wl-copy")
+			} else {
+				return clipboardCopiedMsg{success: false, err: fmt.Errorf("no clipboard tool found (install xclip, xsel, or wl-copy)")}
+			}
+		case "windows":
+			cmd = exec.Command("clip")
+		default:
+			return clipboardCopiedMsg{success: false, err: fmt.Errorf("unsupported OS: %s", runtime.GOOS)}
+		}
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		if err := cmd.Start(); err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		_, err = stdin.Write([]byte(text))
+		if err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+		stdin.Close()
+
+		if err := cmd.Wait(); err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		return clipboardCopiedMsg{success: true}
+	}
+}
+
+// getRawInputsJSON returns the workflow inputs as raw JSON string
+func (m Model) getRawInputsJSON() string {
+	if len(m.metadata.Inputs) == 0 {
+		return "{}"
+	}
+	data, err := json.MarshalIndent(m.metadata.Inputs, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+// getRawOutputsJSON returns the workflow outputs as raw JSON string
+func (m Model) getRawOutputsJSON() string {
+	if len(m.metadata.Outputs) == 0 {
+		return "{}"
+	}
+	data, err := json.MarshalIndent(m.metadata.Outputs, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+// getRawOptionsJSON returns the workflow options as raw JSON string
+func (m Model) getRawOptionsJSON() string {
+	if m.metadata.SubmittedOptions == "" {
+		return "{}"
+	}
+	return m.metadata.SubmittedOptions
+}
+
+// getRawCallInputsJSON returns the call inputs as raw JSON string
+func (m Model) getRawCallInputsJSON(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Inputs) == 0 {
+		return "{}"
+	}
+	data, err := json.MarshalIndent(node.CallData.Inputs, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
+// getRawCallOutputsJSON returns the call outputs as raw JSON string
+func (m Model) getRawCallOutputsJSON(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Outputs) == 0 {
+		return "{}"
+	}
+	data, err := json.MarshalIndent(node.CallData.Outputs, "", "  ")
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }
