@@ -133,6 +133,18 @@ var (
 	logContentStyle = lipgloss.NewStyle().
 			Foreground(textColor).
 			Background(lipgloss.Color("#0a0a0a"))
+
+	// Button styles for quick actions
+	buttonStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(primaryColor).
+			Bold(true).
+			Padding(0, 1)
+
+	disabledButtonStyle = lipgloss.NewStyle().
+				Foreground(mutedColor).
+				Background(lipgloss.Color("#333333")).
+				Padding(0, 1)
 )
 
 // StatusStyle returns the appropriate style for a status.

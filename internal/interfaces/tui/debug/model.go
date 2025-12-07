@@ -66,6 +66,14 @@ type Model struct {
 	outputsModalViewport viewport.Model
 	optionsModalViewport viewport.Model
 
+	// Call-level modal state
+	showCallInputsModal   bool
+	showCallOutputsModal  bool
+	showCallCommandModal  bool
+	callInputsViewport    viewport.Model
+	callOutputsViewport   viewport.Model
+	callCommandViewport   viewport.Model
+
 	// Components
 	keys           KeyMap
 	help           help.Model
@@ -262,6 +270,69 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle call-level inputs modal
+		if m.showCallInputsModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showCallInputsModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.callInputsViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.callInputsViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.callInputsViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.callInputsViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.callInputsViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.callInputsViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
+		// Handle call-level outputs modal
+		if m.showCallOutputsModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showCallOutputsModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.callOutputsViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.callOutputsViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.callOutputsViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.callOutputsViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.callOutputsViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.callOutputsViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
+		// Handle call-level command modal
+		if m.showCallCommandModal {
+			switch {
+			case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+				m.showCallCommandModal = false
+			case key.Matches(msg, m.keys.Up):
+				m.callCommandViewport.LineUp(1)
+			case key.Matches(msg, m.keys.Down):
+				m.callCommandViewport.LineDown(1)
+			case key.Matches(msg, m.keys.PageUp):
+				m.callCommandViewport.ViewUp()
+			case key.Matches(msg, m.keys.PageDown):
+				m.callCommandViewport.ViewDown()
+			case key.Matches(msg, m.keys.Home):
+				m.callCommandViewport.GotoTop()
+			case key.Matches(msg, m.keys.End):
+				m.callCommandViewport.GotoBottom()
+			}
+			return m, nil
+		}
+
 		if m.showHelp {
 			if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
 				m.showHelp = false
@@ -377,11 +448,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewModeCommand
 			m.updateDetailsContent()
 
-		case key.Matches(msg, m.keys.Logs):
-			m.viewMode = ViewModeLogs
-			m.logCursor = 0
-			m.updateDetailsContent()
-
 		case key.Matches(msg, m.keys.Inputs):
 			if len(m.metadata.Inputs) > 0 {
 				m.showInputsModal = true
@@ -454,6 +520,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.detailViewport.ViewDown()
 			}
+
+		// Call-level quick actions (1-4)
+		default:
+			if msg.String() == "1" && m.cursor < len(m.nodes) {
+				node := m.nodes[m.cursor]
+				if node.CallData != nil && len(node.CallData.Inputs) > 0 {
+					m.showCallInputsModal = true
+					m.callInputsViewport = viewport.New(m.width-10, m.height-8)
+					m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
+				} else {
+					m.statusMessage = "No inputs available for this call"
+				}
+			} else if msg.String() == "2" && m.cursor < len(m.nodes) {
+				node := m.nodes[m.cursor]
+				if node.CallData != nil && len(node.CallData.Outputs) > 0 {
+					m.showCallOutputsModal = true
+					m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
+					m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
+				} else {
+					m.statusMessage = "No outputs available for this call"
+				}
+			} else if msg.String() == "3" && m.cursor < len(m.nodes) {
+				node := m.nodes[m.cursor]
+				if node.CallData != nil && node.CallData.CommandLine != "" {
+					m.showCallCommandModal = true
+					m.callCommandViewport = viewport.New(m.width-10, m.height-8)
+					m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
+				} else {
+					m.statusMessage = "No command available for this call"
+				}
+			} else if msg.String() == "4" && m.cursor < len(m.nodes) {
+				node := m.nodes[m.cursor]
+				if node.CallData != nil && (node.CallData.Stdout != "" || node.CallData.Stderr != "") {
+					m.viewMode = ViewModeLogs
+					m.logCursor = 0
+					m.updateDetailsContent()
+					m.focus = FocusDetails
+				} else {
+					m.statusMessage = "No logs available for this call"
+				}
+			}
 		}
 	}
 
@@ -524,6 +631,18 @@ func (m Model) View() string {
 
 	if m.showOptionsModal {
 		return m.renderOptionsModal()
+	}
+
+	if m.showCallInputsModal {
+		return m.renderCallInputsModal()
+	}
+
+	if m.showCallOutputsModal {
+		return m.renderCallOutputsModal()
+	}
+
+	if m.showCallCommandModal {
+		return m.renderCallCommandModal()
 	}
 
 	if m.showHelp {
@@ -834,6 +953,37 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 		sb.WriteString(labelStyle.Render("VM Cost/Hour: ") + valueStyle.Render(fmt.Sprintf("$%.4f", cd.VMCostPerHour)) + "\n")
 	}
 
+	// Quick Actions section
+	sb.WriteString("\n")
+	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
+
+	// Show available actions based on data
+	if len(cd.Inputs) > 0 {
+		sb.WriteString(buttonStyle.Render(" 1 ") + " Inputs  ")
+	} else {
+		sb.WriteString(disabledButtonStyle.Render(" 1 ") + mutedStyle.Render(" Inputs  "))
+	}
+
+	if len(cd.Outputs) > 0 {
+		sb.WriteString(buttonStyle.Render(" 2 ") + " Outputs  ")
+	} else {
+		sb.WriteString(disabledButtonStyle.Render(" 2 ") + mutedStyle.Render(" Outputs  "))
+	}
+
+	if cd.CommandLine != "" {
+		sb.WriteString(buttonStyle.Render(" 3 ") + " Command  ")
+	} else {
+		sb.WriteString(disabledButtonStyle.Render(" 3 ") + mutedStyle.Render(" Command  "))
+	}
+
+	if cd.Stdout != "" || cd.Stderr != "" {
+		sb.WriteString(buttonStyle.Render(" 4 ") + " Logs")
+	} else {
+		sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs"))
+	}
+
+	sb.WriteString("\n")
+
 	return sb.String()
 }
 
@@ -925,7 +1075,7 @@ func (m Model) renderFooter() string {
 	if m.statusMessage != "" {
 		footer = warningStyle.Render(m.statusMessage)
 	} else {
-		footer = " ↑↓ navigate • enter expand • tab switch • d details • c cmd • l logs • i inputs • o outputs • O options • ? help • q quit"
+		footer = " ↑↓ navigate • enter expand • tab switch • d details • c cmd • i inputs • o outputs • O options • ? help • q quit"
 	}
 	return helpBarStyle.Width(m.width - 2).Render(footer)
 }
@@ -1474,6 +1624,193 @@ func (m Model) renderOptionsModal() string {
 	title := titleStyle.Render("⚙️  Workflow Options: " + m.metadata.Name)
 
 	content := m.optionsModalViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+// formatCallInputsForModal formats call inputs for display in the modal.
+func (m Model) formatCallInputsForModal(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Inputs) == 0 {
+		return mutedStyle.Render("No inputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(node.CallData.Inputs))
+	for k := range node.CallData.Inputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := node.CallData.Inputs[k]
+		// Skip null values
+		if v == nil {
+			continue
+		}
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatCallOutputsForModal formats call outputs for display in the modal.
+func (m Model) formatCallOutputsForModal(node *TreeNode) string {
+	if node.CallData == nil || len(node.CallData.Outputs) == 0 {
+		return mutedStyle.Render("No outputs available")
+	}
+
+	var sb strings.Builder
+
+	// Sort keys for consistent display
+	keys := make([]string, 0, len(node.CallData.Outputs))
+	for k := range node.CallData.Outputs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := node.CallData.Outputs[k]
+		// Skip null values
+		if v == nil {
+			continue
+		}
+		sb.WriteString(labelStyle.Render(k) + "\n")
+		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+	}
+
+	return sb.String()
+}
+
+// formatCallCommandForModal formats call command for display in the modal.
+func (m Model) formatCallCommandForModal(node *TreeNode) string {
+	if node.CallData == nil || node.CallData.CommandLine == "" {
+		return mutedStyle.Render("No command available")
+	}
+
+	// Wrap text to fit the modal width
+	wrapped := wrapText(node.CallData.CommandLine, m.width-20)
+	return commandStyle.Render(wrapped)
+}
+
+// renderCallInputsModal renders the call inputs modal.
+func (m Model) renderCallInputsModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	// Get current node for title
+	nodeName := "Unknown"
+	if m.cursor < len(m.nodes) {
+		nodeName = m.nodes[m.cursor].Name
+	}
+
+	title := titleStyle.Render("📥 Call Inputs: " + nodeName)
+
+	content := m.callInputsViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+// renderCallOutputsModal renders the call outputs modal.
+func (m Model) renderCallOutputsModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	// Get current node for title
+	nodeName := "Unknown"
+	if m.cursor < len(m.nodes) {
+		nodeName = m.nodes[m.cursor].Name
+	}
+
+	title := titleStyle.Render("📤 Call Outputs: " + nodeName)
+
+	content := m.callOutputsViewport.View()
+
+	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+// renderCallCommandModal renders the call command modal.
+func (m Model) renderCallCommandModal() string {
+	modalWidth := m.width - 6
+	modalHeight := m.height - 4
+
+	// Get current node for title
+	nodeName := "Unknown"
+	if m.cursor < len(m.nodes) {
+		nodeName = m.nodes[m.cursor].Name
+	}
+
+	title := titleStyle.Render("📜 Call Command: " + nodeName)
+
+	content := m.callCommandViewport.View()
 
 	footer := mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
 
