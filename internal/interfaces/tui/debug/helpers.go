@@ -29,6 +29,9 @@ func formatDuration(d time.Duration) string {
 
 // truncate truncates a string to maxLen characters.
 func truncate(s string, maxLen int) string {
+	if maxLen <= 3 {
+		return s
+	}
 	if len(s) <= maxLen {
 		return s
 	}

@@ -294,8 +294,8 @@ func (m Model) formatInputsForModal(node *TreeNode) string {
 
 	for _, k := range keys {
 		v := node.CallData.Inputs[k]
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -318,8 +318,8 @@ func (m Model) formatOutputsForModal(node *TreeNode) string {
 
 	for _, k := range keys {
 		v := node.CallData.Outputs[k]
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -346,8 +346,8 @@ func (m Model) formatWorkflowInputsForModal() string {
 		if v == nil {
 			continue
 		}
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -374,8 +374,8 @@ func (m Model) formatWorkflowOutputsForModal() string {
 		if v == nil {
 			continue
 		}
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -391,7 +391,7 @@ func (m Model) formatOptionsForModal() string {
 	var options map[string]interface{}
 	if err := json.Unmarshal([]byte(m.metadata.SubmittedOptions), &options); err != nil {
 		// If it's not valid JSON, just return the raw string formatted
-		return valueStyle.Render(m.metadata.SubmittedOptions)
+		return modalValueStyle.Render(m.metadata.SubmittedOptions)
 	}
 
 	var sb strings.Builder
@@ -409,8 +409,8 @@ func (m Model) formatOptionsForModal() string {
 		if v == nil {
 			continue
 		}
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -437,8 +437,8 @@ func (m Model) formatCallInputsForModal(node *TreeNode) string {
 		if v == nil {
 			continue
 		}
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -465,8 +465,8 @@ func (m Model) formatCallOutputsForModal(node *TreeNode) string {
 		if v == nil {
 			continue
 		}
-		sb.WriteString(labelStyle.Render(k) + "\n")
-		sb.WriteString(formatValue(v, m.width-16) + "\n\n")
+		sb.WriteString(modalLabelStyle.Render(k) + "\n")
+		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
 	}
 
 	return sb.String()
@@ -483,41 +483,51 @@ func (m Model) formatCallCommandForModal(node *TreeNode) string {
 	return commandStyle.Render(wrapped)
 }
 
-// formatValue formats a value for human-readable display.
+// formatValue formats a value for human-readable display (used in details panel).
 func formatValue(v interface{}, maxWidth int) string {
+	return formatValueWithStyles(v, maxWidth, valueStyle, pathStyle, mutedStyle)
+}
+
+// formatValueForModal formats a value for display in modals with appropriate colors.
+func formatValueForModal(v interface{}, maxWidth int) string {
+	return formatValueWithStyles(v, maxWidth, modalValueStyle, modalPathStyle, mutedStyle)
+}
+
+// formatValueWithStyles formats a value using the provided styles.
+func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutStyle lipgloss.Style) string {
 	switch val := v.(type) {
 	case nil:
-		return mutedStyle.Render("  null")
+		return mutStyle.Render("  null")
 	case bool:
-		return valueStyle.Render(fmt.Sprintf("  %v", val))
+		return valStyle.Render(fmt.Sprintf("  %v", val))
 	case float64:
 		// Check if it's an integer
 		if val == float64(int64(val)) {
-			return valueStyle.Render(fmt.Sprintf("  %d", int64(val)))
+			return valStyle.Render(fmt.Sprintf("  %d", int64(val)))
 		}
-		return valueStyle.Render(fmt.Sprintf("  %g", val))
+		return valStyle.Render(fmt.Sprintf("  %g", val))
 	case string:
 		// Handle GCS paths with special styling
 		if strings.HasPrefix(val, "gs://") {
-			return pathStyle.Render("  " + val)
+			return pthStyle.Render("  " + val)
 		}
 		// Handle local paths
 		if strings.HasPrefix(val, "/") {
-			return pathStyle.Render("  " + val)
+			return pthStyle.Render("  " + val)
 		}
 		// Wrap long strings
 		if len(val) > maxWidth-2 {
-			return valueStyle.Render("  " + wrapText(val, maxWidth-2))
+			return valStyle.Render("  " + wrapText(val, maxWidth-2))
 		}
-		return valueStyle.Render("  " + val)
+		return valStyle.Render("  " + val)
 	case []interface{}:
 		if len(val) == 0 {
-			return mutedStyle.Render("  []")
+			return mutStyle.Render("  []")
 		}
 		var sb strings.Builder
 		for i, item := range val {
 			prefix := "  - "
-			itemStr := formatValue(item, maxWidth-4)
+			itemStr := formatValueWithStyles(item, maxWidth-4, valStyle, pthStyle, mutStyle)
 			// Remove leading spaces from nested formatValue
 			itemStr = strings.TrimPrefix(itemStr, "  ")
 			sb.WriteString(prefix + itemStr)
@@ -530,15 +540,15 @@ func formatValue(v interface{}, maxWidth int) string {
 		// Pretty print maps with indentation
 		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
 		if err != nil {
-			return mutedStyle.Render("  [complex object]")
+			return mutStyle.Render("  [complex object]")
 		}
-		return valueStyle.Render("  " + string(jsonBytes))
+		return valStyle.Render("  " + string(jsonBytes))
 	default:
 		// Fallback to JSON for unknown types
 		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
 		if err != nil {
-			return valueStyle.Render(fmt.Sprintf("  %v", val))
+			return valStyle.Render(fmt.Sprintf("  %v", val))
 		}
-		return valueStyle.Render("  " + string(jsonBytes))
+		return valStyle.Render("  " + string(jsonBytes))
 	}
 }

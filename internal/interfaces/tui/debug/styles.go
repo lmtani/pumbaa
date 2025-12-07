@@ -28,12 +28,32 @@ var (
 
 	// Header style
 	headerStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(primaryColor).
+			Padding(0, 1).
+			MarginBottom(0)
+
+	// Header title style
+	headerTitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(primaryColor).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			BorderForeground(borderColor).
-			Padding(0, 1)
+			Foreground(lipgloss.Color("#FFFFFF"))
+
+	// Badge styles for header
+	badgeStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			MarginLeft(1)
+
+	durationBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#87CEEB")).
+			Padding(0, 1).
+			MarginLeft(1)
+
+	costBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#98FB98")).
+			Padding(0, 1).
+			MarginLeft(1)
 
 	// Panel styles
 	panelStyle = lipgloss.NewStyle().
@@ -126,8 +146,20 @@ var (
 	modalStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(primaryColor).
-			Background(lipgloss.Color("#1a1a1a")).
 			Padding(1, 2)
+
+	// Modal label style (brighter for dark background)
+	modalLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#AAAAAA")).
+			Bold(true)
+
+	// Modal value style (bright for dark background)
+	modalValueStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF"))
+
+	// Modal path style (for GCS/file paths in modals)
+	modalPathStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#87ceeb"))
 
 	// Log content style (for log files)
 	logContentStyle = lipgloss.NewStyle().

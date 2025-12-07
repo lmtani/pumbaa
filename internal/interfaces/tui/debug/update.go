@@ -90,7 +90,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.detailsWidth = m.width - m.treeWidth - 4
 		m.help.Width = m.width
 		m.detailViewport.Width = m.detailsWidth - 4
-		m.detailViewport.Height = m.height - 8
+		m.detailViewport.Height = m.height - 14 // Leave room for header, footer, and panel borders
 		if m.showLogModal {
 			m.logModalViewport.Width = m.width - 10
 			m.logModalViewport.Height = m.height - 8

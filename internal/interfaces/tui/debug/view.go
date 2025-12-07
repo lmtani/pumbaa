@@ -84,26 +84,66 @@ func (m Model) renderHeader() string {
 
 	// Calculate total cost
 	totalCost := m.calculateTotalCost()
-	costStr := ""
-	if totalCost > 0 {
-		costStr = fmt.Sprintf(" | 💰 $%.4f", totalCost)
+
+	// Build status badge based on workflow status
+	statusText := m.metadata.Status
+	var statusBadge string
+	switch m.metadata.Status {
+	case "Succeeded", "Done":
+		statusBadge = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#00FF00")).
+			Padding(0, 1).
+			Render(statusIcon + " " + statusText)
+	case "Failed":
+		statusBadge = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#FF0000")).
+			Padding(0, 1).
+			Render(statusIcon + " " + statusText)
+	case "Running":
+		statusBadge = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#FFFF00")).
+			Padding(0, 1).
+			Render(statusIcon + " " + statusText)
+	default:
+		statusBadge = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(lipgloss.Color("#888888")).
+			Padding(0, 1).
+			Render(statusIcon + " " + statusText)
 	}
 
-	durationStr := ""
+	// Duration badge
+	durationBadge := ""
 	if !m.metadata.Start.IsZero() {
 		duration := m.metadata.End.Sub(m.metadata.Start)
 		if m.metadata.End.IsZero() {
 			duration = 0
 		}
-		durationStr = fmt.Sprintf(" | ⏱ %s", formatDuration(duration))
+		durationBadge = durationBadgeStyle.Render("⏱ " + formatDuration(duration))
 	}
 
-	header := fmt.Sprintf("%s %s %s%s%s",
-		statusIcon,
-		titleStyle.Render(m.metadata.Name),
-		mutedStyle.Render(m.metadata.ID),
-		durationStr,
-		costStr,
+	// Cost badge
+	costBadge := ""
+	if totalCost > 0 {
+		costBadge = costBadgeStyle.Render(fmt.Sprintf("💰 $%.4f", totalCost))
+	}
+
+	// Workflow name and ID
+	workflowName := headerTitleStyle.Render(m.metadata.Name)
+	workflowID := mutedStyle.Render(" " + m.metadata.ID)
+
+	// Combine all parts
+	header := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		statusBadge,
+		"  ",
+		workflowName,
+		workflowID,
+		durationBadge,
+		costBadge,
 	)
 
 	return headerStyle.Width(m.width - 2).Render(header)
@@ -133,7 +173,10 @@ func (m Model) renderTree() string {
 	var sb strings.Builder
 
 	startIdx := 0
-	maxVisible := m.height - 6
+	maxVisible := m.height - 10 // Leave room for header and footer
+	if maxVisible < 5 {
+		maxVisible = 5
+	}
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
@@ -149,7 +192,7 @@ func (m Model) renderTree() string {
 		sb.WriteString("\n")
 	}
 
-	style := treePanelStyle.Width(m.treeWidth).Height(m.height - 4)
+	style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
 	if m.focus == FocusTree {
 		style = style.BorderForeground(lipgloss.Color("#7D56F4"))
 	}
@@ -214,7 +257,7 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 }
 
 func (m Model) renderDetails() string {
-	style := detailsPanelStyle.Width(m.detailsWidth).Height(m.height - 4)
+	style := detailsPanelStyle.Width(m.detailsWidth).Height(m.height - 8)
 	if m.focus == FocusDetails {
 		style = style.BorderForeground(lipgloss.Color("#7D56F4"))
 	}
