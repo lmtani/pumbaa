@@ -1,0 +1,68 @@
+{
+  "id": "de8b03fd-ac06-45e8-b3c4-ef921ba0dd80",
+  "workflowName": "SingleSampleGenotyping",
+  "status": "Succeeded",
+  "start": "2025-12-01T16:44:24.508Z",
+  "end": "2025-12-01T18:03:39.848Z",
+  "submittedFiles": {
+    "workflow": "workflow.wdl",
+    "inputs": "inputs.json",
+    "options": "options.json"
+  },
+  "calls": {
+    "SingleSampleGenotyping.RunDeepVariant": [
+      {
+        "shardIndex": -1,
+        "attempt": 1,
+        "executionStatus": "Done",
+        "backend": "GoogleBatch",
+        "runtimeAttributes": {"cpu": "12", "memory": "8 GB"},
+        "returnCode": 0,
+        "start": "2025-12-01T16:51:00.000Z",
+        "end": "2025-12-01T17:10:00.000Z",
+        "inputs": {"alignment": "sample.cram"},
+        "outputs": {"deepvariant_vcf": "sample.deepvariant.vcf.gz"}
+      }
+    ],
+    "SingleSampleGenotyping.ExpansionHunterWorkflow": [
+      {
+        "shardIndex": -1,
+        "attempt": 1,
+        "executionStatus": "Done",
+        "backend": "GoogleBatch",
+        "subWorkflowMetadata": {
+          "id": "bddb1ecd-72d8-4607-ad51-7f5def9f460f",
+          "workflowName": "ExpansionHunterWorkflow",
+          "status": "Succeeded",
+          "start": "2025-12-01T17:11:00.000Z",
+          "end": "2025-12-01T17:30:00.000Z",
+          "calls": {
+            "ExpansionHunterWorkflow.RunExpansionHunter": [
+              {
+                "shardIndex": -1,
+                "attempt": 1,
+                "executionStatus": "Done",
+                "backend": "GoogleBatch",
+                "runtimeAttributes": {"cpu": "4"},
+                "returnCode": 0
+              }
+            ],
+            "ExpansionHunterWorkflow.SamtoolsSort": [
+              {
+                "shardIndex": -1,
+                "attempt": 1,
+                "executionStatus": "Done",
+                "backend": "GoogleBatch",
+                "runtimeAttributes": {"cpu": "1"},
+                "returnCode": 0
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "outputs": {},
+  "inputs": {},
+  "labels": {}
+}
