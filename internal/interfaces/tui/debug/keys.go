@@ -4,33 +4,34 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines all key bindings for the TUI.
 type KeyMap struct {
-	Up          key.Binding
-	Down        key.Binding
-	Left        key.Binding
-	Right       key.Binding
-	Enter       key.Binding
-	Space       key.Binding
-	Tab         key.Binding
-	Quit        key.Binding
-	Help        key.Binding
-	Escape      key.Binding
-	Details     key.Binding
-	Command     key.Binding
-	Logs        key.Binding
-	Inputs      key.Binding
-	Outputs     key.Binding
-	Options     key.Binding
-	Timeline    key.Binding
-	CopyStdout  key.Binding
-	CopyStderr  key.Binding
-	ExpandAll   key.Binding
-	CollapseAll key.Binding
-	Home        key.Binding
-	End         key.Binding
-	PageUp      key.Binding
-	PageDown    key.Binding
-	OpenLog     key.Binding
-	Copy        key.Binding
+	Up             key.Binding
+	Down           key.Binding
+	Left           key.Binding
+	Right          key.Binding
+	Enter          key.Binding
+	Space          key.Binding
+	Tab            key.Binding
+	Quit           key.Binding
+	Help           key.Binding
+	Escape         key.Binding
+	Details        key.Binding
+	Command        key.Binding
+	Logs           key.Binding
+	Inputs         key.Binding
+	Outputs        key.Binding
+	Options        key.Binding
+	Timeline       key.Binding
+	GlobalTimeline key.Binding
+	CopyStdout     key.Binding
+	CopyStderr     key.Binding
+	ExpandAll      key.Binding
+	CollapseAll    key.Binding
+	Home           key.Binding
+	End            key.Binding
+	PageUp         key.Binding
+	PageDown       key.Binding
+	OpenLog        key.Binding
+	Copy           key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -104,6 +105,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("t"),
 			key.WithHelp("t", "view timeline"),
 		),
+		GlobalTimeline: key.NewBinding(
+			key.WithKeys("T"),
+			key.WithHelp("T", "all tasks duration"),
+		),
 		CopyStdout: key.NewBinding(
 			key.WithKeys("1"),
 			key.WithHelp("1", "copy stdout path"),
@@ -158,9 +163,9 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.Command, k.Logs, k.Inputs},
-		{k.Outputs, k.Timeline, k.ExpandAll, k.CollapseAll},
-		{k.Home, k.End, k.PageUp, k.PageDown},
-		{k.CopyStdout, k.CopyStderr, k.OpenLog},
+		{k.Outputs, k.Timeline, k.GlobalTimeline, k.Options},
+		{k.ExpandAll, k.CollapseAll, k.Home, k.End},
+		{k.PageUp, k.PageDown, k.CopyStdout, k.CopyStderr},
 		{k.Help, k.Quit},
 	}
 }

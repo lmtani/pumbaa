@@ -149,6 +149,11 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCallCommandModalKeys(msg)
 	}
 
+	// Handle global timeline modal
+	if m.showGlobalTimelineModal {
+		return m.handleGlobalTimelineModalKeys(msg)
+	}
+
 	if m.showHelp {
 		if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
 			m.showHelp = false
@@ -339,6 +344,27 @@ func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleGlobalTimelineModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+		m.showGlobalTimelineModal = false
+		m.copyMessage = ""
+	case key.Matches(msg, m.keys.Up):
+		m.globalTimelineViewport.ScrollUp(1)
+	case key.Matches(msg, m.keys.Down):
+		m.globalTimelineViewport.ScrollDown(1)
+	case key.Matches(msg, m.keys.PageUp):
+		m.globalTimelineViewport.PageUp()
+	case key.Matches(msg, m.keys.PageDown):
+		m.globalTimelineViewport.PageDown()
+	case key.Matches(msg, m.keys.Home):
+		m.globalTimelineViewport.GotoTop()
+	case key.Matches(msg, m.keys.End):
+		m.globalTimelineViewport.GotoBottom()
+	}
+	return m, nil
+}
+
 func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Quit):
@@ -443,6 +469,32 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Timeline):
 		m.viewMode = ViewModeTimeline
 		m.updateDetailsContent()
+
+	case key.Matches(msg, m.keys.GlobalTimeline):
+		// Check if we're on a workflow or subworkflow node to show its timeline
+		if m.cursor < len(m.nodes) {
+			node := m.nodes[m.cursor]
+			var targetMetadata *WorkflowMetadata
+			var title string
+
+			// Determine which metadata to use based on selected node
+			if node.Type == NodeTypeSubWorkflow && node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
+				targetMetadata = node.CallData.SubWorkflowMetadata
+				title = node.Name
+			} else if node.Type == NodeTypeWorkflow {
+				targetMetadata = m.metadata
+				title = m.metadata.Name
+			} else {
+				// For call/shard nodes, use root workflow
+				targetMetadata = m.metadata
+				title = m.metadata.Name
+			}
+
+			m.showGlobalTimelineModal = true
+			m.globalTimelineTitle = title
+			m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
+			m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(targetMetadata))
+		}
 
 	case key.Matches(msg, m.keys.Escape):
 		m.viewMode = ViewModeTree

@@ -65,6 +65,10 @@ func (m Model) View() string {
 		return m.renderCallCommandModal()
 	}
 
+	if m.showGlobalTimelineModal {
+		return m.renderGlobalTimelineModal()
+	}
+
 	if m.showHelp {
 		return m.renderHelp()
 	}
@@ -527,7 +531,7 @@ func (m Model) renderFooter() string {
 	if m.statusMessage != "" {
 		footer = warningStyle.Render(m.statusMessage)
 	} else {
-		footer = " ↑↓ navigate • enter expand • tab switch • d details • c cmd • i inputs • o outputs • O options • ? help • q quit"
+		footer = " ↑↓ navigate • tab switch • d details • c cmd • i inputs • o outputs • T durations • ? help • q quit"
 	}
 	return helpBarStyle.Width(m.width - 2).Render(footer)
 }

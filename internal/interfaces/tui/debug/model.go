@@ -65,6 +65,11 @@ type Model struct {
 	callOutputsViewport  viewport.Model
 	callCommandViewport  viewport.Model
 
+	// Global timeline modal state (shows all tasks with duration)
+	showGlobalTimelineModal bool
+	globalTimelineViewport  viewport.Model
+	globalTimelineTitle     string
+
 	// Copy feedback message (shown in modal footer)
 	copyMessage string
 
