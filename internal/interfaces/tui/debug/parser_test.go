@@ -249,3 +249,120 @@ func TestNodeTypeIcon(t *testing.T) {
 		_ = NodeTypeIcon(nt)
 	}
 }
+
+func TestParseMetadataWithFailures(t *testing.T) {
+	// Metadata JSON with failures (workflow failed before calls)
+	data := []byte(`{
+		"id": "85f955f2-2cd6-4cb1-839d-2cd0f554b09b",
+		"workflowName": "TestWorkflow",
+		"status": "Failed",
+		"calls": {},
+		"outputs": {},
+		"inputs": {},
+		"failures": [
+			{
+				"message": "Workflow input processing failed",
+				"causedBy": [
+					{
+						"message": "Required workflow input 'TestWorkflow.input1' not specified",
+						"causedBy": []
+					},
+					{
+						"message": "Required workflow input 'TestWorkflow.input2' not specified",
+						"causedBy": []
+					}
+				]
+			}
+		]
+	}`)
+
+	wm, err := ParseMetadata(data)
+	if err != nil {
+		t.Fatalf("Failed to parse metadata: %v", err)
+	}
+
+	// Verify failures were parsed
+	if len(wm.Failures) != 1 {
+		t.Fatalf("Expected 1 failure, got %d", len(wm.Failures))
+	}
+
+	failure := wm.Failures[0]
+	if failure.Message != "Workflow input processing failed" {
+		t.Errorf("Expected failure message 'Workflow input processing failed', got '%s'", failure.Message)
+	}
+
+	// Verify nested causes
+	if len(failure.CausedBy) != 2 {
+		t.Fatalf("Expected 2 causes, got %d", len(failure.CausedBy))
+	}
+
+	expectedCauses := []string{
+		"Required workflow input 'TestWorkflow.input1' not specified",
+		"Required workflow input 'TestWorkflow.input2' not specified",
+	}
+
+	for i, cause := range failure.CausedBy {
+		if cause.Message != expectedCauses[i] {
+			t.Errorf("Expected cause %d message '%s', got '%s'", i, expectedCauses[i], cause.Message)
+		}
+	}
+}
+
+func TestParseMetadataWithNestedFailures(t *testing.T) {
+	// Metadata JSON with deeply nested failures
+	data := []byte(`{
+		"id": "test-id",
+		"workflowName": "TestWorkflow",
+		"status": "Failed",
+		"calls": {},
+		"failures": [
+			{
+				"message": "Level 1 error",
+				"causedBy": [
+					{
+						"message": "Level 2 error",
+						"causedBy": [
+							{
+								"message": "Level 3 root cause",
+								"causedBy": []
+							}
+						]
+					}
+				]
+			}
+		]
+	}`)
+
+	wm, err := ParseMetadata(data)
+	if err != nil {
+		t.Fatalf("Failed to parse metadata: %v", err)
+	}
+
+	if len(wm.Failures) != 1 {
+		t.Fatalf("Expected 1 failure, got %d", len(wm.Failures))
+	}
+
+	// Verify nested structure
+	level1 := wm.Failures[0]
+	if level1.Message != "Level 1 error" {
+		t.Errorf("Expected 'Level 1 error', got '%s'", level1.Message)
+	}
+
+	if len(level1.CausedBy) != 1 {
+		t.Fatalf("Expected 1 cause at level 1, got %d", len(level1.CausedBy))
+	}
+
+	level2 := level1.CausedBy[0]
+	if level2.Message != "Level 2 error" {
+		t.Errorf("Expected 'Level 2 error', got '%s'", level2.Message)
+	}
+
+	if len(level2.CausedBy) != 1 {
+		t.Fatalf("Expected 1 cause at level 2, got %d", len(level2.CausedBy))
+	}
+
+	level3 := level2.CausedBy[0]
+	if level3.Message != "Level 3 root cause" {
+		t.Errorf("Expected 'Level 3 root cause', got '%s'", level3.Message)
+	}
+}

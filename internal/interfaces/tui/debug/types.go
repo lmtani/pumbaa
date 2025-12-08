@@ -101,6 +101,12 @@ type ExecutionEvent struct {
 	End         time.Time
 }
 
+// Failure represents a workflow or task failure with its cause chain.
+type Failure struct {
+	Message  string
+	CausedBy []Failure
+}
+
 // WorkflowMetadata contains the full workflow metadata.
 type WorkflowMetadata struct {
 	// Basic info
@@ -132,6 +138,9 @@ type WorkflowMetadata struct {
 
 	// Labels
 	Labels map[string]string
+
+	// Failures (workflow-level errors before calls execute)
+	Failures []Failure
 }
 
 // ViewMode represents the current view mode of the TUI.

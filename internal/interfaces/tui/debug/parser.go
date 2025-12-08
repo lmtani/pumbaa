@@ -61,6 +61,11 @@ func ParseMetadata(data []byte) (*WorkflowMetadata, error) {
 		}
 	}
 
+	// Parse failures (workflow-level errors)
+	if failures, ok := raw["failures"].([]interface{}); ok {
+		wm.Failures = parseFailures(failures)
+	}
+
 	// Parse calls
 	if calls, ok := raw["calls"].(map[string]interface{}); ok {
 		for callName, callList := range calls {
@@ -84,6 +89,23 @@ func ParseMetadata(data []byte) (*WorkflowMetadata, error) {
 	}
 
 	return wm, nil
+}
+
+// parseFailures parses the failures array from Cromwell metadata
+func parseFailures(failures []interface{}) []Failure {
+	var result []Failure
+	for _, f := range failures {
+		if fMap, ok := f.(map[string]interface{}); ok {
+			failure := Failure{
+				Message: getString(fMap, "message"),
+			}
+			if causedBy, ok := fMap["causedBy"].([]interface{}); ok {
+				failure.CausedBy = parseFailures(causedBy)
+			}
+			result = append(result, failure)
+		}
+	}
+	return result
 }
 
 // parseSubWorkflowMetadata parses embedded subworkflow metadata
