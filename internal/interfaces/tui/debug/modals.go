@@ -310,30 +310,6 @@ func (m Model) formatInputsForModal(node *TreeNode) string {
 	return sb.String()
 }
 
-// formatOutputsForModal formats outputs for display in the modal.
-func (m Model) formatOutputsForModal(node *TreeNode) string {
-	if node.CallData == nil || len(node.CallData.Outputs) == 0 {
-		return mutedStyle.Render("No outputs available")
-	}
-
-	var sb strings.Builder
-
-	// Sort keys for consistent display
-	keys := make([]string, 0, len(node.CallData.Outputs))
-	for k := range node.CallData.Outputs {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		v := node.CallData.Outputs[k]
-		sb.WriteString(modalLabelStyle.Render(k) + "\n")
-		sb.WriteString(formatValueForModal(v, m.width-16) + "\n\n")
-	}
-
-	return sb.String()
-}
-
 // formatWorkflowInputsForModal formats workflow inputs for display in the modal.
 func (m Model) formatWorkflowInputsForModal() string {
 	if len(m.metadata.Inputs) == 0 {
@@ -490,11 +466,6 @@ func (m Model) formatCallCommandForModal(node *TreeNode) string {
 	// Wrap text to fit the modal width
 	wrapped := wrapText(node.CallData.CommandLine, m.width-20)
 	return commandStyle.Render(wrapped)
-}
-
-// formatValue formats a value for human-readable display (used in details panel).
-func formatValue(v interface{}, maxWidth int) string {
-	return formatValueWithStyles(v, maxWidth, valueStyle, pathStyle, mutedStyle)
 }
 
 // formatValueForModal formats a value for display in modals with appropriate colors.

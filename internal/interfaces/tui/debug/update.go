@@ -171,13 +171,13 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, copyToClipboard(m.logModalContent)
 		}
 	case key.Matches(msg, m.keys.Up):
-		m.logModalViewport.LineUp(1)
+		m.logModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.logModalViewport.LineDown(1)
+		m.logModalViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.logModalViewport.ViewUp()
+		m.logModalViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.logModalViewport.ViewDown()
+		m.logModalViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.logModalViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -194,13 +194,13 @@ func (m Model) handleInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawInputsJSON())
 	case key.Matches(msg, m.keys.Up):
-		m.inputsModalViewport.LineUp(1)
+		m.inputsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.inputsModalViewport.LineDown(1)
+		m.inputsModalViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.inputsModalViewport.ViewUp()
+		m.inputsModalViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.inputsModalViewport.ViewDown()
+		m.inputsModalViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.inputsModalViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -217,13 +217,13 @@ func (m Model) handleOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawOutputsJSON())
 	case key.Matches(msg, m.keys.Up):
-		m.outputsModalViewport.LineUp(1)
+		m.outputsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.outputsModalViewport.LineDown(1)
+		m.outputsModalViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.outputsModalViewport.ViewUp()
+		m.outputsModalViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.outputsModalViewport.ViewDown()
+		m.outputsModalViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.outputsModalViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -240,13 +240,13 @@ func (m Model) handleOptionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawOptionsJSON())
 	case key.Matches(msg, m.keys.Up):
-		m.optionsModalViewport.LineUp(1)
+		m.optionsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.optionsModalViewport.LineDown(1)
+		m.optionsModalViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.optionsModalViewport.ViewUp()
+		m.optionsModalViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.optionsModalViewport.ViewDown()
+		m.optionsModalViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.optionsModalViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -268,13 +268,13 @@ func (m Model) handleCallInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case key.Matches(msg, m.keys.Up):
-		m.callInputsViewport.LineUp(1)
+		m.callInputsViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.callInputsViewport.LineDown(1)
+		m.callInputsViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.callInputsViewport.ViewUp()
+		m.callInputsViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.callInputsViewport.ViewDown()
+		m.callInputsViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.callInputsViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -296,13 +296,13 @@ func (m Model) handleCallOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case key.Matches(msg, m.keys.Up):
-		m.callOutputsViewport.LineUp(1)
+		m.callOutputsViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.callOutputsViewport.LineDown(1)
+		m.callOutputsViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.callOutputsViewport.ViewUp()
+		m.callOutputsViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.callOutputsViewport.ViewDown()
+		m.callOutputsViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.callOutputsViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -324,13 +324,13 @@ func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case key.Matches(msg, m.keys.Up):
-		m.callCommandViewport.LineUp(1)
+		m.callCommandViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
-		m.callCommandViewport.LineDown(1)
+		m.callCommandViewport.ScrollDown(1)
 	case key.Matches(msg, m.keys.PageUp):
-		m.callCommandViewport.ViewUp()
+		m.callCommandViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
-		m.callCommandViewport.ViewDown()
+		m.callCommandViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.callCommandViewport.GotoTop()
 	case key.Matches(msg, m.keys.End):
@@ -359,7 +359,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.updateDetailsContent()
 			}
 		} else {
-			m.detailViewport.LineUp(1)
+			m.detailViewport.ScrollUp(1)
 		}
 
 	case key.Matches(msg, m.keys.Down):
@@ -374,7 +374,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.updateDetailsContent()
 			}
 		} else {
-			m.detailViewport.LineDown(1)
+			m.detailViewport.ScrollDown(1)
 		}
 
 	case key.Matches(msg, m.keys.Left):
@@ -472,7 +472,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.updateDetailsContent()
 		} else {
-			m.detailViewport.ViewUp()
+			m.detailViewport.PageUp()
 		}
 
 	case key.Matches(msg, m.keys.PageDown):
@@ -483,7 +483,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.updateDetailsContent()
 		} else {
-			m.detailViewport.ViewDown()
+			m.detailViewport.PageDown()
 		}
 
 	// Call-level quick actions (1-4)
