@@ -80,7 +80,8 @@ func (m Model) View() string {
 }
 
 func (m Model) renderHeader() string {
-	statusIcon := statusStyle(m.metadata.Status)
+	// Get just the icon without styling
+	statusIcon := StatusIcon(m.metadata.Status)
 
 	// Calculate total cost
 	totalCost := m.calculateTotalCost()
