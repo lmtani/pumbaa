@@ -649,25 +649,45 @@ func (m Model) renderFooter() string {
 		parts = append(parts, " • ")
 	}
 
-	// Filter status
+	// Filter indicators with clear option
+	hasFilters := false
 	if len(m.activeFilters.Status) > 0 {
 		statusNames := make([]string, len(m.activeFilters.Status))
 		for i, s := range m.activeFilters.Status {
 			statusNames[i] = string(s)
 		}
-		parts = append(parts, fmt.Sprintf("Status: %s", strings.Join(statusNames, "/")))
-		parts = append(parts, " • ")
+		parts = append(parts, common.BadgeStyle.
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#FFD700")).
+			Render(fmt.Sprintf("Status: %s", strings.Join(statusNames, "/"))))
+		parts = append(parts, " ")
+		hasFilters = true
+	}
+
+	if m.activeFilters.Name != "" {
+		parts = append(parts, common.BadgeStyle.
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#87CEEB")).
+			Render(fmt.Sprintf("Name: %s", m.activeFilters.Name)))
+		parts = append(parts, " ")
+		hasFilters = true
+	}
+
+	if hasFilters {
+		parts = append(parts, common.KeyStyle.Render("ctrl+x")+common.DescStyle.Render(" clear")+"  ")
 	}
 
 	// Help
 	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
+		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
 		common.KeyStyle.Render("↑↓"),
 		common.DescStyle.Render("navigate"),
 		common.KeyStyle.Render("enter"),
 		common.DescStyle.Render("debug"),
 		common.KeyStyle.Render("a"),
 		common.DescStyle.Render("abort"),
+		common.KeyStyle.Render("/"),
+		common.DescStyle.Render("filter name"),
 		common.KeyStyle.Render("s"),
 		common.DescStyle.Render("filter status"),
 		common.KeyStyle.Render("r"),
