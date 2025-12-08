@@ -241,6 +241,10 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 
 	// Add query parameters
 	q := httpReq.URL.Query()
+
+	// Exclude subworkflows by default
+	q.Add("includeSubworkflows", "false")
+
 	if filter.Name != "" {
 		q.Add("name", filter.Name)
 	}

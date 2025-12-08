@@ -31,12 +31,13 @@ type Container struct {
 	BundleUseCase   *create.UseCase
 
 	// Handlers
-	SubmitHandler   *handler.SubmitHandler
-	MetadataHandler *handler.MetadataHandler
-	AbortHandler    *handler.AbortHandler
-	QueryHandler    *handler.QueryHandler
-	BundleHandler   *handler.BundleHandler
-	DebugHandler    *handler.DebugHandler
+	SubmitHandler    *handler.SubmitHandler
+	MetadataHandler  *handler.MetadataHandler
+	AbortHandler     *handler.AbortHandler
+	QueryHandler     *handler.QueryHandler
+	BundleHandler    *handler.BundleHandler
+	DebugHandler     *handler.DebugHandler
+	DashboardHandler *handler.DashboardHandler
 }
 
 // New creates a new dependency injection container.
@@ -68,6 +69,7 @@ func New(cfg *config.Config) *Container {
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
 	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient)
 
 	return c
 }
