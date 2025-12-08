@@ -79,6 +79,9 @@ type CallDetails struct {
 	// Cost
 	VMCostPerHour float64
 
+	// Preemption stats (calculated from all attempts of this task)
+	PreemptionStats *PreemptionStats
+
 	// Inputs/Outputs
 	Inputs  map[string]interface{}
 	Outputs map[string]interface{}
@@ -99,6 +102,46 @@ type ExecutionEvent struct {
 	Description string
 	Start       time.Time
 	End         time.Time
+}
+
+// PreemptionStats holds preemption efficiency data for a task.
+type PreemptionStats struct {
+	TotalAttempts   int     // Total number of attempts for this task/shard
+	PreemptedCount  int     // Number of times preempted (attempts - 1)
+	IsPreemptible   bool    // Whether the task was configured as preemptible
+	EfficiencyScore float64 // 1.0 = first try success, lower = more preemptions
+	MaxPreemptible  int     // Max preemptible attempts from config
+}
+
+// WorkflowPreemptionSummary holds aggregated preemption stats for a workflow.
+type WorkflowPreemptionSummary struct {
+	TotalTasks        int               // Total number of tasks/shards
+	PreemptibleTasks  int               // Number of preemptible tasks
+	TotalAttempts     int               // Total attempts across all tasks
+	TotalPreemptions  int               // Total preemptions across all tasks
+	OverallEfficiency float64           // Average efficiency (0-1)
+	ProblematicTasks  []ProblematicTask // Tasks with low efficiency
+
+	// Cost-weighted metrics
+	TotalCost      float64 // Total cost of all attempts (resource-hours)
+	WastedCost     float64 // Cost of failed attempts (resource-hours)
+	CostEfficiency float64 // 1 - (WastedCost / TotalCost)
+	CostUnit       string  // Unit for cost display (e.g., "resource-hours")
+}
+
+// ProblematicTask represents a task with poor preemption efficiency.
+type ProblematicTask struct {
+	Name            string
+	ShardCount      int     // Number of shards (0 or 1 means non-scattered)
+	Attempts        int     // Total attempts across all shards
+	Preemptions     int     // Total preemptions across all shards
+	EfficiencyScore float64 // Average efficiency across all shards
+
+	// Cost-weighted metrics
+	TotalCost      float64 // Total cost across all shards (resource-hours)
+	WastedCost     float64 // Cost of failed attempts (resource-hours)
+	CostEfficiency float64 // 1 - (WastedCost / TotalCost)
+	ImpactPercent  float64 // WastedCost / WorkflowTotalWastedCost × 100
 }
 
 // Failure represents a workflow or task failure with its cause chain.

@@ -366,3 +366,94 @@ func TestParseMetadataWithNestedFailures(t *testing.T) {
 		t.Errorf("Expected 'Level 3 root cause', got '%s'", level3.Message)
 	}
 }
+
+func TestParseMetadataPreemptionStats(t *testing.T) {
+	// Metadata JSON with preemptible task that was retried
+	data := []byte(`{
+		"id": "test-id",
+		"workflowName": "TestWorkflow",
+		"status": "Succeeded",
+		"calls": {
+			"TestWorkflow.PreemptibleTask": [
+				{
+					"shardIndex": -1,
+					"attempt": 1,
+					"executionStatus": "Preempted",
+					"backend": "GoogleBatch",
+					"runtimeAttributes": {"preemptible": "3", "cpu": "4"}
+				},
+				{
+					"shardIndex": -1,
+					"attempt": 2,
+					"executionStatus": "Done",
+					"backend": "GoogleBatch",
+					"runtimeAttributes": {"preemptible": "3", "cpu": "4"},
+					"returnCode": 0
+				}
+			],
+			"TestWorkflow.NonPreemptibleTask": [
+				{
+					"shardIndex": -1,
+					"attempt": 1,
+					"executionStatus": "Done",
+					"backend": "GoogleBatch",
+					"runtimeAttributes": {"preemptible": "false", "cpu": "2"},
+					"returnCode": 0
+				}
+			]
+		}
+	}`)
+
+	wm, err := ParseMetadata(data)
+	if err != nil {
+		t.Fatalf("Failed to parse metadata: %v", err)
+	}
+
+	// Verify preemptible task stats
+	preemptibleCalls := wm.Calls["TestWorkflow.PreemptibleTask"]
+	if len(preemptibleCalls) != 2 {
+		t.Fatalf("Expected 2 preemptible calls (attempts), got %d", len(preemptibleCalls))
+	}
+
+	// Both attempts should have the same preemption stats
+	for _, call := range preemptibleCalls {
+		if call.PreemptionStats == nil {
+			t.Fatal("Expected PreemptionStats to be set for preemptible task")
+		}
+		if !call.PreemptionStats.IsPreemptible {
+			t.Error("Expected IsPreemptible to be true")
+		}
+		if call.PreemptionStats.TotalAttempts != 2 {
+			t.Errorf("Expected 2 total attempts, got %d", call.PreemptionStats.TotalAttempts)
+		}
+		if call.PreemptionStats.PreemptedCount != 1 {
+			t.Errorf("Expected 1 preemption, got %d", call.PreemptionStats.PreemptedCount)
+		}
+		if call.PreemptionStats.MaxPreemptible != 3 {
+			t.Errorf("Expected max preemptible 3, got %d", call.PreemptionStats.MaxPreemptible)
+		}
+		// Efficiency = 1 - (1/3) = 0.666...
+		expectedEfficiency := 1.0 - (1.0 / 3.0)
+		if call.PreemptionStats.EfficiencyScore < expectedEfficiency-0.01 ||
+			call.PreemptionStats.EfficiencyScore > expectedEfficiency+0.01 {
+			t.Errorf("Expected efficiency ~%.2f, got %f", expectedEfficiency, call.PreemptionStats.EfficiencyScore)
+		}
+	}
+
+	// Verify non-preemptible task stats
+	nonPreemptibleCalls := wm.Calls["TestWorkflow.NonPreemptibleTask"]
+	if len(nonPreemptibleCalls) != 1 {
+		t.Fatalf("Expected 1 non-preemptible call, got %d", len(nonPreemptibleCalls))
+	}
+
+	nonPreemptibleCall := nonPreemptibleCalls[0]
+	if nonPreemptibleCall.PreemptionStats == nil {
+		t.Fatal("Expected PreemptionStats to be set for non-preemptible task")
+	}
+	if nonPreemptibleCall.PreemptionStats.IsPreemptible {
+		t.Error("Expected IsPreemptible to be false")
+	}
+	if nonPreemptibleCall.PreemptionStats.EfficiencyScore != 1.0 {
+		t.Errorf("Expected efficiency 1.0 for non-preemptible, got %f", nonPreemptibleCall.PreemptionStats.EfficiencyScore)
+	}
+}

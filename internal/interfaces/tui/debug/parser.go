@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow/preemption"
 )
 
 // ParseMetadata parses raw JSON metadata into WorkflowMetadata.
@@ -86,6 +88,8 @@ func ParseMetadata(data []byte) (*WorkflowMetadata, error) {
 				wm.Calls[callName] = details
 			}
 		}
+		// Calculate preemption stats for all calls
+		calculatePreemptionStats(wm.Calls)
 	}
 
 	return wm, nil
@@ -626,4 +630,239 @@ func latestEnd(calls []CallDetails) time.Time {
 		}
 	}
 	return latest
+}
+
+// calculatePreemptionStats calculates preemption statistics for all calls.
+// It groups calls by task name and shard, then calculates stats for each group.
+func calculatePreemptionStats(calls map[string][]CallDetails) {
+	for callName, callList := range calls {
+		// Group by shard index
+		shardGroups := make(map[int][]*CallDetails)
+		for i := range callList {
+			cd := &callList[i]
+			shardGroups[cd.ShardIndex] = append(shardGroups[cd.ShardIndex], cd)
+
+			// Recursively calculate for subworkflows
+			if cd.SubWorkflowMetadata != nil {
+				calculatePreemptionStats(cd.SubWorkflowMetadata.Calls)
+			}
+		}
+
+		// Calculate stats for each shard group
+		for _, shardCalls := range shardGroups {
+			stats := calculateShardPreemptionStats(shardCalls)
+			// Apply stats to all attempts in this shard (they share the same stats)
+			for _, cd := range shardCalls {
+				cd.PreemptionStats = stats
+			}
+		}
+
+		// Update the slice (since we're modifying pointers)
+		calls[callName] = callList
+	}
+}
+
+// calculateShardPreemptionStats calculates preemption stats for a single task/shard.
+func calculateShardPreemptionStats(attempts []*CallDetails) *PreemptionStats {
+	if len(attempts) == 0 {
+		return nil
+	}
+
+	// Sort by attempt number to get the final attempt
+	sort.Slice(attempts, func(i, j int) bool {
+		return attempts[i].Attempt < attempts[j].Attempt
+	})
+
+	stats := &PreemptionStats{
+		TotalAttempts:  len(attempts),
+		PreemptedCount: len(attempts) - 1,
+	}
+
+	// Get preemptible config from the last attempt
+	finalAttempt := attempts[len(attempts)-1]
+	stats.IsPreemptible = preemption.IsPreemptible(finalAttempt.Preemptible)
+	stats.MaxPreemptible = preemption.ParseMaxPreemptible(finalAttempt.Preemptible)
+
+	if stats.IsPreemptible {
+		// Calculate efficiency score
+		if stats.MaxPreemptible > 0 {
+			// Score based on how many retries out of max were used
+			stats.EfficiencyScore = 1.0 - (float64(stats.PreemptedCount) / float64(stats.MaxPreemptible))
+		} else {
+			// Without max info, use 1/attempts as score
+			stats.EfficiencyScore = 1.0 / float64(stats.TotalAttempts)
+		}
+
+		// Clamp to [0, 1]
+		if stats.EfficiencyScore < 0 {
+			stats.EfficiencyScore = 0
+		}
+		if stats.EfficiencyScore > 1 {
+			stats.EfficiencyScore = 1
+		}
+	} else {
+		stats.EfficiencyScore = 1.0
+	}
+
+	return stats
+}
+
+// CalculateWorkflowPreemptionSummary aggregates preemption stats across all calls.
+// It converts TUI CallDetails to preemption.CallData and uses the preemption analyzer.
+func CalculateWorkflowPreemptionSummary(workflowID, workflowName string, calls map[string][]CallDetails) *WorkflowPreemptionSummary {
+	// Convert TUI CallDetails to preemption.CallData
+	callData := convertToCallData(calls)
+
+	// Use the preemption analyzer
+	analyzer := preemption.NewAnalyzer()
+	result := analyzer.AnalyzeWorkflow(workflowID, workflowName, callData)
+
+	// Convert result back to TUI types
+	summary := &WorkflowPreemptionSummary{
+		TotalTasks:        result.TotalTasks,
+		PreemptibleTasks:  result.PreemptibleTasks,
+		TotalAttempts:     result.TotalAttempts,
+		TotalPreemptions:  result.TotalPreemptions,
+		OverallEfficiency: result.OverallEfficiency,
+		ProblematicTasks:  make([]ProblematicTask, len(result.ProblematicTasks)),
+		// Cost metrics
+		TotalCost:      result.TotalCost,
+		WastedCost:     result.WastedCost,
+		CostEfficiency: result.CostEfficiency,
+		CostUnit:       result.CostUnit,
+	}
+
+	for i, pt := range result.ProblematicTasks {
+		summary.ProblematicTasks[i] = ProblematicTask{
+			Name:            pt.Name,
+			ShardCount:      pt.ShardCount,
+			Attempts:        pt.TotalAttempts,
+			Preemptions:     pt.TotalPreemptions,
+			EfficiencyScore: pt.EfficiencyScore,
+			// Cost metrics
+			TotalCost:      pt.TotalCost,
+			WastedCost:     pt.WastedCost,
+			CostEfficiency: pt.CostEfficiency,
+			ImpactPercent:  pt.ImpactPercent,
+		}
+	}
+
+	return summary
+}
+
+// convertToCallData converts TUI CallDetails to preemption.CallData.
+func convertToCallData(calls map[string][]CallDetails) map[string][]preemption.CallData {
+	result := make(map[string][]preemption.CallData)
+
+	for callName, callList := range calls {
+		var data []preemption.CallData
+		for _, cd := range callList {
+			// Calculate duration in hours
+			var durationHours float64
+			if !cd.Start.IsZero() && !cd.End.IsZero() {
+				durationHours = cd.End.Sub(cd.Start).Hours()
+			}
+
+			data = append(data, preemption.CallData{
+				Name:            cd.Name,
+				ShardIndex:      cd.ShardIndex,
+				Attempt:         cd.Attempt,
+				ExecutionStatus: cd.ExecutionStatus,
+				Preemptible:     cd.Preemptible,
+				ReturnCode:      cd.ReturnCode,
+				// Resource info for cost calculation
+				CPU:           parseCPU(cd.CPU),
+				MemoryGB:      parseMemoryGB(cd.Memory),
+				DurationHours: durationHours,
+				VMCostPerHour: cd.VMCostPerHour,
+			})
+
+			// Recursively process subworkflows
+			if cd.SubWorkflowMetadata != nil {
+				subData := convertToCallData(cd.SubWorkflowMetadata.Calls)
+				for subName, subCalls := range subData {
+					// Prefix subworkflow call names
+					fullName := callName + "." + subName
+					result[fullName] = append(result[fullName], subCalls...)
+				}
+			}
+		}
+		result[callName] = data
+	}
+
+	return result
+}
+
+// parseCPU parses CPU string (e.g., "4", "4.0") to float64.
+func parseCPU(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	var cpu float64
+	for i, c := range s {
+		if c == '.' {
+			// Parse decimal part
+			var decimal float64
+			var divisor float64 = 10
+			for _, d := range s[i+1:] {
+				if d < '0' || d > '9' {
+					break
+				}
+				decimal += float64(d-'0') / divisor
+				divisor *= 10
+			}
+			return cpu + decimal
+		}
+		if c < '0' || c > '9' {
+			break
+		}
+		cpu = cpu*10 + float64(c-'0')
+	}
+	return cpu
+}
+
+// parseMemoryGB parses memory string (e.g., "8 GB", "8GB", "8192 MB") to GB.
+func parseMemoryGB(s string) float64 {
+	if s == "" {
+		return 0
+	}
+
+	// Extract numeric part
+	var num float64
+	var i int
+	for i = 0; i < len(s); i++ {
+		c := s[i]
+		if c == '.' {
+			// Parse decimal part
+			var decimal float64
+			var divisor float64 = 10
+			for j := i + 1; j < len(s); j++ {
+				d := s[j]
+				if d < '0' || d > '9' {
+					i = j
+					break
+				}
+				decimal += float64(d-'0') / divisor
+				divisor *= 10
+				i = j + 1
+			}
+			num += decimal
+			break
+		}
+		if c < '0' || c > '9' {
+			break
+		}
+		num = num*10 + float64(c-'0')
+	}
+
+	// Check for unit
+	rest := strings.ToUpper(strings.TrimSpace(s[i:]))
+	if strings.HasPrefix(rest, "MB") {
+		return num / 1024
+	}
+	if strings.HasPrefix(rest, "TB") {
+		return num * 1024
+	}
+	// Default to GB
+	return num
 }

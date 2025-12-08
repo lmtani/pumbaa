@@ -572,10 +572,16 @@ func (m Model) renderTable() string {
 }
 
 func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected bool) string {
-	// Status with color
+	// Status with color - use lipgloss width for proper alignment
 	statusIcon := common.StatusIcon(string(wf.Status))
 	statusStyle := common.StatusStyle(string(wf.Status))
-	status := statusStyle.Render(fmt.Sprintf("%-*s", colWidths[0]-2, statusIcon+" "+string(wf.Status)))
+	statusText := statusIcon + " " + string(wf.Status)
+	status := statusStyle.Render(statusText)
+	// Pad status to fixed width accounting for ANSI codes
+	statusPadding := colWidths[0] - lipgloss.Width(statusText)
+	if statusPadding > 0 {
+		status = status + strings.Repeat(" ", statusPadding)
+	}
 
 	// ID (truncated)
 	id := truncateID(wf.ID)
@@ -603,7 +609,7 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 		duration = formatDuration(dur)
 	}
 
-	row := fmt.Sprintf("%s  %-*s  %-*s  %-*s  %-*s",
+	row := fmt.Sprintf("%s  %-*s  %-*s  %-*s  %*s",
 		status,
 		colWidths[1], id,
 		colWidths[2], name,
