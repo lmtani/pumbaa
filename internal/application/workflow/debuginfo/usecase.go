@@ -21,7 +21,7 @@ type Usecase interface {
 }
 
 // usecaseImpl is the concrete implementation delegating to package-level functions.
-type usecaseImpl struct{
+type usecaseImpl struct {
 	analyzer *preemption.Analyzer
 }
 
@@ -67,10 +67,10 @@ func (u *usecaseImpl) CalculateWorkflowPreemptionSummary(workflowID, workflowNam
 		TotalPreemptions:  result.TotalPreemptions,
 		OverallEfficiency: result.OverallEfficiency,
 		ProblematicTasks:  make([]ProblematicTask, len(result.ProblematicTasks)),
-		TotalCost:      result.TotalCost,
-		WastedCost:     result.WastedCost,
-		CostEfficiency: result.CostEfficiency,
-		CostUnit:       result.CostUnit,
+		TotalCost:         result.TotalCost,
+		WastedCost:        result.WastedCost,
+		CostEfficiency:    result.CostEfficiency,
+		CostUnit:          result.CostUnit,
 	}
 
 	for i, pt := range result.ProblematicTasks {

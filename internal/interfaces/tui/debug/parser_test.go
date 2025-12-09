@@ -1,11 +1,11 @@
 package debug
 
 import (
-	"time"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"os"
 	"testing"
-	
+	"time"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 
 func TestParseMetadata(t *testing.T) {
