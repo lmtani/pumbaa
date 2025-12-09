@@ -3,6 +3,7 @@ package debug
 import (
 	"os"
 	"testing"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 
 func TestParseMetadata(t *testing.T) {
@@ -13,7 +14,7 @@ func TestParseMetadata(t *testing.T) {
 	}
 
 	// Parse the metadata
-	wm, err := ParseMetadata(data)
+	wm, err := debuginfo.ParseMetadata(data)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}
@@ -107,13 +108,13 @@ func TestBuildTree(t *testing.T) {
 	}
 
 	// Parse the metadata
-	wm, err := ParseMetadata(data)
+	wm, err := debuginfo.ParseMetadata(data)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}
 
 	// Build the tree
-	tree := BuildTree(wm)
+	tree := debuginfo.BuildTree(wm)
 
 	// Verify root node
 	if tree.Name != "SingleSampleGenotyping" {
@@ -208,7 +209,7 @@ func TestGetVisibleNodes(t *testing.T) {
 	}
 
 	// Get visible nodes
-	visible := GetVisibleNodes(root)
+	visible := debuginfo.GetVisibleNodes(root)
 
 	// Should show: root, child1, child2, grandchild3 (4 nodes)
 	// child1's children should be hidden because child1 is not expanded
@@ -276,7 +277,7 @@ func TestParseMetadataWithFailures(t *testing.T) {
 		]
 	}`)
 
-	wm, err := ParseMetadata(data)
+	wm, err := debuginfo.ParseMetadata(data)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}
@@ -333,7 +334,7 @@ func TestParseMetadataWithNestedFailures(t *testing.T) {
 		]
 	}`)
 
-	wm, err := ParseMetadata(data)
+	wm, err := debuginfo.ParseMetadata(data)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}
@@ -404,7 +405,7 @@ func TestParseMetadataPreemptionStats(t *testing.T) {
 		}
 	}`)
 
-	wm, err := ParseMetadata(data)
+	wm, err := debuginfo.ParseMetadata(data)
 	if err != nil {
 		t.Fatalf("Failed to parse metadata: %v", err)
 	}

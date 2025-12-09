@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -89,8 +90,8 @@ func NewModel(metadata *WorkflowMetadata) Model {
 
 // NewModelWithFetcher creates a new debug TUI model with a metadata fetcher.
 func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Model {
-	tree := BuildTree(metadata)
-	nodes := GetVisibleNodes(tree)
+	tree := debuginfo.BuildTree(metadata)
+	nodes := debuginfo.GetVisibleNodes(tree)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot

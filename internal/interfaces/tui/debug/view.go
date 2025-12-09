@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 
 // statusStyle returns a styled status icon
@@ -627,7 +628,7 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 		return ""
 	}
 
-	summary := CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
+	summary := debuginfo.CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
 	subworkflowCount := countSubworkflows(calls)
 
 	// Check if we have any preemptible tasks at this level

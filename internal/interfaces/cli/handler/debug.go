@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -103,7 +104,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	}
 
 	// Parse metadata
-	wm, err := debug.ParseMetadata(metadataBytes)
+	wm, err := debuginfo.ParseMetadata(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
