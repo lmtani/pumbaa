@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 
 // Message types for async operations
@@ -56,7 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if node != nil && node.CallData != nil {
 			node.CallData.SubWorkflowMetadata = msg.metadata
 			// Rebuild children for this node
-			addSubWorkflowChildren(node, msg.metadata, node.Depth+1)
+			debuginfo.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
 			node.Expanded = true
 			m.nodes = GetVisibleNodes(m.tree)
 			m.updateDetailsContent()
