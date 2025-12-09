@@ -1,173 +1,193 @@
-# Pumbaa - Cromwell CLI & WDL Tools
+# Pumbaa - Architecture Documentation
 
-A command-line tool for interacting with the Cromwell workflow engine and working with WDL (Workflow Description Language) files.
+## Overview
 
-## Architecture
+Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL files. The project follows Clean Architecture principles with a layered structure.
 
-This project follows **Clean Architecture** and **Domain-Driven Design (DDD)** principles:
+## Project Structure
 
 ```
-.
-├── cmd/
-│   └── cli/
-│       └── main.go              # Application entry point
-│
-├── internal/
-│   ├── domain/                  # Domain Layer (Enterprise Business Rules)
-│   │   ├── workflow/            # Workflow domain
-│   │   │   ├── entity.go        # Workflow, Call, Status entities
-│   │   │   ├── repository.go    # Repository interface (port)
-│   │   │   └── errors.go        # Domain errors
-│   │   └── bundle/              # Bundle domain
-│   │       ├── entity.go        # Bundle entity
-│   │       └── errors.go        # Domain errors
-│   │
-│   ├── application/             # Application Layer (Use Cases)
-│   │   ├── workflow/
-│   │   │   ├── submit/          # Submit workflow use case
-│   │   │   ├── metadata/        # Get metadata use case
-│   │   │   ├── abort/           # Abort workflow use case
-│   │   │   └── query/           # Query workflows use case
-│   │   └── bundle/
-│   │       └── create/          # Create bundle use case
-│   │
-│   ├── infrastructure/          # Infrastructure Layer (Adapters)
-│   │   └── cromwell/            # Cromwell API client
-│   │       ├── client.go        # HTTP client implementation
-│   │       ├── types.go         # API response types
-│   │       └── mapper.go        # Response to domain mappers
-│   │
-│   ├── interfaces/              # Interface Layer (Controllers/Presenters)
-│   │   └── cli/
-│   │       ├── handler/         # CLI command handlers
-│   │       │   ├── submit.go
-│   │       │   ├── metadata.go
-│   │       │   ├── abort.go
-│   │       │   ├── query.go
-│   │       │   └── bundle.go
-│   │       └── presenter/       # Terminal output formatting
-│   │           └── presenter.go
-│   │
-│   ├── config/                  # Configuration
-│   │   └── config.go
-│   │
-│   └── container/               # Dependency Injection
-│       └── container.go
-│
-└── pkg/
-    └── wdl/                     # Public WDL parsing package
-        ├── parser/              # ANTLR4 generated parser
-        ├── ast/                 # AST definitions
-        ├── visitor/             # Parse tree visitor
-        ├── wdl.go               # Public API
-        ├── analyzer.go          # Dependency analysis
-        └── bundle.go            # Bundle creation
+├── cmd/cli/              # Application entry point
+├── internal/             # Private application code
+│   ├── application/      # Use cases (Application Layer)
+│   ├── config/           # Configuration management
+│   ├── container/        # Dependency injection container
+│   ├── domain/           # Domain entities and interfaces (Domain Layer)
+│   ├── infrastructure/   # External services adapters (Infrastructure Layer)
+│   └── interfaces/       # UI adapters - CLI and TUI (Interface Layer)
+└── pkg/wdl/              # Reusable WDL parsing library
 ```
 
-## Installation
+## Architecture Layers
 
-```bash
-go install github.com/lmtani/pumbaa/cmd/cli@latest
+### Domain Layer (`internal/domain/`)
+
+Contains business entities and repository interfaces (ports).
+
+- **`workflow/`**: Workflow entities (`Workflow`, `Call`, `Status`), repository interface, and errors
+- **`bundle/`**: Bundle entities for WDL packaging
+
+### Application Layer (`internal/application/`)
+
+Contains use cases that orchestrate domain logic.
+
+- **`workflow/submit/`**: Workflow submission use case
+- **`workflow/metadata/`**: Metadata retrieval use case
+- **`workflow/abort/`**: Workflow abortion use case
+- **`workflow/query/`**: Workflow query use case
+- **`workflow/debuginfo/`**: Debug information parsing and tree building
+- **`bundle/create/`**: WDL bundle creation use case
+
+### Infrastructure Layer (`internal/infrastructure/`)
+
+Contains implementations of external services.
+
+- **`cromwell/`**: Cromwell API client implementing `workflow.Repository`
+
+### Interface Layer (`internal/interfaces/`)
+
+Contains adapters for user interaction.
+
+- **`cli/handler/`**: CLI command handlers
+- **`cli/presenter/`**: Output formatters
+- **`tui/dashboard/`**: Interactive workflow TUI dashboard
+- **`tui/debug/`**: Interactive debug TUI
+
+### Shared Library (`pkg/wdl/`)
+
+Reusable WDL parsing library with ANTLR-generated parser.
+
+- **`ast/`**: Abstract Syntax Tree definitions
+- **`parser/`**: ANTLR-generated lexer/parser
+- **`visitor/`**: AST visitor implementation
+
+## Dependency Flow
+
+```
+interfaces → application → domain ← infrastructure
+     ↓            ↓           ↑
+  container (wires everything together)
 ```
 
-Or build from source:
+## Key Patterns
 
-```bash
-go build -o pumbaa ./cmd/cli
+1. **Repository Pattern**: `workflow.Repository` interface in domain, implemented by `cromwell.Client`
+2. **Use Case Pattern**: Each operation is a separate use case with `Execute()` method
+3. **Dependency Injection**: `container.Container` wires all dependencies
+
+---
+
+## TODO: Architecture Violations
+
+### 1. Handler depends on Infrastructure directly
+
+**Location**: `internal/interfaces/cli/handler/debug.go`, `dashboard.go`
+
+**Issue**: `DebugHandler` and `DashboardHandler` receive `*cromwell.Client` directly instead of an interface.
+
+```go
+// Current (violates DIP)
+type DebugHandler struct {
+    client *cromwell.Client
+}
+
+// Should be
+type DebugHandler struct {
+    repo workflow.Repository  // or a specific interface
+}
 ```
 
-## Usage
+**Impact**: Cannot test handlers in isolation, tight coupling to Cromwell implementation.
 
-### Configuration
+---
 
-Set the Cromwell host via environment variable or flag:
+### 2. Missing Use Case for Debug/Dashboard
 
-```bash
-export CROMWELL_HOST=http://localhost:8000
-# or
-pumbaa --host http://localhost:8000 <command>
+**Location**: `internal/interfaces/cli/handler/debug.go`, `dashboard.go`
+
+**Issue**: These handlers call `cromwell.Client` methods directly, bypassing the application layer. Other handlers (submit, metadata, abort, query) correctly use use cases.
+
+**Impact**: Business logic leaks into interface layer, inconsistent architecture.
+
+---
+
+### 3. debuginfo package has mixed responsibilities
+
+**Location**: `internal/application/workflow/debuginfo/`
+
+**Issue**: This package contains:
+- Metadata parsing (should be infrastructure or domain)
+- Tree building (presentation logic, should be in TUI layer)
+- Types that duplicate domain entities
+
+**Impact**: Violates Single Responsibility Principle, hard to test and maintain.
+
+---
+
+### 4. TUI depends on debuginfo types directly
+
+**Location**: `internal/interfaces/tui/debug/types.go`
+
+**Issue**: TUI uses type aliases from `debuginfo` package:
+```go
+type TreeNode = debuginfo.TreeNode
+type CallDetails = debuginfo.CallDetails
 ```
 
-### Workflow Commands
+**Impact**: Application layer types leak into interface layer. Should use dedicated view models.
 
-#### Submit a workflow
+---
 
-```bash
-pumbaa workflow submit \
-  --workflow workflow.wdl \
-  --inputs inputs.json \
-  --options options.json \
-  --dependencies deps.zip \
-  --label env=production
+### 5. Container exposes concrete types
+
+**Location**: `internal/container/container.go`
+
+**Issue**: Container exposes `*cromwell.Client` instead of `workflow.Repository` interface.
+
+```go
+// Current
+CromwellClient *cromwell.Client
+
+// Should be
+WorkflowRepo workflow.Repository
 ```
 
-#### Get workflow metadata
+**Impact**: Handlers can bypass the interface and use concrete implementation details.
 
-```bash
-pumbaa workflow metadata <workflow-id>
-pumbaa workflow metadata <workflow-id> --verbose
+---
+
+### 6. preemption package location
+
+**Location**: `internal/domain/workflow/preemption/`
+
+**Issue**: Contains analysis logic that might be better suited in application layer, as it's not a core domain concept but rather a derived analysis.
+
+**Impact**: Domain layer contains application-level logic.
+
+---
+
+### 7. Submit UseCase reads files directly
+
+**Location**: `internal/application/workflow/submit/usecase.go`
+
+**Issue**: Use case calls `os.ReadFile()` directly instead of receiving file contents.
+
+```go
+// Current
+workflowSource, err := os.ReadFile(input.WorkflowFile)
+
+// Should receive content or use a FileReader interface
 ```
 
-#### Abort a workflow
+**Impact**: Hard to test, use case has I/O responsibilities.
 
-```bash
-pumbaa workflow abort <workflow-id>
-```
+---
 
-#### Query workflows
+## Recommended Refactoring Priority
 
-```bash
-pumbaa workflow query --name MyWorkflow --status Running --limit 10
-```
-
-### Bundle Commands
-
-Create a WDL bundle with all dependencies:
-
-```bash
-pumbaa bundle --workflow main.wdl --output bundle.zip
-```
-
-## Design Principles
-
-### Clean Architecture Layers
-
-1. **Domain Layer** (`internal/domain/`): Contains enterprise business rules - entities, value objects, and repository interfaces. Has no external dependencies.
-
-2. **Application Layer** (`internal/application/`): Contains application-specific business rules - use cases that orchestrate domain entities.
-
-3. **Infrastructure Layer** (`internal/infrastructure/`): Contains implementations of interfaces defined in the domain layer - database, external APIs, etc.
-
-4. **Interface Layer** (`internal/interfaces/`): Contains adapters for external interfaces - CLI handlers, HTTP controllers, etc.
-
-### Dependency Rule
-
-Dependencies flow inward:
-- **Interface** → **Application** → **Domain** ← **Infrastructure**
-
-The domain layer knows nothing about the outer layers. The infrastructure layer implements interfaces defined in the domain layer.
-
-### Dependency Injection
-
-The `container` package provides a simple DI container that wires all dependencies together at application startup.
-
-## Development
-
-### Adding a New Use Case
-
-1. Create the use case in `internal/application/<domain>/<usecase>/`
-2. Define `Input` and `Output` structs
-3. Implement the `Execute` method
-4. Add handler in `internal/interfaces/cli/handler/`
-5. Wire dependencies in `internal/container/container.go`
-
-### Adding a New Domain
-
-1. Create entity in `internal/domain/<domain>/entity.go`
-2. Define repository interface if needed
-3. Add domain errors
-4. Create use cases in application layer
-
-## License
-
-MIT
+1. **High**: Create interfaces for DebugHandler/DashboardHandler dependencies
+2. **High**: Create proper use cases for debug and dashboard features
+3. **Medium**: Move tree building logic to TUI layer, keep only parsing in debuginfo
+4. **Medium**: Use interfaces in Container instead of concrete types
+5. **Low**: Refactor Submit UseCase to not read files directly
+6. **Low**: Review preemption package location
