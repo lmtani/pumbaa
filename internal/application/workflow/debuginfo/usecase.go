@@ -1,5 +1,9 @@
 package debuginfo
 
+import (
+	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
+)
+
 // Package debuginfo already contains all the parsing and tree building logic.
 // This file adds a Usecase wrapper to keep the same application-layer architecture
 // that other features (e.g., preemption) follow under internal/application.
@@ -17,11 +21,16 @@ type Usecase interface {
 }
 
 // usecaseImpl is the concrete implementation delegating to package-level functions.
-type usecaseImpl struct{}
+type usecaseImpl struct{
+	analyzer *preemption.Analyzer
+}
 
 // NewUsecase creates a new Usecase instance.
-func NewUsecase() Usecase {
-	return &usecaseImpl{}
+func NewUsecase(analyzer *preemption.Analyzer) Usecase {
+	if analyzer == nil {
+		analyzer = preemption.NewAnalyzer()
+	}
+	return &usecaseImpl{analyzer: analyzer}
 }
 
 // ParseMetadata delegates to the package-level ParseMetadata function.
@@ -46,7 +55,38 @@ func (u *usecaseImpl) AddSubWorkflowChildren(node *TreeNode, subWM *WorkflowMeta
 
 // CalculateWorkflowPreemptionSummary delegates to the package-level function.
 func (u *usecaseImpl) CalculateWorkflowPreemptionSummary(workflowID, workflowName string, calls map[string][]CallDetails) *WorkflowPreemptionSummary {
-	return CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
+	// Convert to domain CallData
+	callData := ConvertToCallData(calls)
+	// use the injected analyzer
+	result := u.analyzer.AnalyzeWorkflow(workflowID, workflowName, callData)
+	// Convert domain result to debuginfo types
+	summary := &WorkflowPreemptionSummary{
+		TotalTasks:        result.TotalTasks,
+		PreemptibleTasks:  result.PreemptibleTasks,
+		TotalAttempts:     result.TotalAttempts,
+		TotalPreemptions:  result.TotalPreemptions,
+		OverallEfficiency: result.OverallEfficiency,
+		ProblematicTasks:  make([]ProblematicTask, len(result.ProblematicTasks)),
+		TotalCost:      result.TotalCost,
+		WastedCost:     result.WastedCost,
+		CostEfficiency: result.CostEfficiency,
+		CostUnit:       result.CostUnit,
+	}
+
+	for i, pt := range result.ProblematicTasks {
+		summary.ProblematicTasks[i] = ProblematicTask{
+			Name:            pt.Name,
+			ShardCount:      pt.ShardCount,
+			Attempts:        pt.TotalAttempts,
+			Preemptions:     pt.TotalPreemptions,
+			EfficiencyScore: pt.EfficiencyScore,
+			TotalCost:       pt.TotalCost,
+			WastedCost:      pt.WastedCost,
+			CostEfficiency:  pt.CostEfficiency,
+			ImpactPercent:   pt.ImpactPercent,
+		}
+	}
+	return summary
 }
 
 // DebugInfo is a high-level composite used by UI layers to render debug views.
@@ -69,7 +109,7 @@ func (u *usecaseImpl) GetDebugInfo(data []byte) (*DebugInfo, error) {
 	visible := GetVisibleNodes(root)
 
 	// Summarize preemption for the workflow level
-	summary := CalculateWorkflowPreemptionSummary(wm.ID, wm.Name, wm.Calls)
+	summary := u.CalculateWorkflowPreemptionSummary(wm.ID, wm.Name, wm.Calls)
 
 	return &DebugInfo{
 		Metadata:   wm,

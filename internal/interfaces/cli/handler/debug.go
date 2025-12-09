@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 	"github.com/urfave/cli/v2"
@@ -103,7 +104,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	uc := debuginfo.NewUsecase()
+	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

@@ -81,6 +81,9 @@ type Model struct {
 
 	// Status message
 	statusMessage string
+
+	// Pre-computed preemption summary when using a DebugInfo-based model
+	preemption *debuginfo.WorkflowPreemptionSummary
 }
 
 // NewModel creates a new debug TUI model.
@@ -122,6 +125,7 @@ func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Mod
 		metadata:       di.Metadata,
 		tree:           di.Root,
 		nodes:          di.Visible,
+		preemption:     di.Preemption,
 		fetcher:        fetcher,
 		cursor:         0,
 		focus:          FocusTree,

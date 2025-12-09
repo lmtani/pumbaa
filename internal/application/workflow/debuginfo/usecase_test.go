@@ -3,6 +3,7 @@ package debuginfo
 import (
     "os"
     "testing"
+    "github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 )
 
 func TestGetDebugInfo(t *testing.T) {
@@ -11,7 +12,7 @@ func TestGetDebugInfo(t *testing.T) {
         t.Fatalf("Failed to read test data: %v", err)
     }
 
-    uc := NewUsecase()
+    uc := NewUsecase(preemption.NewAnalyzer())
     di, err := uc.GetDebugInfo(data)
     if err != nil {
         t.Fatalf("GetDebugInfo failed: %v", err)

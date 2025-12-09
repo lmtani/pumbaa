@@ -628,7 +628,13 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 		return ""
 	}
 
-	summary := debuginfo.CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
+	var summary *debuginfo.WorkflowPreemptionSummary
+	if m.preemption != nil && node.Type == NodeTypeWorkflow {
+		// If model was constructed with DebugInfo, use its precomputed summary for the workflow root
+		summary = m.preemption
+	} else {
+		summary = debuginfo.CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
+	}
 	subworkflowCount := countSubworkflows(calls)
 
 	// Check if we have any preemptible tasks at this level

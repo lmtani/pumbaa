@@ -1,9 +1,11 @@
 package debug
 
 import (
+	"time"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"os"
 	"testing"
+	
 )
 
 func TestParseMetadata(t *testing.T) {
@@ -456,5 +458,44 @@ func TestParseMetadataPreemptionStats(t *testing.T) {
 	}
 	if nonPreemptibleCall.PreemptionStats.EfficiencyScore != 1.0 {
 		t.Errorf("Expected efficiency 1.0 for non-preemptible, got %f", nonPreemptibleCall.PreemptionStats.EfficiencyScore)
+	}
+}
+
+func TestCalculateWorkflowPreemptionSummary(t *testing.T) {
+	// Build simple calls map with one preemptible task retried
+	calls := map[string][]debuginfo.CallDetails{
+		"WF.Task": {
+			{
+				Name:            "Task",
+				ShardIndex:      -1,
+				Attempt:         1,
+				ExecutionStatus: "Preempted",
+				Preemptible:     "3",
+				Start:           time.Now().Add(-2 * time.Hour),
+				End:             time.Now().Add(-1 * time.Hour),
+				VMCostPerHour:   0.0,
+			},
+			{
+				Name:            "Task",
+				ShardIndex:      -1,
+				Attempt:         2,
+				ExecutionStatus: "Done",
+				Preemptible:     "3",
+				Start:           time.Now().Add(-1 * time.Hour),
+				End:             time.Now(),
+				VMCostPerHour:   0.0,
+			},
+		},
+	}
+
+	summary := debuginfo.CalculateWorkflowPreemptionSummary("wf", "wf", calls)
+	if summary == nil {
+		t.Fatal("Expected summary not nil")
+	}
+	if summary.PreemptibleTasks != 1 {
+		t.Errorf("Expected 1 preemptible task, got %d", summary.PreemptibleTasks)
+	}
+	if summary.TotalPreemptions != 1 {
+		t.Errorf("Expected 1 preemption, got %d", summary.TotalPreemptions)
 	}
 }

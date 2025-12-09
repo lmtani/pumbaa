@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/preemption"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 )
 
 // ParseMetadata parses raw JSON metadata into WorkflowMetadata.
