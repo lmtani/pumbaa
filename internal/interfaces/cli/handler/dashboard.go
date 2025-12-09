@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -110,14 +110,15 @@ func (h *DashboardHandler) runDebugForWorkflow(ctx context.Context, workflowID s
 		return fmt.Errorf("failed to fetch metadata: %w", err)
 	}
 
-	// Parse metadata
-	wm, err := debuginfo.ParseMetadata(metadataBytes)
+	// Build DebugInfo using usecase
+	uc := debuginfo.NewUsecase()
+	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse metadata: %w", err)
+		return fmt.Errorf("failed to build debug info: %w", err)
 	}
 
 	// Create and run the debug TUI
-	model := debug.NewModelWithFetcher(wm, h.client)
+	model := debug.NewModelWithDebugInfo(di, h.client)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

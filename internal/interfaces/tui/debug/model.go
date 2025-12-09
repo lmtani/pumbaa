@@ -112,6 +112,27 @@ func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Mo
 	}
 }
 
+// NewModelWithDebugInfo creates a model from a precomputed DebugInfo.
+func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
+
+	return Model{
+		metadata:       di.Metadata,
+		tree:           di.Root,
+		nodes:          di.Visible,
+		fetcher:        fetcher,
+		cursor:         0,
+		focus:          FocusTree,
+		viewMode:       ViewModeTree,
+		keys:           DefaultKeyMap(),
+		help:           help.New(),
+		detailViewport: viewport.New(80, 20),
+		loadingSpinner: s,
+	}
+}
+
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
 	return m.loadingSpinner.Tick

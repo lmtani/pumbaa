@@ -5,9 +5,9 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -103,19 +103,18 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	// Parse metadata
-	wm, err := debuginfo.ParseMetadata(metadataBytes)
+	uc := debuginfo.NewUsecase()
+	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse metadata: %w", err)
+		return fmt.Errorf("failed to build debug info: %w", err)
 	}
 
-	// Create and run the TUI
-	// Pass the client as fetcher only if we're using --id (server mode)
+	// Create and run the TUI using precomputed DebugInfo
 	var model debug.Model
 	if workflowID != "" {
-		model = debug.NewModelWithFetcher(wm, h.client)
+		model = debug.NewModelWithDebugInfo(di, h.client)
 	} else {
-		model = debug.NewModel(wm)
+		model = debug.NewModelWithDebugInfo(di, nil)
 	}
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
