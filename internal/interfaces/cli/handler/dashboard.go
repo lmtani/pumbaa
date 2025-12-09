@@ -62,12 +62,12 @@ KEY BINDINGS:
 }
 
 func (h *DashboardHandler) handle(c *cli.Context) error {
-	ctx := c.Context
 	fetcher := &dashboardFetcher{client: h.client}
 
 	for {
-		// Create dashboard model
+		// Create dashboard model with metadata fetcher for smooth transitions
 		model := dashboard.NewModelWithFetcher(fetcher)
+		model.SetMetadataFetcher(h.client)
 
 		// Create and run the program
 		p := tea.NewProgram(model, tea.WithAltScreen())
@@ -90,7 +90,22 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 		// Check if we need to navigate to debug view
 		if dashModel.NavigateToDebugID != "" {
-			err := h.runDebugForWorkflow(ctx, dashModel.NavigateToDebugID)
+			var metadataBytes []byte
+
+			// Use pre-fetched metadata if available
+			if dashModel.DebugMetadataReady != nil {
+				metadataBytes = dashModel.DebugMetadataReady
+			} else {
+				// Fallback: fetch metadata (shouldn't happen with new flow)
+				var err error
+				metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, dashModel.NavigateToDebugID, false)
+				if err != nil {
+					fmt.Printf("Error fetching metadata: %v\n", err)
+					continue
+				}
+			}
+
+			err := h.runDebugWithMetadata(metadataBytes)
 			if err != nil {
 				// Log error but continue - will restart dashboard
 				fmt.Printf("Error opening debug view: %v\n", err)
@@ -104,13 +119,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 	}
 }
 
-func (h *DashboardHandler) runDebugForWorkflow(ctx context.Context, workflowID string) error {
-	// Fetch metadata
-	metadataBytes, err := h.client.GetRawMetadataWithOptions(ctx, workflowID, false)
-	if err != nil {
-		return fmt.Errorf("failed to fetch metadata: %w", err)
-	}
-
+func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	// Build DebugInfo using usecase
 	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
 	di, err := uc.GetDebugInfo(metadataBytes)

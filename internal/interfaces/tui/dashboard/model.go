@@ -23,6 +23,11 @@ type WorkflowFetcher interface {
 	Abort(ctx context.Context, workflowID string) error
 }
 
+// MetadataFetcher interface for fetching workflow metadata (for debug transition)
+type MetadataFetcher interface {
+	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
+}
+
 // Model represents the dashboard screen state.
 type Model struct {
 	width       int
@@ -49,6 +54,12 @@ type Model struct {
 	showConfirm   bool
 	confirmAction string
 	confirmID     string
+
+	// Debug transition state
+	loadingDebug       bool
+	loadingDebugID     string
+	metadataFetcher    MetadataFetcher
+	DebugMetadataReady []byte // Metadata ready for debug view
 
 	// Navigation state (for external handlers to check)
 	NavigateToDebugID string
@@ -133,6 +144,11 @@ func NewModelWithFetcher(fetcher WorkflowFetcher) Model {
 	return m
 }
 
+// SetMetadataFetcher sets the metadata fetcher for debug transitions
+func (m *Model) SetMetadataFetcher(fetcher MetadataFetcher) {
+	m.metadataFetcher = fetcher
+}
+
 // Messages
 type workflowsLoadedMsg struct {
 	workflows  []workflow.Workflow
@@ -147,6 +163,15 @@ type abortResultMsg struct {
 	success bool
 	id      string
 	err     error
+}
+
+type debugMetadataLoadedMsg struct {
+	workflowID string
+	metadata   []byte
+}
+
+type debugMetadataErrorMsg struct {
+	err error
 }
 
 // NavigateToDebugMsg is sent when user wants to open debug view
@@ -174,7 +199,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading {
+		if m.loading || m.loadingDebug {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -205,7 +230,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMsg = fmt.Sprintf("✗ Failed to abort: %v", msg.err)
 		}
 
+	case debugMetadataLoadedMsg:
+		m.loadingDebug = false
+		m.DebugMetadataReady = msg.metadata
+		m.NavigateToDebugID = msg.workflowID
+		return m, tea.Quit
+
+	case debugMetadataErrorMsg:
+		m.loadingDebug = false
+		m.loadingDebugID = ""
+		m.statusMsg = fmt.Sprintf("✗ Failed to load metadata: %v", msg.err)
+
 	case tea.KeyMsg:
+		// Ignore keys while loading debug
+		if m.loadingDebug {
+			return m, nil
+		}
+
 		// Handle confirmation modal first
 		if m.showConfirm {
 			return m.handleConfirmKeys(msg)
@@ -268,8 +309,16 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Open):
 		if len(m.workflows) > 0 && m.cursor < len(m.workflows) {
 			wf := m.workflows[m.cursor]
-			m.NavigateToDebugID = wf.ID
-			return m, tea.Quit
+			// If we have a metadata fetcher, load metadata with loading screen
+			if m.metadataFetcher != nil {
+				m.loadingDebug = true
+				m.loadingDebugID = wf.ID
+				cmds = append(cmds, m.spinner.Tick, m.fetchDebugMetadata(wf.ID))
+			} else {
+				// Fallback to old behavior if no metadata fetcher
+				m.NavigateToDebugID = wf.ID
+				return m, tea.Quit
+			}
 		}
 
 	case key.Matches(msg, m.keys.Abort):
@@ -419,8 +468,30 @@ func (m Model) abortWorkflow(id string) tea.Cmd {
 	}
 }
 
+func (m Model) fetchDebugMetadata(workflowID string) tea.Cmd {
+	return func() tea.Msg {
+		if m.metadataFetcher == nil {
+			return debugMetadataErrorMsg{err: fmt.Errorf("no metadata fetcher configured")}
+		}
+
+		metadata, err := m.metadataFetcher.GetRawMetadataWithOptions(context.Background(), workflowID, false)
+		if err != nil {
+			return debugMetadataErrorMsg{err: err}
+		}
+
+		return debugMetadataLoadedMsg{
+			workflowID: workflowID,
+			metadata:   metadata,
+		}
+	}
+}
+
 // View implements tea.Model.
 func (m Model) View() string {
+	if m.loadingDebug {
+		return m.renderDebugLoadingScreen()
+	}
+
 	if m.showConfirm {
 		return m.renderConfirmModal()
 	}
@@ -430,6 +501,42 @@ func (m Model) View() string {
 	footer := m.renderFooter()
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, content, footer)
+}
+
+func (m Model) renderDebugLoadingScreen() string {
+	// Find the workflow name
+	workflowName := "workflow"
+	for _, wf := range m.workflows {
+		if wf.ID == m.loadingDebugID {
+			workflowName = wf.Name
+			break
+		}
+	}
+
+	loadingContent := lipgloss.JoinVertical(lipgloss.Center,
+		"",
+		common.TitleStyle.Render("🔍 Loading Debug View"),
+		"",
+		m.spinner.View()+"  Fetching metadata...",
+		"",
+		common.MutedStyle.Render(workflowName),
+		common.MutedStyle.Render(truncateID(m.loadingDebugID)),
+		"",
+	)
+
+	loadingBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(common.PrimaryColor).
+		Padding(2, 4).
+		Render(loadingContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		loadingBox,
+	)
 }
 
 func (m Model) renderHeader() string {
