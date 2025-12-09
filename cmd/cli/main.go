@@ -23,6 +23,9 @@ func main() {
 	// Initialize configuration
 	cfg := config.Load()
 
+	// Create container with initial config
+	cont := container.New(cfg)
+
 	app := &cli.App{
 		Name:    "pumbaa",
 		Usage:   "A CLI tool for interacting with Cromwell workflow engine and WDL files",
@@ -39,14 +42,11 @@ func main() {
 		Before: func(c *cli.Context) error {
 			// Update config with CLI flags
 			if c.IsSet("host") {
-				cfg.CromwellHost = c.String("host")
+				cont.CromwellClient.BaseURL = c.String("host")
 			}
 			return nil
 		},
 	}
-
-	// Create container with initial config
-	cont := container.New(cfg)
 
 	// Setup commands
 	app.Commands = []*cli.Command{

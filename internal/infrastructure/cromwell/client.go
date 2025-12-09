@@ -16,7 +16,7 @@ import (
 
 // Client implements workflow.Repository for Cromwell.
 type Client struct {
-	baseURL    string
+	BaseURL    string
 	httpClient *http.Client
 }
 
@@ -34,7 +34,7 @@ func NewClient(cfg Config) *Client {
 	}
 
 	return &Client{
-		baseURL: cfg.Host,
+		BaseURL: cfg.Host,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -98,7 +98,7 @@ func (c *Client) Submit(ctx context.Context, req workflow.SubmitRequest) (*workf
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/api/workflows/v1", c.baseURL)
+	url := fmt.Sprintf("%s/api/workflows/v1", c.BaseURL)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (c *Client) Submit(ctx context.Context, req workflow.SubmitRequest) (*workf
 
 // GetMetadata retrieves detailed metadata for a workflow.
 func (c *Client) GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -167,7 +167,7 @@ func (c *Client) GetMetadata(ctx context.Context, workflowID string) (*workflow.
 
 // GetStatus retrieves the status of a workflow.
 func (c *Client) GetStatus(ctx context.Context, workflowID string) (workflow.Status, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/status", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/status", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -202,7 +202,7 @@ func (c *Client) GetStatus(ctx context.Context, workflowID string) (workflow.Sta
 
 // Abort aborts a running workflow.
 func (c *Client) Abort(ctx context.Context, workflowID string) error {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/abort", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/abort", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
 	if err != nil {
@@ -232,7 +232,7 @@ func (c *Client) Abort(ctx context.Context, workflowID string) error {
 
 // Query queries workflows based on filters.
 func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/query", c.baseURL)
+	url := fmt.Sprintf("%s/api/workflows/v1/query", c.BaseURL)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -299,7 +299,7 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 
 // GetOutputs retrieves the outputs of a completed workflow.
 func (c *Client) GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/outputs", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/outputs", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -334,7 +334,7 @@ func (c *Client) GetOutputs(ctx context.Context, workflowID string) (map[string]
 
 // GetLogs retrieves the logs for a workflow.
 func (c *Client) GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/logs", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/logs", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -387,7 +387,7 @@ func (c *Client) GetRawMetadata(ctx context.Context, workflowID string) ([]byte,
 
 // GetRawMetadataWithOptions retrieves the raw JSON metadata for a workflow with options.
 func (c *Client) GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error) {
-	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.baseURL, workflowID)
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata", c.BaseURL, workflowID)
 	if expandSubWorkflows {
 		url += "?expandSubWorkflows=true"
 	}
