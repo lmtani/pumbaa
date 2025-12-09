@@ -36,7 +36,6 @@ const (
 	ViewModeLogs
 	ViewModeInputs
 	ViewModeOutputs
-	ViewModeTimeline
 	ViewModeHelp
 )
 

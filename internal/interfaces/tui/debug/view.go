@@ -286,8 +286,6 @@ func (m Model) getDetailsTitle() string {
 		return "📥 Inputs"
 	case ViewModeOutputs:
 		return "📤 Outputs"
-	case ViewModeTimeline:
-		return "⏱ Timeline"
 	default:
 		return "📊 Details"
 	}
@@ -303,8 +301,6 @@ func (m Model) renderDetailsContent(node *TreeNode) string {
 		return m.renderInputs(node)
 	case ViewModeOutputs:
 		return m.renderOutputs(node)
-	case ViewModeTimeline:
-		return m.renderTimeline(node)
 	default:
 		return m.renderBasicDetails(node)
 	}
@@ -514,25 +510,12 @@ func (m Model) renderOutputs(node *TreeNode) string {
 	return sb.String()
 }
 
-func (m Model) renderTimeline(node *TreeNode) string {
-	if node.CallData == nil || len(node.CallData.ExecutionEvents) == 0 {
-		return mutedStyle.Render("No timeline available")
-	}
-
-	var sb strings.Builder
-	for _, event := range node.CallData.ExecutionEvents {
-		time := event.Start.Format("15:04:05")
-		sb.WriteString(labelStyle.Render(time) + " " + valueStyle.Render(event.Description) + "\n")
-	}
-	return sb.String()
-}
-
 func (m Model) renderFooter() string {
 	var footer string
 	if m.statusMessage != "" {
 		footer = warningStyle.Render(m.statusMessage)
 	} else {
-		footer = " ↑↓ navigate • tab switch • d details • c cmd • i inputs • o outputs • T durations • ? help • q quit"
+		footer = " ↑↓ navigate • tab switch • d details • c cmd • i inputs • o outputs • t durations • ? help • q quit"
 	}
 	return helpBarStyle.Width(m.width - 2).Render(footer)
 }

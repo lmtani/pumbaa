@@ -32,7 +32,7 @@ func (h *DebugHandler) Command() *cli.Command {
 		Description: `Opens an interactive terminal UI to explore workflow metadata.
 
 Navigate through the call tree, view task details, commands, inputs,
-outputs, and execution timeline.
+and outputs.
 
 USAGE EXAMPLES:
   # Debug a workflow by ID (fetches metadata from Cromwell)
@@ -51,7 +51,7 @@ KEY BINDINGS:
   L             View log paths (stdout/stderr)
   i             View task inputs
   o             View task outputs
-  t             View execution timeline
+  t             View tasks duration (workflows/subworkflows)
   E             Expand all nodes
   C             Collapse all nodes
   ?             Show help

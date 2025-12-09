@@ -467,10 +467,6 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusMessage = "No options available for this workflow"
 		}
 
-	case key.Matches(msg, m.keys.Timeline):
-		m.viewMode = ViewModeTimeline
-		m.updateDetailsContent()
-
 	case key.Matches(msg, m.keys.GlobalTimeline):
 		// Check if we're on a workflow or subworkflow node to show its timeline
 		if m.cursor < len(m.nodes) {

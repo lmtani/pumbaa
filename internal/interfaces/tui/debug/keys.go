@@ -20,7 +20,6 @@ type KeyMap struct {
 	Inputs         key.Binding
 	Outputs        key.Binding
 	Options        key.Binding
-	Timeline       key.Binding
 	GlobalTimeline key.Binding
 	CopyStdout     key.Binding
 	CopyStderr     key.Binding
@@ -101,13 +100,9 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("O"),
 			key.WithHelp("O", "view options"),
 		),
-		Timeline: key.NewBinding(
-			key.WithKeys("t"),
-			key.WithHelp("t", "view timeline"),
-		),
 		GlobalTimeline: key.NewBinding(
-			key.WithKeys("T"),
-			key.WithHelp("T", "all tasks duration"),
+			key.WithKeys("t"),
+			key.WithHelp("t", "tasks duration"),
 		),
 		CopyStdout: key.NewBinding(
 			key.WithKeys("1"),
@@ -163,7 +158,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.Command, k.Logs, k.Inputs},
-		{k.Outputs, k.Timeline, k.GlobalTimeline, k.Options},
+		{k.Outputs, k.GlobalTimeline, k.Options},
 		{k.ExpandAll, k.CollapseAll, k.Home, k.End},
 		{k.PageUp, k.PageDown, k.CopyStdout, k.CopyStderr},
 		{k.Help, k.Quit},
