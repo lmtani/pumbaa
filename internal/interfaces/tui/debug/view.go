@@ -530,7 +530,7 @@ func (m Model) renderFooter() string {
 
 		footer = temporaryStatusStyle.Render("⏱ " + m.statusMessage + progressBar)
 	} else {
-		footer = " ↑↓ navigate • tab switch • d details • c cmd • i inputs • o outputs • t durations • ? help • q quit"
+		footer = " ↑↓ navigate • tab switch • d details • c cmd • i inputs • o outputs • O options • t durations • ? help • q quit"
 	}
 	return helpBarStyle.Width(m.width - 2).Render(footer)
 }
