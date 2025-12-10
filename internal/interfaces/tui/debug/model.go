@@ -2,6 +2,7 @@ package debug
 
 import (
 	"context"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -80,7 +81,8 @@ type Model struct {
 	detailViewport viewport.Model
 
 	// Status message
-	statusMessage string
+	statusMessage        string
+	statusMessageExpires time.Time // When the status message should disappear
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
 	preemption *debuginfo.WorkflowPreemptionSummary

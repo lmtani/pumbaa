@@ -177,6 +177,11 @@ var (
 				Foreground(mutedColor).
 				Background(lipgloss.Color("#333333")).
 				Padding(0, 1)
+
+	// Temporary status message style
+	temporaryStatusStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFF00")).
+				Bold(true)
 )
 
 // StatusStyle returns the appropriate style for a status.

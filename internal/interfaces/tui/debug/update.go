@@ -42,6 +42,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case clearStatusMsg:
 		m.statusMessage = ""
+		m.statusMessageExpires = time.Time{} // Reset expiration
 		return m, nil
 
 	case clipboardCopiedMsg:
@@ -74,8 +75,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case subWorkflowErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.statusMessage = fmt.Sprintf("Error loading subworkflow: %s", msg.err.Error())
-		return m, setStatusMessage(m.statusMessage)
+		m.setStatusMessage(fmt.Sprintf("Error loading subworkflow: %s", msg.err.Error()))
+		return m, getClearStatusCmd()
 
 	case logLoadedMsg:
 		m.isLoading = false
@@ -453,8 +454,8 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
 		} else {
-			m.statusMessage = "No inputs available for this workflow"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No inputs available for this workflow")
+			return m, getClearStatusCmd()
 		}
 
 	case key.Matches(msg, m.keys.Outputs):
@@ -463,8 +464,8 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
 		} else {
-			m.statusMessage = "No outputs available for this workflow"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No outputs available for this workflow")
+			return m, getClearStatusCmd()
 		}
 
 	case key.Matches(msg, m.keys.Options):
@@ -473,8 +474,8 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
 		} else {
-			m.statusMessage = "No options available for this workflow"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No options available for this workflow")
+			return m, getClearStatusCmd()
 		}
 
 	case key.Matches(msg, m.keys.GlobalTimeline):
@@ -581,8 +582,8 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 					m.loadingMessage = "Loading subworkflow metadata..."
 					return m, tea.Batch(m.loadingSpinner.Tick, m.fetchSubWorkflowMetadata(node))
 				} else {
-					m.statusMessage = "Cannot fetch subworkflow: no server connection (use --id flag)"
-					return m, setStatusMessage(m.statusMessage)
+					m.setStatusMessage("Cannot fetch subworkflow: no server connection (use --id flag)")
+					return m, getClearStatusCmd()
 				}
 			}
 		} else if len(node.Children) > 0 {
@@ -602,8 +603,8 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.callInputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
 		} else {
-			m.statusMessage = "No inputs available for this call"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No inputs available for this call")
+			return m, getClearStatusCmd()
 		}
 	} else if msg.String() == "2" && m.cursor < len(m.nodes) {
 		node := m.nodes[m.cursor]
@@ -612,8 +613,8 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
 		} else {
-			m.statusMessage = "No outputs available for this call"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No outputs available for this call")
+			return m, getClearStatusCmd()
 		}
 	} else if msg.String() == "3" && m.cursor < len(m.nodes) {
 		node := m.nodes[m.cursor]
@@ -622,8 +623,8 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.callCommandViewport = viewport.New(m.width-10, m.height-8)
 			m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
 		} else {
-			m.statusMessage = "No command available for this call"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No command available for this call")
+			return m, getClearStatusCmd()
 		}
 	} else if msg.String() == "4" && m.cursor < len(m.nodes) {
 		node := m.nodes[m.cursor]
@@ -633,8 +634,8 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.updateDetailsContent()
 			m.focus = FocusDetails
 		} else {
-			m.statusMessage = "No logs available for this call"
-			return m, setStatusMessage(m.statusMessage)
+			m.setStatusMessage("No logs available for this call")
+			return m, getClearStatusCmd()
 		}
 	}
 	return m, nil
@@ -734,7 +735,13 @@ func (m Model) openLogFile(path string) tea.Cmd {
 }
 
 // setStatusMessage sets a temporary status message that clears after a delay
-func setStatusMessage(message string) tea.Cmd {
+func (m *Model) setStatusMessage(message string) {
+	m.statusMessage = message
+	m.statusMessageExpires = time.Now().Add(3 * time.Second)
+}
+
+// getClearStatusCmd returns a command to clear the status after a delay
+func getClearStatusCmd() tea.Cmd {
 	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
 		return clearStatusMsg{}
 	})
