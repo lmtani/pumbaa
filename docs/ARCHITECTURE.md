@@ -191,3 +191,15 @@ workflowSource, err := os.ReadFile(input.WorkflowFile)
 4. **Medium**: Use interfaces in Container instead of concrete types
 5. **Low**: Refactor Submit UseCase to not read files directly
 6. **Low**: Review preemption package location
+
+---
+
+## CI Migration: GitHub Actions
+
+The project has been migrated from CircleCI to GitHub Actions. The previous CircleCI configuration (which uploaded coverage to Codecov) was removed and replaced by two GitHub Actions workflows:
+
+- `ci.yml` — Runs tests and builds on PRs / pushes to `main`, uploads the build and coverage artifacts to Actions artifacts (no external Codecov upload).
+- `release.yml` — Triggered on pushed Git tags (v*). Runs tests and then uses Goreleaser to create a release and attach signed build artifacts.
+
+Goreleaser uses the repo's `.goreleaser.yml` to generate binaries for supported platforms. The release workflow uses the `GITHUB_TOKEN` secret (automatically provided by GitHub Actions) to create releases.
+
