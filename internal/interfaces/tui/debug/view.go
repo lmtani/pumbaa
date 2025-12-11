@@ -319,124 +319,134 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(node.SubWorkflowID) + "\n")
 	}
 
-	// Show workflow-level failures if this is the root workflow node
-	if node.Type == NodeTypeWorkflow && len(m.metadata.Failures) > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(m.renderFailures())
-	}
-
-	// Show preemption summary for workflow nodes
-	if node.Type == NodeTypeWorkflow || node.Type == NodeTypeSubWorkflow {
-		sb.WriteString("\n")
-		sb.WriteString(m.renderPreemptionSummary(node))
-	}
-
 	// Call-specific details
-	if node.CallData == nil {
-		return sb.String()
-	}
+	if node.CallData != nil {
+		cd := node.CallData
 
-	cd := node.CallData
+		// Quick Actions section - FIRST!
+		sb.WriteString("\n")
+		sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
 
-	sb.WriteString("\n")
+		// Show available actions based on data
+		if len(cd.Inputs) > 0 {
+			sb.WriteString(buttonStyle.Render(" 1 ") + " Inputs  ")
+		} else {
+			sb.WriteString(disabledButtonStyle.Render(" 1 ") + mutedStyle.Render(" Inputs  "))
+		}
 
-	// Timing
-	sb.WriteString(titleStyle.Render("⏱ Timing") + "\n")
-	if !cd.Start.IsZero() {
-		sb.WriteString(labelStyle.Render("Start: ") + valueStyle.Render(cd.Start.Format("15:04:05")) + "\n")
-	}
-	if !cd.End.IsZero() {
-		sb.WriteString(labelStyle.Render("End: ") + valueStyle.Render(cd.End.Format("15:04:05")) + "\n")
-		if !cd.Start.IsZero() {
-			duration := cd.End.Sub(cd.Start)
-			sb.WriteString(labelStyle.Render("Duration: ") + valueStyle.Render(formatDuration(duration)) + "\n")
+		if len(cd.Outputs) > 0 {
+			sb.WriteString(buttonStyle.Render(" 2 ") + " Outputs  ")
+		} else {
+			sb.WriteString(disabledButtonStyle.Render(" 2 ") + mutedStyle.Render(" Outputs  "))
+		}
+
+		if cd.CommandLine != "" {
+			sb.WriteString(buttonStyle.Render(" 3 ") + " Command  ")
+		} else {
+			sb.WriteString(disabledButtonStyle.Render(" 3 ") + mutedStyle.Render(" Command  "))
+		}
+
+		if cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" {
+			sb.WriteString(buttonStyle.Render(" 4 ") + " Logs")
+		} else {
+			sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs"))
+		}
+
+		sb.WriteString("\n")
+
+		// Show task-level failures if present
+		if len(cd.Failures) > 0 {
+			sb.WriteString("\n")
+			sb.WriteString(m.renderTaskFailures(cd.Failures))
+		}
+
+		// Timing
+		if !cd.Start.IsZero() || !cd.End.IsZero() || !cd.VMStartTime.IsZero() || !cd.VMEndTime.IsZero() {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("⏱ Timing") + "\n")
+			if !cd.Start.IsZero() {
+				sb.WriteString(labelStyle.Render("Start: ") + valueStyle.Render(cd.Start.Format("15:04:05")) + "\n")
+			}
+			if !cd.End.IsZero() {
+				sb.WriteString(labelStyle.Render("End: ") + valueStyle.Render(cd.End.Format("15:04:05")) + "\n")
+				if !cd.Start.IsZero() {
+					duration := cd.End.Sub(cd.Start)
+					sb.WriteString(labelStyle.Render("Duration: ") + valueStyle.Render(formatDuration(duration)) + "\n")
+				}
+			}
+			if !cd.VMStartTime.IsZero() {
+				sb.WriteString(labelStyle.Render("VM Start: ") + valueStyle.Render(cd.VMStartTime.Format("15:04:05")) + "\n")
+			}
+			if !cd.VMEndTime.IsZero() {
+				sb.WriteString(labelStyle.Render("VM End: ") + valueStyle.Render(cd.VMEndTime.Format("15:04:05")) + "\n")
+			}
+		}
+
+		// Resources - only show if has data
+		if cd.CPU != "" || cd.Memory != "" || cd.Disk != "" || cd.Preemptible != "" {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("💻 Resources") + "\n")
+			if cd.CPU != "" {
+				sb.WriteString(labelStyle.Render("CPU: ") + valueStyle.Render(cd.CPU) + "\n")
+			}
+			if cd.Memory != "" {
+				sb.WriteString(labelStyle.Render("Memory: ") + valueStyle.Render(cd.Memory) + "\n")
+			}
+			if cd.Disk != "" {
+				sb.WriteString(labelStyle.Render("Disk: ") + valueStyle.Render(cd.Disk) + "\n")
+			}
+			if cd.Preemptible != "" {
+				sb.WriteString(labelStyle.Render("Preemptible: ") + valueStyle.Render(cd.Preemptible) + "\n")
+			}
+		}
+
+		// Docker - only show if has data
+		if cd.DockerImage != "" || cd.DockerSize != "" {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("🐳 Docker") + "\n")
+			if cd.DockerImage != "" {
+				sb.WriteString(labelStyle.Render("Image: ") + "\n")
+				sb.WriteString(formatDockerImage(cd.DockerImage))
+			}
+			if cd.DockerSize != "" {
+				sb.WriteString(labelStyle.Render("Size: ") + valueStyle.Render(cd.DockerSize) + "\n")
+			}
+		}
+
+		// Cache - only show if has meaningful data
+		if cd.CacheHit || cd.CacheResult != "" {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("📦 Cache") + "\n")
+			cacheStatus := "Miss"
+			if cd.CacheHit {
+				cacheStatus = "Hit"
+			}
+			sb.WriteString(labelStyle.Render("Status: ") + valueStyle.Render(cacheStatus) + "\n")
+			if cd.CacheResult != "" {
+				sb.WriteString(labelStyle.Render("Result: ") + valueStyle.Render(cd.CacheResult) + "\n")
+			}
+		}
+
+		// Cost
+		if cd.VMCostPerHour > 0 {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("💰 Cost") + "\n")
+			sb.WriteString(labelStyle.Render("VM Cost/Hour: ") + valueStyle.Render(fmt.Sprintf("$%.4f", cd.VMCostPerHour)) + "\n")
+		}
+	} else {
+		// For workflow/subworkflow nodes without CallData
+		// Show workflow-level failures if this is the root workflow node
+		if node.Type == NodeTypeWorkflow && len(m.metadata.Failures) > 0 {
+			sb.WriteString("\n")
+			sb.WriteString(m.renderFailures())
+		}
+
+		// Show preemption summary for workflow nodes
+		if node.Type == NodeTypeWorkflow || node.Type == NodeTypeSubWorkflow {
+			sb.WriteString("\n")
+			sb.WriteString(m.renderPreemptionSummary(node))
 		}
 	}
-	if !cd.VMStartTime.IsZero() {
-		sb.WriteString(labelStyle.Render("VM Start: ") + valueStyle.Render(cd.VMStartTime.Format("15:04:05")) + "\n")
-	}
-	if !cd.VMEndTime.IsZero() {
-		sb.WriteString(labelStyle.Render("VM End: ") + valueStyle.Render(cd.VMEndTime.Format("15:04:05")) + "\n")
-	}
-
-	sb.WriteString("\n")
-
-	// Resources
-	sb.WriteString(titleStyle.Render("💻 Resources") + "\n")
-	if cd.CPU != "" {
-		sb.WriteString(labelStyle.Render("CPU: ") + valueStyle.Render(cd.CPU) + "\n")
-	}
-	if cd.Memory != "" {
-		sb.WriteString(labelStyle.Render("Memory: ") + valueStyle.Render(cd.Memory) + "\n")
-	}
-	if cd.Disk != "" {
-		sb.WriteString(labelStyle.Render("Disk: ") + valueStyle.Render(cd.Disk) + "\n")
-	}
-	if cd.Preemptible != "" {
-		sb.WriteString(labelStyle.Render("Preemptible: ") + valueStyle.Render(cd.Preemptible) + "\n")
-	}
-
-	sb.WriteString("\n")
-
-	// Docker
-	sb.WriteString(titleStyle.Render("🐳 Docker") + "\n")
-	if cd.DockerImage != "" {
-		sb.WriteString(labelStyle.Render("Image: ") + valueStyle.Render(truncate(cd.DockerImage, 50)) + "\n")
-	}
-	if cd.DockerSize != "" {
-		sb.WriteString(labelStyle.Render("Size: ") + valueStyle.Render(cd.DockerSize) + "\n")
-	}
-
-	sb.WriteString("\n")
-
-	// Cache
-	sb.WriteString(titleStyle.Render("📦 Cache") + "\n")
-	cacheStatus := "Miss"
-	if cd.CacheHit {
-		cacheStatus = "Hit"
-	}
-	sb.WriteString(labelStyle.Render("Status: ") + valueStyle.Render(cacheStatus) + "\n")
-	if cd.CacheResult != "" {
-		sb.WriteString(labelStyle.Render("Result: ") + valueStyle.Render(cd.CacheResult) + "\n")
-	}
-
-	// Cost
-	if cd.VMCostPerHour > 0 {
-		sb.WriteString("\n")
-		sb.WriteString(titleStyle.Render("💰 Cost") + "\n")
-		sb.WriteString(labelStyle.Render("VM Cost/Hour: ") + valueStyle.Render(fmt.Sprintf("$%.4f", cd.VMCostPerHour)) + "\n")
-	}
-
-	// Quick Actions section
-	sb.WriteString("\n")
-	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
-
-	// Show available actions based on data
-	if len(cd.Inputs) > 0 {
-		sb.WriteString(buttonStyle.Render(" 1 ") + " Inputs  ")
-	} else {
-		sb.WriteString(disabledButtonStyle.Render(" 1 ") + mutedStyle.Render(" Inputs  "))
-	}
-
-	if len(cd.Outputs) > 0 {
-		sb.WriteString(buttonStyle.Render(" 2 ") + " Outputs  ")
-	} else {
-		sb.WriteString(disabledButtonStyle.Render(" 2 ") + mutedStyle.Render(" Outputs  "))
-	}
-
-	if cd.CommandLine != "" {
-		sb.WriteString(buttonStyle.Render(" 3 ") + " Command  ")
-	} else {
-		sb.WriteString(disabledButtonStyle.Render(" 3 ") + mutedStyle.Render(" Command  "))
-	}
-
-	if cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" {
-		sb.WriteString(buttonStyle.Render(" 4 ") + " Logs")
-	} else {
-		sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs"))
-	}
-
-	sb.WriteString("\n")
 
 	return sb.String()
 }
@@ -493,9 +503,6 @@ func (m Model) renderLogs(node *TreeNode) string {
 	} else {
 		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
 	}
-
-	sb.WriteString("  " + labelStyle.Render("Call Root: ") + "\n")
-	sb.WriteString("  " + pathStyle.Render(cd.CallRoot) + "\n\n")
 
 	if m.focus == FocusDetails {
 		sb.WriteString(mutedStyle.Render("  Press Enter to view the selected log"))
