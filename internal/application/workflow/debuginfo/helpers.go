@@ -58,27 +58,51 @@ func FormatBytes(b int64) string {
 }
 
 // AggregateStatus returns the aggregate status for a list of calls.
+// It considers retries and preemptions - if any attempt succeeded, the status is Done.
 func AggregateStatus(calls []CallDetails) string {
+	// Check for failures first (excluding preemptions that were retried successfully)
+	hasDone := false
+	hasRunning := false
+	hasFailed := false
+
 	for _, c := range calls {
-		if c.ExecutionStatus == "Failed" {
-			return "Failed"
+		switch c.ExecutionStatus {
+		case "Done":
+			hasDone = true
+		case "Running":
+			hasRunning = true
+		case "Failed":
+			hasFailed = true
 		}
 	}
-	for _, c := range calls {
-		if c.ExecutionStatus == "Running" {
-			return "Running"
-		}
+
+	// If any attempt succeeded, the call is Done
+	if hasDone {
+		return "Done"
 	}
-	allDone := true
+
+	// If still running, show Running
+	if hasRunning {
+		return "Running"
+	}
+
+	// If failed (and no success), show Failed
+	if hasFailed {
+		return "Failed"
+	}
+
+	// Check if all are preempted (no retry yet)
+	allPreempted := true
 	for _, c := range calls {
-		if c.ExecutionStatus != "Done" {
-			allDone = false
+		if c.ExecutionStatus != "Preempted" && c.ExecutionStatus != "RetryableFailure" {
+			allPreempted = false
 			break
 		}
 	}
-	if allDone {
-		return "Done"
+	if allPreempted && len(calls) > 0 {
+		return "Preempted"
 	}
+
 	return "Unknown"
 }
 
