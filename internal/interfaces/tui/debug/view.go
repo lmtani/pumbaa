@@ -405,7 +405,7 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 			sb.WriteString("\n")
 			sb.WriteString(titleStyle.Render("🐳 Docker") + "\n")
 			if cd.DockerImage != "" {
-				sb.WriteString(labelStyle.Render("Image: ") + "\n")
+				sb.WriteString(labelStyle.Render("Image:") + " " + mutedStyle.Render("(y to copy)") + "\n")
 				sb.WriteString(formatDockerImage(cd.DockerImage))
 			}
 			if cd.DockerSize != "" {

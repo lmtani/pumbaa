@@ -48,8 +48,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clipboardCopiedMsg:
 		if msg.success {
 			m.copyMessage = "✓ Copied!"
+			// Also show in status bar for non-modal contexts
+			if !m.showLogModal && !m.showInputsModal && !m.showOutputsModal && !m.showOptionsModal &&
+				!m.showCallInputsModal && !m.showCallOutputsModal && !m.showCallCommandModal {
+				m.setStatusMessage("✓ Copied to clipboard!")
+				return m, getClearStatusCmd()
+			}
 		} else {
 			m.copyMessage = fmt.Sprintf("✗ %v", msg.err)
+			if !m.showLogModal && !m.showInputsModal && !m.showOutputsModal && !m.showOptionsModal &&
+				!m.showCallInputsModal && !m.showCallOutputsModal && !m.showCallCommandModal {
+				m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
+				return m, getClearStatusCmd()
+			}
 		}
 		return m, nil
 
@@ -552,6 +563,18 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.updateDetailsContent()
 		} else {
 			m.detailViewport.PageDown()
+		}
+
+	case key.Matches(msg, m.keys.Copy):
+		// Copy Docker image to clipboard when on details view
+		if m.cursor < len(m.nodes) {
+			node := m.nodes[m.cursor]
+			if node.CallData != nil && node.CallData.DockerImage != "" {
+				return m, copyToClipboard(node.CallData.DockerImage)
+			} else {
+				m.setStatusMessage("No Docker image to copy")
+				return m, getClearStatusCmd()
+			}
 		}
 
 	// Call-level quick actions (1-4)

@@ -49,7 +49,7 @@ func formatDockerImage(image string) string {
 
 	// Parse the image into components
 	// Format: [registry/][namespace/]name[:tag][@digest]
-	
+
 	// Handle digest (sha256:...)
 	digest := ""
 	if idx := strings.Index(image, "@"); idx != -1 {
@@ -70,7 +70,7 @@ func formatDockerImage(image string) string {
 
 	// Split by slashes to get registry and path
 	parts := strings.Split(image, "/")
-	
+
 	var registry, path string
 	if len(parts) == 1 {
 		// Simple image like "python" or "ubuntu"
@@ -98,15 +98,15 @@ func formatDockerImage(image string) string {
 	} else {
 		sb.WriteString("  " + pathStyle.Render(path))
 	}
-	
+
 	// Add tag with highlighting
 	sb.WriteString(valueStyle.Render(":") + tagStyle.Render(tag))
-	
+
 	// Add digest if present
 	if digest != "" {
 		sb.WriteString("\n  " + mutedStyle.Render("@"+truncate(digest, 20)))
 	}
-	
+
 	sb.WriteString("\n")
 	return sb.String()
 }
