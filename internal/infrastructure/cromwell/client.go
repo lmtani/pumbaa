@@ -245,6 +245,9 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 	// Exclude subworkflows by default
 	q.Add("includeSubworkflows", "false")
 
+	// Include labels in results
+	q.Add("additionalQueryResultFields", "labels")
+
 	if filter.Name != "" {
 		q.Add("name", filter.Name)
 	}
@@ -287,6 +290,7 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 			SubmittedAt: r.Submission,
 			Start:       r.Start,
 			End:         r.End,
+			Labels:      r.Labels,
 		}
 		workflows = append(workflows, wf)
 	}

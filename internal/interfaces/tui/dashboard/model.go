@@ -48,6 +48,7 @@ type Model struct {
 	// Filtering
 	filterInput   textinput.Model
 	showFilter    bool
+	filterType    string // "name" or "label"
 	activeFilters FilterState
 
 	// Confirmation modal
@@ -70,6 +71,7 @@ type Model struct {
 type FilterState struct {
 	Status []workflow.Status
 	Name   string
+	Label  string // Format: key:value
 }
 
 // KeyMap defines the key bindings specific to the dashboard.
@@ -79,6 +81,7 @@ type KeyMap struct {
 	Open         key.Binding
 	Abort        key.Binding
 	Filter       key.Binding
+	LabelFilter  key.Binding
 	ClearFilter  key.Binding
 	StatusFilter key.Binding
 }
@@ -102,6 +105,10 @@ func DefaultKeyMap() KeyMap {
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
 			key.WithHelp("/", "filter by name"),
+		),
+		LabelFilter: key.NewBinding(
+			key.WithKeys("l"),
+			key.WithHelp("l", "filter by label"),
 		),
 		ClearFilter: key.NewBinding(
 			key.WithKeys("ctrl+x"),
@@ -336,12 +343,24 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Filter):
 		m.showFilter = true
+		m.filterType = "name"
+		m.filterInput.Placeholder = "Filter by workflow name..."
+		m.filterInput.SetValue(m.activeFilters.Name)
+		m.filterInput.Focus()
+		return m, textinput.Blink
+
+	case key.Matches(msg, m.keys.LabelFilter):
+		m.showFilter = true
+		m.filterType = "label"
+		m.filterInput.Placeholder = "Filter by label (key:value)..."
+		m.filterInput.SetValue(m.activeFilters.Label)
 		m.filterInput.Focus()
 		return m, textinput.Blink
 
 	case key.Matches(msg, m.keys.ClearFilter):
 		m.activeFilters = FilterState{Status: []workflow.Status{}}
 		m.filterInput.SetValue("")
+		m.filterType = ""
 		if m.fetcher != nil {
 			m.loading = true
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
@@ -370,7 +389,11 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		m.showFilter = false
 		m.filterInput.Blur()
-		m.activeFilters.Name = m.filterInput.Value()
+		if m.filterType == "label" {
+			m.activeFilters.Label = m.filterInput.Value()
+		} else {
+			m.activeFilters.Name = m.filterInput.Value()
+		}
 		if m.fetcher != nil {
 			m.loading = true
 			return m, tea.Batch(m.spinner.Tick, m.fetchWorkflows())
@@ -434,6 +457,17 @@ func (m Model) fetchWorkflows() tea.Cmd {
 			Status:   m.activeFilters.Status,
 			Name:     m.activeFilters.Name,
 			PageSize: 100,
+		}
+
+		// Parse label filter (format: key:value)
+		if m.activeFilters.Label != "" {
+			parts := strings.SplitN(m.activeFilters.Label, ":", 2)
+			if len(parts) == 2 {
+				filter.Labels = map[string]string{parts[0]: parts[1]}
+			} else {
+				// If no colon, search by key only (empty value)
+				filter.Labels = map[string]string{m.activeFilters.Label: ""}
+			}
 		}
 
 		result, err := m.fetcher.Query(context.Background(), filter)
@@ -644,12 +678,13 @@ func (m Model) renderTable() string {
 		BorderForeground(common.BorderColor)
 
 	colWidths := m.getColumnWidths()
-	header := fmt.Sprintf("%-*s  %-*s  %-*s  %-*s  %-*s",
+	header := fmt.Sprintf("%-*s  %-*s  %-*s  %-*s  %-*s  %-*s",
 		colWidths[0], "STATUS",
 		colWidths[1], "ID",
 		colWidths[2], "NAME",
 		colWidths[3], "SUBMITTED",
 		colWidths[4], "DURATION",
+		colWidths[5], "LABELS",
 	)
 	b.WriteString(headerStyle.Render(header) + "\n")
 
@@ -702,8 +737,8 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 		name = name[:colWidths[2]-3] + "..."
 	}
 
-	// Submitted time
-	submitted := wf.SubmittedAt.Format("2006-01-02 15:04")
+	// Submitted time (compact format: YY-MM-DD HH:MM)
+	submitted := wf.SubmittedAt.Format("06-01-02 15:04")
 
 	// Duration
 	duration := "-"
@@ -716,12 +751,16 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 		duration = formatDuration(dur)
 	}
 
-	row := fmt.Sprintf("%s  %-*s  %-*s  %-*s  %*s",
+	// Labels (filtered, excluding cromwell-workflow-id)
+	labels := formatLabels(wf.Labels, colWidths[5])
+
+	row := fmt.Sprintf("%s  %-*s  %-*s  %-*s  %*s  %s",
 		status,
 		colWidths[1], id,
 		colWidths[2], name,
 		colWidths[3], submitted,
 		colWidths[4], duration,
+		labels,
 	)
 
 	if selected {
@@ -736,14 +775,22 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 }
 
 func (m Model) getColumnWidths() []int {
-	// STATUS, ID, NAME, SUBMITTED, DURATION
-	available := m.width - 20 // margins and separators
+	// STATUS, ID, NAME, SUBMITTED, DURATION, LABELS
+	// Fixed widths: STATUS(10) + ID(9) + SUBMITTED(15) + DURATION(8) + separators(12) = 54
+	fixedWidth := 54
+	available := m.width - fixedWidth
+
+	// Distribute remaining space: 30% NAME, 70% LABELS
+	nameWidth := maxInt(10, available*30/100)
+	labelsWidth := maxInt(10, available-nameWidth)
+
 	return []int{
-		12,                       // STATUS
-		14,                       // ID (truncated)
-		maxInt(20, available-60), // NAME (flexible)
-		18,                       // SUBMITTED
-		12,                       // DURATION
+		10,          // STATUS
+		9,           // ID (8 chars + space)
+		nameWidth,   // NAME (flexible)
+		15,          // SUBMITTED (YY-MM-DD HH:MM)
+		8,           // DURATION
+		labelsWidth, // LABELS (gets more space)
 	}
 }
 
@@ -780,13 +827,22 @@ func (m Model) renderFooter() string {
 		hasFilters = true
 	}
 
+	if m.activeFilters.Label != "" {
+		parts = append(parts, common.BadgeStyle.
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#98FB98")).
+			Render(fmt.Sprintf("Label: %s", m.activeFilters.Label)))
+		parts = append(parts, " ")
+		hasFilters = true
+	}
+
 	if hasFilters {
 		parts = append(parts, common.KeyStyle.Render("ctrl+x")+common.DescStyle.Render(" clear")+"  ")
 	}
 
 	// Help
 	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
+		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
 		common.KeyStyle.Render("↑↓"),
 		common.DescStyle.Render("navigate"),
 		common.KeyStyle.Render("enter"),
@@ -794,9 +850,11 @@ func (m Model) renderFooter() string {
 		common.KeyStyle.Render("a"),
 		common.DescStyle.Render("abort"),
 		common.KeyStyle.Render("/"),
-		common.DescStyle.Render("filter name"),
+		common.DescStyle.Render("name"),
+		common.KeyStyle.Render("l"),
+		common.DescStyle.Render("label"),
 		common.KeyStyle.Render("s"),
-		common.DescStyle.Render("filter status"),
+		common.DescStyle.Render("status"),
 		common.KeyStyle.Render("r"),
 		common.DescStyle.Render("refresh"),
 		common.KeyStyle.Render("q"),
@@ -877,4 +935,37 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// formatLabels formats workflow labels for display, excluding cromwell-workflow-id
+func formatLabels(labels map[string]string, maxWidth int) string {
+	if len(labels) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for k, v := range labels {
+		// Skip cromwell internal labels
+		if k == "cromwell-workflow-id" {
+			continue
+		}
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+		} else {
+			parts = append(parts, k)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	// Sort for consistent display
+	sort.Strings(parts)
+
+	result := strings.Join(parts, ", ")
+	if len(result) > maxWidth && maxWidth > 3 {
+		result = result[:maxWidth-3] + "..."
+	}
+	return common.MutedStyle.Render(result)
 }

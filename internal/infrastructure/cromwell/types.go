@@ -63,12 +63,13 @@ type queryResponse struct {
 
 // queryResult represents a single result from a workflow query.
 type queryResult struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	Status     string    `json:"status"`
-	Submission time.Time `json:"submission"`
-	Start      time.Time `json:"start"`
-	End        time.Time `json:"end"`
+	ID         string            `json:"id"`
+	Name       string            `json:"name"`
+	Status     string            `json:"status"`
+	Submission time.Time         `json:"submission"`
+	Start      time.Time         `json:"start"`
+	End        time.Time         `json:"end"`
+	Labels     map[string]string `json:"labels"`
 }
 
 // outputsResponse represents the response from getting workflow outputs.
