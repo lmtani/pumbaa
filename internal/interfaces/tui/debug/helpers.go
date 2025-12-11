@@ -18,6 +18,26 @@ import (
 // maxLogSize is the maximum log file size we'll read (1 MB)
 const maxLogSize = 1 * 1024 * 1024
 
+// countPreemptions counts the number of preempted tasks in a node and its children
+func countPreemptions(node *TreeNode) int {
+	count := 0
+	// Check if this node itself is preempted
+	if node.Status == "Preempted" || node.Status == "RetryableFailure" {
+		count++
+	}
+	// Also check CallData for preemption status
+	if node.CallData != nil && (node.CallData.ExecutionStatus == "Preempted" || node.CallData.ExecutionStatus == "RetryableFailure") {
+		if node.Status != "Preempted" && node.Status != "RetryableFailure" {
+			count++ // Only count if not already counted
+		}
+	}
+	// Recursively count children
+	for _, child := range node.Children {
+		count += countPreemptions(child)
+	}
+	return count
+}
+
 // formatDuration formats a duration for display.
 func formatDuration(d time.Duration) string {
 	if d < time.Minute {

@@ -250,11 +250,24 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 		typeIcon = "📄"
 	}
 
-	// Name with truncation
-	name := truncate(node.Name, m.treeWidth-node.Depth*2-12)
+	// Preemption count indicator (only for nodes with children or successful retries)
+	preemptBadge := ""
+	if len(node.Children) > 0 || (node.Status == "Done" && node.CallData != nil) {
+		preemptCount := countPreemptions(node)
+		if preemptCount > 0 {
+			preemptBadge = mutedStyle.Render(fmt.Sprintf(" ⟳%d", preemptCount))
+		}
+	}
+
+	// Name with truncation (account for preempt badge)
+	maxNameLen := m.treeWidth - node.Depth*2 - 12
+	if preemptBadge != "" {
+		maxNameLen -= 4 // Reserve space for badge
+	}
+	name := truncate(node.Name, maxNameLen)
 
 	// Build the node string
-	nodeStr := fmt.Sprintf("%s%s %s %s %s %s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name)
+	nodeStr := fmt.Sprintf("%s%s %s %s %s %s%s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name, preemptBadge)
 
 	// Style based on selection
 	if index == m.cursor {
