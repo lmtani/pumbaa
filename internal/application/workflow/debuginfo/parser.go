@@ -254,6 +254,11 @@ func parseCallDetails(m map[string]interface{}) CallDetails {
 		}
 	}
 
+	// Failures (task-level errors)
+	if failures, ok := m["failures"].([]interface{}); ok {
+		cd.Failures = parseFailures(failures)
+	}
+
 	// Execution events
 	if events, ok := m["executionEvents"].([]interface{}); ok {
 		for _, e := range events {

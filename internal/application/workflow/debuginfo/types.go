@@ -93,6 +93,9 @@ type CallDetails struct {
 	// Labels
 	Labels map[string]string
 
+	// Failures (task-level errors)
+	Failures []Failure
+
 	// SubWorkflow
 	SubWorkflowID       string
 	SubWorkflowMetadata *WorkflowMetadata
