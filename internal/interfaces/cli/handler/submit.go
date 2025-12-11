@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"strings"
 
 	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
@@ -64,12 +65,15 @@ func (h *SubmitHandler) Command() *cli.Command {
 func (h *SubmitHandler) handle(c *cli.Context) error {
 	ctx := context.Background()
 
-	// Parse labels
+	// Parse labels (format: key=value)
 	labels := make(map[string]string)
 	for _, l := range c.StringSlice("label") {
-		// Parse key=value format
-		// This is simplified - you might want more robust parsing
-		labels[l] = "" // TODO: proper parsing
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) == 2 {
+			labels[parts[0]] = parts[1]
+		} else {
+			labels[l] = ""
+		}
 	}
 
 	input := submit.Input{
