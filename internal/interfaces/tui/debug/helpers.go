@@ -42,6 +42,75 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// formatDockerImage formats a Docker image name for display.
+// It breaks long image names into readable parts: registry, repository, and tag.
+func formatDockerImage(image string) string {
+	var sb strings.Builder
+
+	// Parse the image into components
+	// Format: [registry/][namespace/]name[:tag][@digest]
+	
+	// Handle digest (sha256:...)
+	digest := ""
+	if idx := strings.Index(image, "@"); idx != -1 {
+		digest = image[idx+1:]
+		image = image[:idx]
+	}
+
+	// Handle tag
+	tag := "latest"
+	if idx := strings.LastIndex(image, ":"); idx != -1 {
+		// Make sure it's not a port number (registry:port/image)
+		afterColon := image[idx+1:]
+		if !strings.Contains(afterColon, "/") {
+			tag = afterColon
+			image = image[:idx]
+		}
+	}
+
+	// Split by slashes to get registry and path
+	parts := strings.Split(image, "/")
+	
+	var registry, path string
+	if len(parts) == 1 {
+		// Simple image like "python" or "ubuntu"
+		path = parts[0]
+	} else if len(parts) == 2 {
+		// Could be "namespace/image" (Docker Hub) or "registry/image"
+		if strings.Contains(parts[0], ".") || strings.Contains(parts[0], ":") {
+			// It's a registry
+			registry = parts[0]
+			path = parts[1]
+		} else {
+			// It's a Docker Hub namespace
+			path = image
+		}
+	} else {
+		// Full path like "registry.io/namespace/image"
+		registry = parts[0]
+		path = strings.Join(parts[1:], "/")
+	}
+
+	// Format output
+	if registry != "" {
+		sb.WriteString("  " + mutedStyle.Render(registry+"/") + "\n")
+		sb.WriteString("  " + pathStyle.Render(path))
+	} else {
+		sb.WriteString("  " + pathStyle.Render(path))
+	}
+	
+	// Add tag with highlighting
+	sb.WriteString(valueStyle.Render(":") + tagStyle.Render(tag))
+	
+	// Add digest if present
+	if digest != "" {
+		sb.WriteString("\n  " + mutedStyle.Render("@"+truncate(digest, 20)))
+	}
+	
+	sb.WriteString("\n")
+	return sb.String()
+}
+
 // nodeTypeName returns a human-readable name for a NodeType.
 func nodeTypeName(t NodeType) string {
 	switch t {
