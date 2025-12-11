@@ -601,6 +601,26 @@ func (m Model) renderFailures() string {
 	return sb.String()
 }
 
+// renderTaskFailures renders task-level failures
+func (m Model) renderTaskFailures(failures []Failure) string {
+	var sb strings.Builder
+
+	errorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FF6B6B")).
+		Bold(true)
+
+	errorMsgStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FF8E8E"))
+
+	sb.WriteString(errorStyle.Render("⚠️  Task Failures") + "\n\n")
+
+	for i, failure := range failures {
+		sb.WriteString(renderFailure(failure, 0, i+1, errorMsgStyle))
+	}
+
+	return sb.String()
+}
+
 // renderFailure recursively renders a failure and its causes
 func renderFailure(f Failure, depth int, index int, style lipgloss.Style) string {
 	var sb strings.Builder
