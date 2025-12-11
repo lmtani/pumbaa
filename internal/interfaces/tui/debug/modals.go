@@ -13,8 +13,8 @@ import (
 // modalFooter generates the footer for modals, including copy feedback if present
 func (m Model) modalFooter() string {
 	baseFooter := "↑↓/PgUp/PgDn scroll • y copy • esc close"
-	if m.copyMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + statusDoneStyle.Render(m.copyMessage)
+	if m.statusMessage != "" {
+		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
 	}
 	return mutedStyle.Render(baseFooter)
 }

@@ -47,22 +47,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboardCopiedMsg:
 		if msg.success {
-			m.copyMessage = "✓ Copied!"
-			// Also show in status bar for non-modal contexts
-			if !m.showLogModal && !m.showInputsModal && !m.showOutputsModal && !m.showOptionsModal &&
-				!m.showCallInputsModal && !m.showCallOutputsModal && !m.showCallCommandModal {
-				m.setStatusMessage("✓ Copied to clipboard!")
-				return m, getClearStatusCmd()
-			}
+			m.setStatusMessage("✓ Copied to clipboard!")
 		} else {
-			m.copyMessage = fmt.Sprintf("✗ %v", msg.err)
-			if !m.showLogModal && !m.showInputsModal && !m.showOutputsModal && !m.showOptionsModal &&
-				!m.showCallInputsModal && !m.showCallOutputsModal && !m.showCallCommandModal {
-				m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
-				return m, getClearStatusCmd()
-			}
+			m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
 		}
-		return m, nil
+		return m, getClearStatusCmd()
 
 	case spinner.TickMsg:
 		m.loadingSpinner, cmd = m.loadingSpinner.Update(msg)
@@ -198,7 +187,6 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.showLogModal = false
 		m.logModalContent = ""
 		m.logModalError = ""
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		if m.logModalContent != "" {
 			return m, copyToClipboard(m.logModalContent)
@@ -223,7 +211,6 @@ func (m Model) handleInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showInputsModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawInputsJSON())
 	case key.Matches(msg, m.keys.Up):
@@ -246,7 +233,6 @@ func (m Model) handleOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showOutputsModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawOutputsJSON())
 	case key.Matches(msg, m.keys.Up):
@@ -269,7 +255,6 @@ func (m Model) handleOptionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showOptionsModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		return m, copyToClipboard(m.getRawOptionsJSON())
 	case key.Matches(msg, m.keys.Up):
@@ -292,7 +277,6 @@ func (m Model) handleCallInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showCallInputsModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
@@ -320,7 +304,6 @@ func (m Model) handleCallOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showCallOutputsModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
@@ -348,7 +331,6 @@ func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showCallCommandModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Copy):
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
@@ -376,7 +358,6 @@ func (m Model) handleGlobalTimelineModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showGlobalTimelineModal = false
-		m.copyMessage = ""
 	case key.Matches(msg, m.keys.Up):
 		m.globalTimelineViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):

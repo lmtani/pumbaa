@@ -72,9 +72,6 @@ type Model struct {
 	globalTimelineViewport  viewport.Model
 	globalTimelineTitle     string
 
-	// Copy feedback message (shown in modal footer)
-	copyMessage string
-
 	// Components
 	keys           KeyMap
 	help           help.Model
