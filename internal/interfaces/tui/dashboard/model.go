@@ -626,7 +626,32 @@ func (m Model) renderContent() string {
 	}
 
 	if m.error != "" {
-		errorBox := common.ErrorStyle.Render(fmt.Sprintf("Error: %s\n\nPress 'r' to retry", m.error))
+		// Parse error to make it more user-friendly
+		errorMsg := m.error
+
+		// Build a compact, helpful error display
+		var errorContent strings.Builder
+		errorContent.WriteString(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF6B6B")).
+			Bold(true).
+			Render("⚠ Query Failed") + "\n\n")
+
+		errorContent.WriteString(common.MutedStyle.Render("Backend response:") + "\n")
+		errorContent.WriteString(lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF8E8E")).
+			Render(errorMsg) + "\n\n")
+
+		errorContent.WriteString(common.MutedStyle.Render("Troubleshooting:") + "\n")
+		errorContent.WriteString("  • Check your filter values\n")
+		errorContent.WriteString("  • Press " + common.KeyStyle.Render("ctrl+x") + " to clear all filters\n")
+
+		errorBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#FF6B6B")).
+			Padding(1, 2).
+			Width(maxInt(60, m.width/2)).
+			Render(errorContent.String())
+
 		return common.PanelStyle.
 			Width(m.width - 2).
 			Height(m.height - 8).
