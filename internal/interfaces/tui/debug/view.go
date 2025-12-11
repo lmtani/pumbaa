@@ -430,7 +430,7 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 		sb.WriteString(disabledButtonStyle.Render(" 3 ") + mutedStyle.Render(" Command  "))
 	}
 
-	if cd.Stdout != "" || cd.Stderr != "" {
+	if cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" {
 		sb.WriteString(buttonStyle.Render(" 4 ") + " Logs")
 	} else {
 		sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs"))
@@ -461,19 +461,38 @@ func (m Model) renderLogs(node *TreeNode) string {
 	// Show selection indicator when details panel is focused
 	stdoutPrefix := "  "
 	stderrPrefix := "  "
+	monitoringPrefix := "  "
 	if m.focus == FocusDetails {
-		if m.logCursor == 0 {
+		switch m.logCursor {
+		case 0:
 			stdoutPrefix = "▶ "
-		} else {
+		case 1:
 			stderrPrefix = "▶ "
+		case 2:
+			monitoringPrefix = "▶ "
 		}
 	}
 
 	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
-	sb.WriteString("  " + pathStyle.Render(cd.Stdout) + "\n\n")
+	if cd.Stdout != "" {
+		sb.WriteString("  " + pathStyle.Render(cd.Stdout) + "\n\n")
+	} else {
+		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+	}
 
 	sb.WriteString(stderrPrefix + labelStyle.Render("stderr: ") + "\n")
-	sb.WriteString("  " + pathStyle.Render(cd.Stderr) + "\n\n")
+	if cd.Stderr != "" {
+		sb.WriteString("  " + pathStyle.Render(cd.Stderr) + "\n\n")
+	} else {
+		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+	}
+
+	sb.WriteString(monitoringPrefix + labelStyle.Render("monitoring: ") + "\n")
+	if cd.MonitoringLog != "" {
+		sb.WriteString("  " + pathStyle.Render(cd.MonitoringLog) + "\n\n")
+	} else {
+		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+	}
 
 	sb.WriteString("  " + labelStyle.Render("Call Root: ") + "\n")
 	sb.WriteString("  " + pathStyle.Render(cd.CallRoot) + "\n\n")

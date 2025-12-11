@@ -200,6 +200,7 @@ func parseCallDetails(m map[string]interface{}) CallDetails {
 	// Logs
 	cd.Stdout = getString(m, "stdout")
 	cd.Stderr = getString(m, "stderr")
+	cd.MonitoringLog = getString(m, "monitoringLog")
 
 	// Docker
 	cd.DockerImageUsed = getString(m, "dockerImageUsed")

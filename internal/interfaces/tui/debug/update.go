@@ -94,11 +94,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.logModalError = msg.err.Error()
-		m.logModalLoading = false
-		m.showLogModal = true
-		m.logModalContent = ""
-		return m, nil
+		// Show error as temporary status message instead of opening modal
+		errorMsg := msg.err.Error()
+		// Simplify common error messages
+		if strings.Contains(errorMsg, "404") || strings.Contains(errorMsg, "No such object") {
+			errorMsg = "Log file not found in storage"
+		} else if strings.Contains(errorMsg, "403") || strings.Contains(errorMsg, "Access Denied") {
+			errorMsg = "Access denied to log file"
+		} else if len(errorMsg) > 80 {
+			// Truncate very long error messages
+			errorMsg = errorMsg[:77] + "..."
+		}
+		m.setStatusMessage("Error loading log: " + errorMsg)
+		return m, getClearStatusCmd()
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -404,7 +412,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.updateDetailsContent()
 			}
 		} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
-			if m.logCursor < 1 { // 0 = stdout, 1 = stderr
+			if m.logCursor < 2 { // 0 = stdout, 1 = stderr, 2 = monitoring
 				m.logCursor++
 				m.updateDetailsContent()
 			}
@@ -560,10 +568,13 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 		node := m.nodes[m.cursor]
 		if node.CallData != nil {
 			var logPath string
-			if m.logCursor == 0 {
+			switch m.logCursor {
+			case 0:
 				logPath = node.CallData.Stdout
-			} else {
+			case 1:
 				logPath = node.CallData.Stderr
+			case 2:
+				logPath = node.CallData.MonitoringLog
 			}
 			if logPath != "" {
 				m.isLoading = true
@@ -628,7 +639,7 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	} else if msg.String() == "4" && m.cursor < len(m.nodes) {
 		node := m.nodes[m.cursor]
-		if node.CallData != nil && (node.CallData.Stdout != "" || node.CallData.Stderr != "") {
+		if node.CallData != nil && (node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "") {
 			m.viewMode = ViewModeLogs
 			m.logCursor = 0
 			m.updateDetailsContent()
@@ -711,9 +722,14 @@ func (m Model) fetchSubWorkflowMetadata(node *TreeNode) tea.Cmd {
 // openLogFile returns a command to load a log file asynchronously
 func (m Model) openLogFile(path string) tea.Cmd {
 	return func() tea.Msg {
-		title := "stdout"
-		if m.logCursor == 1 {
+		var title string
+		switch m.logCursor {
+		case 0:
+			title = "stdout"
+		case 1:
 			title = "stderr"
+		case 2:
+			title = "monitoring"
 		}
 
 		if strings.HasPrefix(path, "gs://") {

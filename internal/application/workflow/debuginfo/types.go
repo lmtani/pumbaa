@@ -57,8 +57,9 @@ type CallDetails struct {
 	CallRoot    string
 
 	// Logs
-	Stdout string
-	Stderr string
+	Stdout        string
+	Stderr        string
+	MonitoringLog string
 
 	// Docker
 	DockerImage     string

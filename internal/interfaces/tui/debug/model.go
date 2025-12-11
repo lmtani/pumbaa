@@ -49,7 +49,7 @@ type Model struct {
 	logModalError    string
 	logModalLoading  bool
 	logModalViewport viewport.Model
-	logCursor        int // 0 = stdout, 1 = stderr
+	logCursor        int // 0 = stdout, 1 = stderr, 2 = monitoring
 
 	// Inputs/Outputs modal state
 	showInputsModal      bool
