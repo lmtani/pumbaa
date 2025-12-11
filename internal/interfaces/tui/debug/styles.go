@@ -182,6 +182,11 @@ var (
 	temporaryStatusStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#FFFF00")).
 				Bold(true)
+
+	// Docker tag style (highlighted for visibility)
+	tagStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00FFAA")).
+			Bold(true)
 )
 
 // StatusStyle returns the appropriate style for a status.
