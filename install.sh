@@ -1,7 +1,10 @@
 #!/bin/bash
 #
 # Pumbaa Installer Script
-# Usage: curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
+# Usage: 
+#   curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash -s v1.0.0
+#   VERSION=v1.0.0 curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
 #
 
 set -e
@@ -9,6 +12,7 @@ set -e
 REPO="lmtani/pumbaa"
 BINARY_NAME="pumbaa"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+VERSION="${VERSION:-${1:-}}" # Can be set via env var or first argument
 
 # Colors for output
 RED='\033[0;31m'
@@ -50,9 +54,15 @@ detect_arch() {
 
 # Get latest release version from GitHub
 get_latest_version() {
-    LATEST_VERSION=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [ -z "$LATEST_VERSION" ]; then
-        error "Failed to get latest version from GitHub"
+    if [ -n "$VERSION" ]; then
+        LATEST_VERSION="$VERSION"
+        info "Using specified version: ${LATEST_VERSION}"
+    else
+        LATEST_VERSION=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [ -z "$LATEST_VERSION" ]; then
+            error "Failed to get latest version from GitHub"
+        fi
+        info "Using latest version: ${LATEST_VERSION}"
     fi
 }
 
@@ -64,22 +74,37 @@ install() {
 
     info "Installing ${BINARY_NAME} ${LATEST_VERSION} for ${OS}/${ARCH}..."
 
-    # Build download URL
-    EXTENSION=""
-    if [ "$OS" = "windows" ]; then
-        EXTENSION=".exe"
+    # Build download URL based on GoReleaser naming
+    # Archive format: pumbaa_Linux_x86_64.tar.gz
+    OS_TITLE=$(echo "${OS}" | sed 's/.*/\u&/')  # Capitalize first letter
+    ARCH_NAME="${ARCH}"
+    if [ "$ARCH" = "amd64" ]; then
+        ARCH_NAME="x86_64"
+    elif [ "$ARCH" = "386" ]; then
+        ARCH_NAME="i386"
     fi
     
-    FILENAME="${BINARY_NAME}-${OS}-${ARCH}${EXTENSION}"
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${FILENAME}"
+    ARCHIVE_NAME="${BINARY_NAME}_${OS_TITLE}_${ARCH_NAME}.tar.gz"
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_VERSION}/${ARCHIVE_NAME}"
 
     # Create temp directory
     TMP_DIR=$(mktemp -d)
     trap "rm -rf ${TMP_DIR}" EXIT
 
     info "Downloading from ${DOWNLOAD_URL}..."
-    if ! curl -sL -o "${TMP_DIR}/${BINARY_NAME}" "${DOWNLOAD_URL}"; then
-        error "Failed to download ${BINARY_NAME}"
+    if ! curl -sSLf -o "${TMP_DIR}/${ARCHIVE_NAME}" "${DOWNLOAD_URL}"; then
+        error "Failed to download ${BINARY_NAME}. Check if the release exists and has the correct assets."
+    fi
+
+    # Extract the archive
+    info "Extracting ${ARCHIVE_NAME}..."
+    if ! tar -xzf "${TMP_DIR}/${ARCHIVE_NAME}" -C "${TMP_DIR}"; then
+        error "Failed to extract archive"
+    fi
+
+    # Verify binary exists
+    if [ ! -f "${TMP_DIR}/${BINARY_NAME}" ]; then
+        error "Binary ${BINARY_NAME} not found in archive"
     fi
 
     # Make executable
