@@ -123,8 +123,8 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 // getColumnWidths calculates the width of each table column based on available space.
 func (m Model) getColumnWidths() []int {
 	// STATUS, ID, NAME, SUBMITTED, DURATION, LABELS
-	// Fixed widths: STATUS(10) + ID(9) + SUBMITTED(15) + DURATION(8) + separators(12) = 54
-	fixedWidth := 54
+	// Fixed widths: STATUS(12) + ID(9) + SUBMITTED(15) + DURATION(8) + separators(12) = 56
+	fixedWidth := 56
 	available := m.width - fixedWidth
 
 	// Distribute remaining space: 30% NAME, 70% LABELS
@@ -132,7 +132,7 @@ func (m Model) getColumnWidths() []int {
 	labelsWidth := maxInt(10, available-nameWidth)
 
 	return []int{
-		10,          // STATUS
+		12,          // STATUS (icon + space + "Succeeded" = 11, +1 for padding)
 		9,           // ID (8 chars + space)
 		nameWidth,   // NAME (flexible)
 		15,          // SUBMITTED (YY-MM-DD HH:MM)
