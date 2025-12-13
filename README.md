@@ -22,46 +22,8 @@ Browse and manage workflows with an interactive terminal interface:
 
 ```bash
 pumbaa dashboard
-# or
-pumbaa dash
 ```
 
-**Key bindings:**
-| Key | Action |
-|-----|--------|
-| `↑/↓` | Navigate workflows |
-| `Enter` | Open workflow in debug view |
-| `a` | Abort running workflow |
-| `s` | Cycle status filter |
-| `/` | Filter by name |
-| `r` | Refresh list |
-| `q` | Quit |
-
-### Debug (Workflow Inspector)
-
-Explore workflow execution with an interactive tree view:
-
-```bash
-# From Cromwell server
-pumbaa workflow debug --id <workflow-id>
-
-# From local metadata file
-pumbaa workflow debug --file metadata.json
-```
-
-**Key bindings:**
-| Key | Action |
-|-----|--------|
-| `↑/↓` | Navigate tree |
-| `←/→` | Collapse/expand nodes |
-| `Tab` | Switch panels |
-| `1` | View task inputs |
-| `2` | View task outputs |
-| `3` | View task command |
-| `4` | View logs |
-| `t` | View timeline |
-| `y` | Copy Docker image |
-| `?` | Help |
 
 ### Submit Workflow
 
@@ -70,32 +32,6 @@ pumbaa workflow submit \
   --workflow main.wdl \
   --inputs inputs.json \
   --options options.json
-```
-
-### Query Workflows
-
-```bash
-# List recent workflows
-pumbaa workflow query
-
-# Filter by status
-pumbaa workflow query --status Running --status Failed
-
-# Filter by name
-pumbaa workflow query --name MyWorkflow
-```
-
-### Get Metadata
-
-```bash
-pumbaa workflow metadata <workflow-id>
-pumbaa workflow metadata <workflow-id> --verbose
-```
-
-### Abort Workflow
-
-```bash
-pumbaa workflow abort <workflow-id>
 ```
 
 ### Bundle WDL Dependencies
@@ -112,6 +48,28 @@ pumbaa bundle --workflow main.wdl --output <name>
 Set the Cromwell server URL:
 
 ```bash
-# Via flag
 pumbaa --host http://cromwell:8000 dashboard
 ```
+
+## Contributing
+
+### Reporting Bugs
+
+Found a bug? Please [open an issue](https://github.com/lmtani/pumbaa/issues/new?template=bug_report.md) with:
+
+- A clear, descriptive title
+- Steps to reproduce the issue
+- Expected vs actual behavior
+- Your environment (OS, Cromwell version, pumbaa version)
+- Relevant logs or error messages
+
+### Requesting Features
+
+Have an idea for a new feature? [Open a feature request](https://github.com/lmtani/pumbaa/issues/new?template=feature_request.md) with:
+
+- A clear description of the feature
+- Why it would be useful
+- Any examples or mockups if applicable
+
+All contributions and feedback are welcome! Please ensure issues include enough details for us to investigate or implement your request.
+
