@@ -60,15 +60,15 @@ func (m Model) renderTable() string {
 
 // renderWorkflowRow renders a single workflow row with status, ID, name, and labels.
 func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected bool) string {
-	// Status with color - use lipgloss width for proper alignment
+	maxRowWidth := m.width - 6
+
+	// Status icon and text
 	statusIcon := common.StatusIcon(string(wf.Status))
-	statusStyle := common.StatusStyle(string(wf.Status))
 	statusText := statusIcon + " " + string(wf.Status)
-	status := statusStyle.Render(statusText)
-	// Pad status to fixed width accounting for ANSI codes
+	// Pad status to fixed width
 	statusPadding := colWidths[0] - lipgloss.Width(statusText)
 	if statusPadding > 0 {
-		status = status + strings.Repeat(" ", statusPadding)
+		statusText = statusText + strings.Repeat(" ", statusPadding)
 	}
 
 	// ID (truncated)
@@ -97,27 +97,46 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 		duration = formatDuration(dur)
 	}
 
-	// Labels (filtered, excluding cromwell-workflow-id)
-	labels := formatLabels(wf.Labels, colWidths[5])
+	// Labels (plain text, no styling yet)
+	labelsText := formatLabelsPlain(wf.Labels, colWidths[5])
 
+	// Build row without ANSI codes for proper truncation
 	row := fmt.Sprintf("%s  %-*s  %-*s  %-*s  %*s  %s",
-		status,
+		statusText,
 		colWidths[1], id,
 		colWidths[2], name,
 		colWidths[3], submitted,
 		colWidths[4], duration,
-		labels,
+		labelsText,
 	)
+
+	// Truncate if needed (now safe since no ANSI codes)
+	if len(row) > maxRowWidth {
+		if maxRowWidth > 3 {
+			row = row[:maxRowWidth-3] + "..."
+		} else {
+			row = row[:maxRowWidth]
+		}
+	}
+
+	// Pad to full width for consistent highlighting
+	if len(row) < maxRowWidth {
+		row = row + strings.Repeat(" ", maxRowWidth-len(row))
+	}
 
 	if selected {
 		return lipgloss.NewStyle().
 			Background(common.HighlightColor).
 			Foreground(common.TextColor).
-			Width(m.width - 6).
 			Render(row)
 	}
 
-	return row
+	// Apply status color only to the status portion for non-selected rows
+	statusStyle := common.StatusStyle(string(wf.Status))
+	coloredStatus := statusStyle.Render(statusText)
+	// Replace plain status with colored version
+	rest := row[len(statusText):]
+	return coloredStatus + common.MutedStyle.Render(rest)
 }
 
 // getColumnWidths calculates the width of each table column based on available space.
