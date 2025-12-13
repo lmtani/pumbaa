@@ -31,10 +31,16 @@ For more control over the installation:
 
 Visit [GitHub Releases](https://github.com/lmtani/pumbaa/releases/latest) and download the appropriate binary for your platform:
 
-- **Linux (x86_64)**: `pumbaa-linux-amd64`
-- **Linux (ARM64)**: `pumbaa-linux-arm64`
-- **macOS (Intel)**: `pumbaa-darwin-amd64`
-- **macOS (Apple Silicon)**: `pumbaa-darwin-arm64`
+Choose the release asset matching your OS and CPU architecture. Common assets on Releases are shown below:
+
+| Platform | Architecture | Release asset |
+|---|---:|---|
+| Linux | x86_64 | `pumbaa_Linux_x86_64.tar.gz` |
+| Linux | ARM64 | `pumbaa_Linux_arm64.tar.gz` |
+| macOS | x86_64 | `pumbaa_Darwin_x86_64.tar.gz` |
+| macOS | ARM64 | `pumbaa_Darwin_arm64.tar.gz` |
+
+Download the matching asset from the Releases page (replace the filename in the examples below with the one you downloaded).
 
 ### Step 2: Install
 
@@ -42,13 +48,15 @@ Visit [GitHub Releases](https://github.com/lmtani/pumbaa/releases/latest) and do
 
     ```bash
     # Download (replace URL with your platform)
-    wget https://github.com/lmtani/pumbaa/releases/latest/download/pumbaa-linux-amd64
-    
-    # Make executable
-    chmod +x pumbaa-linux-amd64
-    
-    # Move to PATH
-    sudo mv pumbaa-linux-amd64 /usr/local/bin/pumbaa
+    # Example (tar.gz asset)
+    wget https://github.com/lmtani/pumbaa/releases/latest/download/pumbaa_Linux_x86_64.tar.gz
+
+    # Extract (creates `pumbaa` binary)
+    tar -xzf pumbaa_Linux_x86_64.tar.gz
+
+    # Make executable and install
+    chmod +x pumbaa
+    sudo mv pumbaa /usr/local/bin/pumbaa
     ```
 
 ## Troubleshooting

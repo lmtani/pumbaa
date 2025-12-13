@@ -11,6 +11,8 @@ pumbaa dashboard
 ## Interface Layout
 
 
+![Dashboard Screenshot](../assets/dashboard.png)
+
 
 ## Keys
 
@@ -32,6 +34,10 @@ pumbaa dashboard
 - Filter by name or labels
 - Press `Enter` to debug selected workflow
 - Press `a` to abort (with confirmation)
+
+![Dashboard Screenshot](../assets/dashboard-filter.png)
+
+
 
 ## Workflow Columns
 
