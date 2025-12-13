@@ -1,60 +1,75 @@
-# Pumbaa
+# Pumbaa 🐗
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/lmtani/pumbaa)](https://goreportcard.com/report/github.com/lmtani/pumbaa)
-[![codecov](https://codecov.io/gh/lmtani/pumbaa/branch/main/graph/badge.svg?token=IZHS203UA7)](https://codecov.io/gh/lmtani/pumbaa)
-[![DeepSource](https://deepsource.io/gh/lmtani/pumbaa.svg/?label=active+issues&show_trend=true&token=AqgzwJfwaA6RBPpVTGK11it0)](https://deepsource.io/gh/lmtani/pumbaa/?ref=repository-badge)
+A CLI tool for interacting with [Cromwell](https://cromwell.readthedocs.io/) workflow engine and WDL files.
 
-This project is a command-line interface (CLI) for the Cromwell Server, designed with the following objectives:
+## Installation
 
-- Simplify the process of installing and configuring a local backend for the Cromwell Server using Docker.
-- Enable reuse of already processed jobs via the Call Cache mechanism, set by default.
-- Provide an interface for interacting with the server, such as submitting, querying, and inspecting jobs.
-- Serve as a personal learning experience with the Go language.
-
-The Broad Institute has its own [CLI for Cromwell](https://github.com/broadinstitute/cromshell), which is worth checking out.
-
-However, if you found our project helpful, don't forget to give us a star 😉.
-
-## Quickstart
-
-You can download the binary from the [releases page](https://github.com/lmtani/pumbaa/releases) for your platform or install it by running the following command:
+### Quick Install (Linux/macOS)
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
 ```
 
-You can install the binary in any location by setting the _PREFIX_ variable to your desired installation directory when running the script:
+### Manual Download
+
+Download the latest binary from [GitHub Releases](https://github.com/lmtani/pumbaa/releases) for your platform.
+
+## Usage
+
+### Dashboard (Interactive TUI)
+
+Browse and manage workflows with an interactive terminal interface:
 
 ```bash
-curl https://raw.githubusercontent.com/lmtani/pumbaa/main/assets/install.sh | PREFIX=/home/taniguti/bin bash
+pumbaa dashboard
 ```
 
-This way you don't need to provide privileged access.
 
-## Features
-
-- [x] Start Cromwell Server locally
-- [x] List workflows by name
-- [x] Submit a workflow
-- [x] Abort a workflow
-- [x] Navigate through workflow metadata
-- [x] Get metadata
-- [x] Get outputs
-- [x] Get inputs
-- [x] Make requests to a remote Cromwell Server protected by IAP (Google Identity Aware Proxy)
-- [x] For Google Cloud backend jobs: estimate resource usage
-- [x] Have a cool name
-
-
-### Cromwell behind Google Identity Aware Proxy
-
-This is a very specific use case, but it's here. If you are using a Cromwell server behind Google Identity Aware Proxy (IAP), you can use the `--iap` flag to make requests to it. You will need to provide the expected audience of the token, which is the client_id of your oauth. For example:
-
-You will also need to set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the path of your Google service account JSON file.
+### Submit Workflow
 
 ```bash
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/google/service-account.json
-HOST="https://your-cromwell.dev"
-AUDIENCE="Expected audience"
-pumbaa --host "${HOST}" --iap "${AUDIENCE}" query
+pumbaa workflow submit \
+  --workflow main.wdl \
+  --inputs inputs.json \
+  --options options.json
 ```
+
+### Bundle WDL Dependencies
+
+Package a WDL workflow with all its imports into a single ZIP file:
+
+```bash
+pumbaa bundle --workflow main.wdl --output <name>
+# will create name.wdl and name.zip in the specified output path
+```
+
+## Configuration
+
+Set the Cromwell server URL:
+
+```bash
+pumbaa --host http://cromwell:8000 dashboard
+```
+
+## Contributing
+
+### Reporting Bugs
+
+Found a bug? Please [open an issue](https://github.com/lmtani/pumbaa/issues/new?template=bug_report.md) with:
+
+- A clear, descriptive title
+- Steps to reproduce the issue
+- Expected vs actual behavior
+- Your environment (OS, Cromwell version, pumbaa version)
+- Relevant logs or error messages
+
+### Requesting Features
+
+Have an idea for a new feature? [Open a feature request](https://github.com/lmtani/pumbaa/issues/new?template=feature_request.md) with:
+
+- A clear description of the feature
+- Why it would be useful
+- Any examples or mockups if applicable
+
+All contributions and feedback are welcome! Please ensure issues include enough details for us to investigate or implement your request.
+
