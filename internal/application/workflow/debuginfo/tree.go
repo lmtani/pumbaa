@@ -89,45 +89,64 @@ func buildTreeWithDepth(wm *WorkflowMetadata, baseDepth int, parent *TreeNode) *
 			}
 			parent.Duration = parent.End.Sub(parent.Start)
 
-			// Sort calls by shard index
-			sort.Slice(calls, func(i, j int) bool {
-				return calls[i].ShardIndex < calls[j].ShardIndex
-			})
+			// Group calls by shard index
+			shardGroups := make(map[int][]CallDetails)
+			for _, call := range calls {
+				shardGroups[call.ShardIndex] = append(shardGroups[call.ShardIndex], call)
+			}
 
-			for i := range calls {
-				call := calls[i]
+			// Sort shard indices
+			var shardIndices []int
+			for idx := range shardGroups {
+				shardIndices = append(shardIndices, idx)
+			}
+			sort.Ints(shardIndices)
+
+			// Create one node per shard (aggregating all attempts)
+			for _, shardIdx := range shardIndices {
+				shardCalls := shardGroups[shardIdx]
+				
+				// Use the most recent attempt for display
+				sort.Slice(shardCalls, func(i, j int) bool {
+					return shardCalls[i].Attempt > shardCalls[j].Attempt
+				})
+				mostRecentCall := shardCalls[0]
+				
+				// Determine the shard's overall status
+				shardStatus := AggregateStatus(shardCalls)
+				
 				shardName := taskName
-				if call.ShardIndex >= 0 {
-					shardName = fmt.Sprintf("%s [shard %d]", taskName, call.ShardIndex)
+				if shardIdx >= 0 {
+					shardName = fmt.Sprintf("%s [shard %d]", taskName, shardIdx)
 				}
-				if call.Attempt > 1 {
-					shardName += fmt.Sprintf(" (attempt %d)", call.Attempt)
+				if mostRecentCall.Attempt > 1 {
+					shardName += fmt.Sprintf(" (attempt %d)", mostRecentCall.Attempt)
 				}
 
-				isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
+				isSubWorkflow := mostRecentCall.SubWorkflowID != "" || mostRecentCall.SubWorkflowMetadata != nil
 				nodeType := NodeTypeShard
 				if isSubWorkflow {
 					nodeType = NodeTypeSubWorkflow
 				}
 
 				child := &TreeNode{
-					ID:            fmt.Sprintf("%s_%d", callName, call.ShardIndex),
+					ID:            fmt.Sprintf("%s_%d", callName, shardIdx),
 					Name:          shardName,
 					Type:          nodeType,
-					Status:        call.ExecutionStatus,
-					Start:         call.Start,
-					End:           call.End,
-					Duration:      call.End.Sub(call.Start),
+					Status:        shardStatus,
+					Start:         EarliestStart(shardCalls),
+					End:           LatestEnd(shardCalls),
+					Duration:      LatestEnd(shardCalls).Sub(EarliestStart(shardCalls)),
 					Parent:        parent,
-					CallData:      &call,
-					SubWorkflowID: call.SubWorkflowID,
+					CallData:      &mostRecentCall,
+					SubWorkflowID: mostRecentCall.SubWorkflowID,
 					Depth:         baseDepth + 2,
 					Children:      []*TreeNode{},
 				}
 
 				// If this is a subworkflow with embedded metadata, build its children
-				if isSubWorkflow && call.SubWorkflowMetadata != nil {
-					AddSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+3)
+				if isSubWorkflow && mostRecentCall.SubWorkflowMetadata != nil {
+					AddSubWorkflowChildren(child, mostRecentCall.SubWorkflowMetadata, baseDepth+3)
 				}
 
 				parent.Children = append(parent.Children, child)
@@ -207,43 +226,63 @@ func AddSubWorkflowChildren(node *TreeNode, subWM *WorkflowMetadata, baseDepth i
 			}
 			parent.Duration = parent.End.Sub(parent.Start)
 
-			sort.Slice(calls, func(i, j int) bool {
-				return calls[i].ShardIndex < calls[j].ShardIndex
-			})
+			// Group calls by shard index
+			shardGroups := make(map[int][]CallDetails)
+			for _, call := range calls {
+				shardGroups[call.ShardIndex] = append(shardGroups[call.ShardIndex], call)
+			}
 
-			for i := range calls {
-				call := calls[i]
+			// Sort shard indices
+			var shardIndices []int
+			for idx := range shardGroups {
+				shardIndices = append(shardIndices, idx)
+			}
+			sort.Ints(shardIndices)
+
+			// Create one node per shard (aggregating all attempts)
+			for _, shardIdx := range shardIndices {
+				shardCalls := shardGroups[shardIdx]
+				
+				// Use the most recent attempt for display
+				sort.Slice(shardCalls, func(i, j int) bool {
+					return shardCalls[i].Attempt > shardCalls[j].Attempt
+				})
+				mostRecentCall := shardCalls[0]
+				
+				// Determine the shard's overall status
+				shardStatus := AggregateStatus(shardCalls)
+				
 				shardName := taskName
-				if call.ShardIndex >= 0 {
-					shardName = fmt.Sprintf("%s [shard %d]", taskName, call.ShardIndex)
+				if shardIdx >= 0 {
+					shardName = fmt.Sprintf("%s [shard %d]", taskName, shardIdx)
 				}
-				if call.Attempt > 1 {
-					shardName += fmt.Sprintf(" (attempt %d)", call.Attempt)
+				if mostRecentCall.Attempt > 1 {
+					shardName += fmt.Sprintf(" (attempt %d)", mostRecentCall.Attempt)
 				}
 
-				isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
+				isSubWorkflow := mostRecentCall.SubWorkflowID != "" || mostRecentCall.SubWorkflowMetadata != nil
 				childType := NodeTypeShard
 				if isSubWorkflow {
 					childType = NodeTypeSubWorkflow
 				}
 
 				child := &TreeNode{
-					ID:            fmt.Sprintf("%s_%d", callName, call.ShardIndex),
+					ID:            fmt.Sprintf("%s_%d", callName, shardIdx),
 					Name:          shardName,
 					Type:          childType,
-					Status:        call.ExecutionStatus,
-					Start:         call.Start,
-					End:           call.End,
-					Duration:      call.End.Sub(call.Start),
+					Status:        shardStatus,
+					Start:         EarliestStart(shardCalls),
+					End:           LatestEnd(shardCalls),
+					Duration:      LatestEnd(shardCalls).Sub(EarliestStart(shardCalls)),
 					Parent:        parent,
-					CallData:      &call,
-					SubWorkflowID: call.SubWorkflowID,
+					CallData:      &mostRecentCall,
+					SubWorkflowID: mostRecentCall.SubWorkflowID,
 					Depth:         baseDepth + 1,
 					Children:      []*TreeNode{},
 				}
 
-				if isSubWorkflow && call.SubWorkflowMetadata != nil {
-					AddSubWorkflowChildren(child, call.SubWorkflowMetadata, baseDepth+2)
+				if isSubWorkflow && mostRecentCall.SubWorkflowMetadata != nil {
+					AddSubWorkflowChildren(child, mostRecentCall.SubWorkflowMetadata, baseDepth+2)
 				}
 
 				parent.Children = append(parent.Children, child)
