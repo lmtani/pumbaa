@@ -58,48 +58,46 @@ func FormatBytes(b int64) string {
 }
 
 // AggregateStatus returns the aggregate status for a list of calls.
-// It considers retries and preemptions - if any attempt succeeded, the status is Done.
+// Priority: Running > Done > Failed > Preempted
+// This ensures that if a shard is retrying after a preemption, it shows as Running,
+// not Done (from the previous successful attempt that was preempted).
 func AggregateStatus(calls []CallDetails) string {
-	// Check for failures first (excluding preemptions that were retried successfully)
 	hasDone := false
 	hasRunning := false
 	hasFailed := false
+	hasPreempted := false
 
 	for _, c := range calls {
 		switch c.ExecutionStatus {
-		case "Done":
+		case "Done", "Succeeded":
 			hasDone = true
 		case "Running":
 			hasRunning = true
 		case "Failed":
 			hasFailed = true
+		case "Preempted", "RetryableFailure":
+			hasPreempted = true
 		}
 	}
 
-	// If any attempt succeeded, the call is Done
-	if hasDone {
-		return "Done"
-	}
-
-	// If still running, show Running
+	// Priority: Running takes precedence over everything else
+	// This is important for retries after preemption
 	if hasRunning {
 		return "Running"
 	}
 
-	// If failed (and no success), show Failed
+	// If all attempts are done (no running), the call is Done
+	if hasDone {
+		return "Done"
+	}
+
+	// If failed (and no success or running), show Failed
 	if hasFailed {
 		return "Failed"
 	}
 
 	// Check if all are preempted (no retry yet)
-	allPreempted := true
-	for _, c := range calls {
-		if c.ExecutionStatus != "Preempted" && c.ExecutionStatus != "RetryableFailure" {
-			allPreempted = false
-			break
-		}
-	}
-	if allPreempted && len(calls) > 0 {
+	if hasPreempted && len(calls) > 0 {
 		return "Preempted"
 	}
 
