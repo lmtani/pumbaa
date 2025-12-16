@@ -102,11 +102,47 @@ func (m Model) buildGlobalTimelineContentForMetadata(metadata *WorkflowMetadata)
 
 	// Build each entry (no header row - the data is self-explanatory)
 	for _, e := range entries {
-		line := formatTimelineEntryStatic(e, maxNameLen, minStart, totalDuration)
+		line := m.formatTimelineEntryStatic(e, maxNameLen, minStart, totalDuration)
 		sb.WriteString(line + "\n")
 	}
 
 	return sb.String()
+}
+
+// formatTimelineEntryStatic formats a single timeline entry (static function)
+func (m Model) formatTimelineEntryStatic(e taskTimelineEntry, maxNameLen int, minStart time.Time, totalDuration time.Duration) string {
+	// Status icon
+	icon := StatusIcon(e.Status)
+	style := StatusStyle(e.Status)
+
+	// Remove global title prefix from name to reduce space
+	name := strings.TrimPrefix(e.Name, m.globalTimelineTitle+".")
+	// Name (truncated if needed, left-aligned)
+	if len(name) > maxNameLen {
+		name = name[:maxNameLen-3] + "..."
+	}
+	// Pad name to maxNameLen
+	for len(name) < maxNameLen {
+		name = name + " "
+	}
+
+	// Duration (right-aligned, 8 chars)
+	durStr := formatDurationCompact(e.Duration)
+	for len(durStr) < 8 {
+		durStr = " " + durStr
+	}
+
+	// Time range (fixed format HH:MM:SS→HH:MM:SS = 17 chars)
+	startStr := e.Start.Format("15:04:05")
+	endStr := e.End.Format("15:04:05")
+	timeRange := startStr + "→" + endStr
+
+	// Visual timeline bar (30 chars wide)
+	barWidth := 30
+	bar := buildTimelineBarStatic(e.Start, e.End, minStart, totalDuration, barWidth)
+
+	// Build the line with styled icon at the beginning
+	return style.Render(icon) + " " + name + "  " + durStr + "  " + timeRange + "  " + bar
 }
 
 // collectTaskTimelineEntriesFromMetadata collects task entries from a specific metadata
@@ -154,41 +190,6 @@ func collectTaskTimelineEntriesFromMetadata(metadata *WorkflowMetadata) []taskTi
 	}
 
 	return entries
-}
-
-// formatTimelineEntryStatic formats a single timeline entry (static function)
-func formatTimelineEntryStatic(e taskTimelineEntry, maxNameLen int, minStart time.Time, totalDuration time.Duration) string {
-	// Status icon
-	icon := StatusIcon(e.Status)
-	style := StatusStyle(e.Status)
-
-	// Name (truncated if needed, left-aligned)
-	name := e.Name
-	if len(name) > maxNameLen {
-		name = name[:maxNameLen-3] + "..."
-	}
-	// Pad name to maxNameLen
-	for len(name) < maxNameLen {
-		name = name + " "
-	}
-
-	// Duration (right-aligned, 8 chars)
-	durStr := formatDurationCompact(e.Duration)
-	for len(durStr) < 8 {
-		durStr = " " + durStr
-	}
-
-	// Time range (fixed format HH:MM:SS→HH:MM:SS = 17 chars)
-	startStr := e.Start.Format("15:04:05")
-	endStr := e.End.Format("15:04:05")
-	timeRange := startStr + "→" + endStr
-
-	// Visual timeline bar (30 chars wide)
-	barWidth := 30
-	bar := buildTimelineBarStatic(e.Start, e.End, minStart, totalDuration, barWidth)
-
-	// Build the line with styled icon at the beginning
-	return style.Render(icon) + " " + name + "  " + durStr + "  " + timeRange + "  " + bar
 }
 
 // buildTimelineBarStatic creates a visual bar (static function)
