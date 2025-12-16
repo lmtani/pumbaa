@@ -57,11 +57,6 @@ func (m Model) timelineModalFooter() string {
 	return mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
 }
 
-// buildGlobalTimelineContent builds the content for the global timeline modal (uses root metadata)
-func (m Model) buildGlobalTimelineContent() string {
-	return m.buildGlobalTimelineContentForMetadata(m.metadata)
-}
-
 // buildGlobalTimelineContentForMetadata builds timeline content for a specific workflow/subworkflow
 func (m Model) buildGlobalTimelineContentForMetadata(metadata *WorkflowMetadata) string {
 	entries := collectTaskTimelineEntriesFromMetadata(metadata)
@@ -114,11 +109,6 @@ func (m Model) buildGlobalTimelineContentForMetadata(metadata *WorkflowMetadata)
 	return sb.String()
 }
 
-// collectTaskTimelineEntries collects all task entries with timing from the workflow
-func (m Model) collectTaskTimelineEntries() []taskTimelineEntry {
-	return collectTaskTimelineEntriesFromMetadata(m.metadata)
-}
-
 // collectTaskTimelineEntriesFromMetadata collects task entries from a specific metadata
 func collectTaskTimelineEntriesFromMetadata(metadata *WorkflowMetadata) []taskTimelineEntry {
 	var entries []taskTimelineEntry
@@ -166,11 +156,6 @@ func collectTaskTimelineEntriesFromMetadata(metadata *WorkflowMetadata) []taskTi
 	return entries
 }
 
-// formatTimelineEntry formats a single timeline entry with a visual timeline bar
-func (m Model) formatTimelineEntry(e taskTimelineEntry, maxNameLen int, minStart time.Time, totalDuration time.Duration) string {
-	return formatTimelineEntryStatic(e, maxNameLen, minStart, totalDuration)
-}
-
 // formatTimelineEntryStatic formats a single timeline entry (static function)
 func formatTimelineEntryStatic(e taskTimelineEntry, maxNameLen int, minStart time.Time, totalDuration time.Duration) string {
 	// Status icon
@@ -204,11 +189,6 @@ func formatTimelineEntryStatic(e taskTimelineEntry, maxNameLen int, minStart tim
 
 	// Build the line with styled icon at the beginning
 	return style.Render(icon) + " " + name + "  " + durStr + "  " + timeRange + "  " + bar
-}
-
-// buildTimelineBar creates a visual bar showing when the task ran relative to workflow
-func (m Model) buildTimelineBar(start, end, minStart time.Time, totalDuration time.Duration, width int) string {
-	return buildTimelineBarStatic(start, end, minStart, totalDuration, width)
 }
 
 // buildTimelineBarStatic creates a visual bar (static function)
