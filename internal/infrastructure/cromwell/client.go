@@ -422,6 +422,41 @@ func (c *Client) GetRawMetadataWithOptions(ctx context.Context, workflowID strin
 	return io.ReadAll(resp.Body)
 }
 
+// GetWorkflowCost retrieves the total cost for a workflow including all subworkflows.
+func (c *Client) GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error) {
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/cost", c.BaseURL, workflowID)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, "", err
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return 0, "", fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, "", workflow.ErrWorkflowNotFound
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return 0, "", workflow.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(bodyBytes),
+		}
+	}
+
+	var result costResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, "", err
+	}
+
+	return result.Cost, result.Currency, nil
+}
+
 // addFileField adds a file field to a multipart form.
 func (c *Client) addFileField(writer *multipart.Writer, fieldName, fileName string, data []byte) error {
 	part, err := writer.CreateFormFile(fieldName, fileName)

@@ -10,8 +10,8 @@ func (m Model) renderHeader() string {
 	// Get just the icon without styling
 	statusIcon := StatusIcon(m.metadata.Status)
 
-	// Calculate total cost
-	totalCost := m.calculateTotalCost()
+	// Use cached total cost
+	totalCost := m.totalCost
 
 	// Build status badge based on workflow status
 	statusText := m.metadata.Status
@@ -75,24 +75,4 @@ func (m Model) renderHeader() string {
 	)
 
 	return headerStyle.Width(m.width - 2).Render(header)
-}
-
-func (m Model) calculateTotalCost() float64 {
-	var total float64
-	m.calculateNodeCost(m.tree, &total)
-	return total
-}
-
-func (m Model) calculateNodeCost(node *TreeNode, total *float64) {
-	if node.CallData != nil && node.CallData.VMCostPerHour > 0 {
-		// Calculate duration
-		var duration float64
-		if !node.CallData.VMStartTime.IsZero() && !node.CallData.VMEndTime.IsZero() {
-			duration = node.CallData.VMEndTime.Sub(node.CallData.VMStartTime).Hours()
-		}
-		*total += node.CallData.VMCostPerHour * duration
-	}
-	for _, child := range node.Children {
-		m.calculateNodeCost(child, total)
-	}
 }

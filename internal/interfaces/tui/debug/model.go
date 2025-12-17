@@ -15,6 +15,7 @@ import (
 // MetadataFetcher is an interface for fetching workflow metadata.
 type MetadataFetcher interface {
 	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
+	GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error)
 }
 
 // Model is the main model for the debug TUI.
@@ -26,6 +27,8 @@ type Model struct {
 
 	// Metadata fetcher for on-demand subworkflow loading
 	fetcher MetadataFetcher
+
+	totalCost float64 // Cached total cost from API
 
 	// UI state
 	cursor       int
@@ -138,5 +141,8 @@ func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Mod
 
 // Init initializes the model.
 func (m Model) Init() tea.Cmd {
-	return m.loadingSpinner.Tick
+	return tea.Batch(
+		m.loadingSpinner.Tick,
+		m.fetchTotalCost(),
+	)
 }

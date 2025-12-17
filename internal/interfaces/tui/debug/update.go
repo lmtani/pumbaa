@@ -34,6 +34,10 @@ type subWorkflowErrorMsg struct {
 
 type clearStatusMsg struct{}
 
+type costLoadedMsg struct {
+	totalCost float64
+}
+
 // Update handles messages and updates the model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -42,6 +46,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clearStatusMsg:
 		m.statusMessage = ""
 		m.statusMessageExpires = time.Time{} // Reset expiration
+		return m, nil
+
+	case costLoadedMsg:
+		m.totalCost = msg.totalCost
 		return m, nil
 
 	case clipboardCopiedMsg:
