@@ -63,3 +63,26 @@ func (m Model) openLogFile(path string) tea.Cmd {
 		return logLoadedMsg{content: content, title: title}
 	}
 }
+
+// openWorkflowLog returns a command to load a workflow log file asynchronously
+func (m Model) openWorkflowLog(path string) tea.Cmd {
+	return func() tea.Msg {
+		title := "Workflow Log"
+
+		if strings.HasPrefix(path, "gs://") {
+			// Read from Google Cloud Storage
+			content, err := readGCSFile(path)
+			if err != nil {
+				return logErrorMsg{err: err}
+			}
+			return logLoadedMsg{content: content, title: title}
+		}
+
+		// Read local file
+		content, err := readLocalFile(path)
+		if err != nil {
+			return logErrorMsg{err: err}
+		}
+		return logLoadedMsg{content: content, title: title}
+	}
+}

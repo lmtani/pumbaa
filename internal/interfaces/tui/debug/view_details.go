@@ -179,6 +179,29 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 		}
 	} else {
 		// For workflow/subworkflow nodes without CallData
+		// Show workflow root and log paths
+		if node.Type == NodeTypeWorkflow || node.Type == NodeTypeSubWorkflow {
+			var metadata *WorkflowMetadata
+			if node.Type == NodeTypeWorkflow {
+				metadata = m.metadata
+			}
+
+			if metadata != nil {
+				if metadata.WorkflowRoot != "" || metadata.WorkflowLog != "" {
+					sb.WriteString("\n")
+					sb.WriteString(titleStyle.Render("📁 Workflow Paths") + "\n")
+					if metadata.WorkflowRoot != "" {
+						sb.WriteString(labelStyle.Render("Root:") + "\n")
+						sb.WriteString(pathStyle.Render(metadata.WorkflowRoot) + "\n")
+					}
+					if metadata.WorkflowLog != "" {
+						sb.WriteString(labelStyle.Render("Log:") + " " + mutedStyle.Render("(w to view)") + "\n")
+						sb.WriteString(pathStyle.Render(metadata.WorkflowLog) + "\n")
+					}
+				}
+			}
+		}
+
 		// Show workflow-level failures if this is the root workflow node
 		if node.Type == NodeTypeWorkflow && len(m.metadata.Failures) > 0 {
 			sb.WriteString("\n")
