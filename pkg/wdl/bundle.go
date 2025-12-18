@@ -57,6 +57,11 @@ func CreateBundle(mainWorkflow string, outputPath string) (*BundleResult, error)
 
 // CreateBundleWithOptions creates a bundle with custom options
 func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts BundleOptions) (*BundleResult, error) {
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
 	// Parse and analyze dependencies
 	graph, err := AnalyzeDependenciesFromFile(mainWorkflow)
 	if err != nil {
@@ -113,10 +118,7 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 		return nil, fmt.Errorf("failed to create dependencies ZIP: %w", err)
 	}
 
-	deps := make([]string, 0, len(graph.Imports))
-	for _, depPath := range graph.Imports {
-		deps = append(deps, depPath)
-	}
+	deps := append([]string{}, graph.Imports...)
 
 	return &BundleResult{
 		MainWDLPath:         mainWDLPath,
