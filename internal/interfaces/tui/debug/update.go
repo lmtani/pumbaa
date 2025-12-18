@@ -34,6 +34,10 @@ type subWorkflowErrorMsg struct {
 
 type clearStatusMsg struct{}
 
+type costLoadedMsg struct {
+	totalCost float64
+}
+
 // Update handles messages and updates the model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -42,6 +46,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clearStatusMsg:
 		m.statusMessage = ""
 		m.statusMessageExpires = time.Time{} // Reset expiration
+		return m, nil
+
+	case costLoadedMsg:
+		m.totalCost = msg.totalCost
 		return m, nil
 
 	case clipboardCopiedMsg:
@@ -282,6 +290,31 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.setStatusMessage("No options available for this workflow")
 			return m, getClearStatusCmd()
+		}
+
+	case key.Matches(msg, m.keys.WorkflowLog):
+		// Open workflow log in modal if available
+		if m.cursor < len(m.nodes) {
+			node := m.nodes[m.cursor]
+			if node.Type == NodeTypeWorkflow || node.Type == NodeTypeSubWorkflow {
+				var metadata *WorkflowMetadata
+				if node.Type == NodeTypeWorkflow {
+					metadata = m.metadata
+				} else if node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
+					metadata = node.CallData.SubWorkflowMetadata
+				}
+				if metadata != nil && metadata.WorkflowLog != "" {
+					m.isLoading = true
+					m.loadingMessage = "Loading workflow log..."
+					return m, m.openWorkflowLog(metadata.WorkflowLog)
+				} else {
+					m.setStatusMessage("No workflow log available")
+					return m, getClearStatusCmd()
+				}
+			} else {
+				m.setStatusMessage("Workflow log only available for workflow/subworkflow nodes")
+				return m, getClearStatusCmd()
+			}
 		}
 
 	case key.Matches(msg, m.keys.GlobalTimeline):

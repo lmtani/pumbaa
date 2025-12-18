@@ -258,6 +258,23 @@ type clipboardCopiedMsg struct {
 	err     error
 }
 
+// fetchTotalCost fetches the total cost asynchronously.
+func (m Model) fetchTotalCost() tea.Cmd {
+	if m.fetcher == nil {
+		return nil
+	}
+
+	workflowID := m.metadata.ID
+	return func() tea.Msg {
+		cost, _, err := m.fetcher.GetWorkflowCost(context.Background(), workflowID)
+		if err != nil {
+			// Silently fail - just don't show cost
+			return costLoadedMsg{totalCost: 0}
+		}
+		return costLoadedMsg{totalCost: cost}
+	}
+}
+
 // copyToClipboard creates a tea.Cmd that copies text to the system clipboard
 func copyToClipboard(text string) tea.Cmd {
 	return func() tea.Msg {

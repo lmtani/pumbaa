@@ -110,13 +110,9 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		return fmt.Errorf("failed to build debug info: %w", err)
 	}
 
-	// Create and run the TUI using precomputed DebugInfo
-	var model debug.Model
-	if workflowID != "" {
-		model = debug.NewModelWithDebugInfo(di, h.client)
-	} else {
-		model = debug.NewModelWithDebugInfo(di, nil)
-	}
+	// Create and run the TUI
+	model := debug.NewModelWithDebugInfo(di, h.client)
+
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

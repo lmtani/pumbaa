@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+// importRegex matches import statements: import "path" or import 'path'
+var importRegex = regexp.MustCompile(`import\s+["']([^"']+)["']`)
+
+// maxExtractFileSize limits the size of files extracted from ZIP (100MB)
+const maxExtractFileSize = 100 * 1024 * 1024
+
 // BundleOptions configures the bundle creation process
 type BundleOptions struct {
 	// IncludeMetadata includes a manifest.json file in the bundle
@@ -51,17 +57,29 @@ type BundleResult struct {
 // It produces:
 // 1. A main WDL file with imports rewritten to reference files inside the ZIP
 // 2. A ZIP file containing all dependencies with flattened structure
-func CreateBundle(mainWorkflow string, outputPath string) (*BundleResult, error) {
-	return CreateBundleWithOptions(mainWorkflow, outputPath, DefaultBundleOptions())
+// The outputDir parameter specifies the directory where outputs will be created.
+// Output filenames are derived from the mainWorkflow basename.
+func CreateBundle(mainWorkflow string, outputDir string) (*BundleResult, error) {
+	return CreateBundleWithOptions(mainWorkflow, outputDir, DefaultBundleOptions())
 }
 
 // CreateBundleWithOptions creates a bundle with custom options
-func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts BundleOptions) (*BundleResult, error) {
+func CreateBundleWithOptions(mainWorkflow string, outputDir string, opts BundleOptions) (*BundleResult, error) {
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
 	// Parse and analyze dependencies
 	graph, err := AnalyzeDependenciesFromFile(mainWorkflow)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze dependencies: %w", err)
 	}
+
+	// Derive output filenames from main workflow basename
+	baseName := strings.TrimSuffix(filepath.Base(graph.Root), filepath.Ext(graph.Root))
+	mainWDLPath := filepath.Join(outputDir, baseName+".wdl")
+	zipPath := filepath.Join(outputDir, baseName+".zip")
 
 	// No dependencies - just copy the main workflow
 	if len(graph.Imports) == 0 {
@@ -71,7 +89,6 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 		}
 
 		// Write main WDL without changes
-		mainWDLPath := strings.TrimSuffix(outputPath, ".zip") + ".wdl"
 		if err := os.WriteFile(mainWDLPath, mainContent, 0644); err != nil {
 			return nil, fmt.Errorf("failed to write main WDL: %w", err)
 		}
@@ -95,11 +112,6 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 
 	rewrittenMain := rewriteImports(string(mainContent), graph.Root, importMapping)
 
-	// Create output paths
-	baseOutputPath := strings.TrimSuffix(outputPath, filepath.Ext(outputPath))
-	mainWDLPath := baseOutputPath + ".wdl"
-	zipPath := baseOutputPath + ".zip"
-
 	// Write rewritten main WDL
 	if err := os.WriteFile(mainWDLPath, []byte(rewrittenMain), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write main WDL: %w", err)
@@ -112,10 +124,7 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 		return nil, fmt.Errorf("failed to create dependencies ZIP: %w", err)
 	}
 
-	deps := make([]string, 0, len(graph.Imports))
-	for _, depPath := range graph.Imports {
-		deps = append(deps, depPath)
-	}
+	deps := append([]string{}, graph.Imports...)
 
 	return &BundleResult{
 		MainWDLPath:         mainWDLPath,
@@ -153,9 +162,6 @@ func buildImportMapping(graph *DependencyGraph) map[string]string {
 func rewriteImports(content string, filePath string, importMapping map[string]string) string {
 	fileDir := filepath.Dir(filePath)
 
-	// Match import statements: import "path" or import 'path'
-	importRegex := regexp.MustCompile(`import\s+["']([^"']+)["']`)
-
 	return importRegex.ReplaceAllStringFunc(content, func(match string) string {
 		submatches := importRegex.FindStringSubmatch(match)
 		if len(submatches) < 2 {
@@ -183,7 +189,7 @@ func rewriteImports(content string, filePath string, importMapping map[string]st
 }
 
 // createDependenciesZip creates a ZIP file containing all dependencies
-func createDependenciesZip(graph *DependencyGraph, importMapping map[string]string, zipPath string, opts BundleOptions) error {
+func createDependenciesZip(graph *DependencyGraph, importMapping map[string]string, zipPath string, opts BundleOptions) (err error) {
 	outFile, err := os.Create(zipPath)
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
@@ -191,12 +197,16 @@ func createDependenciesZip(graph *DependencyGraph, importMapping map[string]stri
 	defer outFile.Close()
 
 	zipWriter := zip.NewWriter(outFile)
+	defer func() {
+		if closeErr := zipWriter.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to finalize zip: %w", closeErr)
+		}
+	}()
 
 	// Write each dependency with rewritten imports
 	for depPath, flatName := range importMapping {
 		content, err := os.ReadFile(depPath)
 		if err != nil {
-			zipWriter.Close()
 			return fmt.Errorf("failed to read %s: %w", depPath, err)
 		}
 
@@ -204,7 +214,6 @@ func createDependenciesZip(graph *DependencyGraph, importMapping map[string]stri
 		rewrittenContent := rewriteImports(string(content), depPath, importMapping)
 
 		if err := writeFileToZip(zipWriter, flatName, []byte(rewrittenContent)); err != nil {
-			zipWriter.Close()
 			return fmt.Errorf("failed to write %s to zip: %w", flatName, err)
 		}
 	}
@@ -232,19 +241,12 @@ func createDependenciesZip(graph *DependencyGraph, importMapping map[string]stri
 
 		metadataJSON, err := json.MarshalIndent(metadata, "", "  ")
 		if err != nil {
-			zipWriter.Close()
 			return fmt.Errorf("failed to marshal metadata: %w", err)
 		}
 
 		if err := writeFileToZip(zipWriter, "manifest.json", metadataJSON); err != nil {
-			zipWriter.Close()
 			return fmt.Errorf("failed to write manifest: %w", err)
 		}
-	}
-
-	// Properly close the zip writer to finalize the archive
-	if err := zipWriter.Close(); err != nil {
-		return fmt.Errorf("failed to finalize zip: %w", err)
 	}
 
 	return nil
@@ -268,6 +270,7 @@ func writeFileToZip(zw *zip.Writer, filename string, content []byte) error {
 }
 
 // ExtractBundle extracts a bundle ZIP to a directory
+// Used for testing and verification purposes
 func ExtractBundle(zipPath string, outputDir string) error {
 	reader, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -314,8 +317,12 @@ func extractZipFile(file *zip.File, outputDir string) error {
 	}
 	defer rc.Close()
 
-	_, err = io.Copy(outFile, rc)
-	return err
+	// Limit extracted file size to prevent zip bombs
+	_, err = io.CopyN(outFile, rc, maxExtractFileSize)
+	if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }
 
 // isPathWithinDir checks if a path is within a directory (prevents zip slip)
@@ -328,5 +335,7 @@ func isPathWithinDir(filePath string, dir string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.HasPrefix(absFilePath, absDir)
+	// Ensure we check with path separator to avoid prefix matching issues
+	// e.g., /tmp/output vs /tmp/output-evil
+	return strings.HasPrefix(absFilePath, absDir+string(os.PathSeparator)) || absFilePath == absDir
 }

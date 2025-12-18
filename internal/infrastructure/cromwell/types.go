@@ -91,3 +91,11 @@ type logEntry struct {
 	Attempt    int    `json:"attempt"`
 	ShardIndex int    `json:"shardIndex"`
 }
+
+// costResponse represents the response from getting workflow cost.
+type costResponse struct {
+	ID       string  `json:"id"`
+	Cost     float64 `json:"cost"`
+	Status   string  `json:"status"`
+	Currency string  `json:"currency"`
+}

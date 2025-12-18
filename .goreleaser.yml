@@ -41,7 +41,29 @@ snapshot:
   version_template: "{{ .Version }}-SNAPSHOT-{{ .ShortCommit }}"
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
       - "^docs:"
+      - "^chore:"
       - "^test:"
+      - "^ci:"
+      - "^build:"
+      - "^style:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "🚀 New Features"
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: "⚡ Performance Improvements"
+      regexp: '^perf(\(.+\))?!?:'
+      order: 2
+    - title: "♻️ Refactoring"
+      regexp: '^refactor(\(.+\))?!?:'
+      order: 3
+    - title: "🔧 Other Changes"
+      order: 999

@@ -2,7 +2,7 @@
 
 Inspect workflow execution tree and call-level details.
 
-Note: the information shown depends on a working connection to your Cromwell server (set via `--host` or `CROMWELL_HOST`). If a subworkflow is collapsed, its metadata may be unavailable until you expand it (Pumbaa fetches it on demand).
+Note: the information shown depends on a working connection to your Cromwell server (set via `--host` or `CROMWELL_HOST`).
 
 ![Debug View Screenshot](../assets/debug.png)
 
