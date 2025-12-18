@@ -1,6 +1,6 @@
 # Build variables
 BINARY_NAME := pumbaa
-BUILD_DIR := build
+BUILD_DIR := dist
 CMD_DIR := ./cmd/cli
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -20,7 +20,7 @@ GOLINT := golangci-lint
 # Platforms for cross-compilation
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
-.PHONY: all build build-all build-prod clean test test-verbose test-coverage fmt tidy vet lint help install run dev deps antlr
+.PHONY: all build clean test test-verbose test-coverage fmt tidy vet lint help run dev deps antlr release-dry-run release-check
 
 # Default target
 all: fmt vet test build
@@ -34,29 +34,6 @@ build:
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)
 	@echo "Binary created at $(BUILD_DIR)/$(BINARY_NAME)"
 
-# Build for all platforms
-build-all:
-	@echo "Building for all platforms..."
-	@mkdir -p $(BUILD_DIR)
-	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*} GOARCH=$${platform#*/} \
-		$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-$${platform%/*}-$${platform#*/}$(if $(findstring windows,$${platform}),.exe,) $(CMD_DIR); \
-		echo "Built: $(BINARY_NAME)-$${platform%/*}-$${platform#*/}"; \
-	done
-
-# Build optimized production binary (smaller size)
-build-prod:
-	@echo "Building optimized $(BINARY_NAME) for production..."
-	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=0 $(GOBUILD) -ldflags "-s -w -X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(BUILD_TIME)" -trimpath -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)
-	@echo "Binary created at $(BUILD_DIR)/$(BINARY_NAME)"
-	@ls -lh $(BUILD_DIR)/$(BINARY_NAME)
-
-# Install binary to GOPATH/bin
-install: build
-	@echo "Installing $(BINARY_NAME)..."
-	cp $(BUILD_DIR)/$(BINARY_NAME) $(GOPATH)/bin/$(BINARY_NAME)
-	@echo "Installed to $(GOPATH)/bin/$(BINARY_NAME)"
 
 # Run the application
 run:
@@ -180,9 +157,44 @@ clean-all: clean
 
 ## Release targets
 
-# Create a release build
-release: clean fmt vet test build-all
-	@echo "Release builds created in $(BUILD_DIR)/"
+# Preview release locally with goreleaser (no publish)
+release-dry-run:
+	@echo "Running goreleaser in dry-run mode..."
+	@which goreleaser > /dev/null || (echo "goreleaser not installed. Run: go install github.com/goreleaser/goreleaser@latest" && exit 1)
+	goreleaser release --snapshot --clean
+	@echo "Preview release created in dist/"
+
+# Preview changelog based on conventional commits (mimics goreleaser groups)
+release-changelog:
+	@echo "=== CHANGELOG PREVIEW (since last tag) ==="
+	@echo ""
+	@LAST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo ""); \
+	if [ -z "$$LAST_TAG" ]; then \
+		echo "No previous tag found"; \
+	else \
+		echo "Changes since $$LAST_TAG:"; \
+		echo ""; \
+		echo "🚀 New Features"; \
+		git log $$LAST_TAG..HEAD --oneline --grep="^feat" 2>/dev/null | sed 's/^/  /' || true; \
+		echo ""; \
+		echo "🐛 Bug Fixes"; \
+		git log $$LAST_TAG..HEAD --oneline --grep="^fix" 2>/dev/null | sed 's/^/  /' || true; \
+		echo ""; \
+		echo "⚡ Performance Improvements"; \
+		git log $$LAST_TAG..HEAD --oneline --grep="^perf" 2>/dev/null | sed 's/^/  /' || true; \
+		echo ""; \
+		echo "♻️ Refactoring"; \
+		git log $$LAST_TAG..HEAD --oneline --grep="^refactor" 2>/dev/null | sed 's/^/  /' || true; \
+		echo ""; \
+		echo "(Excluded from changelog: docs, chore, test, ci, build, style)"; \
+	fi
+
+# Check goreleaser configuration
+release-check:
+	@echo "Checking goreleaser configuration..."
+	@which goreleaser > /dev/null || (echo "goreleaser not installed. Run: go install github.com/goreleaser/goreleaser@latest" && exit 1)
+	goreleaser check
+	@echo "Configuration is valid"
 
 ## Help
 
@@ -222,6 +234,8 @@ help:
 	@echo "  clean-all    Clean everything including caches"
 	@echo ""
 	@echo "Other targets:"
-	@echo "  release      Create release builds for all platforms"
-	@echo "  docker-build Build Docker image"
-	@echo "  help         Show this help"
+	@echo "  release-dry-run   Preview release with goreleaser (no publish)"
+	@echo "  release-changelog Preview changelog that will be generated"
+	@echo "  release-check     Validate goreleaser configuration"
+	@echo "  docker-build      Build Docker image"
+	@echo "  help              Show this help"
