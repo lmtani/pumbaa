@@ -71,7 +71,8 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 		}
 
 		// Write main WDL without changes
-		mainWDLPath := strings.TrimSuffix(outputPath, ".zip") + ".wdl"
+		baseName := strings.TrimSuffix(filepath.Base(graph.Root), filepath.Ext(graph.Root))
+		mainWDLPath := filepath.Join(outputPath, baseName+".wdl")
 		if err := os.WriteFile(mainWDLPath, mainContent, 0644); err != nil {
 			return nil, fmt.Errorf("failed to write main WDL: %w", err)
 		}
@@ -96,9 +97,9 @@ func CreateBundleWithOptions(mainWorkflow string, outputPath string, opts Bundle
 	rewrittenMain := rewriteImports(string(mainContent), graph.Root, importMapping)
 
 	// Create output paths
-	baseOutputPath := strings.TrimSuffix(outputPath, filepath.Ext(outputPath))
-	mainWDLPath := baseOutputPath + ".wdl"
-	zipPath := baseOutputPath + ".zip"
+	baseName := strings.TrimSuffix(filepath.Base(graph.Root), filepath.Ext(graph.Root))
+	mainWDLPath := filepath.Join(outputPath, baseName+".wdl")
+	zipPath := filepath.Join(outputPath, baseName+".zip")
 
 	// Write rewritten main WDL
 	if err := os.WriteFile(mainWDLPath, []byte(rewrittenMain), 0644); err != nil {
