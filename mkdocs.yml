@@ -47,6 +47,7 @@ nav:
     - Workflow Metadata: features/metadata.md
     - Abort Workflow: features/abort.md
     - Bundle WDL: features/bundle.md
+    - Resource Monitoring: features/resource-monitoring.md
   - Contributing: contributing.md
 
 markdown_extensions:
