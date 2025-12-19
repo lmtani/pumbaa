@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // renderCallInputsModal renders the call inputs modal.
@@ -189,7 +190,7 @@ func (m Model) formatCallCommandForModal(node *TreeNode) string {
 		return mutedStyle.Render("No command available")
 	}
 
-	// Wrap text to fit the modal width
-	wrapped := wrapText(node.CallData.CommandLine, m.width-20)
-	return commandStyle.Render(wrapped)
+	// Aplicar syntax highlighting como Bash
+	highlighted := common.Highlight(node.CallData.CommandLine, common.ProfileShell, m.width-20)
+	return highlighted
 }

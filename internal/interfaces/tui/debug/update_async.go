@@ -52,7 +52,7 @@ func (m Model) openLogFile(path string) tea.Cmd {
 			if err != nil {
 				return logErrorMsg{err: err}
 			}
-			return logLoadedMsg{content: content, title: title}
+			return logLoadedMsg{content: content, title: title, path: path}
 		}
 
 		// Read local file
@@ -60,7 +60,7 @@ func (m Model) openLogFile(path string) tea.Cmd {
 		if err != nil {
 			return logErrorMsg{err: err}
 		}
-		return logLoadedMsg{content: content, title: title}
+		return logLoadedMsg{content: content, title: title, path: path}
 	}
 }
 
@@ -75,7 +75,7 @@ func (m Model) openWorkflowLog(path string) tea.Cmd {
 			if err != nil {
 				return logErrorMsg{err: err}
 			}
-			return logLoadedMsg{content: content, title: title}
+			return logLoadedMsg{content: content, title: title, path: path}
 		}
 
 		// Read local file
@@ -83,6 +83,6 @@ func (m Model) openWorkflowLog(path string) tea.Cmd {
 		if err != nil {
 			return logErrorMsg{err: err}
 		}
-		return logLoadedMsg{content: content, title: title}
+		return logLoadedMsg{content: content, title: title, path: path}
 	}
 }

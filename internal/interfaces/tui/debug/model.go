@@ -46,13 +46,14 @@ type Model struct {
 	loadingSpinner spinner.Model
 
 	// Log modal state
-	showLogModal     bool
-	logModalContent  string
-	logModalTitle    string
-	logModalError    string
-	logModalLoading  bool
-	logModalViewport viewport.Model
-	logCursor        int // 0 = stdout, 1 = stderr, 2 = monitoring
+	showLogModal       bool
+	logModalContent    string // Highlighted content for display
+	logModalRawContent string // Raw content for clipboard
+	logModalTitle      string
+	logModalError      string
+	logModalLoading    bool
+	logModalViewport   viewport.Model
+	logCursor          int // 0 = stdout, 1 = stderr, 2 = monitoring
 
 	// Inputs/Outputs modal state
 	showInputsModal      bool

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 func (m Model) renderDetails() string {
@@ -222,9 +223,9 @@ func (m Model) renderCommand(node *TreeNode) string {
 	if node.CallData == nil || node.CallData.CommandLine == "" {
 		return mutedStyle.Render("No command available")
 	}
-	// Wrap text to fit the viewport width
-	wrapped := wrapText(node.CallData.CommandLine, m.detailsWidth-8)
-	return commandStyle.Render(wrapped)
+	// Aplicar syntax highlighting como Bash
+	highlighted := common.Highlight(node.CallData.CommandLine, common.ProfileShell, m.detailsWidth-8)
+	return highlighted
 }
 
 func (m Model) renderLogs(node *TreeNode) string {

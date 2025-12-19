@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // modalFooter generates the footer for modals, including copy feedback if present
@@ -75,13 +76,15 @@ func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutS
 		if err != nil {
 			return mutStyle.Render("  [complex object]")
 		}
-		return valStyle.Render("  " + string(jsonBytes))
+		highlighted := common.Highlight(string(jsonBytes), common.ProfileJSON, maxWidth-4)
+		return strings.ReplaceAll(highlighted, "\n", "\n  ")
 	default:
 		// Fallback to JSON for unknown types
 		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
 		if err != nil {
 			return valStyle.Render(fmt.Sprintf("  %v", val))
 		}
-		return valStyle.Render("  " + string(jsonBytes))
+		highlighted := common.Highlight(string(jsonBytes), common.ProfileJSON, maxWidth-4)
+		return strings.ReplaceAll(highlighted, "\n", "\n  ")
 	}
 }

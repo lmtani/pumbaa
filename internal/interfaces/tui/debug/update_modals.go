@@ -10,10 +10,11 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showLogModal = false
 		m.logModalContent = ""
+		m.logModalRawContent = ""
 		m.logModalError = ""
 	case key.Matches(msg, m.keys.Copy):
-		if m.logModalContent != "" {
-			return m, copyToClipboard(m.logModalContent)
+		if m.logModalRawContent != "" {
+			return m, copyToClipboard(m.logModalRawContent)
 		}
 	case key.Matches(msg, m.keys.Up):
 		m.logModalViewport.ScrollUp(1)

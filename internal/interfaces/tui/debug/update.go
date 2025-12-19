@@ -10,12 +10,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // Message types for async operations
 type logLoadedMsg struct {
 	content string
 	title   string
+	path    string
 }
 
 type logErrorMsg struct {
@@ -88,14 +90,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logLoadedMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.logModalContent = msg.content
+		m.logModalRawContent = msg.content // Keep raw content for clipboard
+		m.logModalContent = common.HighlightWithFilename(msg.content, msg.path, m.width-12)
 		m.logModalTitle = msg.title
 		m.logModalError = ""
 		m.logModalLoading = false
 		m.showLogModal = true
 		// Initialize the modal viewport
 		m.logModalViewport = viewport.New(m.width-10, m.height-8)
-		m.logModalViewport.SetContent(msg.content)
+		m.logModalViewport.SetContent(m.logModalContent)
 		return m, nil
 
 	case logErrorMsg:
