@@ -123,7 +123,7 @@ func ParseMonitoringLog(content string) (*MonitoringMetrics, error) {
 	}
 
 	if len(metrics.Timestamps) == 0 {
-		return nil, fmt.Errorf("no valid data points found in monitoring log")
+		return nil, fmt.Errorf("incompatible format: no valid data points found.\n\nExpected TSV format from resource_monitor.sh:\ntimestamp  cpu_percent  mem_used_mb  mem_total_mb  ...")
 	}
 
 	return metrics, nil

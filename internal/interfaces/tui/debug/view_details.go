@@ -38,21 +38,34 @@ func (m Model) getDetailsTitle() string {
 }
 
 func (m Model) renderDetailsContent(node *TreeNode) string {
+	var sb strings.Builder
+
+	// Action bar is ALWAYS visible at top for task nodes
+	if node.CallData != nil {
+		sb.WriteString(m.renderActionBar(node.CallData))
+		sb.WriteString("\n\n")
+	}
+
+	// Content based on view mode
 	switch m.viewMode {
 	case ViewModeCommand:
-		return m.renderCommand(node)
+		sb.WriteString(m.renderCommand(node))
 	case ViewModeLogs:
-		return m.renderLogs(node)
+		sb.WriteString(m.renderLogs(node))
 	case ViewModeInputs:
-		return m.renderInputs(node)
+		sb.WriteString(m.renderInputs(node))
 	case ViewModeOutputs:
-		return m.renderOutputs(node)
+		sb.WriteString(m.renderOutputs(node))
+	case ViewModeMonitor:
+		sb.WriteString(m.renderMonitorContent())
 	default:
-		return m.renderBasicDetails(node)
+		sb.WriteString(m.renderBasicDetailsBody(node))
 	}
+
+	return sb.String()
 }
 
-func (m Model) renderBasicDetails(node *TreeNode) string {
+func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	var sb strings.Builder
 
 	// Node info
@@ -67,42 +80,6 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 	// Call-specific details
 	if node.CallData != nil {
 		cd := node.CallData
-
-		// Quick Actions section - FIRST!
-		sb.WriteString("\n")
-		sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
-
-		// Show available actions based on data
-		if len(cd.Inputs) > 0 {
-			sb.WriteString(buttonStyle.Render(" 1 ") + " Inputs  ")
-		} else {
-			sb.WriteString(disabledButtonStyle.Render(" 1 ") + mutedStyle.Render(" Inputs  "))
-		}
-
-		if len(cd.Outputs) > 0 {
-			sb.WriteString(buttonStyle.Render(" 2 ") + " Outputs  ")
-		} else {
-			sb.WriteString(disabledButtonStyle.Render(" 2 ") + mutedStyle.Render(" Outputs  "))
-		}
-
-		if cd.CommandLine != "" {
-			sb.WriteString(buttonStyle.Render(" 3 ") + " Command  ")
-		} else {
-			sb.WriteString(disabledButtonStyle.Render(" 3 ") + mutedStyle.Render(" Command  "))
-		}
-
-		if cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" {
-			sb.WriteString(buttonStyle.Render(" 4 ") + " Logs  ")
-		} else {
-			sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs  "))
-		}
-
-		// Resource Analysis button - only if monitoring log is available
-		if cd.MonitoringLog != "" {
-			sb.WriteString(buttonStyle.Render(" 5 ") + " Monitor")
-		}
-
-		sb.WriteString("\n")
 
 		// Show task-level failures if present
 		if len(cd.Failures) > 0 {
@@ -307,5 +284,117 @@ func (m Model) renderOutputs(node *TreeNode) string {
 		sb.WriteString(labelStyle.Render(k+": ") + "\n")
 		sb.WriteString(pathStyle.Render(fmt.Sprintf("  %v", v)) + "\n\n")
 	}
+	return sb.String()
+}
+
+// renderActionBar renders the persistent action bar with mode highlighting
+func (m Model) renderActionBar(cd *CallDetails) string {
+	var sb strings.Builder
+	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
+
+	// Highlight current mode
+	inputsStyle := buttonStyle
+	outputsStyle := buttonStyle
+	commandStyle := buttonStyle
+	logsStyle := buttonStyle
+	monitorStyle := buttonStyle
+
+	if len(cd.Inputs) == 0 {
+		inputsStyle = disabledButtonStyle
+	}
+	if len(cd.Outputs) == 0 {
+		outputsStyle = disabledButtonStyle
+	}
+	if cd.CommandLine == "" {
+		commandStyle = disabledButtonStyle
+	}
+	if cd.Stdout == "" && cd.Stderr == "" && cd.MonitoringLog == "" {
+		logsStyle = disabledButtonStyle
+	}
+	if cd.MonitoringLog == "" {
+		monitorStyle = disabledButtonStyle
+	}
+
+	// Highlight current selection with background
+	highlightBg := lipgloss.Color("#7D56F4")
+	switch m.viewMode {
+	case ViewModeInputs:
+		inputsStyle = inputsStyle.Background(highlightBg)
+	case ViewModeOutputs:
+		outputsStyle = outputsStyle.Background(highlightBg)
+	case ViewModeCommand:
+		commandStyle = commandStyle.Background(highlightBg)
+	case ViewModeLogs:
+		logsStyle = logsStyle.Background(highlightBg)
+	case ViewModeMonitor:
+		monitorStyle = monitorStyle.Background(highlightBg)
+	}
+
+	sb.WriteString(inputsStyle.Render(" 1 ") + " Inputs  ")
+	sb.WriteString(outputsStyle.Render(" 2 ") + " Outputs  ")
+	sb.WriteString(commandStyle.Render(" 3 ") + " Command  ")
+	sb.WriteString(logsStyle.Render(" 4 ") + " Logs  ")
+	if cd.MonitoringLog != "" {
+		sb.WriteString(monitorStyle.Render(" 5 ") + " Monitor")
+	}
+
+	// Add hint to go back when in a sub-view
+	if m.viewMode != ViewModeDetails && m.viewMode != ViewModeTree {
+		sb.WriteString("\n" + mutedStyle.Render("(Press ESC or 'd' to return to details)"))
+	}
+
+	return sb.String()
+}
+
+// renderMonitorContent renders the resource efficiency analysis inline
+func (m Model) renderMonitorContent() string {
+	if m.resourceError != "" {
+		return errorStyle.Render("Error: " + m.resourceError)
+	}
+
+	if m.resourceReport == nil {
+		return mutedStyle.Render("Loading resource analysis... Press 5 again if needed.")
+	}
+
+	var sb strings.Builder
+	report := m.resourceReport
+
+	// Header with duration and data points
+	sb.WriteString(mutedStyle.Render(fmt.Sprintf("⏱ Duration: %s  📊 Data points: %d",
+		formatDuration(report.Duration), report.DataPoints)) + "\n\n")
+
+	// CPU Section
+	sb.WriteString(titleStyle.Render("💻 CPU") + "\n")
+	sb.WriteString(renderGaugeBar(report.CPUEfficiency, 25) + "\n")
+	sb.WriteString(fmt.Sprintf("Peak: %.0f%%  Avg: %.0f%%  Efficiency: %.0f%%\n\n",
+		report.CPUPeak, report.CPUAvg, report.CPUEfficiency*100))
+
+	// Memory Section
+	sb.WriteString(titleStyle.Render("🧠 Memory") + "\n")
+	sb.WriteString(renderGaugeBar(report.MemEfficiency, 25) + "\n")
+	sb.WriteString(fmt.Sprintf("Peak: %.0fMB / %.0fMB  Efficiency: %.0f%%\n\n",
+		report.MemPeak, report.MemTotal, report.MemEfficiency*100))
+
+	// Disk Section
+	sb.WriteString(titleStyle.Render("💾 Disk") + "\n")
+	sb.WriteString(renderGaugeBar(report.DiskEfficiency, 25) + "\n")
+	sb.WriteString(fmt.Sprintf("Peak: %.1fGB / %.1fGB  Efficiency: %.0f%%\n\n",
+		report.DiskPeak, report.DiskTotal, report.DiskEfficiency*100))
+
+	// Recommendations
+	if len(report.Recommendations) > 0 {
+		sb.WriteString(titleStyle.Render("💡 Recommendations") + "\n")
+		for _, rec := range report.Recommendations {
+			sb.WriteString("• " + rec + "\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	// Efficiency explanation
+	sb.WriteString(mutedStyle.Render("─── How efficiency is calculated ───") + "\n")
+	sb.WriteString(mutedStyle.Render("• CPU: Average usage / 100%") + "\n")
+	sb.WriteString(mutedStyle.Render("• Memory & Disk: Peak usage / Total allocated") + "\n")
+	sb.WriteString(mutedStyle.Render("Low efficiency = over-provisioned resources") + "\n")
+
 	return sb.String()
 }

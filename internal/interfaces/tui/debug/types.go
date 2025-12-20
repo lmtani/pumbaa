@@ -37,6 +37,7 @@ const (
 	ViewModeInputs
 	ViewModeOutputs
 	ViewModeHelp
+	ViewModeMonitor
 )
 
 // PanelFocus represents which panel has focus.

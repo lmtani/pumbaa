@@ -75,18 +75,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingMessage = ""
 		m.resourceReport = msg.report
 		m.resourceError = ""
-		m.showResourceModal = true
-		// Initialize viewport
-		m.resourceViewport = viewport.New(m.width-10, m.height-10)
-		m.resourceViewport.SetContent("")
+		m.viewMode = ViewModeMonitor
+		m.updateDetailsContent()
 		return m, nil
 
 	case resourceAnalysisErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.resourceError = msg.err.Error()
-		m.showResourceModal = true
-		m.resourceViewport = viewport.New(m.width-10, m.height-10)
+		m.viewMode = ViewModeMonitor
+		m.updateDetailsContent()
 		return m, nil
 
 	case spinner.TickMsg:
@@ -389,12 +387,16 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, m.keys.ResourceAnalysis):
-		// Load and analyze monitoring log for the selected task
+		// Load and analyze monitoring log for the selected task (inline, not modal)
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil && node.CallData.MonitoringLog != "" {
+				m.viewMode = ViewModeMonitor
+				m.resourceReport = nil // Reset to show loading state
+				m.resourceError = ""
 				m.isLoading = true
 				m.loadingMessage = "Loading monitoring log..."
+				m.updateDetailsContent()
 				return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
 			} else {
 				m.setStatusMessage("No monitoring log available for this task")
