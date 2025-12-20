@@ -6,12 +6,15 @@ import (
 )
 
 func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	viewportWidth := m.logModalViewport.Width
+
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showLogModal = false
 		m.logModalContent = ""
 		m.logModalRawContent = ""
 		m.logModalError = ""
+		m.logModalHScrollOffset = 0
 	case key.Matches(msg, m.keys.Copy):
 		if m.logModalRawContent != "" {
 			return m, copyToClipboard(m.logModalRawContent)
@@ -20,12 +23,32 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.logModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
 		m.logModalViewport.ScrollDown(1)
+	case key.Matches(msg, m.keys.Left):
+		// Scroll left (decrease offset)
+		if m.logModalHScrollOffset > 0 {
+			m.logModalHScrollOffset -= 10
+			if m.logModalHScrollOffset < 0 {
+				m.logModalHScrollOffset = 0
+			}
+			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
+			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+			m.logModalViewport.SetContent(truncatedContent)
+		}
+	case key.Matches(msg, m.keys.Right):
+		// Scroll right (increase offset)
+		m.logModalHScrollOffset += 10
+		scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
+		truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+		m.logModalViewport.SetContent(truncatedContent)
 	case key.Matches(msg, m.keys.PageUp):
 		m.logModalViewport.PageUp()
 	case key.Matches(msg, m.keys.PageDown):
 		m.logModalViewport.PageDown()
 	case key.Matches(msg, m.keys.Home):
 		m.logModalViewport.GotoTop()
+		m.logModalHScrollOffset = 0
+		truncatedContent := truncateLinesToWidth(m.logModalContent, viewportWidth)
+		m.logModalViewport.SetContent(truncatedContent)
 	case key.Matches(msg, m.keys.End):
 		m.logModalViewport.GotoBottom()
 	}

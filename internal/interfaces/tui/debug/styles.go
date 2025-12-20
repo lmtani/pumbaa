@@ -11,21 +11,14 @@ var (
 	statusPending   = lipgloss.Color("#888888")
 
 	// UI colors
-	primaryColor   = lipgloss.Color("#7D56F4")
-	secondaryColor = lipgloss.Color("#5A4FCF")
-	borderColor    = lipgloss.Color("#444444")
-	focusBorder    = lipgloss.Color("#7D56F4")
-	textColor      = lipgloss.Color("#FAFAFA")
-	mutedColor     = lipgloss.Color("#888888")
-	highlightColor = lipgloss.Color("#874BFD")
+	primaryColor = lipgloss.Color("#7D56F4")
+	borderColor  = lipgloss.Color("#444444")
+	textColor    = lipgloss.Color("#FAFAFA")
+	mutedColor   = lipgloss.Color("#888888")
 )
 
 // Styles
 var (
-	// Base styles
-	baseStyle = lipgloss.NewStyle().
-			Foreground(textColor)
-
 	// Header style
 	headerStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
@@ -37,11 +30,6 @@ var (
 	headerTitleStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(lipgloss.Color("#FFFFFF"))
-
-	// Badge styles for header
-	badgeStyle = lipgloss.NewStyle().
-			Padding(0, 1).
-			MarginLeft(1)
 
 	durationBadgeStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#000000")).
@@ -55,30 +43,11 @@ var (
 			Padding(0, 1).
 			MarginLeft(1)
 
-	// Panel styles
-	panelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(borderColor).
-			Padding(0, 1)
-
-	focusedPanelStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(focusBorder).
-				Padding(0, 1)
-
 	// Title styles
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(primaryColor).
 			MarginBottom(1)
-
-	// Tree node styles
-	treeNodeStyle = lipgloss.NewStyle().
-			Foreground(textColor)
-
-	selectedNodeStyle = lipgloss.NewStyle().
-				Foreground(textColor).
-				Background(highlightColor)
 
 	// Status styles
 	statusDoneStyle = lipgloss.NewStyle().
@@ -108,25 +77,10 @@ var (
 			BorderForeground(borderColor).
 			Padding(0, 1)
 
-	// Command style
-	commandStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00ffff")).
-			Background(lipgloss.Color("#1a1a1a")).
-			Padding(1)
-
 	// Path style (for GCS/file paths)
 	pathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#87ceeb")).
 			Italic(true)
-
-	// Key style for key bindings
-	keyStyle = lipgloss.NewStyle().
-			Foreground(primaryColor).
-			Bold(true)
-
-	// Description style for help
-	descStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
 
 	// Muted style for less important text
 	mutedStyle = lipgloss.NewStyle().
@@ -135,11 +89,6 @@ var (
 	// Error style
 	errorStyle = lipgloss.NewStyle().
 			Foreground(statusFailed).
-			Bold(true)
-
-	// Warning style
-	warningStyle = lipgloss.NewStyle().
-			Foreground(statusRunning).
 			Bold(true)
 
 	// Modal style
@@ -160,11 +109,6 @@ var (
 	// Modal path style (for GCS/file paths in modals)
 	modalPathStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#87ceeb"))
-
-	// Log content style (for log files)
-	logContentStyle = lipgloss.NewStyle().
-			Foreground(textColor).
-			Background(lipgloss.Color("#0a0a0a"))
 
 	// Button styles for quick actions
 	buttonStyle = lipgloss.NewStyle().

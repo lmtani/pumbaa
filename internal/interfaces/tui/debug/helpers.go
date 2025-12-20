@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"context"
+
 	"cloud.google.com/go/storage"
 	tea "github.com/charmbracelet/bubbletea"
-	"golang.org/x/net/context"
 )
 
 // maxLogSize is the maximum log file size we'll read (1 MB)

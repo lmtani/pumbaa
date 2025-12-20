@@ -90,15 +90,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logLoadedMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.logModalRawContent = msg.content // Keep raw content for clipboard
-		m.logModalContent = common.HighlightWithFilename(msg.content, msg.path, m.width-12)
+		m.logModalRawContent = msg.content                                         // Keep raw content for clipboard
+		m.logModalContent = common.HighlightWithFilename(msg.content, msg.path, 0) // No width limit for highlighting
 		m.logModalTitle = msg.title
 		m.logModalError = ""
 		m.logModalLoading = false
 		m.showLogModal = true
-		// Initialize the modal viewport
-		m.logModalViewport = viewport.New(m.width-10, m.height-8)
-		m.logModalViewport.SetContent(m.logModalContent)
+		m.logModalHScrollOffset = 0
+		// Initialize the modal viewport with truncated content
+		// Modal uses: width-6, minus border (2), minus padding (4) = width-12
+		// Use width-14 for extra safety margin
+		viewportWidth := m.width - 14
+		m.logModalViewport = viewport.New(viewportWidth, m.height-10)
+		truncatedContent := truncateLinesToWidth(m.logModalContent, viewportWidth)
+		m.logModalViewport.SetContent(truncatedContent)
 		return m, nil
 
 	case logErrorMsg:
@@ -127,8 +132,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.detailViewport.Width = m.detailsWidth - 4
 		m.detailViewport.Height = m.height - 14 // Leave room for header, footer, and panel borders
 		if m.showLogModal {
-			m.logModalViewport.Width = m.width - 10
-			m.logModalViewport.Height = m.height - 8
+			viewportWidth := m.width - 14
+			m.logModalViewport.Width = viewportWidth
+			m.logModalViewport.Height = m.height - 10
+			// Reapply content with new width
+			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
+			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+			m.logModalViewport.SetContent(truncatedContent)
 		}
 		m.updateDetailsContent()
 
