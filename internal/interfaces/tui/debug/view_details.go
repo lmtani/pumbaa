@@ -330,9 +330,9 @@ func (m Model) renderActionBar(cd *CallDetails) string {
 		monitorStyle = monitorStyle.Background(highlightBg)
 	}
 
-	sb.WriteString(inputsStyle.Render(" 1 ") + " Inputs  ")
-	sb.WriteString(outputsStyle.Render(" 2 ") + " Outputs  ")
-	sb.WriteString(commandStyle.Render(" 3 ") + " Command  ")
+	sb.WriteString(inputsStyle.Render(" 1 ") + " ↗Inputs  ")
+	sb.WriteString(outputsStyle.Render(" 2 ") + " ↗Outputs  ")
+	sb.WriteString(commandStyle.Render(" 3 ") + " ↗Command  ")
 	sb.WriteString(logsStyle.Render(" 4 ") + " Logs  ")
 	if cd.MonitoringLog != "" {
 		sb.WriteString(monitorStyle.Render(" 5 ") + " Monitor")
@@ -340,8 +340,11 @@ func (m Model) renderActionBar(cd *CallDetails) string {
 
 	// Add hint to go back when in a sub-view
 	if m.viewMode != ViewModeDetails && m.viewMode != ViewModeTree {
-		sb.WriteString("\n" + mutedStyle.Render("(Press ESC or 'd' to return to details)"))
+		sb.WriteString("\n" + mutedStyle.Render("Press ESC or 'd' to return to details"))
 	}
+
+	// Separator line
+	sb.WriteString("\n" + mutedStyle.Render("─────────────────────────────────────"))
 
 	return sb.String()
 }
@@ -381,20 +384,15 @@ func (m Model) renderMonitorContent() string {
 	sb.WriteString(fmt.Sprintf("Peak: %.1fGB / %.1fGB  Efficiency: %.0f%%\n\n",
 		report.DiskPeak, report.DiskTotal, report.DiskEfficiency*100))
 
-	// Recommendations
-	if len(report.Recommendations) > 0 {
-		sb.WriteString(titleStyle.Render("💡 Recommendations") + "\n")
-		for _, rec := range report.Recommendations {
-			sb.WriteString("• " + rec + "\n")
-		}
-		sb.WriteString("\n")
-	}
-
 	// Efficiency explanation
-	sb.WriteString(mutedStyle.Render("─── How efficiency is calculated ───") + "\n")
+	sb.WriteString(mutedStyle.Render("─── How this efficiency is calculated ───") + "\n")
 	sb.WriteString(mutedStyle.Render("• CPU: Average usage / 100%") + "\n")
 	sb.WriteString(mutedStyle.Render("• Memory & Disk: Peak usage / Total allocated") + "\n")
 	sb.WriteString(mutedStyle.Render("Low efficiency = over-provisioned resources") + "\n")
+
+	sb.WriteString(mutedStyle.Render("─── Note ───") + "\n")
+	sb.WriteString(mutedStyle.Render("Resource usage depends on input size and") + "\n")
+	sb.WriteString(mutedStyle.Render("analysis program efficiency.") + "\n")
 
 	return sb.String()
 }
