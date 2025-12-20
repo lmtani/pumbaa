@@ -41,7 +41,10 @@ func (m Model) getDetailsTitle() string {
 func (m Model) renderDetailsContent(node *TreeNode) string {
 	var sb strings.Builder
 
-	// Action bar is ALWAYS visible at top for task nodes
+	// Node type badge ALWAYS at the very top
+	sb.WriteString(m.getNodeTypeBadge(node) + "\n\n")
+
+	// Action bar is visible at top for task nodes
 	if node.CallData != nil {
 		sb.WriteString(m.renderActionBar(node.CallData))
 		sb.WriteString("\n\n")
@@ -72,7 +75,6 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	// Node info
 	sb.WriteString(titleStyle.Render("📌 Node Info") + "\n")
 	sb.WriteString(labelStyle.Render("Name: ") + valueStyle.Render(node.Name) + "\n")
-	sb.WriteString(labelStyle.Render("Type: ") + valueStyle.Render(nodeTypeName(node.Type)) + "\n")
 	sb.WriteString(labelStyle.Render("Status: ") + statusStyle(node.Status) + " " + valueStyle.Render(node.Status) + "\n")
 	if node.SubWorkflowID != "" {
 		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(node.SubWorkflowID) + "\n")
@@ -290,6 +292,51 @@ func (m Model) renderOutputs(node *TreeNode) string {
 		sb.WriteString(pathStyle.Render(fmt.Sprintf("  %v", v)) + "\n\n")
 	}
 	return sb.String()
+}
+
+// getNodeTypeBadge returns a colored badge indicating the node type
+func (m Model) getNodeTypeBadge(node *TreeNode) string {
+	var icon, label string
+	var color lipgloss.Color
+
+	// Determine badge based on node type
+	switch node.Type {
+	case NodeTypeWorkflow:
+		icon = "📦"
+		label = "WORKFLOW"
+		color = lipgloss.Color("#9C27B0") // Purple
+	case NodeTypeSubWorkflow:
+		icon = "📁"
+		label = "SUBWORKFLOW"
+		color = lipgloss.Color("#2196F3") // Blue
+	case NodeTypeCall:
+		if len(node.Children) > 0 {
+			icon = "🔄"
+			label = "SCATTER"
+			color = lipgloss.Color("#FFA726") // Orange
+		} else {
+			icon = "🔧"
+			label = "TASK"
+			color = lipgloss.Color("#4CAF50") // Green
+		}
+	case NodeTypeShard:
+		icon = "🔧"
+		label = "SHARD"
+		color = lipgloss.Color("#4CAF50") // Green
+	default:
+		icon = "📄"
+		label = "NODE"
+		color = lipgloss.Color("#9E9E9E") // Gray
+	}
+
+	// Create badge style
+	badgeStyle := lipgloss.NewStyle().
+		Background(color).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Padding(0, 1).
+		Bold(true)
+
+	return icon + " " + badgeStyle.Render(label)
 }
 
 // renderScatterSummary renders a summary for Call nodes that have shards
