@@ -70,6 +70,10 @@ func (m Model) View() string {
 		return m.renderGlobalTimelineModal()
 	}
 
+	if m.showResourceModal {
+		return m.renderResourceAnalysisModal()
+	}
+
 	if m.showHelp {
 		return m.renderHelp()
 	}

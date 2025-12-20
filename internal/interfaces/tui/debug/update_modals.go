@@ -221,3 +221,25 @@ func (m Model) handleGlobalTimelineModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd
 	}
 	return m, nil
 }
+
+func (m Model) handleResourceModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+		m.showResourceModal = false
+		m.resourceReport = nil
+		m.resourceError = ""
+	case key.Matches(msg, m.keys.Up):
+		m.resourceViewport.ScrollUp(1)
+	case key.Matches(msg, m.keys.Down):
+		m.resourceViewport.ScrollDown(1)
+	case key.Matches(msg, m.keys.PageUp):
+		m.resourceViewport.PageUp()
+	case key.Matches(msg, m.keys.PageDown):
+		m.resourceViewport.PageDown()
+	case key.Matches(msg, m.keys.Home):
+		m.resourceViewport.GotoTop()
+	case key.Matches(msg, m.keys.End):
+		m.resourceViewport.GotoBottom()
+	}
+	return m, nil
+}

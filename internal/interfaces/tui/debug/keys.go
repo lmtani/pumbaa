@@ -4,34 +4,35 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines all key bindings for the TUI.
 type KeyMap struct {
-	Up             key.Binding
-	Down           key.Binding
-	Left           key.Binding
-	Right          key.Binding
-	Enter          key.Binding
-	Space          key.Binding
-	Tab            key.Binding
-	Quit           key.Binding
-	Help           key.Binding
-	Escape         key.Binding
-	Details        key.Binding
-	Command        key.Binding
-	Logs           key.Binding
-	Inputs         key.Binding
-	Outputs        key.Binding
-	Options        key.Binding
-	WorkflowLog    key.Binding
-	GlobalTimeline key.Binding
-	CopyStdout     key.Binding
-	CopyStderr     key.Binding
-	ExpandAll      key.Binding
-	CollapseAll    key.Binding
-	Home           key.Binding
-	End            key.Binding
-	PageUp         key.Binding
-	PageDown       key.Binding
-	OpenLog        key.Binding
-	Copy           key.Binding
+	Up               key.Binding
+	Down             key.Binding
+	Left             key.Binding
+	Right            key.Binding
+	Enter            key.Binding
+	Space            key.Binding
+	Tab              key.Binding
+	Quit             key.Binding
+	Help             key.Binding
+	Escape           key.Binding
+	Details          key.Binding
+	Command          key.Binding
+	Logs             key.Binding
+	Inputs           key.Binding
+	Outputs          key.Binding
+	Options          key.Binding
+	WorkflowLog      key.Binding
+	GlobalTimeline   key.Binding
+	CopyStdout       key.Binding
+	CopyStderr       key.Binding
+	ExpandAll        key.Binding
+	CollapseAll      key.Binding
+	Home             key.Binding
+	End              key.Binding
+	PageUp           key.Binding
+	PageDown         key.Binding
+	OpenLog          key.Binding
+	Copy             key.Binding
+	ResourceAnalysis key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -148,6 +149,10 @@ func DefaultKeyMap() KeyMap {
 		Copy: key.NewBinding(
 			key.WithKeys("y"),
 			key.WithHelp("y", "copy to clipboard"),
+		),
+		ResourceAnalysis: key.NewBinding(
+			key.WithKeys("5"),
+			key.WithHelp("5", "resource analysis"),
 		),
 	}
 }

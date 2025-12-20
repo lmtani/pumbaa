@@ -92,9 +92,14 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 		}
 
 		if cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" {
-			sb.WriteString(buttonStyle.Render(" 4 ") + " Logs")
+			sb.WriteString(buttonStyle.Render(" 4 ") + " Logs  ")
 		} else {
-			sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs"))
+			sb.WriteString(disabledButtonStyle.Render(" 4 ") + mutedStyle.Render(" Logs  "))
+		}
+
+		// Resource Analysis button - only if monitoring log is available
+		if cd.MonitoringLog != "" {
+			sb.WriteString(buttonStyle.Render(" 5 ") + " Monitor")
 		}
 
 		sb.WriteString("\n")

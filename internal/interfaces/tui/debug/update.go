@@ -40,6 +40,14 @@ type costLoadedMsg struct {
 	totalCost float64
 }
 
+type resourceAnalysisLoadedMsg struct {
+	report *EfficiencyReport
+}
+
+type resourceAnalysisErrorMsg struct {
+	err error
+}
+
 // Update handles messages and updates the model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -61,6 +69,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
 		}
 		return m, getClearStatusCmd()
+
+	case resourceAnalysisLoadedMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.resourceReport = msg.report
+		m.resourceError = ""
+		m.showResourceModal = true
+		// Initialize viewport
+		m.resourceViewport = viewport.New(m.width-10, m.height-10)
+		m.resourceViewport.SetContent("")
+		return m, nil
+
+	case resourceAnalysisErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.resourceError = msg.err.Error()
+		m.showResourceModal = true
+		m.resourceViewport = viewport.New(m.width-10, m.height-10)
+		return m, nil
 
 	case spinner.TickMsg:
 		m.loadingSpinner, cmd = m.loadingSpinner.Update(msg)
@@ -189,6 +216,11 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle global timeline modal
 	if m.showGlobalTimelineModal {
 		return m.handleGlobalTimelineModalKeys(msg)
+	}
+
+	// Handle resource analysis modal
+	if m.showResourceModal {
+		return m.handleResourceModalKeys(msg)
 	}
 
 	if m.showHelp {
@@ -354,6 +386,20 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.globalTimelineTitle = title
 			m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
 			m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(targetMetadata))
+		}
+
+	case key.Matches(msg, m.keys.ResourceAnalysis):
+		// Load and analyze monitoring log for the selected task
+		if m.cursor < len(m.nodes) {
+			node := m.nodes[m.cursor]
+			if node.CallData != nil && node.CallData.MonitoringLog != "" {
+				m.isLoading = true
+				m.loadingMessage = "Loading monitoring log..."
+				return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
+			} else {
+				m.setStatusMessage("No monitoring log available for this task")
+				return m, getClearStatusCmd()
+			}
 		}
 
 	case key.Matches(msg, m.keys.Escape):

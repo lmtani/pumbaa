@@ -331,6 +331,32 @@ func (m Model) fetchTotalCost() tea.Cmd {
 	}
 }
 
+// loadResourceAnalysis loads and parses a monitoring log for resource analysis
+func (m Model) loadResourceAnalysis(path string) tea.Cmd {
+	return func() tea.Msg {
+		var content string
+		var err error
+
+		if strings.HasPrefix(path, "gs://") {
+			content, err = readGCSFile(path)
+		} else {
+			content, err = readLocalFile(path)
+		}
+
+		if err != nil {
+			return resourceAnalysisErrorMsg{err: err}
+		}
+
+		metrics, err := ParseMonitoringLog(content)
+		if err != nil {
+			return resourceAnalysisErrorMsg{err: err}
+		}
+
+		report := AnalyzeEfficiency(metrics)
+		return resourceAnalysisLoadedMsg{report: report}
+	}
+}
+
 // copyToClipboard creates a tea.Cmd that copies text to the system clipboard
 func copyToClipboard(text string) tea.Cmd {
 	return func() tea.Msg {

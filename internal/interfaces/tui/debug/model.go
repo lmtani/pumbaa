@@ -77,6 +77,12 @@ type Model struct {
 	globalTimelineViewport  viewport.Model
 	globalTimelineTitle     string
 
+	// Resource analysis modal state
+	showResourceModal bool
+	resourceReport    *EfficiencyReport
+	resourceError     string
+	resourceViewport  viewport.Model
+
 	// Components
 	keys           KeyMap
 	help           help.Model
