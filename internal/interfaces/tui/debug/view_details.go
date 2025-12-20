@@ -287,64 +287,50 @@ func (m Model) renderOutputs(node *TreeNode) string {
 	return sb.String()
 }
 
-// renderActionBar renders the persistent action bar with mode highlighting
+// renderActionBar renders the persistent action bar as a vertical list
 func (m Model) renderActionBar(cd *CallDetails) string {
 	var sb strings.Builder
 	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
 
-	// Highlight current mode
-	inputsStyle := buttonStyle
-	outputsStyle := buttonStyle
-	commandStyle := buttonStyle
-	logsStyle := buttonStyle
-	monitorStyle := buttonStyle
+	// Helper to render action item
+	renderItem := func(key, desc string, enabled bool, selected bool) string {
+		keyStyle := buttonStyle
+		if !enabled {
+			keyStyle = disabledButtonStyle
+		}
+		if selected {
+			keyStyle = keyStyle.Background(lipgloss.Color("#7D56F4"))
+		}
 
-	if len(cd.Inputs) == 0 {
-		inputsStyle = disabledButtonStyle
-	}
-	if len(cd.Outputs) == 0 {
-		outputsStyle = disabledButtonStyle
-	}
-	if cd.CommandLine == "" {
-		commandStyle = disabledButtonStyle
-	}
-	if cd.Stdout == "" && cd.Stderr == "" && cd.MonitoringLog == "" {
-		logsStyle = disabledButtonStyle
-	}
-	if cd.MonitoringLog == "" {
-		monitorStyle = disabledButtonStyle
-	}
+		prefix := "  "
+		if selected {
+			prefix = "▶ "
+		}
 
-	// Highlight current selection with background
-	highlightBg := lipgloss.Color("#7D56F4")
-	switch m.viewMode {
-	case ViewModeInputs:
-		inputsStyle = inputsStyle.Background(highlightBg)
-	case ViewModeOutputs:
-		outputsStyle = outputsStyle.Background(highlightBg)
-	case ViewModeCommand:
-		commandStyle = commandStyle.Background(highlightBg)
-	case ViewModeLogs:
-		logsStyle = logsStyle.Background(highlightBg)
-	case ViewModeMonitor:
-		monitorStyle = monitorStyle.Background(highlightBg)
+		text := desc
+		if !enabled {
+			text = mutedStyle.Render(desc)
+		}
+
+		return prefix + keyStyle.Render(key) + " " + text + "\n"
 	}
 
-	sb.WriteString(inputsStyle.Render(" 1 ") + " ↗Inputs  ")
-	sb.WriteString(outputsStyle.Render(" 2 ") + " ↗Outputs  ")
-	sb.WriteString(commandStyle.Render(" 3 ") + " ↗Command  ")
-	sb.WriteString(logsStyle.Render(" 4 ") + " Logs  ")
+	// Render each action as a list item
+	sb.WriteString(renderItem(" 1 ", "View task inputs  ↗", len(cd.Inputs) > 0, m.viewMode == ViewModeInputs))
+	sb.WriteString(renderItem(" 2 ", "View task outputs  ↗", len(cd.Outputs) > 0, m.viewMode == ViewModeOutputs))
+	sb.WriteString(renderItem(" 3 ", "View command script  ↗", cd.CommandLine != "", m.viewMode == ViewModeCommand))
+	sb.WriteString(renderItem(" 4 ", "Browse log files", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "", m.viewMode == ViewModeLogs))
 	if cd.MonitoringLog != "" {
-		sb.WriteString(monitorStyle.Render(" 5 ") + " Monitor")
+		sb.WriteString(renderItem(" 5 ", "Resource analysis", true, m.viewMode == ViewModeMonitor))
 	}
 
 	// Add hint to go back when in a sub-view
 	if m.viewMode != ViewModeDetails && m.viewMode != ViewModeTree {
-		sb.WriteString("\n" + mutedStyle.Render("Press ESC or 'd' to return to details"))
+		sb.WriteString(mutedStyle.Render("Press ESC or 'd' to return to details") + "\n")
 	}
 
 	// Separator line
-	sb.WriteString("\n" + mutedStyle.Render("─────────────────────────────────────"))
+	sb.WriteString(mutedStyle.Render("─────────────────────────────────────"))
 
 	return sb.String()
 }
