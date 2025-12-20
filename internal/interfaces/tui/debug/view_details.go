@@ -225,19 +225,17 @@ func (m Model) renderLogs(node *TreeNode) string {
 	var sb strings.Builder
 	cd := node.CallData
 
-	// Show selection indicator when details panel is focused
+	// Show selection indicator (always show when in log view mode)
 	stdoutPrefix := "  "
 	stderrPrefix := "  "
 	monitoringPrefix := "  "
-	if m.focus == FocusDetails {
-		switch m.logCursor {
-		case 0:
-			stdoutPrefix = "▶ "
-		case 1:
-			stderrPrefix = "▶ "
-		case 2:
-			monitoringPrefix = "▶ "
-		}
+	switch m.logCursor {
+	case 0:
+		stdoutPrefix = "▶ "
+	case 1:
+		stderrPrefix = "▶ "
+	case 2:
+		monitoringPrefix = "▶ "
 	}
 
 	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
@@ -398,9 +396,9 @@ func (m Model) renderActionBar(cd *CallDetails) string {
 	}
 
 	// Render each action as a list item
-	sb.WriteString(renderItem(" 1 ", "View task inputs  ↗", len(cd.Inputs) > 0, m.viewMode == ViewModeInputs))
-	sb.WriteString(renderItem(" 2 ", "View task outputs  ↗", len(cd.Outputs) > 0, m.viewMode == ViewModeOutputs))
-	sb.WriteString(renderItem(" 3 ", "View command script  ↗", cd.CommandLine != "", m.viewMode == ViewModeCommand))
+	sb.WriteString(renderItem(" 1 ", "↗ View task inputs", len(cd.Inputs) > 0, m.viewMode == ViewModeInputs))
+	sb.WriteString(renderItem(" 2 ", "↗ View task outputs", len(cd.Outputs) > 0, m.viewMode == ViewModeOutputs))
+	sb.WriteString(renderItem(" 3 ", "↗ View command script", cd.CommandLine != "", m.viewMode == ViewModeCommand))
 	sb.WriteString(renderItem(" 4 ", "Browse log files", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "", m.viewMode == ViewModeLogs))
 	if cd.MonitoringLog != "" {
 		sb.WriteString(renderItem(" 5 ", "Resource analysis", true, m.viewMode == ViewModeMonitor))

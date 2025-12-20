@@ -545,7 +545,7 @@ func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		node := m.nodes[m.cursor]
 		if node.CallData != nil && (node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "") {
 			m.viewMode = ViewModeLogs
-			m.logCursor = 0
+			m.logCursor = 1 // Start at stderr
 			m.updateDetailsContent()
 			m.focus = FocusDetails
 		} else {
