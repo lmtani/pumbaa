@@ -63,6 +63,61 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
+// truncatePath truncates a GCS or local path intelligently, keeping bucket and basename visible.
+// Example: gs://bucket-name/workspace/workflow/uuid/call-Name/file.log -> gs://bucket.../uuid.../file.log
+func truncatePath(path string, maxLen int) string {
+	if len(path) <= maxLen {
+		return path
+	}
+
+	// Handle GCS paths
+	if strings.HasPrefix(path, "gs://") {
+		path = strings.TrimPrefix(path, "gs://")
+		parts := strings.Split(path, "/")
+		if len(parts) < 2 {
+			return "gs://" + truncate(path, maxLen-5)
+		}
+
+		bucket := parts[0]
+		// Truncate bucket if too long
+		if len(bucket) > 12 {
+			bucket = bucket[:9] + "..."
+		}
+
+		// Find UUID-like segment (36 chars with dashes)
+		var uuid string
+		for _, p := range parts {
+			if len(p) == 36 && strings.Count(p, "-") == 4 {
+				uuid = p[:8] + "..."
+				break
+			}
+		}
+
+		// Keep full basename (filename) - never truncate
+		basename := parts[len(parts)-1]
+
+		if uuid != "" {
+			return fmt.Sprintf("gs://%s/%s/%s", bucket, uuid, basename)
+		}
+		return fmt.Sprintf("gs://%s/.../%s", bucket, basename)
+	}
+
+	// For local paths, keep the basename and truncate the directory part
+	lastSlash := strings.LastIndex(path, "/")
+	if lastSlash > 0 {
+		basename := path[lastSlash+1:]
+		dirPart := path[:lastSlash]
+		availableLen := maxLen - len(basename) - 4 // ".../"
+		if availableLen > 10 {
+			return dirPart[:availableLen] + ".../" + basename
+		}
+	}
+
+	// Fallback: truncate from middle
+	half := (maxLen - 3) / 2
+	return path[:half] + "..." + path[len(path)-half:]
+}
+
 // formatDockerImage formats a Docker image name for display.
 // It breaks long image names into readable parts: registry, repository, and tag.
 func formatDockerImage(image string) string {

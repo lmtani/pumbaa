@@ -193,11 +193,11 @@ func (m Model) renderBasicDetails(node *TreeNode) string {
 					sb.WriteString(titleStyle.Render("📁 Workflow Paths") + "\n")
 					if metadata.WorkflowRoot != "" {
 						sb.WriteString(labelStyle.Render("Root:") + "\n")
-						sb.WriteString(pathStyle.Render(metadata.WorkflowRoot) + "\n")
+						sb.WriteString(pathStyle.Render(truncatePath(metadata.WorkflowRoot, m.detailsWidth-8)) + "\n")
 					}
 					if metadata.WorkflowLog != "" {
 						sb.WriteString(labelStyle.Render("Log:") + " " + mutedStyle.Render("(w to view)") + "\n")
-						sb.WriteString(pathStyle.Render(metadata.WorkflowLog) + "\n")
+						sb.WriteString(pathStyle.Render(truncatePath(metadata.WorkflowLog, m.detailsWidth-8)) + "\n")
 					}
 				}
 			}
@@ -253,21 +253,21 @@ func (m Model) renderLogs(node *TreeNode) string {
 
 	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
 	if cd.Stdout != "" {
-		sb.WriteString("  " + pathStyle.Render(cd.Stdout) + "\n\n")
+		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stdout, m.detailsWidth-8)) + "\n\n")
 	} else {
 		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
 	}
 
 	sb.WriteString(stderrPrefix + labelStyle.Render("stderr: ") + "\n")
 	if cd.Stderr != "" {
-		sb.WriteString("  " + pathStyle.Render(cd.Stderr) + "\n\n")
+		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stderr, m.detailsWidth-8)) + "\n\n")
 	} else {
 		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
 	}
 
 	sb.WriteString(monitoringPrefix + labelStyle.Render("monitoring: ") + "\n")
 	if cd.MonitoringLog != "" {
-		sb.WriteString("  " + pathStyle.Render(cd.MonitoringLog) + "\n\n")
+		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.MonitoringLog, m.detailsWidth-8)) + "\n\n")
 	} else {
 		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
 	}
