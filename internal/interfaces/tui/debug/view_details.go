@@ -3,6 +3,7 @@ package debug
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
@@ -75,6 +76,12 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	sb.WriteString(labelStyle.Render("Status: ") + statusStyle(node.Status) + " " + valueStyle.Render(node.Status) + "\n")
 	if node.SubWorkflowID != "" {
 		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(node.SubWorkflowID) + "\n")
+	}
+
+	// Scatter summary for Call nodes with shards
+	if node.Type == NodeTypeCall && len(node.Children) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(m.renderScatterSummary(node))
 	}
 
 	// Call-specific details
@@ -284,6 +291,81 @@ func (m Model) renderOutputs(node *TreeNode) string {
 		sb.WriteString(labelStyle.Render(k+": ") + "\n")
 		sb.WriteString(pathStyle.Render(fmt.Sprintf("  %v", v)) + "\n\n")
 	}
+	return sb.String()
+}
+
+// renderScatterSummary renders a summary for Call nodes that have shards
+func (m Model) renderScatterSummary(node *TreeNode) string {
+	var sb strings.Builder
+	children := node.Children
+	total := len(children)
+
+	if total == 0 {
+		return ""
+	}
+
+	sb.WriteString(titleStyle.Render("📊 Shards Summary") + "\n")
+	sb.WriteString(labelStyle.Render("Total Shards: ") + valueStyle.Render(fmt.Sprintf("%d", total)) + "\n")
+
+	// Count status breakdown
+	statusCounts := make(map[string]int)
+	var durations []time.Duration
+	for _, child := range children {
+		statusCounts[child.Status]++
+		if child.Duration > 0 {
+			durations = append(durations, child.Duration)
+		}
+	}
+
+	// Status breakdown
+	sb.WriteString(labelStyle.Render("Status: "))
+	var parts []string
+	if c := statusCounts["Done"]; c > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50")).Render(fmt.Sprintf("✓ %d Done", c)))
+	}
+	if c := statusCounts["Running"]; c > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#2196F3")).Render(fmt.Sprintf("● %d Running", c)))
+	}
+	if c := statusCounts["Failed"]; c > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B")).Render(fmt.Sprintf("✗ %d Failed", c)))
+	}
+	if c := statusCounts["Preempted"]; c > 0 {
+		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA726")).Render(fmt.Sprintf("↺ %d Preempted", c)))
+	}
+	sb.WriteString(strings.Join(parts, "  ") + "\n")
+
+	// Timing statistics
+	if len(durations) > 0 {
+		sb.WriteString("\n" + titleStyle.Render("⏱ Timing") + "\n")
+
+		// Total duration (wall clock from first start to last end)
+		if !node.Start.IsZero() && !node.End.IsZero() {
+			sb.WriteString(labelStyle.Render("Wall Clock: ") + valueStyle.Render(formatDuration(node.End.Sub(node.Start))) + "\n")
+		}
+
+		// Calculate min/max/avg
+		var minDur, maxDur, sumDur time.Duration
+		minDur = durations[0]
+		for _, d := range durations {
+			sumDur += d
+			if d < minDur {
+				minDur = d
+			}
+			if d > maxDur {
+				maxDur = d
+			}
+		}
+		avgDur := sumDur / time.Duration(len(durations))
+
+		sb.WriteString(labelStyle.Render("Per-shard: ") + "\n")
+		sb.WriteString("  " + mutedStyle.Render("Min: ") + valueStyle.Render(formatDuration(minDur)) + "\n")
+		sb.WriteString("  " + mutedStyle.Render("Max: ") + valueStyle.Render(formatDuration(maxDur)) + "\n")
+		sb.WriteString("  " + mutedStyle.Render("Avg: ") + valueStyle.Render(formatDuration(avgDur)) + "\n")
+	}
+
+	// Hint
+	sb.WriteString("\n" + mutedStyle.Render("Expand node to see individual shards"))
+
 	return sb.String()
 }
 
