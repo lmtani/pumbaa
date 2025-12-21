@@ -92,16 +92,16 @@ func TestAnalyze_CPUStats(t *testing.T) {
 
 	report := metrics.Analyze()
 
-	if report.CPUPeak != 60 {
-		t.Errorf("expected CPUPeak 60, got %f", report.CPUPeak)
+	if report.CPU.Peak != 60 {
+		t.Errorf("expected CPUPeak 60, got %f", report.CPU.Peak)
 	}
 
-	if report.CPUAvg != 40 {
-		t.Errorf("expected CPUAvg 40, got %f", report.CPUAvg)
+	if report.CPU.Avg != 40 {
+		t.Errorf("expected CPUAvg 40, got %f", report.CPU.Avg)
 	}
 
-	if report.CPUEfficiency != 0.4 {
-		t.Errorf("expected CPUEfficiency 0.4, got %f", report.CPUEfficiency)
+	if report.CPU.Efficiency != 0.4 {
+		t.Errorf("expected CPUEfficiency 0.4, got %f", report.CPU.Efficiency)
 	}
 }
 
@@ -117,17 +117,17 @@ func TestAnalyze_MemoryStats(t *testing.T) {
 
 	report := metrics.Analyze()
 
-	if report.MemPeak != 3000 {
-		t.Errorf("expected MemPeak 3000, got %f", report.MemPeak)
+	if report.Mem.Peak != 3000 {
+		t.Errorf("expected MemPeak 3000, got %f", report.Mem.Peak)
 	}
 
-	if report.MemAvg != 2000 {
-		t.Errorf("expected MemAvg 2000, got %f", report.MemAvg)
+	if report.Mem.Avg != 2000 {
+		t.Errorf("expected MemAvg 2000, got %f", report.Mem.Avg)
 	}
 
 	expectedEfficiency := 3000.0 / 4000.0 // 0.75
-	if report.MemEfficiency != expectedEfficiency {
-		t.Errorf("expected MemEfficiency %f, got %f", expectedEfficiency, report.MemEfficiency)
+	if report.Mem.Efficiency != expectedEfficiency {
+		t.Errorf("expected MemEfficiency %f, got %f", expectedEfficiency, report.Mem.Efficiency)
 	}
 }
 
@@ -143,17 +143,17 @@ func TestAnalyze_DiskStats(t *testing.T) {
 
 	report := metrics.Analyze()
 
-	if report.DiskPeak != 30 {
-		t.Errorf("expected DiskPeak 30, got %f", report.DiskPeak)
+	if report.Disk.Peak != 30 {
+		t.Errorf("expected DiskPeak 30, got %f", report.Disk.Peak)
 	}
 
-	if report.DiskAvg != 20 {
-		t.Errorf("expected DiskAvg 20, got %f", report.DiskAvg)
+	if report.Disk.Avg != 20 {
+		t.Errorf("expected DiskAvg 20, got %f", report.Disk.Avg)
 	}
 
 	expectedEfficiency := 30.0 / 100.0 // 0.3
-	if report.DiskEfficiency != expectedEfficiency {
-		t.Errorf("expected DiskEfficiency %f, got %f", expectedEfficiency, report.DiskEfficiency)
+	if report.Disk.Efficiency != expectedEfficiency {
+		t.Errorf("expected DiskEfficiency %f, got %f", expectedEfficiency, report.Disk.Efficiency)
 	}
 }
 

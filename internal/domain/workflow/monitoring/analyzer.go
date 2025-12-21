@@ -5,24 +5,45 @@ import (
 	"time"
 )
 
+// UsageStats holds aggregated statistics for a specific resource.
+type UsageStats struct {
+	Peak       float64
+	Avg        float64
+	Total      float64
+	Efficiency float64
+}
+
+// NewUsageStats calculates statistics from raw data points.
+// useAvgForEfficiency should be true for CPU (Avg/100%) and false for others (Peak/Total).
+func NewUsageStats(values []float64, total float64, useAvgForEfficiency bool) UsageStats {
+	if len(values) == 0 {
+		return UsageStats{Total: total}
+	}
+	var sum, max float64
+	for _, v := range values {
+		sum += v
+		if v > max {
+			max = v
+		}
+	}
+	avg := sum / float64(len(values))
+	eff := max / total
+	if useAvgForEfficiency {
+		eff = avg / total
+	}
+	return UsageStats{
+		Peak:       max,
+		Avg:        avg,
+		Total:      total,
+		Efficiency: eff,
+	}
+}
+
 // EfficiencyReport summarizes resource usage efficiency.
 type EfficiencyReport struct {
-	// CPU metrics
-	CPUPeak       float64
-	CPUAvg        float64
-	CPUEfficiency float64 // avg/100
-
-	// Memory metrics
-	MemPeak       float64 // MB
-	MemAvg        float64 // MB
-	MemTotal      float64 // MB
-	MemEfficiency float64 // peak/total
-
-	// Disk metrics
-	DiskPeak       float64 // GB
-	DiskAvg        float64 // GB
-	DiskTotal      float64 // GB
-	DiskEfficiency float64 // peak/total
+	CPU  UsageStats
+	Mem  UsageStats
+	Disk UsageStats
 
 	// Meta
 	Duration   time.Duration
@@ -35,56 +56,11 @@ type EfficiencyReport struct {
 // Analyze calculates efficiency metrics from parsed monitoring data.
 func (m *MonitoringMetrics) Analyze() *EfficiencyReport {
 	report := &EfficiencyReport{
+		CPU:        NewUsageStats(m.CPU, 100, true),
+		Mem:        NewUsageStats(m.MemUsed, m.MemTotal, false),
+		Disk:       NewUsageStats(m.DiskUsed, m.DiskTotal, false),
 		DataPoints: m.DataPoints(),
-		MemTotal:   m.MemTotal,
-		DiskTotal:  m.DiskTotal,
 		Duration:   m.Duration(),
-	}
-
-	// Calculate CPU stats
-	var cpuSum, cpuMax float64
-	for _, v := range m.CPU {
-		cpuSum += v
-		if v > cpuMax {
-			cpuMax = v
-		}
-	}
-	report.CPUPeak = cpuMax
-	if len(m.CPU) > 0 {
-		report.CPUAvg = cpuSum / float64(len(m.CPU))
-	}
-	report.CPUEfficiency = report.CPUAvg / 100
-
-	// Calculate Memory stats
-	var memSum, memMax float64
-	for _, v := range m.MemUsed {
-		memSum += v
-		if v > memMax {
-			memMax = v
-		}
-	}
-	report.MemPeak = memMax
-	if len(m.MemUsed) > 0 {
-		report.MemAvg = memSum / float64(len(m.MemUsed))
-	}
-	if m.MemTotal > 0 {
-		report.MemEfficiency = memMax / m.MemTotal
-	}
-
-	// Calculate Disk stats
-	var diskSum, diskMax float64
-	for _, v := range m.DiskUsed {
-		diskSum += v
-		if v > diskMax {
-			diskMax = v
-		}
-	}
-	report.DiskPeak = diskMax
-	if len(m.DiskUsed) > 0 {
-		report.DiskAvg = diskSum / float64(len(m.DiskUsed))
-	}
-	if m.DiskTotal > 0 {
-		report.DiskEfficiency = diskMax / m.DiskTotal
 	}
 
 	// Generate recommendations
@@ -98,27 +74,27 @@ func generateRecommendations(report *EfficiencyReport, metrics *MonitoringMetric
 	var recs []string
 
 	// Memory recommendations
-	if report.MemEfficiency < 0.5 && metrics.MemTotal > 2000 {
-		suggestedMem := report.MemPeak * 1.3 // 30% headroom
+	if report.Mem.Efficiency < 0.5 && metrics.MemTotal > 2000 {
+		suggestedMem := report.Mem.Peak * 1.3 // 30% headroom
 		if suggestedMem < 1000 {
 			suggestedMem = 1000 // Minimum 1GB
 		}
 		recs = append(recs, fmt.Sprintf("Memory: Consider reducing to %.0fMB (%.0f%% unused)",
-			suggestedMem, (1-report.MemEfficiency)*100))
+			suggestedMem, (1-report.Mem.Efficiency)*100))
 	}
 
 	// Disk recommendations
-	if report.DiskEfficiency < 0.3 && metrics.DiskTotal > 5 {
-		suggestedDisk := report.DiskPeak * 1.5 // 50% headroom
+	if report.Disk.Efficiency < 0.3 && metrics.DiskTotal > 5 {
+		suggestedDisk := report.Disk.Peak * 1.5 // 50% headroom
 		if suggestedDisk < 2 {
 			suggestedDisk = 2 // Minimum 2GB
 		}
 		recs = append(recs, fmt.Sprintf("Disk: Consider reducing to %.0fGB (%.0f%% unused)",
-			suggestedDisk, (1-report.DiskEfficiency)*100))
+			suggestedDisk, (1-report.Disk.Efficiency)*100))
 	}
 
 	// CPU recommendations (if consistently low)
-	if report.CPUEfficiency < 0.3 && report.CPUPeak < 50 {
+	if report.CPU.Efficiency < 0.3 && report.CPU.Peak < 50 {
 		recs = append(recs, "CPU: Task is CPU-bound with low utilization, consider checking for I/O bottlenecks")
 	}
 

@@ -481,21 +481,21 @@ func (m Model) renderMonitorContent() string {
 
 	// CPU Section
 	sb.WriteString(titleStyle.Render("💻 CPU") + "\n")
-	sb.WriteString(renderGaugeBar(report.CPUEfficiency, 25) + "\n")
+	sb.WriteString(renderGaugeBar(report.CPU.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.0f%%  Avg: %.0f%%  Efficiency: %.0f%%\n\n",
-		report.CPUPeak, report.CPUAvg, report.CPUEfficiency*100))
+		report.CPU.Peak, report.CPU.Avg, report.CPU.Efficiency*100))
 
 	// Memory Section
 	sb.WriteString(titleStyle.Render("🧠 Memory") + "\n")
-	sb.WriteString(renderGaugeBar(report.MemEfficiency, 25) + "\n")
+	sb.WriteString(renderGaugeBar(report.Mem.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.0fMB / %.0fMB  Efficiency: %.0f%%\n\n",
-		report.MemPeak, report.MemTotal, report.MemEfficiency*100))
+		report.Mem.Peak, report.Mem.Total, report.Mem.Efficiency*100))
 
 	// Disk Section
 	sb.WriteString(titleStyle.Render("💾 Disk") + "\n")
-	sb.WriteString(renderGaugeBar(report.DiskEfficiency, 25) + "\n")
+	sb.WriteString(renderGaugeBar(report.Disk.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.1fGB / %.1fGB  Efficiency: %.0f%%\n\n",
-		report.DiskPeak, report.DiskTotal, report.DiskEfficiency*100))
+		report.Disk.Peak, report.Disk.Total, report.Disk.Efficiency*100))
 
 	// Efficiency explanation
 	sb.WriteString(mutedStyle.Render("─── How this efficiency is calculated ───") + "\n")
