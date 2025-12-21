@@ -33,62 +33,62 @@ type EfficiencyReport struct {
 }
 
 // Analyze calculates efficiency metrics from parsed monitoring data.
-func Analyze(metrics *MonitoringMetrics) *EfficiencyReport {
+func (m *MonitoringMetrics) Analyze() *EfficiencyReport {
 	report := &EfficiencyReport{
-		DataPoints: metrics.DataPoints(),
-		MemTotal:   metrics.MemTotal,
-		DiskTotal:  metrics.DiskTotal,
-		Duration:   metrics.Duration(),
+		DataPoints: m.DataPoints(),
+		MemTotal:   m.MemTotal,
+		DiskTotal:  m.DiskTotal,
+		Duration:   m.Duration(),
 	}
 
 	// Calculate CPU stats
 	var cpuSum, cpuMax float64
-	for _, v := range metrics.CPU {
+	for _, v := range m.CPU {
 		cpuSum += v
 		if v > cpuMax {
 			cpuMax = v
 		}
 	}
 	report.CPUPeak = cpuMax
-	if len(metrics.CPU) > 0 {
-		report.CPUAvg = cpuSum / float64(len(metrics.CPU))
+	if len(m.CPU) > 0 {
+		report.CPUAvg = cpuSum / float64(len(m.CPU))
 	}
 	report.CPUEfficiency = report.CPUAvg / 100
 
 	// Calculate Memory stats
 	var memSum, memMax float64
-	for _, v := range metrics.MemUsed {
+	for _, v := range m.MemUsed {
 		memSum += v
 		if v > memMax {
 			memMax = v
 		}
 	}
 	report.MemPeak = memMax
-	if len(metrics.MemUsed) > 0 {
-		report.MemAvg = memSum / float64(len(metrics.MemUsed))
+	if len(m.MemUsed) > 0 {
+		report.MemAvg = memSum / float64(len(m.MemUsed))
 	}
-	if metrics.MemTotal > 0 {
-		report.MemEfficiency = memMax / metrics.MemTotal
+	if m.MemTotal > 0 {
+		report.MemEfficiency = memMax / m.MemTotal
 	}
 
 	// Calculate Disk stats
 	var diskSum, diskMax float64
-	for _, v := range metrics.DiskUsed {
+	for _, v := range m.DiskUsed {
 		diskSum += v
 		if v > diskMax {
 			diskMax = v
 		}
 	}
 	report.DiskPeak = diskMax
-	if len(metrics.DiskUsed) > 0 {
-		report.DiskAvg = diskSum / float64(len(metrics.DiskUsed))
+	if len(m.DiskUsed) > 0 {
+		report.DiskAvg = diskSum / float64(len(m.DiskUsed))
 	}
-	if metrics.DiskTotal > 0 {
-		report.DiskEfficiency = diskMax / metrics.DiskTotal
+	if m.DiskTotal > 0 {
+		report.DiskEfficiency = diskMax / m.DiskTotal
 	}
 
 	// Generate recommendations
-	report.Recommendations = generateRecommendations(report, metrics)
+	report.Recommendations = generateRecommendations(report, m)
 
 	return report
 }

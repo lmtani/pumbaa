@@ -43,7 +43,7 @@ func (u *usecaseImpl) AnalyzeResourceUsage(ctx context.Context, path string) (*R
 	}
 
 	// Analyze the metrics and generate efficiency report
-	report := monitoring.Analyze(metrics)
+	report := metrics.Analyze()
 
 	return &ResourceAnalysisResult{
 		Report: report,

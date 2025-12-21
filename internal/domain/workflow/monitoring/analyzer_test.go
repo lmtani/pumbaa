@@ -90,7 +90,7 @@ func TestAnalyze_CPUStats(t *testing.T) {
 		DiskTotal: 50,
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	if report.CPUPeak != 60 {
 		t.Errorf("expected CPUPeak 60, got %f", report.CPUPeak)
@@ -115,7 +115,7 @@ func TestAnalyze_MemoryStats(t *testing.T) {
 		DiskTotal:  50,
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	if report.MemPeak != 3000 {
 		t.Errorf("expected MemPeak 3000, got %f", report.MemPeak)
@@ -141,7 +141,7 @@ func TestAnalyze_DiskStats(t *testing.T) {
 		DiskTotal:  100,
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	if report.DiskPeak != 30 {
 		t.Errorf("expected DiskPeak 30, got %f", report.DiskPeak)
@@ -168,7 +168,7 @@ func TestAnalyze_MemoryRecommendation(t *testing.T) {
 		DiskTotal:  20,
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	found := false
 	for _, rec := range report.Recommendations {
@@ -194,7 +194,7 @@ func TestAnalyze_DiskRecommendation(t *testing.T) {
 		DiskTotal:  50,           // 50GB allocated
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	found := false
 	for _, rec := range report.Recommendations {
@@ -220,7 +220,7 @@ func TestAnalyze_OptimizedResources(t *testing.T) {
 		DiskTotal:  50,
 	}
 
-	report := Analyze(metrics)
+	report := metrics.Analyze()
 
 	if len(report.Recommendations) != 1 {
 		t.Errorf("expected 1 recommendation, got %d", len(report.Recommendations))
