@@ -15,6 +15,15 @@ type FileProvider interface {
 	Read(ctx context.Context, path string) (string, error)
 }
 
+const (
+	ColTimestamp   = "timestamp"
+	ColCPUPercent  = "cpu_percent"
+	ColMemUsedMB   = "mem_used_mb"
+	ColMemTotalMB  = "mem_total_mb"
+	ColDiskUsedGB  = "disk_used_gb"
+	ColDiskTotalGB = "disk_total_gb"
+)
+
 // MonitoringMetrics holds parsed monitoring data from resource_monitor.sh output.
 type MonitoringMetrics struct {
 	Timestamps []time.Time
@@ -26,82 +35,73 @@ type MonitoringMetrics struct {
 }
 
 // ParseFromTSV parses the TSV output from resource_monitor.sh.
-// Expected format:
-// timestamp	cpu_percent	mem_used_mb	mem_total_mb	mem_percent	disk_total_gb	disk_used_gb	...
+// It dynamically maps columns based on the header line.
 func ParseFromTSV(content string) (*MonitoringMetrics, error) {
 	metrics := &MonitoringMetrics{}
 	scanner := bufio.NewScanner(strings.NewReader(content))
 
+	var headerMap map[string]int
+
 	for scanner.Scan() {
-		line := scanner.Text()
-
-		// Skip empty lines
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		// Skip header line
-		if strings.HasPrefix(line, "timestamp") {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
 			continue
 		}
 
 		fields := strings.Split(line, "\t")
-		if len(fields) < 7 {
-			continue // Skip malformed lines
+
+		// First line is the header
+		if headerMap == nil {
+			headerMap = make(map[string]int)
+			for i, field := range fields {
+				headerMap[strings.TrimSpace(field)] = i
+			}
+			// Validate essential headers
+			required := []string{ColTimestamp, ColCPUPercent, ColMemUsedMB, ColMemTotalMB, ColDiskUsedGB, ColDiskTotalGB}
+			for _, req := range required {
+				if _, ok := headerMap[req]; !ok {
+					return nil, fmt.Errorf("missing required column in monitoring log: %s", req)
+				}
+			}
+			continue
 		}
 
-		// Parse timestamp (format: 2025-12-20 11:11:15)
-		ts, err := time.Parse("2006-01-02 15:04:05", fields[0])
-		if err != nil {
-			continue // Skip lines with invalid timestamps
+		// Helper to extract float field
+		getFloat := func(name string) float64 {
+			idx, ok := headerMap[name]
+			if !ok || idx >= len(fields) {
+				return 0
+			}
+			val, _ := strconv.ParseFloat(fields[idx], 64)
+			return val
 		}
 
-		// Parse CPU percent
-		cpu, err := strconv.ParseFloat(fields[1], 64)
-		if err != nil {
-			cpu = 0
+		// Parse timestamp
+		tsIdx, _ := headerMap[ColTimestamp]
+		if tsIdx >= len(fields) {
+			continue
 		}
-
-		// Parse memory used (MB)
-		memUsed, err := strconv.ParseFloat(fields[2], 64)
+		ts, err := time.Parse("2006-01-02 15:04:05", fields[tsIdx])
 		if err != nil {
-			memUsed = 0
-		}
-
-		// Parse memory total (MB)
-		memTotal, err := strconv.ParseFloat(fields[3], 64)
-		if err != nil {
-			memTotal = 0
-		}
-
-		// Parse disk used (GB) - field 6
-		diskUsed, err := strconv.ParseFloat(fields[6], 64)
-		if err != nil {
-			diskUsed = 0
-		}
-
-		// Parse disk total (GB) - field 5
-		diskTotal, err := strconv.ParseFloat(fields[5], 64)
-		if err != nil {
-			diskTotal = 0
+			continue
 		}
 
 		metrics.Timestamps = append(metrics.Timestamps, ts)
-		metrics.CPU = append(metrics.CPU, cpu)
-		metrics.MemUsed = append(metrics.MemUsed, memUsed)
-		metrics.DiskUsed = append(metrics.DiskUsed, diskUsed)
+		metrics.CPU = append(metrics.CPU, getFloat(ColCPUPercent))
+		metrics.MemUsed = append(metrics.MemUsed, getFloat(ColMemUsedMB))
+		metrics.DiskUsed = append(metrics.DiskUsed, getFloat(ColDiskUsedGB))
 
 		// Set totals from first valid line
 		if metrics.MemTotal == 0 {
-			metrics.MemTotal = memTotal
+			metrics.MemTotal = getFloat(ColMemTotalMB)
 		}
 		if metrics.DiskTotal == 0 {
-			metrics.DiskTotal = diskTotal
+			metrics.DiskTotal = getFloat(ColDiskTotalGB)
 		}
 	}
 
 	if len(metrics.Timestamps) == 0 {
-		return nil, fmt.Errorf("incompatible format: no valid data points found.\n\nExpected TSV format from resource_monitor.sh:\ntimestamp  cpu_percent  mem_used_mb  mem_total_mb  ...")
+		return nil, fmt.Errorf("incompatible format: no valid data points found.\n\nExpected TSV format with headers: timestamp, cpu_percent, mem_used_mb, ...")
 	}
 
 	return metrics, nil
