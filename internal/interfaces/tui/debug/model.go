@@ -83,10 +83,8 @@ type Model struct {
 	globalTimelineTitle     string
 
 	// Resource analysis modal state
-	showResourceModal bool
-	resourceReport    *monitoring.EfficiencyReport
-	resourceError     string
-	resourceViewport  viewport.Model
+	resourceReport *monitoring.EfficiencyReport
+	resourceError  string
 
 	// Components
 	keys           KeyMap

@@ -509,3 +509,35 @@ func (m Model) renderMonitorContent() string {
 
 	return sb.String()
 }
+
+// renderGaugeBar creates a visual gauge bar
+func renderGaugeBar(efficiency float64, width int) string {
+	if efficiency < 0 {
+		efficiency = 0
+	}
+	if efficiency > 1 {
+		efficiency = 1
+	}
+
+	filled := int(efficiency * float64(width))
+	empty := width - filled
+
+	// Choose color based on efficiency level
+	var barColor lipgloss.Color
+	if efficiency >= 0.7 {
+		barColor = lipgloss.Color("#00FF00") // Green for high efficiency
+	} else if efficiency >= 0.4 {
+		barColor = lipgloss.Color("#FFFF00") // Yellow for medium
+	} else {
+		barColor = lipgloss.Color("#FF6B6B") // Red for low efficiency
+	}
+
+	filledStyle := lipgloss.NewStyle().Foreground(barColor)
+	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+
+	bar := filledStyle.Render(strings.Repeat("█", filled)) +
+		emptyStyle.Render(strings.Repeat("░", empty))
+
+	percentStr := fmt.Sprintf(" %.0f%%", efficiency*100)
+	return bar + lipgloss.NewStyle().Foreground(barColor).Bold(true).Render(percentStr)
+}

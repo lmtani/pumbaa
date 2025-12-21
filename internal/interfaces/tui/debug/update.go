@@ -226,11 +226,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleGlobalTimelineModalKeys(msg)
 	}
 
-	// Handle resource analysis modal
-	if m.showResourceModal {
-		return m.handleResourceModalKeys(msg)
-	}
-
 	if m.showHelp {
 		if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
 			m.showHelp = false
