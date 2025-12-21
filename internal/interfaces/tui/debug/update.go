@@ -77,6 +77,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resourceReport = msg.report
 		m.resourceError = ""
 		m.viewMode = ViewModeMonitor
+
+		// Cache the report in the current node
+		if m.cursor < len(m.nodes) {
+			node := m.nodes[m.cursor]
+			if node.CallData != nil {
+				node.CallData.EfficiencyReport = msg.report
+			}
+		}
+
 		m.updateDetailsContent()
 		return m, nil
 
@@ -243,8 +252,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Up):
 		if m.focus == FocusTree {
 			if m.cursor > 0 {
-				m.cursor--
-				m.updateDetailsContent()
+				m.changeSelectedNode(m.cursor - 1)
 			}
 		} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
 			if m.logCursor > 0 {
@@ -258,8 +266,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Down):
 		if m.focus == FocusTree {
 			if m.cursor < len(m.nodes)-1 {
-				m.cursor++
-				m.updateDetailsContent()
+				m.changeSelectedNode(m.cursor + 1)
 			}
 		} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
 			if m.logCursor < 2 { // 0 = stdout, 1 = stderr, 2 = monitoring
@@ -280,12 +287,14 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Move to parent
 				for i, n := range m.nodes {
 					if n == node.Parent {
-						m.cursor = i
+						m.changeSelectedNode(i)
 						break
 					}
 				}
+			} else {
+				// Just collapsed, update view
+				m.changeSelectedNode(m.cursor)
 			}
-			m.updateDetailsContent()
 		}
 
 	case key.Matches(msg, m.keys.Right), key.Matches(msg, m.keys.Enter), key.Matches(msg, m.keys.Space):
@@ -392,6 +401,16 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil && node.CallData.MonitoringLog != "" {
+				// Check cache first
+				if node.CallData.EfficiencyReport != nil {
+					m.resourceReport = node.CallData.EfficiencyReport
+					m.resourceError = ""
+					m.viewMode = ViewModeMonitor
+					m.updateDetailsContent()
+					return m, nil
+				}
+
+				// Not cached, load it
 				m.viewMode = ViewModeMonitor
 				m.resourceReport = nil // Reset to show loading state
 				m.resourceError = ""
@@ -418,31 +437,29 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.nodes = debuginfo.GetVisibleNodes(m.tree)
 
 	case key.Matches(msg, m.keys.Home):
-		m.cursor = 0
-		m.updateDetailsContent()
+		m.changeSelectedNode(0)
 
 	case key.Matches(msg, m.keys.End):
-		m.cursor = len(m.nodes) - 1
-		m.updateDetailsContent()
+		m.changeSelectedNode(len(m.nodes) - 1)
 
 	case key.Matches(msg, m.keys.PageUp):
 		if m.focus == FocusTree {
-			m.cursor -= 10
-			if m.cursor < 0 {
-				m.cursor = 0
+			newCursor := m.cursor - 10
+			if newCursor < 0 {
+				newCursor = 0
 			}
-			m.updateDetailsContent()
+			m.changeSelectedNode(newCursor)
 		} else {
 			m.detailViewport.PageUp()
 		}
 
 	case key.Matches(msg, m.keys.PageDown):
 		if m.focus == FocusTree {
-			m.cursor += 10
-			if m.cursor >= len(m.nodes) {
-				m.cursor = len(m.nodes) - 1
+			newCursor := m.cursor + 10
+			if newCursor >= len(m.nodes) {
+				newCursor = len(m.nodes) - 1
 			}
-			m.updateDetailsContent()
+			m.changeSelectedNode(newCursor)
 		} else {
 			m.detailViewport.PageDown()
 		}

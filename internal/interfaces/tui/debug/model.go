@@ -32,6 +32,9 @@ type Model struct {
 
 	totalCost float64 // Cached total cost from API
 
+	// View state persistence
+	nodeStates map[string]NodeViewState
+
 	// UI state
 	cursor       int
 	focus        PanelFocus
@@ -131,6 +134,7 @@ func NewModelWithAllDependencies(metadata *WorkflowMetadata, fetcher MetadataFet
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,
+		nodeStates:     make(map[string]NodeViewState),
 		keys:           DefaultKeyMap(),
 		help:           help.New(),
 		detailViewport: viewport.New(80, 20),
@@ -160,6 +164,7 @@ func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher Metadat
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,
+		nodeStates:     make(map[string]NodeViewState),
 		keys:           DefaultKeyMap(),
 		help:           help.New(),
 		detailViewport: viewport.New(80, 20),
