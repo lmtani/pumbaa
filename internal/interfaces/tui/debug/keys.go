@@ -4,35 +4,24 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines all key bindings for the TUI.
 type KeyMap struct {
-	Up               key.Binding
-	Down             key.Binding
-	Left             key.Binding
-	Right            key.Binding
-	Enter            key.Binding
-	Space            key.Binding
-	Tab              key.Binding
-	Quit             key.Binding
-	Help             key.Binding
-	Escape           key.Binding
-	Details          key.Binding
-	Command          key.Binding
-	Logs             key.Binding
-	Inputs           key.Binding
-	Outputs          key.Binding
-	Options          key.Binding
-	WorkflowLog      key.Binding
-	GlobalTimeline   key.Binding
-	CopyStdout       key.Binding
-	CopyStderr       key.Binding
-	ExpandAll        key.Binding
-	CollapseAll      key.Binding
-	Home             key.Binding
-	End              key.Binding
-	PageUp           key.Binding
-	PageDown         key.Binding
-	OpenLog          key.Binding
-	Copy             key.Binding
-	ResourceAnalysis key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	Left        key.Binding
+	Right       key.Binding
+	Enter       key.Binding
+	Space       key.Binding
+	Tab         key.Binding
+	Quit        key.Binding
+	Help        key.Binding
+	Escape      key.Binding
+	Details     key.Binding
+	ExpandAll   key.Binding
+	CollapseAll key.Binding
+	Home        key.Binding
+	End         key.Binding
+	PageUp      key.Binding
+	PageDown    key.Binding
+	Copy        key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -82,42 +71,6 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("d"),
 			key.WithHelp("d", "view details"),
 		),
-		Command: key.NewBinding(
-			key.WithKeys("c"),
-			key.WithHelp("c", "view command"),
-		),
-		Logs: key.NewBinding(
-			key.WithKeys("l"),
-			key.WithHelp("l", "view logs"),
-		),
-		Inputs: key.NewBinding(
-			key.WithKeys("i"),
-			key.WithHelp("i", "view inputs"),
-		),
-		Outputs: key.NewBinding(
-			key.WithKeys("o"),
-			key.WithHelp("o", "view outputs"),
-		),
-		Options: key.NewBinding(
-			key.WithKeys("O"),
-			key.WithHelp("O", "view options"),
-		),
-		WorkflowLog: key.NewBinding(
-			key.WithKeys("w"),
-			key.WithHelp("w", "workflow log"),
-		),
-		GlobalTimeline: key.NewBinding(
-			key.WithKeys("t"),
-			key.WithHelp("t", "tasks duration"),
-		),
-		CopyStdout: key.NewBinding(
-			key.WithKeys("1"),
-			key.WithHelp("1", "copy stdout path"),
-		),
-		CopyStderr: key.NewBinding(
-			key.WithKeys("2"),
-			key.WithHelp("2", "copy stderr path"),
-		),
 		ExpandAll: key.NewBinding(
 			key.WithKeys("E"),
 			key.WithHelp("E", "expand all"),
@@ -142,17 +95,9 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("pgdown", "ctrl+d"),
 			key.WithHelp("pgdn", "page down"),
 		),
-		OpenLog: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "open log"),
-		),
 		Copy: key.NewBinding(
 			key.WithKeys("y"),
 			key.WithHelp("y", "copy to clipboard"),
-		),
-		ResourceAnalysis: key.NewBinding(
-			key.WithKeys("5"),
-			key.WithHelp("5", "resource analysis"),
 		),
 	}
 }
@@ -167,10 +112,8 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
-		{k.Details, k.Command, k.Logs, k.Inputs},
-		{k.Outputs, k.GlobalTimeline, k.Options, k.WorkflowLog},
-		{k.ExpandAll, k.CollapseAll, k.Home, k.End},
-		{k.PageUp, k.PageDown, k.CopyStdout, k.CopyStderr},
-		{k.Help, k.Quit},
+		{k.Details, k.ExpandAll, k.CollapseAll},
+		{k.Home, k.End, k.PageUp, k.PageDown},
+		{k.Copy, k.Help, k.Quit},
 	}
 }

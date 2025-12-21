@@ -44,9 +44,10 @@ func (m Model) renderDetailsContent(node *TreeNode) string {
 	// Node type badge ALWAYS at the very top
 	sb.WriteString(m.getNodeTypeBadge(node) + "\n\n")
 
-	// Action bar is visible at top for task nodes
-	if node.CallData != nil {
-		sb.WriteString(m.renderActionBar(node.CallData))
+	// Action bar is visible for all node types (except scatter)
+	isScatter := node.Type == NodeTypeCall && len(node.Children) > 0
+	if !isScatter {
+		sb.WriteString(m.renderActionBar(node))
 		sb.WriteString("\n\n")
 	}
 
@@ -414,8 +415,10 @@ func (m Model) renderScatterSummary(node *TreeNode) string {
 	return sb.String()
 }
 
-// renderActionBar renders the persistent action bar as a vertical list
-func (m Model) renderActionBar(cd *CallDetails) string {
+// renderActionBar renders the quick actions based on node type.
+// Workflow/SubWorkflow: 1=Inputs, 2=Outputs, 3=Options, 4=Timeline, 5=Workflow Log
+// Task/Shard: 1=Inputs, 2=Outputs, 3=Command, 4=Logs, 5=Efficiency
+func (m Model) renderActionBar(node *TreeNode) string {
 	var sb strings.Builder
 	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
 
@@ -442,13 +445,34 @@ func (m Model) renderActionBar(cd *CallDetails) string {
 		return prefix + keyStyle.Render(key) + " " + text + "\n"
 	}
 
-	// Render each action as a list item
-	sb.WriteString(renderItem(" 1 ", "↗ View task inputs", len(cd.Inputs) > 0, m.viewMode == ViewModeInputs))
-	sb.WriteString(renderItem(" 2 ", "↗ View task outputs", len(cd.Outputs) > 0, m.viewMode == ViewModeOutputs))
-	sb.WriteString(renderItem(" 3 ", "↗ View command script", cd.CommandLine != "", m.viewMode == ViewModeCommand))
-	sb.WriteString(renderItem(" 4 ", "Browse log files", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "", m.viewMode == ViewModeLogs))
-	if cd.MonitoringLog != "" {
-		sb.WriteString(renderItem(" 5 ", "Resource analysis", true, m.viewMode == ViewModeMonitor))
+	// Render actions based on node type
+	switch node.Type {
+	case NodeTypeWorkflow, NodeTypeSubWorkflow:
+		// Get appropriate metadata
+		var meta *WorkflowMetadata
+		if node.Type == NodeTypeWorkflow {
+			meta = m.metadata
+		} else if node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
+			meta = node.CallData.SubWorkflowMetadata
+		} else {
+			meta = m.metadata
+		}
+
+		sb.WriteString(renderItem(" 1 ", "↗ View inputs", len(meta.Inputs) > 0, false))
+		sb.WriteString(renderItem(" 2 ", "↗ View outputs", len(meta.Outputs) > 0, false))
+		sb.WriteString(renderItem(" 3 ", "↗ View options", meta.SubmittedOptions != "", false))
+		sb.WriteString(renderItem(" 4 ", "↗ Tasks timeline", true, false))
+		sb.WriteString(renderItem(" 5 ", "↗ Workflow log", meta.WorkflowLog != "", false))
+
+	case NodeTypeCall, NodeTypeShard:
+		if node.CallData != nil {
+			cd := node.CallData
+			sb.WriteString(renderItem(" 1 ", "↗ View inputs", len(cd.Inputs) > 0, false))
+			sb.WriteString(renderItem(" 2 ", "↗ View outputs", len(cd.Outputs) > 0, false))
+			sb.WriteString(renderItem(" 3 ", "↗ View command", cd.CommandLine != "", false))
+			sb.WriteString(renderItem(" 4 ", "Browse logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "", m.viewMode == ViewModeLogs))
+			sb.WriteString(renderItem(" 5 ", "Efficiency", cd.MonitoringLog != "", m.viewMode == ViewModeMonitor))
+		}
 	}
 
 	// Add hint to go back when in a sub-view

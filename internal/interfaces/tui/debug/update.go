@@ -306,119 +306,6 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.viewMode = ViewModeTree
 		m.updateDetailsContent()
 
-	case key.Matches(msg, m.keys.Command):
-		m.viewMode = ViewModeCommand
-		m.updateDetailsContent()
-
-	case key.Matches(msg, m.keys.Inputs):
-		if len(m.metadata.Inputs) > 0 {
-			m.showInputsModal = true
-			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
-		} else {
-			m.setStatusMessage("No inputs available for this workflow")
-			return m, getClearStatusCmd()
-		}
-
-	case key.Matches(msg, m.keys.Outputs):
-		if len(m.metadata.Outputs) > 0 {
-			m.showOutputsModal = true
-			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
-		} else {
-			m.setStatusMessage("No outputs available for this workflow")
-			return m, getClearStatusCmd()
-		}
-
-	case key.Matches(msg, m.keys.Options):
-		if m.metadata.SubmittedOptions != "" {
-			m.showOptionsModal = true
-			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
-		} else {
-			m.setStatusMessage("No options available for this workflow")
-			return m, getClearStatusCmd()
-		}
-
-	case key.Matches(msg, m.keys.WorkflowLog):
-		// Open workflow log in modal if available
-		if m.cursor < len(m.nodes) {
-			node := m.nodes[m.cursor]
-			if node.Type == NodeTypeWorkflow || node.Type == NodeTypeSubWorkflow {
-				var metadata *WorkflowMetadata
-				if node.Type == NodeTypeWorkflow {
-					metadata = m.metadata
-				} else if node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
-					metadata = node.CallData.SubWorkflowMetadata
-				}
-				if metadata != nil && metadata.WorkflowLog != "" {
-					m.isLoading = true
-					m.loadingMessage = "Loading workflow log..."
-					return m, m.openWorkflowLog(metadata.WorkflowLog)
-				} else {
-					m.setStatusMessage("No workflow log available")
-					return m, getClearStatusCmd()
-				}
-			} else {
-				m.setStatusMessage("Workflow log only available for workflow/subworkflow nodes")
-				return m, getClearStatusCmd()
-			}
-		}
-
-	case key.Matches(msg, m.keys.GlobalTimeline):
-		// Check if we're on a workflow or subworkflow node to show its timeline
-		if m.cursor < len(m.nodes) {
-			node := m.nodes[m.cursor]
-			var targetMetadata *WorkflowMetadata
-			var title string
-
-			// Determine which metadata to use based on selected node
-			if node.Type == NodeTypeSubWorkflow && node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
-				targetMetadata = node.CallData.SubWorkflowMetadata
-				title = node.Name
-			} else if node.Type == NodeTypeWorkflow {
-				targetMetadata = m.metadata
-				title = m.metadata.Name
-			} else {
-				// For call/shard nodes, use root workflow
-				targetMetadata = m.metadata
-				title = m.metadata.Name
-			}
-
-			m.showGlobalTimelineModal = true
-			m.globalTimelineTitle = title
-			m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
-			m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(targetMetadata))
-		}
-
-	case key.Matches(msg, m.keys.ResourceAnalysis):
-		// Load and analyze monitoring log for the selected task (inline, not modal)
-		if m.cursor < len(m.nodes) {
-			node := m.nodes[m.cursor]
-			if node.CallData != nil && node.CallData.MonitoringLog != "" {
-				// Check cache first
-				if node.CallData.EfficiencyReport != nil {
-					m.resourceReport = node.CallData.EfficiencyReport
-					m.resourceError = ""
-					m.viewMode = ViewModeMonitor
-					m.updateDetailsContent()
-					return m, nil
-				}
-
-				// Not cached, load it
-				m.viewMode = ViewModeMonitor
-				m.resourceReport = nil // Reset to show loading state
-				m.resourceError = ""
-				m.isLoading = true
-				m.loadingMessage = "Loading monitoring log..."
-				m.updateDetailsContent()
-				return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
-			} else {
-				m.setStatusMessage("No monitoring log available for this task")
-				return m, getClearStatusCmd()
-			}
-		}
-
 	case key.Matches(msg, m.keys.Escape):
 		m.viewMode = ViewModeTree
 		m.updateDetailsContent()
@@ -524,48 +411,158 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == "1" && m.cursor < len(m.nodes) {
-		node := m.nodes[m.cursor]
-		if node.CallData != nil && len(node.CallData.Inputs) > 0 {
+	if m.cursor >= len(m.nodes) {
+		return m, nil
+	}
+
+	node := m.nodes[m.cursor]
+	keyNum := msg.String()
+
+	// Dispatch based on node type
+	switch node.Type {
+	case NodeTypeWorkflow, NodeTypeSubWorkflow:
+		return m.handleWorkflowQuickAction(keyNum, node)
+	case NodeTypeCall:
+		// Check if it's a scatter (has children) or a simple task
+		if len(node.Children) > 0 {
+			// Scatter node - no quick actions
+			return m, nil
+		}
+		return m.handleTaskQuickAction(keyNum, node)
+	case NodeTypeShard:
+		return m.handleTaskQuickAction(keyNum, node)
+	}
+
+	return m, nil
+}
+
+// handleWorkflowQuickAction handles quick actions for Workflow and SubWorkflow nodes.
+// 1=Inputs [modal], 2=Outputs [modal], 3=Options [modal], 4=Timeline [modal], 5=Workflow Log [modal]
+func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
+	// Get the appropriate metadata
+	var meta *WorkflowMetadata
+	if node.Type == NodeTypeWorkflow {
+		meta = m.metadata
+	} else if node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
+		meta = node.CallData.SubWorkflowMetadata
+	} else {
+		meta = m.metadata // Fallback to root
+	}
+
+	switch keyNum {
+	case "1": // Inputs
+		if len(meta.Inputs) > 0 {
+			m.showInputsModal = true
+			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
+			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
+		} else {
+			m.setStatusMessage("No inputs available")
+			return m, getClearStatusCmd()
+		}
+	case "2": // Outputs
+		if len(meta.Outputs) > 0 {
+			m.showOutputsModal = true
+			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
+			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
+		} else {
+			m.setStatusMessage("No outputs available")
+			return m, getClearStatusCmd()
+		}
+	case "3": // Options
+		if meta.SubmittedOptions != "" {
+			m.showOptionsModal = true
+			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
+			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
+		} else {
+			m.setStatusMessage("No options available")
+			return m, getClearStatusCmd()
+		}
+	case "4": // Timeline
+		m.showGlobalTimelineModal = true
+		m.globalTimelineTitle = meta.Name
+		m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
+		m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(meta))
+	case "5": // Workflow Log
+		if meta.WorkflowLog != "" {
+			m.isLoading = true
+			m.loadingMessage = "Loading workflow log..."
+			return m, m.openWorkflowLog(meta.WorkflowLog)
+		}
+		m.setStatusMessage("No workflow log available")
+		return m, getClearStatusCmd()
+	}
+
+	return m, nil
+}
+
+// handleTaskQuickAction handles quick actions for Task and Shard nodes.
+// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline]
+func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
+	if node.CallData == nil {
+		return m, nil
+	}
+
+	switch keyNum {
+	case "1": // Inputs
+		if len(node.CallData.Inputs) > 0 {
 			m.showCallInputsModal = true
 			m.callInputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
 		} else {
-			m.setStatusMessage("No inputs available for this call")
+			m.setStatusMessage("No inputs available")
 			return m, getClearStatusCmd()
 		}
-	} else if msg.String() == "2" && m.cursor < len(m.nodes) {
-		node := m.nodes[m.cursor]
-		if node.CallData != nil && len(node.CallData.Outputs) > 0 {
+	case "2": // Outputs
+		if len(node.CallData.Outputs) > 0 {
 			m.showCallOutputsModal = true
 			m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
 		} else {
-			m.setStatusMessage("No outputs available for this call")
+			m.setStatusMessage("No outputs available")
 			return m, getClearStatusCmd()
 		}
-	} else if msg.String() == "3" && m.cursor < len(m.nodes) {
-		node := m.nodes[m.cursor]
-		if node.CallData != nil && node.CallData.CommandLine != "" {
+	case "3": // Command
+		if node.CallData.CommandLine != "" {
 			m.showCallCommandModal = true
 			m.callCommandViewport = viewport.New(m.width-10, m.height-8)
 			m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
 		} else {
-			m.setStatusMessage("No command available for this call")
+			m.setStatusMessage("No command available")
 			return m, getClearStatusCmd()
 		}
-	} else if msg.String() == "4" && m.cursor < len(m.nodes) {
-		node := m.nodes[m.cursor]
-		if node.CallData != nil && (node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "") {
+	case "4": // Logs (inline)
+		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" {
 			m.viewMode = ViewModeLogs
 			m.logCursor = 1 // Start at stderr
 			m.updateDetailsContent()
 			m.focus = FocusDetails
 		} else {
-			m.setStatusMessage("No logs available for this call")
+			m.setStatusMessage("No logs available")
 			return m, getClearStatusCmd()
 		}
+	case "5": // Efficiency (inline)
+		if node.CallData.MonitoringLog != "" {
+			// Check cache first
+			if node.CallData.EfficiencyReport != nil {
+				m.resourceReport = node.CallData.EfficiencyReport
+				m.resourceError = ""
+				m.viewMode = ViewModeMonitor
+				m.updateDetailsContent()
+				return m, nil
+			}
+			// Not cached, load it
+			m.viewMode = ViewModeMonitor
+			m.resourceReport = nil
+			m.resourceError = ""
+			m.isLoading = true
+			m.loadingMessage = "Analyzing resource efficiency..."
+			m.updateDetailsContent()
+			return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
+		}
+		m.setStatusMessage("No monitoring data available")
+		return m, getClearStatusCmd()
 	}
+
 	return m, nil
 }
 
