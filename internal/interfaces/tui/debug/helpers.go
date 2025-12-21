@@ -3,8 +3,6 @@ package debug
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -12,12 +10,8 @@ import (
 
 	"context"
 
-	"cloud.google.com/go/storage"
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// maxLogSize is the maximum log file size we'll read (1 MB)
-const maxLogSize = 1 * 1024 * 1024
 
 // countPreemptions counts the number of preempted tasks in a node and its children
 func countPreemptions(node *TreeNode) int {
@@ -187,22 +181,6 @@ func formatDockerImage(image string) string {
 	return sb.String()
 }
 
-// nodeTypeName returns a human-readable name for a NodeType.
-func nodeTypeName(t NodeType) string {
-	switch t {
-	case NodeTypeWorkflow:
-		return "Workflow"
-	case NodeTypeCall:
-		return "Call"
-	case NodeTypeSubWorkflow:
-		return "SubWorkflow"
-	case NodeTypeShard:
-		return "Shard"
-	default:
-		return "Unknown"
-	}
-}
-
 // wrapText wraps text to fit within maxWidth characters.
 // It respects existing line breaks and wraps long lines.
 func wrapText(text string, maxWidth int) string {
@@ -246,68 +224,6 @@ func wrapText(text string, maxWidth int) string {
 	return result.String()
 }
 
-// readGCSFile reads a file from Google Cloud Storage
-func readGCSFile(path string) (string, error) {
-	// Parse gs://bucket/object path
-	path = strings.TrimPrefix(path, "gs://")
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid GCS path: gs://%s", path)
-	}
-	bucket := parts[0]
-	object := parts[1]
-
-	ctx := context.Background()
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GCS client: %w", err)
-	}
-	defer client.Close()
-
-	// Get object attributes to check size
-	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to get object attributes: %w", err)
-	}
-
-	if attrs.Size > maxLogSize {
-		return "", fmt.Errorf("log file too large (%.2f MB > 1 MB limit)", float64(attrs.Size)/(1024*1024))
-	}
-
-	// Read the object
-	rc, err := client.Bucket(bucket).Object(object).NewReader(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to open GCS object: %w", err)
-	}
-	defer rc.Close()
-
-	data, err := io.ReadAll(rc)
-	if err != nil {
-		return "", fmt.Errorf("failed to read GCS object: %w", err)
-	}
-
-	return string(data), nil
-}
-
-// readLocalFile reads a local file
-func readLocalFile(path string) (string, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to stat file: %w", err)
-	}
-
-	if info.Size() > maxLogSize {
-		return "", fmt.Errorf("log file too large (%.2f MB > 1 MB limit)", float64(info.Size())/(1024*1024))
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-
-	return string(data), nil
-}
-
 // clipboardCopiedMsg is sent when clipboard copy is complete
 type clipboardCopiedMsg struct {
 	success bool
@@ -331,29 +247,20 @@ func (m Model) fetchTotalCost() tea.Cmd {
 	}
 }
 
-// loadResourceAnalysis loads and parses a monitoring log for resource analysis
 func (m Model) loadResourceAnalysis(path string) tea.Cmd {
 	return func() tea.Msg {
-		var content string
-		var err error
-
-		if strings.HasPrefix(path, "gs://") {
-			content, err = readGCSFile(path)
-		} else {
-			content, err = readLocalFile(path)
+		if m.monitoringUC == nil {
+			return resourceAnalysisErrorMsg{err: fmt.Errorf("monitoring use case not initialized")}
 		}
 
+		// Use the injected monitoring use case to analyze resource usage
+		// We use context.Background() here as we don't have a context in the Model yet
+		result, err := m.monitoringUC.AnalyzeResourceUsage(context.Background(), path)
 		if err != nil {
 			return resourceAnalysisErrorMsg{err: err}
 		}
 
-		metrics, err := ParseMonitoringLog(content)
-		if err != nil {
-			return resourceAnalysisErrorMsg{err: err}
-		}
-
-		report := AnalyzeEfficiency(metrics)
-		return resourceAnalysisLoadedMsg{report: report}
+		return resourceAnalysisLoadedMsg{report: result.Report}
 	}
 }
 

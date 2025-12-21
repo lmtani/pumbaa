@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -41,7 +42,7 @@ type costLoadedMsg struct {
 }
 
 type resourceAnalysisLoadedMsg struct {
-	report *EfficiencyReport
+	report *monitoring.EfficiencyReport
 }
 
 type resourceAnalysisErrorMsg struct {

@@ -10,6 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -79,7 +81,7 @@ type Model struct {
 
 	// Resource analysis modal state
 	showResourceModal bool
-	resourceReport    *EfficiencyReport
+	resourceReport    *monitoring.EfficiencyReport
 	resourceError     string
 	resourceViewport  viewport.Model
 
@@ -92,6 +94,10 @@ type Model struct {
 	statusMessage        string
 	statusMessageExpires time.Time // When the status message should disappear
 
+	// Infrastructure
+	monitoringUC monitoringuc.Usecase
+	fileProvider monitoring.FileProvider
+
 	// Pre-computed preemption summary when using a DebugInfo-based model
 	preemption *debuginfo.WorkflowPreemptionSummary
 }
@@ -103,6 +109,11 @@ func NewModel(metadata *WorkflowMetadata) Model {
 
 // NewModelWithFetcher creates a new debug TUI model with a metadata fetcher.
 func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Model {
+	return NewModelWithAllDependencies(metadata, fetcher, nil, nil)
+}
+
+// NewModelWithAllDependencies creates a model with metadata and all optional dependencies.
+func NewModelWithAllDependencies(metadata *WorkflowMetadata, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
 	tree := debuginfo.BuildTree(metadata)
 	nodes := debuginfo.GetVisibleNodes(tree)
 
@@ -115,6 +126,8 @@ func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Mo
 		tree:           tree,
 		nodes:          nodes,
 		fetcher:        fetcher,
+		monitoringUC:   muc,
+		fileProvider:   fp,
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,
@@ -127,6 +140,11 @@ func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Mo
 
 // NewModelWithDebugInfo creates a model from a precomputed DebugInfo.
 func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Model {
+	return NewModelWithDebugInfoAndMonitoring(di, fetcher, nil, nil)
+}
+
+// NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
+func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
@@ -137,6 +155,8 @@ func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Mod
 		nodes:          di.Visible,
 		preemption:     di.Preemption,
 		fetcher:        fetcher,
+		monitoringUC:   muc,
+		fileProvider:   fp,
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,
