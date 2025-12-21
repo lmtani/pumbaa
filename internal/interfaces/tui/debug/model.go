@@ -105,48 +105,6 @@ type Model struct {
 	preemption *debuginfo.WorkflowPreemptionSummary
 }
 
-// NewModel creates a new debug TUI model.
-func NewModel(metadata *WorkflowMetadata) Model {
-	return NewModelWithFetcher(metadata, nil)
-}
-
-// NewModelWithFetcher creates a new debug TUI model with a metadata fetcher.
-func NewModelWithFetcher(metadata *WorkflowMetadata, fetcher MetadataFetcher) Model {
-	return NewModelWithAllDependencies(metadata, fetcher, nil, nil)
-}
-
-// NewModelWithAllDependencies creates a model with metadata and all optional dependencies.
-func NewModelWithAllDependencies(metadata *WorkflowMetadata, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
-	tree := debuginfo.BuildTree(metadata)
-	nodes := debuginfo.GetVisibleNodes(tree)
-
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
-
-	return Model{
-		metadata:       metadata,
-		tree:           tree,
-		nodes:          nodes,
-		fetcher:        fetcher,
-		monitoringUC:   muc,
-		fileProvider:   fp,
-		cursor:         0,
-		focus:          FocusTree,
-		viewMode:       ViewModeTree,
-		nodeStates:     make(map[string]NodeViewState),
-		keys:           DefaultKeyMap(),
-		help:           help.New(),
-		detailViewport: viewport.New(80, 20),
-		loadingSpinner: s,
-	}
-}
-
-// NewModelWithDebugInfo creates a model from a precomputed DebugInfo.
-func NewModelWithDebugInfo(di *debuginfo.DebugInfo, fetcher MetadataFetcher) Model {
-	return NewModelWithDebugInfoAndMonitoring(di, fetcher, nil, nil)
-}
-
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
 func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
 	s := spinner.New()

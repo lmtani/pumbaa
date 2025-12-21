@@ -27,24 +27,6 @@ type AppModel struct {
 	globalKeys    common.GlobalKeys
 }
 
-// NewAppModel creates a new app model starting at the dashboard.
-func NewAppModel() AppModel {
-	return AppModel{
-		currentScreen: ScreenDashboard,
-		dashboard:     dashboard.NewModel(),
-		globalKeys:    common.DefaultGlobalKeys(),
-	}
-}
-
-// NewAppModelWithDebug creates a new app model starting at the debug screen.
-func NewAppModelWithDebug(metadata *debug.WorkflowMetadata, fetcher debug.MetadataFetcher) AppModel {
-	return AppModel{
-		currentScreen: ScreenDebug,
-		debug:         debug.NewModelWithFetcher(metadata, fetcher),
-		globalKeys:    common.DefaultGlobalKeys(),
-	}
-}
-
 // Init implements tea.Model.
 func (m AppModel) Init() tea.Cmd {
 	switch m.currentScreen {
