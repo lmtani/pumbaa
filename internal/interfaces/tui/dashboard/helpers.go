@@ -6,10 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
-	"github.com/muesli/reflow/truncate"
 )
 
 // truncateID truncates a workflow ID to 8 characters for display.
@@ -18,16 +15,6 @@ func truncateID(id string) string {
 		return id
 	}
 	return id[:8]
-}
-
-// truncateToWidth truncates a string to fit within maxWidth visible characters.
-// Uses muesli/reflow/truncate to properly handle ANSI escape codes.
-func truncateToWidth(s string, maxWidth int) string {
-	if lipgloss.Width(s) <= maxWidth {
-		return s
-	}
-	// Use truncate.StringWithTail which properly handles ANSI escape sequences
-	return truncate.StringWithTail(s, uint(maxWidth), "...")
 }
 
 // formatDuration formats a duration into a human-readable string (seconds, minutes, or hours).
@@ -96,19 +83,4 @@ func formatLabelsPlain(labels map[string]string, maxWidth int) string {
 	sort.Strings(parts)
 
 	return strings.Join(parts, ", ")
-}
-
-// formatLabels formats workflow labels for display, excluding cromwell-workflow-id.
-func formatLabels(labels map[string]string, maxWidth int) string {
-	result := formatLabelsPlain(labels, maxWidth)
-	if result == "" {
-		return ""
-	}
-
-	// Truncate if exceeds maxWidth
-	if maxWidth > 3 && len(result) > maxWidth {
-		result = result[:maxWidth-3] + "..."
-	}
-
-	return common.MutedStyle.Render(result)
 }
