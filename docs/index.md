@@ -7,6 +7,7 @@ A powerful CLI tool for interacting with [Cromwell](https://cromwell.readthedocs
 Pumbaa provides an intuitive command-line interface to:
 
 - 🎯 **Manage workflows** with an interactive terminal dashboard (TUI)
+- 🤖 **Chat with AI** to query workflows and download files via natural language
 - 🔍 **Debug workflows** with detailed execution views and preemption analysis
 - 📦 **Bundle WDL files** with all dependencies into portable packages
 - 📊 **View metadata**, logs, timing in a user-friendly format
@@ -22,6 +23,14 @@ pumbaa dashboard
 ```
 
 ![Dashboard Screenshot](assets/dashboard.png)
+
+### Chat Agent
+
+Query workflows using natural language:
+
+```bash
+pumbaa chat --provider vertex --vertex-project <PROJECT_ID>
+```
 
 ### Debug View
 

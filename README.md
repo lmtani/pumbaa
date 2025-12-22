@@ -24,6 +24,36 @@ Browse and manage workflows with an interactive terminal interface:
 pumbaa dashboard
 ```
 
+### Chat Agent
+
+Interactive AI assistant for querying workflows and downloading files:
+
+```bash
+# Using Ollama (default)
+pumbaa chat
+
+# Using Vertex AI
+pumbaa chat --provider vertex --vertex-project <PROJECT_ID>
+```
+
+**Capabilities:**
+- Query workflow status, metadata, outputs, and logs
+- Download files from Google Cloud Storage
+- Session persistence for conversation history
+
+**Session Management:**
+```bash
+# List existing sessions
+pumbaa chat --list
+
+# Resume a session
+pumbaa chat --session <SESSION_ID>
+```
+
+**Controls:**
+- `Ctrl+D` - Send message
+- `↑↓` - Scroll messages
+- `Esc` - Exit
 
 ### Submit Workflow
 
@@ -45,10 +75,36 @@ pumbaa bundle --workflow main.wdl --output <name>
 
 ## Configuration
 
-Set the Cromwell server URL:
+### Cromwell Server
 
 ```bash
+# Via flag
 pumbaa --host http://cromwell:8000 dashboard
+
+# Via environment variable
+export CROMWELL_HOST=http://cromwell:8000
+```
+
+### Chat LLM Providers
+
+**Ollama (default):**
+```bash
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=llama3.2:3b
+```
+
+**Vertex AI:**
+```bash
+export VERTEX_PROJECT=<project-id>
+export VERTEX_LOCATION=us-central1
+export VERTEX_MODEL=gemini-2.0-flash
+```
+
+### Session Persistence
+
+Sessions are stored in SQLite:
+```bash
+export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db  # default
 ```
 
 ## Contributing

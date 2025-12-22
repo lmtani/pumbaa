@@ -59,7 +59,37 @@ You can also pass the host directly with `--host`:
 pumbaa --host http://localhost:8000 dashboard
 ```
 
+## Chat Agent
+
+### LLM Provider
+
+**Ollama (default):**
+
+```bash
+export PUMBAA_LLM_PROVIDER=ollama
+export OLLAMA_HOST=http://localhost:11434
+export OLLAMA_MODEL=llama3.2:3b
+```
+
+**Vertex AI:**
+
+```bash
+export PUMBAA_LLM_PROVIDER=vertex
+export VERTEX_PROJECT=<project-id>
+export VERTEX_LOCATION=us-central1
+export VERTEX_MODEL=gemini-2.0-flash
+```
+
+### Session Storage
+
+Chat sessions are persisted in SQLite:
+
+```bash
+export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db
+```
+
 ## Next Steps
 
 - [Quick Start](quick-start.md) - Run your first commands
 - [Dashboard](../features/dashboard.md) - Learn about the interactive dashboard
+- [Chat Agent](../features/chat.md) - Use AI to query workflows
