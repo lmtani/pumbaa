@@ -131,17 +131,14 @@ func (m Model) renderLabelsModal() string {
 	var content strings.Builder
 
 	// Title left, spinner right
-	titleText := fmt.Sprintf("🏷 Labels: %s", truncateName(m.labelsWorkflowName, 35))
+	titleText := fmt.Sprintf("%s Labels: %s", common.IconLabels, truncateName(m.labelsWorkflowName, 35))
 	title := common.TitleStyle.Render(titleText)
 
 	// Build header row with activity indicator on the right
 	headerRow := title
 	if m.labelsLoading || m.labelsUpdating {
-		statusText := "⏳"
-		if m.labelsUpdating {
-			statusText = "💾"
-		}
-		spinnerText := fmt.Sprintf("%s %s", m.spinner.View(), statusText)
+		// Just show spinner - no extra icons
+		spinnerText := m.spinner.View()
 		spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
 
 		// Calculate padding to push spinner to the right

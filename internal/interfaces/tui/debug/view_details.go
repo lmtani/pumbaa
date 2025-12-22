@@ -76,14 +76,12 @@ func (m Model) renderDetailsContent(node *TreeNode) string {
 func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	var sb strings.Builder
 
-	// Node info
-	sb.WriteString(titleStyle.Render("📌 Node Info") + "\n")
-	sb.WriteString(labelStyle.Render("Name: ") + valueStyle.Render(node.Name) + "\n")
+	// Status line (minimal, since badge already shows type+name)
 	sb.WriteString(labelStyle.Render("Status: ") + statusStyle(node.Status) + " " + valueStyle.Render(node.Status) + "\n")
 	if node.SubWorkflowID != "" {
-		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(node.SubWorkflowID) + "\n")
+		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + mutedStyle.Render(node.SubWorkflowID) + "\n")
 	}
-	sb.WriteString("\n" + sectionSeparator(35) + "\n")
+	sb.WriteString("\n")
 
 	// Scatter summary for Call nodes with shards
 	if node.Type == NodeTypeCall && len(node.Children) > 0 {
@@ -301,7 +299,7 @@ func (m Model) renderOutputs(node *TreeNode) string {
 	return sb.String()
 }
 
-// getNodeTypeBadge returns a colored badge indicating the node type
+// getNodeTypeBadge returns a clean header with node type and name
 func (m Model) getNodeTypeBadge(node *TreeNode) string {
 	var icon, label string
 	var color lipgloss.Color
@@ -309,41 +307,39 @@ func (m Model) getNodeTypeBadge(node *TreeNode) string {
 	// Determine badge based on node type
 	switch node.Type {
 	case NodeTypeWorkflow:
-		icon = "📦"
-		label = "WORKFLOW"
+		icon = common.IconWorkflow
+		label = "workflow"
 		color = lipgloss.Color("#9C27B0") // Purple
 	case NodeTypeSubWorkflow:
-		icon = "📁"
-		label = "SUBWORKFLOW"
+		icon = common.IconSubworkflow
+		label = "subworkflow"
 		color = lipgloss.Color("#2196F3") // Blue
 	case NodeTypeCall:
 		if len(node.Children) > 0 {
-			icon = "🔄"
-			label = "SCATTER"
+			icon = "↻"
+			label = "scatter"
 			color = lipgloss.Color("#FFA726") // Orange
 		} else {
-			icon = "🔧"
-			label = "TASK"
+			icon = common.IconTask
+			label = "task"
 			color = lipgloss.Color("#4CAF50") // Green
 		}
 	case NodeTypeShard:
-		icon = "🔧"
-		label = "SHARD"
+		icon = common.IconShard
+		label = "shard"
 		color = lipgloss.Color("#4CAF50") // Green
 	default:
-		icon = "📄"
-		label = "NODE"
+		icon = "·"
+		label = "node"
 		color = lipgloss.Color("#9E9E9E") // Gray
 	}
 
-	// Create badge style
-	badgeStyle := lipgloss.NewStyle().
-		Background(color).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Padding(0, 1).
+	// Type style (colored, lowercase)
+	typeStyle := lipgloss.NewStyle().
+		Foreground(color).
 		Bold(true)
 
-	return icon + " " + badgeStyle.Render(label)
+	return icon + " " + typeStyle.Render(label)
 }
 
 // renderScatterSummary renders a summary for Call nodes that have shards
@@ -421,40 +417,21 @@ func (m Model) renderScatterSummary(node *TreeNode) string {
 	return sb.String()
 }
 
-// renderActionBar renders the quick actions based on node type.
-// Workflow/SubWorkflow: 1=Inputs, 2=Outputs, 3=Options, 4=Timeline, 5=Workflow Log
-// Task/Shard: 1=Inputs, 2=Outputs, 3=Command, 4=Logs, 5=Efficiency
+// renderActionBar renders compact action hints based on node type.
 func (m Model) renderActionBar(node *TreeNode) string {
-	var sb strings.Builder
-	sb.WriteString(titleStyle.Render("⚡ Quick Actions") + "\n")
+	var actions []string
 
-	// Helper to render action item
-	renderItem := func(key, desc string, enabled bool, selected bool) string {
-		keyStyle := buttonStyle
+	// Helper to format action - using footer-style pattern
+	formatAction := func(key, desc string, enabled bool) string {
 		if !enabled {
-			keyStyle = disabledButtonStyle
+			return ""
 		}
-		if selected {
-			keyStyle = keyStyle.Background(lipgloss.Color("#7D56F4"))
-		}
-
-		prefix := "  "
-		if selected {
-			prefix = "▶ "
-		}
-
-		text := desc
-		if !enabled {
-			text = mutedStyle.Render(desc)
-		}
-
-		return prefix + keyStyle.Render(key) + " " + text + "\n"
+		return common.KeyStyle.Render(key) + common.DescStyle.Render(" "+desc)
 	}
 
 	// Render actions based on node type
 	switch node.Type {
 	case NodeTypeWorkflow, NodeTypeSubWorkflow:
-		// Get appropriate metadata
 		var meta *WorkflowMetadata
 		if node.Type == NodeTypeWorkflow {
 			meta = m.metadata
@@ -464,32 +441,49 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			meta = m.metadata
 		}
 
-		sb.WriteString(renderItem(" 1 ", "↗ View inputs", len(meta.Inputs) > 0, false))
-		sb.WriteString(renderItem(" 2 ", "↗ View outputs", len(meta.Outputs) > 0, false))
-		sb.WriteString(renderItem(" 3 ", "↗ View options", meta.SubmittedOptions != "", false))
-		sb.WriteString(renderItem(" 4 ", "↗ Tasks timeline", true, false))
-		sb.WriteString(renderItem(" 5 ", "↗ Workflow log", meta.WorkflowLog != "", false))
+		if a := formatAction("1", "inputs", len(meta.Inputs) > 0); a != "" {
+			actions = append(actions, a)
+		}
+		if a := formatAction("2", "outputs", len(meta.Outputs) > 0); a != "" {
+			actions = append(actions, a)
+		}
+		if a := formatAction("3", "options", meta.SubmittedOptions != ""); a != "" {
+			actions = append(actions, a)
+		}
+		actions = append(actions, formatAction("4", "timeline", true))
+		if a := formatAction("5", "log", meta.WorkflowLog != ""); a != "" {
+			actions = append(actions, a)
+		}
 
 	case NodeTypeCall, NodeTypeShard:
 		if node.CallData != nil {
 			cd := node.CallData
-			sb.WriteString(renderItem(" 1 ", "↗ View inputs", len(cd.Inputs) > 0, false))
-			sb.WriteString(renderItem(" 2 ", "↗ View outputs", len(cd.Outputs) > 0, false))
-			sb.WriteString(renderItem(" 3 ", "↗ View command", cd.CommandLine != "", false))
-			sb.WriteString(renderItem(" 4 ", "Browse logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "", m.viewMode == ViewModeLogs))
-			sb.WriteString(renderItem(" 5 ", "Efficiency", cd.MonitoringLog != "", m.viewMode == ViewModeMonitor))
+			if a := formatAction("1", "inputs", len(cd.Inputs) > 0); a != "" {
+				actions = append(actions, a)
+			}
+			if a := formatAction("2", "outputs", len(cd.Outputs) > 0); a != "" {
+				actions = append(actions, a)
+			}
+			if a := formatAction("3", "command", cd.CommandLine != ""); a != "" {
+				actions = append(actions, a)
+			}
+			if a := formatAction("4", "logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != ""); a != "" {
+				actions = append(actions, a)
+			}
+			if a := formatAction("5", "efficiency", cd.MonitoringLog != ""); a != "" {
+				actions = append(actions, a)
+			}
 		}
 	}
 
-	// Add hint to go back when in a sub-view
-	if m.viewMode != ViewModeDetails && m.viewMode != ViewModeTree {
-		sb.WriteString(mutedStyle.Render("Press ESC or 'd' to return to details") + "\n")
+	if len(actions) == 0 {
+		return ""
 	}
 
-	// Separator line
-	sb.WriteString(mutedStyle.Render("─────────────────────────────────────"))
+	// Join actions with separator
+	result := mutedStyle.Render("Actions: ") + strings.Join(actions, mutedStyle.Render("  "))
 
-	return sb.String()
+	return result
 }
 
 // renderMonitorContent renders the resource efficiency analysis inline
@@ -588,22 +582,22 @@ func (m Model) renderBreadcrumb(node *TreeNode) string {
 
 		switch current.Type {
 		case NodeTypeWorkflow:
-			icon = "📦"
+			icon = common.IconWorkflow
 		case NodeTypeSubWorkflow:
-			icon = "📂"
+			icon = common.IconSubworkflow
 		case NodeTypeCall:
 			if len(current.Children) > 0 {
-				icon = "🔄" // Scatter
+				icon = "↻" // Scatter
 			} else {
-				icon = "🔧" // Task
+				icon = common.IconTask
 			}
 		case NodeTypeShard:
-			icon = "⚡"
+			icon = common.IconShard
 			if current.CallData != nil {
 				name = fmt.Sprintf("Shard %d", current.CallData.ShardIndex)
 			}
 		default:
-			icon = "📄"
+			icon = "·"
 		}
 
 		path = append([]struct {
