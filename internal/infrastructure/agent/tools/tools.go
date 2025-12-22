@@ -6,8 +6,11 @@ import (
 )
 
 // GetAllTools returns all available tools in this package.
-func GetAllTools() []tool.Tool {
+// cromwellRepo is the Cromwell repository implementation for API interactions.
+func GetAllTools(cromwellRepo CromwellRepository) []tool.Tool {
+	// Return a single unified tool to avoid Vertex AI limitation
+	// "Multiple tools are supported only when they are all search tools"
 	return []tool.Tool{
-		GetGCSDownload(),
+		GetPumbaaTool(cromwellRepo),
 	}
 }

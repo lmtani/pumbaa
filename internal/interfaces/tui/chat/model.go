@@ -265,7 +265,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 			m.sessionService.AppendEvent(ctx, m.session, ev)
 		}
 
-		maxTurns := 5
+		maxTurns := 15
 		currentTurn := 0
 
 		for currentTurn < maxTurns {
@@ -365,7 +365,27 @@ func (m Model) generateResponse(input string) tea.Cmd {
 			return ResponseMsg{Content: text}
 		}
 
-		return ResponseMsg{Content: "Max turns reached"}
+		// Max turns reached - provide a helpful message
+		// Summarize what was gathered from the conversation
+		var summary strings.Builder
+		summary.WriteString("⚠️ Atingi o limite de iterações de ferramentas.\n\n")
+		summary.WriteString("**Informações coletadas até agora:**\n")
+
+		// Look through history for tool responses
+		toolResultCount := 0
+		for _, content := range *m.history {
+			if content.Role == "tool" {
+				toolResultCount++
+			}
+		}
+
+		if toolResultCount > 0 {
+			summary.WriteString(fmt.Sprintf("- Executei %d chamadas de ferramentas\n", toolResultCount))
+		}
+
+		summary.WriteString("\nSe precisar de mais informações, por favor faça uma pergunta mais específica ou peça para eu continuar de onde parei.")
+
+		return ResponseMsg{Content: summary.String()}
 	}
 }
 

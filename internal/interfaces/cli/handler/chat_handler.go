@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools"
+	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
@@ -20,26 +21,30 @@ const defaultUserID = "default"
 
 const systemInstruction = `You are Pumbaa, a helpful assistant specialized in bioinformatics workflows and Cromwell/WDL.
 
-You help users understand and manage their Cromwell workflows. You have access to the following tools:
+You have access to the "pumbaa" tool with these actions:
 
-1. **gcs_download**: Downloads and reads content from Google Cloud Storage (gs:// paths). Use this when users provide GCS paths.
+**Cromwell Server:**
+- action="query" → Search workflows. Optional: status (Running, Succeeded, Failed), name
+- action="status" → Get workflow status. Required: workflow_id
+- action="metadata" → Get workflow details (calls, inputs, outputs). Required: workflow_id
+- action="outputs" → Get workflow output files. Required: workflow_id
+- action="logs" → Get log file paths for debugging. Required: workflow_id
+
+**Google Cloud Storage:**
+- action="gcs_download" → Read file from GCS. Required: path (gs://bucket/file)
 
 Guidelines:
-- Always be helpful and concise.
-- When users provide gs:// paths, use gcs_download to read the content.
-- Explain workflow concepts clearly when asked.
-- If you don't know something, say so.
-
-Respond in the same language the user uses (Portuguese or English).`
+- Use action="query" to find workflows first
+- Use action="logs" + action="gcs_download" to debug failures
+- Be helpful and concise
+- Respond in the user's language (Portuguese or English)`
 
 type ChatHandler struct {
 	config *config.Config
 }
 
 func NewChatHandler(cfg *config.Config) *ChatHandler {
-	return &ChatHandler{
-		config: cfg,
-	}
+	return &ChatHandler{config: cfg}
 }
 
 func (h *ChatHandler) Command() *cli.Command {
@@ -50,7 +55,7 @@ func (h *ChatHandler) Command() *cli.Command {
 			&cli.StringFlag{
 				Name:    "session",
 				Aliases: []string{"s"},
-				Usage:   "Session ID to resume (leave empty for new session)",
+				Usage:   "Session ID to resume",
 			},
 			&cli.BoolFlag{
 				Name:    "list",
@@ -60,7 +65,7 @@ func (h *ChatHandler) Command() *cli.Command {
 			&cli.StringFlag{
 				Name:    "provider",
 				Aliases: []string{"p"},
-				Usage:   "LLM provider: ollama or vertex (default: ollama)",
+				Usage:   "LLM provider: ollama or vertex",
 				EnvVars: []string{"PUMBAA_LLM_PROVIDER"},
 			},
 			&cli.StringFlag{
@@ -70,17 +75,16 @@ func (h *ChatHandler) Command() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:    "vertex-location",
-				Usage:   "Vertex AI location (default: us-central1)",
+				Usage:   "Vertex AI location",
 				EnvVars: []string{"VERTEX_LOCATION"},
 			},
 			&cli.StringFlag{
 				Name:    "vertex-model",
-				Usage:   "Vertex AI model (default: gemini-2.0-flash)",
+				Usage:   "Vertex AI model",
 				EnvVars: []string{"VERTEX_MODEL"},
 			},
 		},
 		Action: func(c *cli.Context) error {
-			// Apply flag overrides
 			if p := c.String("provider"); p != "" {
 				h.config.LLMProvider = p
 			}
@@ -110,10 +114,7 @@ func (h *ChatHandler) ListSessions() error {
 	defer svc.Close()
 
 	ctx := context.Background()
-	resp, err := svc.List(ctx, &adksession.ListRequest{
-		AppName: appName,
-		UserID:  defaultUserID,
-	})
+	resp, err := svc.List(ctx, &adksession.ListRequest{AppName: appName, UserID: defaultUserID})
 	if err != nil {
 		return fmt.Errorf("failed to list sessions: %w", err)
 	}
@@ -131,7 +132,6 @@ func (h *ChatHandler) ListSessions() error {
 }
 
 func (h *ChatHandler) Run(sessionID string) error {
-	// Initialize session service
 	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize session service: %w", err)
@@ -140,24 +140,16 @@ func (h *ChatHandler) Run(sessionID string) error {
 
 	ctx := context.Background()
 
-	// Get or create session
 	var sess adksession.Session
 	if sessionID != "" {
-		resp, err := svc.Get(ctx, &adksession.GetRequest{
-			AppName:   appName,
-			UserID:    defaultUserID,
-			SessionID: sessionID,
-		})
+		resp, err := svc.Get(ctx, &adksession.GetRequest{AppName: appName, UserID: defaultUserID, SessionID: sessionID})
 		if err != nil {
 			return fmt.Errorf("failed to get session %s: %w", sessionID, err)
 		}
 		sess = resp.Session
 		fmt.Printf("Resuming session: %s\n", sessionID)
 	} else {
-		resp, err := svc.Create(ctx, &adksession.CreateRequest{
-			AppName: appName,
-			UserID:  defaultUserID,
-		})
+		resp, err := svc.Create(ctx, &adksession.CreateRequest{AppName: appName, UserID: defaultUserID})
 		if err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
@@ -165,23 +157,23 @@ func (h *ChatHandler) Run(sessionID string) error {
 		fmt.Printf("Created new session: %s\n", sess.ID())
 	}
 
-	// Initialize LLM using factory
 	llmModel, err := llm.NewLLM(h.config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM: %w", err)
 	}
-	fmt.Printf("Using LLM provider: %s\n", llmModel.Name())
+	fmt.Printf("Using LLM: %s | Cromwell: %s\n", llmModel.Name(), h.config.CromwellHost)
 
-	// Initialize Tools
-	agentTools := tools.GetAllTools()
+	cromwellClient := cromwellclient.NewClient(cromwellclient.Config{
+		Host:    h.config.CromwellHost,
+		Timeout: h.config.CromwellTimeout,
+	})
 
-	// Initialize Chat Model with session
+	agentTools := tools.GetAllTools(cromwellClient)
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 
-	// Run Bubble Tea Program
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
 	return nil
