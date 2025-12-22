@@ -41,11 +41,11 @@ func (m Model) getDetailsTitle() string {
 func (m Model) renderDetailsContent(node *TreeNode) string {
 	var sb strings.Builder
 
+	// Node type badge
+	sb.WriteString(m.getNodeTypeBadge(node) + "\n")
+
 	// Breadcrumb navigation at the very top
 	sb.WriteString(m.renderBreadcrumb(node) + "\n")
-
-	// Node type badge
-	sb.WriteString(m.getNodeTypeBadge(node) + "\n\n")
 
 	// Action bar is visible for all node types (except scatter)
 	isScatter := node.Type == NodeTypeCall && len(node.Children) > 0
