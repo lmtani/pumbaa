@@ -8,7 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/ollama"
+	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 	"github.com/urfave/cli/v2"
@@ -57,8 +57,43 @@ func (h *ChatHandler) Command() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "List available sessions",
 			},
+			&cli.StringFlag{
+				Name:    "provider",
+				Aliases: []string{"p"},
+				Usage:   "LLM provider: ollama or vertex (default: ollama)",
+				EnvVars: []string{"PUMBAA_LLM_PROVIDER"},
+			},
+			&cli.StringFlag{
+				Name:    "vertex-project",
+				Usage:   "Google Cloud project for Vertex AI",
+				EnvVars: []string{"VERTEX_PROJECT"},
+			},
+			&cli.StringFlag{
+				Name:    "vertex-location",
+				Usage:   "Vertex AI location (default: us-central1)",
+				EnvVars: []string{"VERTEX_LOCATION"},
+			},
+			&cli.StringFlag{
+				Name:    "vertex-model",
+				Usage:   "Vertex AI model (default: gemini-2.0-flash)",
+				EnvVars: []string{"VERTEX_MODEL"},
+			},
 		},
 		Action: func(c *cli.Context) error {
+			// Apply flag overrides
+			if p := c.String("provider"); p != "" {
+				h.config.LLMProvider = p
+			}
+			if vp := c.String("vertex-project"); vp != "" {
+				h.config.VertexProject = vp
+			}
+			if vl := c.String("vertex-location"); vl != "" {
+				h.config.VertexLocation = vl
+			}
+			if vm := c.String("vertex-model"); vm != "" {
+				h.config.VertexModel = vm
+			}
+
 			if c.Bool("list") {
 				return h.ListSessions()
 			}
@@ -108,7 +143,6 @@ func (h *ChatHandler) Run(sessionID string) error {
 	// Get or create session
 	var sess adksession.Session
 	if sessionID != "" {
-		// Resume existing session
 		resp, err := svc.Get(ctx, &adksession.GetRequest{
 			AppName:   appName,
 			UserID:    defaultUserID,
@@ -120,7 +154,6 @@ func (h *ChatHandler) Run(sessionID string) error {
 		sess = resp.Session
 		fmt.Printf("Resuming session: %s\n", sessionID)
 	} else {
-		// Create new session
 		resp, err := svc.Create(ctx, &adksession.CreateRequest{
 			AppName: appName,
 			UserID:  defaultUserID,
@@ -132,14 +165,18 @@ func (h *ChatHandler) Run(sessionID string) error {
 		fmt.Printf("Created new session: %s\n", sess.ID())
 	}
 
-	// Initialize LLM
-	llm := ollama.NewModel(h.config.OllamaHost, h.config.OllamaModel)
+	// Initialize LLM using factory
+	llmModel, err := llm.NewLLM(h.config)
+	if err != nil {
+		return fmt.Errorf("failed to initialize LLM: %w", err)
+	}
+	fmt.Printf("Using LLM provider: %s\n", llmModel.Name())
 
 	// Initialize Tools
 	agentTools := tools.GetAllTools()
 
 	// Initialize Chat Model with session
-	m := chat.NewModel(llm, agentTools, systemInstruction, svc, sess)
+	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 
 	// Run Bubble Tea Program
 	p := tea.NewProgram(m, tea.WithAltScreen())

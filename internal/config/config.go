@@ -11,9 +11,19 @@ import (
 type Config struct {
 	CromwellHost    string
 	CromwellTimeout time.Duration
-	OllamaHost      string
-	OllamaModel     string
 	SessionDBPath   string
+
+	// LLM Provider configuration
+	LLMProvider string // "ollama" or "vertex"
+
+	// Ollama-specific
+	OllamaHost  string
+	OllamaModel string
+
+	// Vertex AI-specific
+	VertexProject  string
+	VertexLocation string
+	VertexModel    string
 }
 
 // Load loads configuration from environment variables.
@@ -23,6 +33,19 @@ func Load() *Config {
 		host = "http://localhost:8000"
 	}
 
+	sessionDBPath := os.Getenv("PUMBAA_SESSION_DB")
+	if sessionDBPath == "" {
+		home, _ := os.UserHomeDir()
+		sessionDBPath = filepath.Join(home, ".pumbaa", "sessions.db")
+	}
+
+	// LLM Provider (default: ollama)
+	llmProvider := os.Getenv("PUMBAA_LLM_PROVIDER")
+	if llmProvider == "" {
+		llmProvider = "ollama"
+	}
+
+	// Ollama config
 	ollamaHost := os.Getenv("OLLAMA_HOST")
 	if ollamaHost == "" {
 		ollamaHost = "http://localhost:11434"
@@ -33,18 +56,27 @@ func Load() *Config {
 		ollamaModel = "llama3.2:3b"
 	}
 
-	sessionDBPath := os.Getenv("PUMBAA_SESSION_DB")
-	if sessionDBPath == "" {
-		home, _ := os.UserHomeDir()
-		sessionDBPath = filepath.Join(home, ".pumbaa", "sessions.db")
+	// Vertex AI config
+	vertexProject := os.Getenv("VERTEX_PROJECT")
+	vertexLocation := os.Getenv("VERTEX_LOCATION")
+	if vertexLocation == "" {
+		vertexLocation = "us-central1"
+	}
+	vertexModel := os.Getenv("VERTEX_MODEL")
+	if vertexModel == "" {
+		vertexModel = "gemini-2.0-flash"
 	}
 
 	return &Config{
 		CromwellHost:    host,
 		CromwellTimeout: 30 * time.Second,
+		SessionDBPath:   sessionDBPath,
+		LLMProvider:     llmProvider,
 		OllamaHost:      ollamaHost,
 		OllamaModel:     ollamaModel,
-		SessionDBPath:   sessionDBPath,
+		VertexProject:   vertexProject,
+		VertexLocation:  vertexLocation,
+		VertexModel:     vertexModel,
 	}
 }
 
