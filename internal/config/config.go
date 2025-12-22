@@ -10,6 +10,8 @@ import (
 type Config struct {
 	CromwellHost    string
 	CromwellTimeout time.Duration
+	OllamaHost      string
+	OllamaModel     string
 }
 
 // Load loads configuration from environment variables.
@@ -19,9 +21,21 @@ func Load() *Config {
 		host = "http://localhost:8000"
 	}
 
+	ollamaHost := os.Getenv("OLLAMA_HOST")
+	if ollamaHost == "" {
+		ollamaHost = "http://localhost:11434"
+	}
+
+	ollamaModel := os.Getenv("OLLAMA_MODEL")
+	if ollamaModel == "" {
+		ollamaModel = "llama3.2:3b"
+	}
+
 	return &Config{
 		CromwellHost:    host,
 		CromwellTimeout: 30 * time.Second,
+		OllamaHost:      ollamaHost,
+		OllamaModel:     ollamaModel,
 	}
 }
 

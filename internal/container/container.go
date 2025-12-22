@@ -38,6 +38,7 @@ type Container struct {
 	BundleHandler    *handler.BundleHandler
 	DebugHandler     *handler.DebugHandler
 	DashboardHandler *handler.DashboardHandler
+	ChatHandler      *handler.ChatHandler
 }
 
 // New creates a new dependency injection container.
@@ -70,6 +71,7 @@ func New(cfg *config.Config) *Container {
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
 	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient)
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient)
+	c.ChatHandler = handler.NewChatHandler(c.Config)
 
 	return c
 }

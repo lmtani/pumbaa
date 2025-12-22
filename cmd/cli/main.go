@@ -64,6 +64,7 @@ func main() {
 		},
 		cont.BundleHandler.Command(),
 		cont.DashboardHandler.Command(),
+		cont.ChatHandler.Command(),
 	}
 
 	if err := app.Run(os.Args); err != nil {
