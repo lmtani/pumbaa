@@ -284,7 +284,7 @@ func (m Model) renderHeader() string {
 
 	sessionInfo := ""
 	if m.session != nil {
-		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", truncate(m.session.ID(), 20)))
+		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", m.session.ID()))
 	}
 
 	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", sessionInfo)
@@ -406,13 +406,6 @@ func wrapText(text string, width int) string {
 	}
 
 	return result.String()
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max-3] + "..."
 }
 
 func (m Model) generateResponse(input string) tea.Cmd {
