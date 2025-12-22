@@ -41,7 +41,10 @@ func (m Model) getDetailsTitle() string {
 func (m Model) renderDetailsContent(node *TreeNode) string {
 	var sb strings.Builder
 
-	// Node type badge ALWAYS at the very top
+	// Breadcrumb navigation at the very top
+	sb.WriteString(m.renderBreadcrumb(node) + "\n")
+
+	// Node type badge
 	sb.WriteString(m.getNodeTypeBadge(node) + "\n\n")
 
 	// Action bar is visible for all node types (except scatter)
@@ -80,11 +83,13 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	if node.SubWorkflowID != "" {
 		sb.WriteString(labelStyle.Render("SubWorkflow ID: ") + valueStyle.Render(node.SubWorkflowID) + "\n")
 	}
+	sb.WriteString("\n" + sectionSeparator(35) + "\n")
 
 	// Scatter summary for Call nodes with shards
 	if node.Type == NodeTypeCall && len(node.Children) > 0 {
 		sb.WriteString("\n")
 		sb.WriteString(m.renderScatterSummary(node))
+		sb.WriteString("\n" + sectionSeparator(35) + "\n")
 	}
 
 	// Call-specific details
@@ -117,6 +122,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			if !cd.VMEndTime.IsZero() {
 				sb.WriteString(labelStyle.Render("VM End: ") + valueStyle.Render(cd.VMEndTime.Format("15:04:05")) + "\n")
 			}
+			sb.WriteString(sectionSeparator(35) + "\n")
 		}
 
 		// Resources - only show if has data
@@ -564,4 +570,76 @@ func renderGaugeBar(efficiency float64, width int) string {
 
 	percentStr := fmt.Sprintf(" %.0f%%", efficiency*100)
 	return bar + lipgloss.NewStyle().Foreground(barColor).Bold(true).Render(percentStr)
+}
+
+// renderBreadcrumb builds a breadcrumb navigation showing the node hierarchy
+func (m Model) renderBreadcrumb(node *TreeNode) string {
+	// Build path from root to current node
+	var path []struct {
+		icon string
+		name string
+	}
+
+	// Start with current node and walk up to root
+	current := node
+	for current != nil {
+		var icon string
+		name := current.Name
+
+		switch current.Type {
+		case NodeTypeWorkflow:
+			icon = "📦"
+		case NodeTypeSubWorkflow:
+			icon = "📂"
+		case NodeTypeCall:
+			if len(current.Children) > 0 {
+				icon = "🔄" // Scatter
+			} else {
+				icon = "🔧" // Task
+			}
+		case NodeTypeShard:
+			icon = "⚡"
+			if current.CallData != nil {
+				name = fmt.Sprintf("Shard %d", current.CallData.ShardIndex)
+			}
+		default:
+			icon = "📄"
+		}
+
+		path = append([]struct {
+			icon string
+			name string
+		}{{icon, name}}, path...)
+
+		current = current.Parent
+	}
+
+	// Build the breadcrumb string
+	var parts []string
+	for i, p := range path {
+		// Truncate long names
+		displayName := p.name
+		if len(displayName) > 20 {
+			displayName = displayName[:17] + "..."
+		}
+
+		if i == len(path)-1 {
+			// Current node (active) - highlighted
+			parts = append(parts, p.icon+" "+breadcrumbActiveStyle.Render(displayName))
+		} else {
+			// Parent nodes - muted
+			parts = append(parts, p.icon+" "+breadcrumbStyle.Render(displayName))
+		}
+	}
+
+	separator := breadcrumbSeparatorStyle.Render(" › ")
+	return strings.Join(parts, separator)
+}
+
+// sectionSeparator returns a horizontal line separator for sections
+func sectionSeparator(width int) string {
+	if width <= 0 {
+		width = 37
+	}
+	return sectionSeparatorStyle.Render(strings.Repeat("─", width))
 }
