@@ -193,10 +193,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		// Calculate available heights
+		// Header: border (2) + padding (0) + content (1) = 3 lines
+		// Footer: border (1) + padding (0) + content (1) = 2 lines
+		// Input:  border (2) + padding (0) + content (3) = 5 lines
+		// Content panel: border (2) adds to viewport height
 		headerHeight := 3
-		footerHeight := 3
+		footerHeight := 2
 		inputHeight := 5
-		availableHeight := m.height - headerHeight - footerHeight - inputHeight
+		contentBorderHeight := 2 // Top and bottom border of content panel
+
+		availableHeight := m.height - headerHeight - footerHeight - inputHeight - contentBorderHeight
 
 		if !m.ready {
 			m.viewport = viewport.New(m.width-4, availableHeight)
@@ -291,7 +297,7 @@ func (m Model) renderHeader() string {
 func (m Model) renderContent() string {
 	return common.PanelStyle.
 		Width(m.width - 2).
-		Height(m.viewport.Height + 2).
+		Height(m.viewport.Height).
 		Render(m.viewport.View())
 }
 
