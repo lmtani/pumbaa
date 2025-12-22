@@ -35,14 +35,6 @@ build:
 	@echo "Binary created at $(BUILD_DIR)/$(BINARY_NAME)"
 
 
-# Run the application
-run:
-	$(GOCMD) run $(CMD_DIR) $(ARGS)
-
-# Development build with race detector
-dev:
-	$(GOBUILD) -race $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-dev $(CMD_DIR)
-
 ## Code quality targets
 
 # Format code
@@ -51,33 +43,10 @@ fmt:
 	$(GOFMT) -s -w .
 	@echo "Done formatting"
 
-# Check formatting (useful for CI)
-fmt-check:
-	@echo "Checking code formatting..."
-	@test -z "$$($(GOFMT) -l .)" || (echo "Code is not formatted. Run 'make fmt'" && exit 1)
-
-# Tidy dependencies
-tidy:
-	@echo "Tidying dependencies..."
-	$(GOMOD) tidy
-	@echo "Done tidying"
-
-# Download dependencies
-deps:
-	@echo "Downloading dependencies..."
-	$(GOMOD) download
-	@echo "Done downloading"
-
-# Verify dependencies
-verify:
-	@echo "Verifying dependencies..."
-	$(GOMOD) verify
-	@echo "Done verifying"
-
 # Run go vet
 vet:
-	@echo "Running go vet..."
-	$(GOVET) ./...
+	@echo "Running go vet (excluding generated code)..."
+	$(GOCMD) list ./... | grep -v "pkg/wdl/parser" | xargs $(GOVET)
 	@echo "Done vetting"
 
 # Run golangci-lint (must be installed separately)

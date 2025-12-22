@@ -19,7 +19,7 @@ func (m Model) renderCallInputsModal() string {
 		nodeName = m.nodes[m.cursor].Name
 	}
 
-	title := titleStyle.Render("📥 Call Inputs: " + nodeName)
+	title := titleStyle.Render(common.IconInputs + " Inputs: " + nodeName)
 
 	content := m.callInputsViewport.View()
 
@@ -59,7 +59,7 @@ func (m Model) renderCallOutputsModal() string {
 		nodeName = m.nodes[m.cursor].Name
 	}
 
-	title := titleStyle.Render("📤 Call Outputs: " + nodeName)
+	title := titleStyle.Render(common.IconOutputs + " Outputs: " + nodeName)
 
 	content := m.callOutputsViewport.View()
 
@@ -99,7 +99,7 @@ func (m Model) renderCallCommandModal() string {
 		nodeName = m.nodes[m.cursor].Name
 	}
 
-	title := titleStyle.Render("📜 Call Command: " + nodeName)
+	title := titleStyle.Render(common.IconOptions + " Command: " + nodeName)
 
 	content := m.callCommandViewport.View()
 

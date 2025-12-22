@@ -9,13 +9,14 @@ import (
 // KeyMap defines the key bindings specific to the dashboard.
 type KeyMap struct {
 	common.NavigationKeys
-	Refresh      key.Binding
-	Open         key.Binding
-	Abort        key.Binding
-	Filter       key.Binding
-	LabelFilter  key.Binding
-	ClearFilter  key.Binding
-	StatusFilter key.Binding
+	Refresh       key.Binding
+	Open          key.Binding
+	Abort         key.Binding
+	Filter        key.Binding
+	LabelFilter   key.Binding
+	ClearFilter   key.Binding
+	StatusFilter  key.Binding
+	LabelsManager key.Binding // Open labels modal for selected workflow
 }
 
 // DefaultKeyMap returns the default key bindings for the dashboard.
@@ -49,6 +50,10 @@ func DefaultKeyMap() KeyMap {
 		StatusFilter: key.NewBinding(
 			key.WithKeys("s"),
 			key.WithHelp("s", "toggle status filter"),
+		),
+		LabelsManager: key.NewBinding(
+			key.WithKeys("L"),
+			key.WithHelp("L", "manage labels"),
 		),
 	}
 }

@@ -11,7 +11,7 @@ import (
 // renderHeader renders the dashboard header with status badges and information.
 func (m Model) renderHeader() string {
 	// Title
-	title := common.HeaderTitleStyle.Render("📊 Cromwell Dashboard")
+	title := common.HeaderTitleStyle.Render("Cromwell Dashboard")
 
 	// Status badges
 	var badges []string
@@ -20,9 +20,27 @@ func (m Model) renderHeader() string {
 	if m.loading {
 		badges = append(badges, m.spinner.View()+" Loading...")
 	} else if m.error != "" {
-		badges = append(badges, common.ErrorStyle.Render("⚠ Error"))
+		badges = append(badges, common.ErrorStyle.Render(common.IconFailed+" Error"))
 	} else {
-		badges = append(badges, common.SuccessStyle.Render("● Connected"))
+		badges = append(badges, common.SuccessStyle.Render(common.IconRunning+" Connected"))
+	}
+
+	// Server health status badge
+	if m.healthStatus != nil {
+		if m.healthStatus.OK {
+			badges = append(badges, lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FF00")).
+				Render(common.IconRunning+" Healthy"))
+		} else if m.healthStatus.Degraded {
+			// Show which systems are unhealthy
+			systemsStr := ""
+			if len(m.healthStatus.UnhealthySystems) > 0 {
+				systemsStr = " (" + strings.Join(m.healthStatus.UnhealthySystems, ", ") + ")"
+			}
+			badges = append(badges, lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFAA00")).
+				Render(common.IconWarning+" Degraded"+systemsStr))
+		}
 	}
 
 	// Workflow count
@@ -37,7 +55,7 @@ func (m Model) renderHeader() string {
 		filterBadge := common.BadgeStyle.
 			Foreground(lipgloss.Color("#000000")).
 			Background(lipgloss.Color("#FFD700")).
-			Render("🔍 Filtered")
+			Render("Filtered")
 		badges = append(badges, filterBadge)
 	}
 

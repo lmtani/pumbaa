@@ -2,7 +2,7 @@ package debug
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
@@ -46,17 +46,11 @@ func (m Model) openLogFile(path string) tea.Cmd {
 			title = "monitoring"
 		}
 
-		if strings.HasPrefix(path, "gs://") {
-			// Read from Google Cloud Storage
-			content, err := readGCSFile(path)
-			if err != nil {
-				return logErrorMsg{err: err}
-			}
-			return logLoadedMsg{content: content, title: title, path: path}
+		if m.fileProvider == nil {
+			return logErrorMsg{err: fmt.Errorf("file provider not initialized")}
 		}
 
-		// Read local file
-		content, err := readLocalFile(path)
+		content, err := m.fileProvider.Read(context.Background(), path)
 		if err != nil {
 			return logErrorMsg{err: err}
 		}
@@ -69,17 +63,11 @@ func (m Model) openWorkflowLog(path string) tea.Cmd {
 	return func() tea.Msg {
 		title := "Workflow Log"
 
-		if strings.HasPrefix(path, "gs://") {
-			// Read from Google Cloud Storage
-			content, err := readGCSFile(path)
-			if err != nil {
-				return logErrorMsg{err: err}
-			}
-			return logLoadedMsg{content: content, title: title, path: path}
+		if m.fileProvider == nil {
+			return logErrorMsg{err: fmt.Errorf("file provider not initialized")}
 		}
 
-		// Read local file
-		content, err := readLocalFile(path)
+		content, err := m.fileProvider.Read(context.Background(), path)
 		if err != nil {
 			return logErrorMsg{err: err}
 		}

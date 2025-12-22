@@ -6,8 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 	"github.com/urfave/cli/v2"
 )
@@ -110,8 +112,12 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		return fmt.Errorf("failed to build debug info: %w", err)
 	}
 
+	// Initialize infrastructure and use cases
+	fp := storage.NewFileProvider()
+	muc := monitoringuc.NewUsecase(fp)
+
 	// Create and run the TUI
-	model := debug.NewModelWithDebugInfo(di, h.client)
+	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.client, muc, fp)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 

@@ -14,6 +14,10 @@ func (m Model) View() string {
 		return m.renderConfirmModal()
 	}
 
+	if m.showLabelsModal {
+		return m.renderLabelsModal()
+	}
+
 	header := m.renderHeader()
 	content := m.renderContent()
 	footer := m.renderFooter()

@@ -57,7 +57,7 @@ func (m Model) renderFooter() string {
 
 	// Help
 	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
+		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
 		common.KeyStyle.Render("↑↓"),
 		common.DescStyle.Render("navigate"),
 		common.KeyStyle.Render("enter"),
@@ -68,6 +68,8 @@ func (m Model) renderFooter() string {
 		common.DescStyle.Render("name"),
 		common.KeyStyle.Render("l"),
 		common.DescStyle.Render("label"),
+		common.KeyStyle.Render("L"),
+		common.DescStyle.Render("labels"),
 		common.KeyStyle.Render("s"),
 		common.DescStyle.Render("status"),
 		common.KeyStyle.Render("r"),

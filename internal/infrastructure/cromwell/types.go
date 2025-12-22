@@ -99,3 +99,18 @@ type costResponse struct {
 	Status   string  `json:"status"`
 	Currency string  `json:"currency"`
 }
+
+// healthStatusResponse represents the response from /engine/v1/status
+type healthStatusResponse map[string]subsystemStatus
+
+// subsystemStatus represents the status of a single subsystem
+type subsystemStatus struct {
+	OK      bool     `json:"ok"`
+	Message []string `json:"messages,omitempty"`
+}
+
+// labelsResponse represents the response from getting workflow labels
+type labelsResponse struct {
+	ID     string            `json:"id"`
+	Labels map[string]string `json:"labels"`
+}

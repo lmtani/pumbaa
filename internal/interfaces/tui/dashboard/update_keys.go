@@ -110,6 +110,18 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.loading = true
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
+
+	case key.Matches(msg, m.keys.LabelsManager):
+		if len(m.workflows) > 0 && m.cursor < len(m.workflows) && m.labelManager != nil {
+			wf := m.workflows[m.cursor]
+			m.showLabelsModal = true
+			m.labelsWorkflowID = wf.ID
+			m.labelsWorkflowName = wf.Name
+			m.labelsLoading = true
+			m.labelsData = nil
+			m.labelsCursor = 0
+			cmds = append(cmds, m.spinner.Tick, m.fetchLabels(wf.ID))
+		}
 	}
 
 	return m, tea.Batch(cmds...)

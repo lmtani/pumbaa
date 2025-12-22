@@ -162,33 +162,21 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 	sb.WriteString(titleStyle.Render("🔄 Preemption Summary") + "\n")
 	sb.WriteString(mutedStyle.Render("  (this level only, excluding subworkflows)") + "\n\n")
 
-	// Overall stats
-	sb.WriteString(labelStyle.Render("Preemptible Tasks: ") +
-		valueStyle.Render(fmt.Sprintf("%d / %d", summary.PreemptibleTasks, summary.TotalTasks)) + "\n")
-
-	sb.WriteString(labelStyle.Render("Total Attempts: ") +
-		valueStyle.Render(fmt.Sprintf("%d", summary.TotalAttempts)) + "\n")
-
-	if summary.TotalPreemptions > 0 {
-		sb.WriteString(labelStyle.Render("Total Preemptions: ") +
-			lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render(fmt.Sprintf("%d", summary.TotalPreemptions)) + "\n")
-	} else {
-		sb.WriteString(labelStyle.Render("Total Preemptions: ") +
-			valueStyle.Render("0") + "\n")
-	}
-
-	// Cost-weighted efficiency (main metric)
+	// Cost-weighted efficiency with visual gauge bar
 	costEff := summary.CostEfficiency
-	costEffStr := fmt.Sprintf("%.0f%%", costEff*100)
-	var costEffStyled string
-	if costEff >= 0.8 {
-		costEffStyled = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true).Render(costEffStr + " ✓")
-	} else if costEff >= 0.5 {
-		costEffStyled = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFF00")).Bold(true).Render(costEffStr + " ⚠")
-	} else {
-		costEffStyled = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000")).Bold(true).Render(costEffStr + " ✗")
-	}
-	sb.WriteString(labelStyle.Render("Cost Efficiency: ") + costEffStyled + "\n")
+	sb.WriteString(labelStyle.Render("Cost Efficiency: ") + "\n")
+	sb.WriteString(renderPreemptionGauge(costEff, 25) + "\n\n")
+
+	// Compact stats line: Preemptible | Attempts | Preemptions
+	statsLine := fmt.Sprintf("%s %d/%d  │  %s %d  │  %s %d",
+		labelStyle.Render("Preemptible:"),
+		summary.PreemptibleTasks, summary.TotalTasks,
+		labelStyle.Render("Attempts:"),
+		summary.TotalAttempts,
+		labelStyle.Render("Preemptions:"),
+		summary.TotalPreemptions,
+	)
+	sb.WriteString(statsLine + "\n")
 
 	// Cost breakdown with explanation
 	sb.WriteString("\n")
@@ -259,4 +247,40 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 	}
 
 	return sb.String()
+}
+
+// renderPreemptionGauge creates a visual gauge bar for preemption efficiency
+func renderPreemptionGauge(efficiency float64, width int) string {
+	if efficiency < 0 {
+		efficiency = 0
+	}
+	if efficiency > 1 {
+		efficiency = 1
+	}
+
+	filled := int(efficiency * float64(width))
+	empty := width - filled
+
+	// Choose color and indicator based on efficiency level
+	var barColor lipgloss.Color
+	var indicator string
+	if efficiency >= 0.8 {
+		barColor = lipgloss.Color("#00FF00") // Green
+		indicator = " ✓"
+	} else if efficiency >= 0.5 {
+		barColor = lipgloss.Color("#FFFF00") // Yellow
+		indicator = " ⚠"
+	} else {
+		barColor = lipgloss.Color("#FF6B6B") // Red
+		indicator = " ✗"
+	}
+
+	filledStyle := lipgloss.NewStyle().Foreground(barColor)
+	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+
+	bar := "[" + filledStyle.Render(strings.Repeat("█", filled)) +
+		emptyStyle.Render(strings.Repeat("░", empty)) + "]"
+
+	percentStr := fmt.Sprintf(" %.0f%%", efficiency*100)
+	return bar + lipgloss.NewStyle().Foreground(barColor).Bold(true).Render(percentStr+indicator)
 }

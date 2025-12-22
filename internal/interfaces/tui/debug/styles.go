@@ -131,6 +131,21 @@ var (
 	tagStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FFAA")).
 			Bold(true)
+
+	// Breadcrumb styles - inline, no margins
+	breadcrumbStyle = lipgloss.NewStyle().
+			Foreground(mutedColor)
+
+	breadcrumbSeparatorStyle = lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#555555"))
+
+	breadcrumbActiveStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Bold(true)
+
+	// Section separator style
+	sectionSeparatorStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#444444"))
 )
 
 // StatusStyle returns the appropriate style for a status.

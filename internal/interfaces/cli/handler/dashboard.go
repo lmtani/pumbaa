@@ -6,9 +6,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 	"github.com/urfave/cli/v2"
@@ -68,6 +70,8 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 		// Create dashboard model with metadata fetcher for smooth transitions
 		model := dashboard.NewModelWithFetcher(fetcher)
 		model.SetMetadataFetcher(h.client)
+		model.SetHealthChecker(&healthCheckerAdapter{client: h.client})
+		model.SetLabelManager(&labelManagerAdapter{client: h.client})
 
 		// Create and run the program
 		p := tea.NewProgram(model, tea.WithAltScreen())
@@ -127,8 +131,12 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 		return fmt.Errorf("failed to build debug info: %w", err)
 	}
 
+	// Initialize infrastructure and use cases
+	fp := storage.NewFileProvider()
+	muc := monitoringuc.NewUsecase(fp)
+
 	// Create and run the debug TUI
-	model := debug.NewModelWithDebugInfo(di, h.client)
+	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.client, muc, fp)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
@@ -149,4 +157,26 @@ func (f *dashboardFetcher) Query(ctx context.Context, filter workflow.QueryFilte
 
 func (f *dashboardFetcher) Abort(ctx context.Context, workflowID string) error {
 	return f.client.Abort(ctx, workflowID)
+}
+
+// healthCheckerAdapter adapts the Cromwell client to the workflow.HealthChecker interface
+type healthCheckerAdapter struct {
+	client *cromwell.Client
+}
+
+func (a *healthCheckerAdapter) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error) {
+	return a.client.GetHealthStatus(ctx)
+}
+
+// labelManagerAdapter adapts the Cromwell client to the workflow.LabelManager interface
+type labelManagerAdapter struct {
+	client *cromwell.Client
+}
+
+func (a *labelManagerAdapter) GetLabels(ctx context.Context, workflowID string) (map[string]string, error) {
+	return a.client.GetLabels(ctx, workflowID)
+}
+
+func (a *labelManagerAdapter) UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error {
+	return a.client.UpdateLabels(ctx, workflowID, labels)
 }

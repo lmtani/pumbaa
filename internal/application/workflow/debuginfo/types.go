@@ -3,6 +3,8 @@ package debuginfo
 
 import (
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
 // NodeType represents the type of node in the call tree.
@@ -99,6 +101,9 @@ type CallDetails struct {
 	// SubWorkflow
 	SubWorkflowID       string
 	SubWorkflowMetadata *WorkflowMetadata
+
+	// Cache for expensive calculations
+	EfficiencyReport *monitoring.EfficiencyReport
 }
 
 // ExecutionEvent represents a single execution event in the timeline.

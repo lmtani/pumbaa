@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
@@ -84,4 +85,60 @@ func (m Model) fetchDebugMetadata(workflowID string) tea.Cmd {
 			metadata:   metadata,
 		}
 	}
+}
+
+// fetchHealthStatus fetches the Cromwell server health status.
+func (m Model) fetchHealthStatus() tea.Cmd {
+	return func() tea.Msg {
+		if m.healthChecker == nil {
+			return healthStatusErrorMsg{err: fmt.Errorf("no health checker configured")}
+		}
+
+		status, err := m.healthChecker.GetHealthStatus(context.Background())
+		if err != nil {
+			return healthStatusErrorMsg{err: err}
+		}
+
+		// Domain type returned directly from client
+		return healthStatusLoadedMsg{status: status}
+	}
+}
+
+// fetchLabels fetches labels for a workflow.
+func (m Model) fetchLabels(workflowID string) tea.Cmd {
+	return func() tea.Msg {
+		if m.labelManager == nil {
+			return labelsErrorMsg{err: fmt.Errorf("no label manager configured")}
+		}
+
+		labels, err := m.labelManager.GetLabels(context.Background(), workflowID)
+		if err != nil {
+			return labelsErrorMsg{err: err}
+		}
+
+		return labelsLoadedMsg{labels: labels}
+	}
+}
+
+// updateLabels updates labels for a workflow.
+func (m Model) updateLabels(workflowID string, labels map[string]string) tea.Cmd {
+	return func() tea.Msg {
+		if m.labelManager == nil {
+			return labelsUpdatedMsg{success: false, err: fmt.Errorf("no label manager configured")}
+		}
+
+		err := m.labelManager.UpdateLabels(context.Background(), workflowID, labels)
+		if err != nil {
+			return labelsUpdatedMsg{success: false, err: err}
+		}
+
+		return labelsUpdatedMsg{success: true}
+	}
+}
+
+// tickHealthCheck returns a ticker command for periodic health checks.
+func tickHealthCheck() tea.Cmd {
+	return tea.Tick(30*time.Second, func(t time.Time) tea.Msg {
+		return tickMsg{}
+	})
 }

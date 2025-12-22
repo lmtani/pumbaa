@@ -25,6 +25,8 @@ type MetadataFetcher interface {
 	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
 }
 
+// Note: HealthChecker and LabelManager interfaces are defined in domain/workflow/health.go
+
 // Model represents the dashboard screen state.
 type Model struct {
 	width       int
@@ -58,6 +60,25 @@ type Model struct {
 	loadingDebugID     string
 	metadataFetcher    MetadataFetcher
 	DebugMetadataReady []byte // Metadata ready for debug view
+
+	// Health status
+	healthChecker workflow.HealthChecker
+	healthStatus  *workflow.HealthStatus
+
+	// Labels modal state
+	labelManager       workflow.LabelManager
+	showLabelsModal    bool
+	labelsWorkflowID   string
+	labelsWorkflowName string
+	labelsData         map[string]string
+	labelsCursor       int
+	labelsLoading      bool
+	labelsUpdating     bool // true when PATCH is in progress
+	labelsEditing      bool
+	labelsEditKey      string
+	labelsEditValue    string
+	labelsInput        textinput.Model
+	labelsMessage      string // In-modal feedback message
 
 	// Navigation state (for external handlers to check)
 	NavigateToDebugID string
@@ -102,10 +123,31 @@ func (m *Model) SetMetadataFetcher(fetcher MetadataFetcher) {
 	m.metadataFetcher = fetcher
 }
 
+// SetHealthChecker sets the health checker for server status monitoring
+func (m *Model) SetHealthChecker(checker workflow.HealthChecker) {
+	m.healthChecker = checker
+}
+
+// SetLabelManager sets the label manager for workflow labels
+func (m *Model) SetLabelManager(manager workflow.LabelManager) {
+	m.labelManager = manager
+}
+
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
+	var cmds []tea.Cmd
+
 	if m.fetcher != nil {
-		return tea.Batch(m.spinner.Tick, m.fetchWorkflows())
+		cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
+	}
+
+	// Start health check if configured
+	if m.healthChecker != nil {
+		cmds = append(cmds, m.fetchHealthStatus(), tickHealthCheck())
+	}
+
+	if len(cmds) > 0 {
+		return tea.Batch(cmds...)
 	}
 	return nil
 }
@@ -122,7 +164,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -164,6 +206,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingDebugID = ""
 		m.statusMsg = fmt.Sprintf("✗ Failed to load metadata: %v", msg.err)
 
+	case healthStatusLoadedMsg:
+		m.healthStatus = msg.status
+
+	case healthStatusErrorMsg:
+		// Silent fail - just don't update health status
+		m.healthStatus = nil
+
+	case tickMsg:
+		// Periodic health check
+		if m.healthChecker != nil {
+			cmds = append(cmds, m.fetchHealthStatus(), tickHealthCheck())
+		}
+
+	case labelsLoadedMsg:
+		m.labelsLoading = false
+		m.labelsData = msg.labels
+
+	case labelsErrorMsg:
+		m.labelsLoading = false
+		m.showLabelsModal = false
+		m.statusMsg = fmt.Sprintf("✗ Failed to load labels: %v", msg.err)
+
+	case labelsUpdatedMsg:
+		m.labelsUpdating = false
+		if msg.success {
+			m.labelsMessage = "✓ Label updated"
+			// No re-fetch needed - we already updated labelsData optimistically
+		} else {
+			m.labelsMessage = fmt.Sprintf("✗ Failed: %v", msg.err)
+			// On failure, refresh to get actual state from API
+			m.labelsLoading = true
+			cmds = append(cmds, m.spinner.Tick, m.fetchLabels(m.labelsWorkflowID))
+		}
+
 	case tea.KeyMsg:
 		// Ignore keys while loading debug
 		if m.loadingDebug {
@@ -173,6 +249,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle confirmation modal first
 		if m.showConfirm {
 			return m.handleConfirmKeys(msg)
+		}
+
+		// Handle labels modal
+		if m.showLabelsModal {
+			return m.handleLabelsModalKeys(msg)
 		}
 
 		// Handle filter input

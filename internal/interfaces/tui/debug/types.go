@@ -37,6 +37,7 @@ const (
 	ViewModeInputs
 	ViewModeOutputs
 	ViewModeHelp
+	ViewModeMonitor
 )
 
 // PanelFocus represents which panel has focus.
@@ -46,3 +47,10 @@ const (
 	FocusTree PanelFocus = iota
 	FocusDetails
 )
+
+// NodeViewState persists the view state for a specific node.
+type NodeViewState struct {
+	ViewMode   ViewMode
+	LogCursor  int
+	PanelFocus PanelFocus
+}

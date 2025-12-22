@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 func (m Model) renderTree() string {
@@ -59,9 +60,9 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 	expandIndicator := " "
 	if len(node.Children) > 0 || (node.Type == NodeTypeSubWorkflow && node.SubWorkflowID != "") {
 		if node.Expanded {
-			expandIndicator = "▼"
+			expandIndicator = common.IconExpanded
 		} else {
-			expandIndicator = "▶"
+			expandIndicator = common.IconCollapsed
 		}
 	}
 
@@ -72,13 +73,13 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 	typeIcon := ""
 	switch node.Type {
 	case NodeTypeWorkflow:
-		typeIcon = "📋"
+		typeIcon = common.IconWorkflow
 	case NodeTypeCall:
-		typeIcon = "📦"
+		typeIcon = common.IconTask
 	case NodeTypeSubWorkflow:
-		typeIcon = "📂"
+		typeIcon = common.IconSubworkflow
 	case NodeTypeShard:
-		typeIcon = "📄"
+		typeIcon = common.IconShard
 	}
 
 	// Preemption count indicator (only for nodes with children or successful retries)
