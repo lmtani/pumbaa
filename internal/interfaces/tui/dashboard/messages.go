@@ -34,3 +34,29 @@ type debugMetadataErrorMsg struct {
 type NavigateToDebugMsg struct {
 	WorkflowID string
 }
+
+// Health status messages
+type healthStatusLoadedMsg struct {
+	status *workflow.HealthStatus
+}
+
+type healthStatusErrorMsg struct {
+	err error
+}
+
+// Labels messages
+type labelsLoadedMsg struct {
+	labels map[string]string
+}
+
+type labelsErrorMsg struct {
+	err error
+}
+
+type labelsUpdatedMsg struct {
+	success bool
+	err     error
+}
+
+// tickMsg is for periodic health checks
+type tickMsg struct{}

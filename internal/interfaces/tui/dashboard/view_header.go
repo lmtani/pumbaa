@@ -25,6 +25,24 @@ func (m Model) renderHeader() string {
 		badges = append(badges, common.SuccessStyle.Render("● Connected"))
 	}
 
+	// Server health status badge
+	if m.healthStatus != nil {
+		if m.healthStatus.OK {
+			badges = append(badges, lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#00FF00")).
+				Render("🟢 Healthy"))
+		} else if m.healthStatus.Degraded {
+			// Show which systems are unhealthy
+			systemsStr := ""
+			if len(m.healthStatus.UnhealthySystems) > 0 {
+				systemsStr = " (" + strings.Join(m.healthStatus.UnhealthySystems, ", ") + ")"
+			}
+			badges = append(badges, lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFAA00")).
+				Render("🟡 Degraded"+systemsStr))
+		}
+	}
+
 	// Workflow count
 	countBadge := common.BadgeStyle.
 		Foreground(lipgloss.Color("#000000")).

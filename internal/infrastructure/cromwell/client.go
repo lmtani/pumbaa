@@ -466,3 +466,112 @@ func (c *Client) addFileField(writer *multipart.Writer, fieldName, fileName stri
 	_, err = part.Write(data)
 	return err
 }
+
+// GetHealthStatus retrieves the health status of the Cromwell server.
+func (c *Client) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error) {
+	url := fmt.Sprintf("%s/engine/v1/status", c.BaseURL)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	// Server returns 500 if any subsystem is unhealthy
+	var result healthStatusResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	// Parse subsystem statuses
+	health := &workflow.HealthStatus{
+		OK:               true,
+		UnhealthySystems: []string{},
+	}
+
+	for name, status := range result {
+		if !status.OK {
+			health.OK = false
+			health.Degraded = true
+			health.UnhealthySystems = append(health.UnhealthySystems, name)
+		}
+	}
+
+	return health, nil
+}
+
+// GetLabels retrieves the labels for a workflow.
+func (c *Client) GetLabels(ctx context.Context, workflowID string) (map[string]string, error) {
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/labels", c.BaseURL, workflowID)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, workflow.ErrWorkflowNotFound
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, workflow.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(bodyBytes),
+		}
+	}
+
+	var result labelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result.Labels, nil
+}
+
+// UpdateLabels updates the labels for a workflow.
+func (c *Client) UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error {
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/labels", c.BaseURL, workflowID)
+
+	labelsJSON, err := json.Marshal(labels)
+	if err != nil {
+		return err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bytes.NewReader(labelsJSON))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return workflow.ErrWorkflowNotFound
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return workflow.APIError{
+			StatusCode: resp.StatusCode,
+			Message:    string(bodyBytes),
+		}
+	}
+
+	return nil
+}

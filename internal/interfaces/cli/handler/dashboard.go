@@ -70,6 +70,8 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 		// Create dashboard model with metadata fetcher for smooth transitions
 		model := dashboard.NewModelWithFetcher(fetcher)
 		model.SetMetadataFetcher(h.client)
+		model.SetHealthChecker(&healthCheckerAdapter{client: h.client})
+		model.SetLabelManager(&labelManagerAdapter{client: h.client})
 
 		// Create and run the program
 		p := tea.NewProgram(model, tea.WithAltScreen())
@@ -155,4 +157,26 @@ func (f *dashboardFetcher) Query(ctx context.Context, filter workflow.QueryFilte
 
 func (f *dashboardFetcher) Abort(ctx context.Context, workflowID string) error {
 	return f.client.Abort(ctx, workflowID)
+}
+
+// healthCheckerAdapter adapts the Cromwell client to the workflow.HealthChecker interface
+type healthCheckerAdapter struct {
+	client *cromwell.Client
+}
+
+func (a *healthCheckerAdapter) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error) {
+	return a.client.GetHealthStatus(ctx)
+}
+
+// labelManagerAdapter adapts the Cromwell client to the workflow.LabelManager interface
+type labelManagerAdapter struct {
+	client *cromwell.Client
+}
+
+func (a *labelManagerAdapter) GetLabels(ctx context.Context, workflowID string) (map[string]string, error) {
+	return a.client.GetLabels(ctx, workflowID)
+}
+
+func (a *labelManagerAdapter) UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error {
+	return a.client.UpdateLabels(ctx, workflowID, labels)
 }
