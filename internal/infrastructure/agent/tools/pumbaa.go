@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/lmtani/pumbaa/internal/domain/wdlindex"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
@@ -22,6 +23,15 @@ type CromwellRepository interface {
 	GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error)
 }
 
+// WDLRepository defines the interface for WDL index operations (optional, can be nil).
+type WDLRepository interface {
+	List() (*wdlindex.Index, error)
+	SearchTasks(query string) ([]*wdlindex.IndexedTask, error)
+	SearchWorkflows(query string) ([]*wdlindex.IndexedWorkflow, error)
+	GetTask(name string) (*wdlindex.IndexedTask, error)
+	GetWorkflow(name string) (*wdlindex.IndexedWorkflow, error)
+}
+
 const MaxGCSFileSize int64 = 5 * 1024 * 1024 // 5 MB
 
 // PumbaaInput represents the input for the unified Pumbaa tool.
@@ -29,6 +39,7 @@ type PumbaaInput struct {
 	// Action is the operation to perform
 	// Cromwell actions: "query", "status", "metadata", "outputs", "logs"
 	// GCS actions: "gcs_download"
+	// WDL actions: "wdl_list", "wdl_search", "wdl_info"
 	Action string `json:"action"`
 
 	// WorkflowID is the UUID of the workflow (for Cromwell actions except query)
@@ -37,11 +48,17 @@ type PumbaaInput struct {
 	// Status filter for query action (e.g., "Running", "Succeeded", "Failed")
 	Status string `json:"status,omitempty"`
 
-	// Name filter for query action
+	// Name filter for query action and wdl_info
 	Name string `json:"name,omitempty"`
 
 	// Path for gcs_download action (gs://bucket/path)
 	Path string `json:"path,omitempty"`
+
+	// Query for wdl_search action
+	Query string `json:"query,omitempty"`
+
+	// Type for wdl_info action: "task" or "workflow"
+	Type string `json:"type,omitempty"`
 }
 
 // PumbaaOutput represents the output of the Pumbaa tool.
@@ -54,11 +71,10 @@ type PumbaaOutput struct {
 
 // GetPumbaaTool returns a single unified tool that handles all operations.
 // This avoids Vertex AI limitation: "Multiple tools are supported only when they are all search tools"
-func GetPumbaaTool(repo CromwellRepository) tool.Tool {
-	t, err := functiontool.New(
-		functiontool.Config{
-			Name: "pumbaa",
-			Description: `Unified tool for Cromwell workflow management and GCS file access.
+// wdlRepo can be nil if WDL indexing is not configured.
+func GetPumbaaTool(repo CromwellRepository, wdlRepo WDLRepository) tool.Tool {
+	// Build description dynamically based on available features
+	description := `Unified tool for Cromwell workflow management and GCS file access.
 
 Available actions:
 - "query": Search Cromwell workflows. Optional: status (Running, Succeeded, Failed, Submitted, Aborted), name.
@@ -66,7 +82,19 @@ Available actions:
 - "metadata": Get workflow metadata (calls, inputs, outputs). Required: workflow_id.
 - "outputs": Get workflow output files. Required: workflow_id.
 - "logs": Get log file paths for debugging. Required: workflow_id.
-- "gcs_download": Read file from Google Cloud Storage. Required: path (gs://bucket/file).`,
+- "gcs_download": Read file from Google Cloud Storage. Required: path (gs://bucket/file).`
+
+	if wdlRepo != nil {
+		description += `
+- "wdl_list": List all indexed WDL tasks and workflows.
+- "wdl_search": Search tasks/workflows by name or command content. Required: query.
+- "wdl_info": Get detailed info about a task or workflow. Required: name, type ("task" or "workflow").`
+	}
+
+	t, err := functiontool.New(
+		functiontool.Config{
+			Name:        "pumbaa",
+			Description: description,
 		},
 		func(ctx tool.Context, input PumbaaInput) (PumbaaOutput, error) {
 			// Note: Don't use log.Printf here as it interferes with TUI
@@ -86,11 +114,17 @@ Available actions:
 				return handleLogs(bgCtx, repo, input)
 			case "gcs_download":
 				return handleGCSDownload(bgCtx, input)
+			case "wdl_list":
+				return handleWDLList(wdlRepo)
+			case "wdl_search":
+				return handleWDLSearch(wdlRepo, input)
+			case "wdl_info":
+				return handleWDLInfo(wdlRepo, input)
 			default:
 				return PumbaaOutput{
 					Success: false,
 					Action:  input.Action,
-					Error:   fmt.Sprintf("unknown action: %s. Valid: query, status, metadata, outputs, logs, gcs_download", input.Action),
+					Error:   fmt.Sprintf("unknown action: %s. Valid: query, status, metadata, outputs, logs, gcs_download, wdl_list, wdl_search, wdl_info", input.Action),
 				}, nil
 			}
 		},
@@ -297,4 +331,205 @@ func handleGCSDownload(ctx context.Context, input PumbaaInput) (PumbaaOutput, er
 			"content":      string(content),
 		},
 	}, nil
+}
+
+// ============================================================================
+// WDL Handlers
+// ============================================================================
+
+func handleWDLList(repo WDLRepository) (PumbaaOutput, error) {
+	if repo == nil {
+		return PumbaaOutput{
+			Success: false,
+			Action:  "wdl_list",
+			Error:   "WDL index not configured. Set PUMBAA_WDL_DIR environment variable.",
+		}, nil
+	}
+
+	index, err := repo.List()
+	if err != nil {
+		return PumbaaOutput{Success: false, Action: "wdl_list", Error: err.Error()}, nil
+	}
+
+	// Build summary
+	tasks := make([]string, 0, len(index.Tasks))
+	for name := range index.Tasks {
+		tasks = append(tasks, name)
+	}
+
+	workflows := make([]string, 0, len(index.Workflows))
+	for name := range index.Workflows {
+		workflows = append(workflows, name)
+	}
+
+	return PumbaaOutput{
+		Success: true,
+		Action:  "wdl_list",
+		Data: map[string]interface{}{
+			"directory":      index.Directory,
+			"indexed_at":     index.IndexedAt,
+			"task_count":     len(tasks),
+			"workflow_count": len(workflows),
+			"tasks":          tasks,
+			"workflows":      workflows,
+		},
+	}, nil
+}
+
+func handleWDLSearch(repo WDLRepository, input PumbaaInput) (PumbaaOutput, error) {
+	if repo == nil {
+		return PumbaaOutput{
+			Success: false,
+			Action:  "wdl_search",
+			Error:   "WDL index not configured. Set PUMBAA_WDL_DIR environment variable.",
+		}, nil
+	}
+
+	if input.Query == "" {
+		return PumbaaOutput{Success: false, Action: "wdl_search", Error: "query is required"}, nil
+	}
+
+	tasks, err := repo.SearchTasks(input.Query)
+	if err != nil {
+		return PumbaaOutput{Success: false, Action: "wdl_search", Error: err.Error()}, nil
+	}
+
+	workflows, err := repo.SearchWorkflows(input.Query)
+	if err != nil {
+		return PumbaaOutput{Success: false, Action: "wdl_search", Error: err.Error()}, nil
+	}
+
+	// Build result summaries
+	taskResults := make([]map[string]interface{}, 0, len(tasks))
+	for _, t := range tasks {
+		taskResults = append(taskResults, map[string]interface{}{
+			"name":        t.Name,
+			"source":      t.Source,
+			"description": t.Description,
+		})
+	}
+
+	workflowResults := make([]map[string]interface{}, 0, len(workflows))
+	for _, w := range workflows {
+		workflowResults = append(workflowResults, map[string]interface{}{
+			"name":        w.Name,
+			"source":      w.Source,
+			"description": w.Description,
+		})
+	}
+
+	return PumbaaOutput{
+		Success: true,
+		Action:  "wdl_search",
+		Data: map[string]interface{}{
+			"query":     input.Query,
+			"tasks":     taskResults,
+			"workflows": workflowResults,
+		},
+	}, nil
+}
+
+func handleWDLInfo(repo WDLRepository, input PumbaaInput) (PumbaaOutput, error) {
+	if repo == nil {
+		return PumbaaOutput{
+			Success: false,
+			Action:  "wdl_info",
+			Error:   "WDL index not configured. Set PUMBAA_WDL_DIR environment variable.",
+		}, nil
+	}
+
+	if input.Name == "" {
+		return PumbaaOutput{Success: false, Action: "wdl_info", Error: "name is required"}, nil
+	}
+
+	switch strings.ToLower(input.Type) {
+	case "task", "":
+		task, err := repo.GetTask(input.Name)
+		if err != nil {
+			// Try as workflow if task not found and type wasn't specified
+			if input.Type == "" {
+				wf, wfErr := repo.GetWorkflow(input.Name)
+				if wfErr == nil {
+					return buildWorkflowInfoOutput(wf), nil
+				}
+			}
+			return PumbaaOutput{Success: false, Action: "wdl_info", Error: err.Error()}, nil
+		}
+		return buildTaskInfoOutput(task), nil
+
+	case "workflow":
+		wf, err := repo.GetWorkflow(input.Name)
+		if err != nil {
+			return PumbaaOutput{Success: false, Action: "wdl_info", Error: err.Error()}, nil
+		}
+		return buildWorkflowInfoOutput(wf), nil
+
+	default:
+		return PumbaaOutput{
+			Success: false,
+			Action:  "wdl_info",
+			Error:   fmt.Sprintf("invalid type: %s. Valid: task, workflow", input.Type),
+		}, nil
+	}
+}
+
+func buildTaskInfoOutput(task *wdlindex.IndexedTask) PumbaaOutput {
+	inputs := make([]map[string]interface{}, 0, len(task.Inputs))
+	for _, in := range task.Inputs {
+		inputs = append(inputs, map[string]interface{}{
+			"name": in.Name, "type": in.Type, "optional": in.Optional,
+		})
+	}
+
+	outputs := make([]map[string]interface{}, 0, len(task.Outputs))
+	for _, out := range task.Outputs {
+		outputs = append(outputs, map[string]interface{}{
+			"name": out.Name, "type": out.Type,
+		})
+	}
+
+	return PumbaaOutput{
+		Success: true,
+		Action:  "wdl_info",
+		Data: map[string]interface{}{
+			"type":        "task",
+			"name":        task.Name,
+			"source":      task.Source,
+			"description": task.Description,
+			"inputs":      inputs,
+			"outputs":     outputs,
+			"command":     task.Command,
+			"runtime":     task.Runtime,
+		},
+	}
+}
+
+func buildWorkflowInfoOutput(wf *wdlindex.IndexedWorkflow) PumbaaOutput {
+	inputs := make([]map[string]interface{}, 0, len(wf.Inputs))
+	for _, in := range wf.Inputs {
+		inputs = append(inputs, map[string]interface{}{
+			"name": in.Name, "type": in.Type, "optional": in.Optional,
+		})
+	}
+
+	outputs := make([]map[string]interface{}, 0, len(wf.Outputs))
+	for _, out := range wf.Outputs {
+		outputs = append(outputs, map[string]interface{}{
+			"name": out.Name, "type": out.Type,
+		})
+	}
+
+	return PumbaaOutput{
+		Success: true,
+		Action:  "wdl_info",
+		Data: map[string]interface{}{
+			"type":        "workflow",
+			"name":        wf.Name,
+			"source":      wf.Source,
+			"description": wf.Description,
+			"inputs":      inputs,
+			"outputs":     outputs,
+			"calls":       wf.Calls,
+		},
+	}
 }

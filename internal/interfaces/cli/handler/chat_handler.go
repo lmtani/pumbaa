@@ -11,6 +11,7 @@ import (
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
+	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 	"github.com/urfave/cli/v2"
 	adksession "google.golang.org/adk/session"
@@ -33,9 +34,15 @@ You have access to the "pumbaa" tool with these actions:
 **Google Cloud Storage:**
 - action="gcs_download" → Read file from GCS. Required: path (gs://bucket/file)
 
+**WDL Context (if configured):**
+- action="wdl_list" → List all indexed WDL tasks and workflows
+- action="wdl_search" → Search tasks/workflows by name or command content. Required: query
+- action="wdl_info" → Get detailed info about a task or workflow. Required: name, type ("task" or "workflow")
+
 Guidelines:
 - Use action="query" to find workflows first
 - Use action="logs" + action="gcs_download" to debug failures
+- Use WDL actions to explain task commands or inputs when helping with workflow development
 - Be helpful and concise
 - Respond in the user's language (Portuguese or English)`
 
@@ -83,6 +90,15 @@ func (h *ChatHandler) Command() *cli.Command {
 				Usage:   "Vertex AI model",
 				EnvVars: []string{"VERTEX_MODEL"},
 			},
+			&cli.StringFlag{
+				Name:    "wdl-dir",
+				Usage:   "Directory containing WDL workflows for context",
+				EnvVars: []string{"PUMBAA_WDL_DIR"},
+			},
+			&cli.BoolFlag{
+				Name:  "rebuild-index",
+				Usage: "Force rebuild of WDL index cache",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if p := c.String("provider"); p != "" {
@@ -101,7 +117,11 @@ func (h *ChatHandler) Command() *cli.Command {
 			if c.Bool("list") {
 				return h.ListSessions()
 			}
-			return h.Run(c.String("session"))
+			// Handle WDL dir
+			if wd := c.String("wdl-dir"); wd != "" {
+				h.config.WDLDirectory = wd
+			}
+			return h.Run(c.String("session"), c.Bool("rebuild-index"))
 		},
 	}
 }
@@ -131,7 +151,7 @@ func (h *ChatHandler) ListSessions() error {
 	return nil
 }
 
-func (h *ChatHandler) Run(sessionID string) error {
+func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize session service: %w", err)
@@ -168,7 +188,21 @@ func (h *ChatHandler) Run(sessionID string) error {
 		Timeout: h.config.CromwellTimeout,
 	})
 
-	agentTools := tools.GetAllTools(cromwellClient)
+	// Initialize WDL indexer if configured
+	var wdlRepo tools.WDLRepository
+	if h.config.WDLDirectory != "" {
+		fmt.Printf("Indexing WDL workflows from: %s\n", h.config.WDLDirectory)
+		indexer, err := wdlindexer.NewIndexer(h.config.WDLDirectory, h.config.WDLIndexPath, rebuildIndex)
+		if err != nil {
+			fmt.Printf("Warning: Failed to initialize WDL indexer: %v\n", err)
+		} else {
+			wdlRepo = indexer
+			idx, _ := indexer.List()
+			fmt.Printf("WDL index: %d tasks, %d workflows\n", len(idx.Tasks), len(idx.Workflows))
+		}
+	}
+
+	agentTools := tools.GetAllTools(cromwellClient, wdlRepo)
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 
 	p := tea.NewProgram(&m, tea.WithAltScreen())

@@ -24,6 +24,10 @@ type Config struct {
 	VertexProject  string
 	VertexLocation string
 	VertexModel    string
+
+	// WDL Context configuration
+	WDLDirectory string // Directory containing WDL workflows for chat context
+	WDLIndexPath string // Path to cached WDL index JSON file
 }
 
 // Load loads configuration from environment variables.
@@ -67,6 +71,14 @@ func Load() *Config {
 		vertexModel = "gemini-2.0-flash"
 	}
 
+	// WDL Context config
+	wdlDirectory := os.Getenv("PUMBAA_WDL_DIR")
+	wdlIndexPath := os.Getenv("PUMBAA_WDL_INDEX")
+	if wdlIndexPath == "" {
+		home, _ := os.UserHomeDir()
+		wdlIndexPath = filepath.Join(home, ".pumbaa", "wdl_index.json")
+	}
+
 	return &Config{
 		CromwellHost:    host,
 		CromwellTimeout: 30 * time.Second,
@@ -77,6 +89,8 @@ func Load() *Config {
 		VertexProject:   vertexProject,
 		VertexLocation:  vertexLocation,
 		VertexModel:     vertexModel,
+		WDLDirectory:    wdlDirectory,
+		WDLIndexPath:    wdlIndexPath,
 	}
 }
 
