@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type Config struct {
 	CromwellTimeout time.Duration
 	OllamaHost      string
 	OllamaModel     string
+	SessionDBPath   string
 }
 
 // Load loads configuration from environment variables.
@@ -31,11 +33,18 @@ func Load() *Config {
 		ollamaModel = "llama3.2:3b"
 	}
 
+	sessionDBPath := os.Getenv("PUMBAA_SESSION_DB")
+	if sessionDBPath == "" {
+		home, _ := os.UserHomeDir()
+		sessionDBPath = filepath.Join(home, ".pumbaa", "sessions.db")
+	}
+
 	return &Config{
 		CromwellHost:    host,
 		CromwellTimeout: 30 * time.Second,
 		OllamaHost:      ollamaHost,
 		OllamaModel:     ollamaModel,
+		SessionDBPath:   sessionDBPath,
 	}
 }
 

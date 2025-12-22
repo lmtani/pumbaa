@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"google.golang.org/adk/model"
+	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 )
@@ -22,11 +23,14 @@ type toolWithDefinition interface {
 }
 
 // Model is the Bubble Tea model for the chat interface.
-// Uses pointers for mutable state that needs to persist across Updates.
 type Model struct {
 	llm               model.LLM
 	tools             []tool.Tool
 	systemInstruction string
+
+	// Session management
+	sessionService session.Service
+	session        session.Session
 
 	// History is a pointer so it persists across value copies
 	history *[]*genai.Content
@@ -38,7 +42,7 @@ type Model struct {
 
 	// State
 	loading bool
-	ready   bool // Track if we've received initial window size
+	ready   bool
 
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
@@ -54,8 +58,8 @@ type ResponseMsg struct {
 	Err     error
 }
 
-// NewModel creates a new chat model with the given LLM, tools, and system instruction.
-func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string) Model {
+// NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
+func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Type your message... (Ctrl+D to send, Esc to quit)"
 	ta.Focus()
@@ -66,20 +70,39 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string) Model 
 	ta.ShowLineNumbers = false
 
 	vp := viewport.New(80, 20)
-	vp.SetContent("Welcome to Pumbaa Chat! Ask me about your Cromwell workflows.\n\nPress Ctrl+D to send a message, Esc to quit.\n")
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
-	// Initialize slices via pointers so they persist
+	// Load history from session events
 	history := make([]*genai.Content, 0)
 	msgs := make([]ChatMessage, 0)
 
-	return Model{
+	// If session has events, load them
+	if sess != nil && sess.Events() != nil && sess.Events().Len() > 0 {
+		for ev := range sess.Events().All() {
+			if ev.Content != nil {
+				history = append(history, ev.Content)
+				// Also populate display messages
+				role := ev.Content.Role
+				if role == "model" {
+					role = "agent"
+				}
+				text := extractText(ev.Content)
+				if text != "" {
+					msgs = append(msgs, ChatMessage{Role: role, Content: text})
+				}
+			}
+		}
+	}
+
+	m := Model{
 		llm:               llm,
 		tools:             tools,
 		systemInstruction: systemInstruction,
+		sessionService:    svc,
+		session:           sess,
 		textarea:          ta,
 		viewport:          vp,
 		spinner:           s,
@@ -87,6 +110,25 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string) Model 
 		msgs:              &msgs,
 		ready:             false,
 	}
+
+	// Set initial content
+	if len(msgs) > 0 {
+		vp.SetContent(m.renderMessages())
+	} else {
+		vp.SetContent("Welcome to Pumbaa Chat! Ask me about your Cromwell workflows.\n\nPress Ctrl+D to send a message, Esc to quit.\n")
+	}
+
+	return m
+}
+
+func extractText(content *genai.Content) string {
+	var texts []string
+	for _, part := range content.Parts {
+		if part.Text != "" {
+			texts = append(texts, part.Text)
+		}
+	}
+	return strings.Join(texts, "\n")
 }
 
 func (m Model) Init() tea.Cmd {
@@ -107,7 +149,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		headerHeight := 0
-		footerHeight := 6 // textarea height + margins
+		footerHeight := 6
 		verticalMarginHeight := headerHeight + footerHeight
 
 		if !m.ready {
@@ -124,7 +166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
-		case tea.KeyCtrlD: // Use Ctrl+D to send message
+		case tea.KeyCtrlD:
 			if m.loading {
 				return m, nil
 			}
@@ -133,14 +175,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			// Update UI state (using pointers, so this persists)
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "user", Content: input})
 			m.viewport.SetContent(m.renderMessages())
 			m.textarea.Reset()
 			m.viewport.GotoBottom()
 			m.loading = true
 
-			// Command to call agent
 			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 		}
 
@@ -166,19 +206,15 @@ func (m Model) View() string {
 	}
 
 	var sb strings.Builder
-
-	// Chat viewport
 	sb.WriteString(m.viewport.View())
 	sb.WriteString("\n")
 
-	// Status line
 	if m.loading {
 		sb.WriteString(fmt.Sprintf("\n%s Generating response...\n", m.spinner.View()))
 	} else {
 		sb.WriteString("\n")
 	}
 
-	// Input area
 	sb.WriteString(m.textarea.View())
 
 	return sb.String()
@@ -194,11 +230,11 @@ func (m Model) renderMessages() string {
 		role := strings.ToUpper(msg.Role)
 		style := lipgloss.NewStyle().Bold(true)
 		if msg.Role == "user" {
-			style = style.Foreground(lipgloss.Color("39")) // Blue
+			style = style.Foreground(lipgloss.Color("39"))
 		} else if msg.Role == "agent" {
-			style = style.Foreground(lipgloss.Color("205")) // Pink
+			style = style.Foreground(lipgloss.Color("205"))
 		} else {
-			style = style.Foreground(lipgloss.Color("196")) // Red (System/Error)
+			style = style.Foreground(lipgloss.Color("196"))
 		}
 
 		s.WriteString(style.Render(role) + ": " + msg.Content + "\n\n")
@@ -208,21 +244,31 @@ func (m Model) renderMessages() string {
 
 func (m Model) generateResponse(input string) tea.Cmd {
 	return func() tea.Msg {
-		// Update history with user input (using pointer)
-		*m.history = append(*m.history, &genai.Content{
+		ctx := context.Background()
+
+		// Create user content
+		userContent := &genai.Content{
 			Role: "user",
 			Parts: []*genai.Part{
 				genai.NewPartFromText(input),
 			},
-		})
+		}
 
-		ctx := context.Background()
+		// Update history
+		*m.history = append(*m.history, userContent)
+
+		// Save user event to session
+		if m.sessionService != nil && m.session != nil {
+			ev := session.NewEvent("")
+			ev.Content = userContent
+			ev.Author = "user"
+			m.sessionService.AppendEvent(ctx, m.session, ev)
+		}
 
 		maxTurns := 5
 		currentTurn := 0
 
 		for currentTurn < maxTurns {
-			// Prepare request with system instruction
 			req := &model.LLMRequest{
 				Contents: *m.history,
 				Config: &genai.GenerateContentConfig{
@@ -230,7 +276,6 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				},
 			}
 
-			// Add system instruction if provided
 			if m.systemInstruction != "" {
 				req.Config.SystemInstruction = &genai.Content{
 					Parts: []*genai.Part{
@@ -239,7 +284,6 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				}
 			}
 
-			// Generate content
 			respSeq := m.llm.GenerateContent(ctx, req, false)
 
 			var lastResp *model.LLMResponse
@@ -258,10 +302,17 @@ func (m Model) generateResponse(input string) tea.Cmd {
 			// Add model response to history
 			*m.history = append(*m.history, lastResp.Content)
 
+			// Save model event to session
+			if m.sessionService != nil && m.session != nil {
+				ev := session.NewEvent("")
+				ev.Content = lastResp.Content
+				ev.Author = "model"
+				m.sessionService.AppendEvent(ctx, m.session, ev)
+			}
+
 			// Check for tool calls
 			toolCalls := getToolCalls(lastResp.Content)
 			if len(toolCalls) > 0 {
-				// Execute tools
 				var toolParts []*genai.Part
 
 				for _, tc := range toolCalls {
@@ -285,11 +336,20 @@ func (m Model) generateResponse(input string) tea.Cmd {
 					}
 				}
 
-				// Add tool responses to history
-				*m.history = append(*m.history, &genai.Content{
+				toolContent := &genai.Content{
 					Role:  "tool",
 					Parts: toolParts,
-				})
+				}
+
+				*m.history = append(*m.history, toolContent)
+
+				// Save tool response event
+				if m.sessionService != nil && m.session != nil {
+					ev := session.NewEvent("")
+					ev.Content = toolContent
+					ev.Author = "tool"
+					m.sessionService.AppendEvent(ctx, m.session, ev)
+				}
 
 				currentTurn++
 				continue
