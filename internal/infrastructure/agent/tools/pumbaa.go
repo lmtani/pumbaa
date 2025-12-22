@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -70,8 +69,7 @@ Available actions:
 - "gcs_download": Read file from Google Cloud Storage. Required: path (gs://bucket/file).`,
 		},
 		func(ctx tool.Context, input PumbaaInput) (PumbaaOutput, error) {
-			log.Printf("[pumbaa] action=%s workflow_id=%s status=%s name=%s path=%s",
-				input.Action, input.WorkflowID, input.Status, input.Name, input.Path)
+			// Note: Don't use log.Printf here as it interferes with TUI
 
 			bgCtx := context.Background()
 

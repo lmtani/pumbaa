@@ -171,7 +171,8 @@ func (h *ChatHandler) Run(sessionID string) error {
 	agentTools := tools.GetAllTools(cromwellClient)
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	p := tea.NewProgram(&m, tea.WithAltScreen())
+	m.SetProgram(p)
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)

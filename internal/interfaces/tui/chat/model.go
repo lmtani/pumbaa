@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
@@ -21,6 +22,35 @@ type toolWithDefinition interface {
 	Declaration() *genai.FunctionDeclaration
 	Run(ctx tool.Context, args interface{}) (map[string]interface{}, error)
 }
+
+// Styles for chat
+var (
+	userStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#00BFFF")).
+			Bold(true)
+
+	agentStyle = lipgloss.NewStyle().
+			Foreground(common.PrimaryColor).
+			Bold(true)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(common.StatusFailed).
+			Bold(true)
+
+	messageStyle = lipgloss.NewStyle().
+			PaddingLeft(2).
+			MarginBottom(1)
+
+	inputStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(common.BorderColor).
+			Padding(0, 1)
+
+	focusedInputStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(common.FocusBorder).
+				Padding(0, 1)
+)
 
 // Model is the Bubble Tea model for the chat interface.
 type Model struct {
@@ -39,10 +69,16 @@ type Model struct {
 	viewport viewport.Model
 	textarea textarea.Model
 	spinner  spinner.Model
+	program  *tea.Program // Program pointer for sending messages from goroutines
+
+	// Dimensions
+	width  int
+	height int
 
 	// State
-	loading bool
-	ready   bool
+	loading          bool
+	ready            bool
+	toolNotification string // Temporary notification for tool calls
 
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
@@ -58,33 +94,42 @@ type ResponseMsg struct {
 	Err     error
 }
 
+// ToolNotificationMsg is sent when a tool is being called
+type ToolNotificationMsg struct {
+	ToolName string
+	Action   string
+}
+
+// ClearNotificationMsg is sent to clear the tool notification
+type ClearNotificationMsg struct{}
+
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
 func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
 	ta := textarea.New()
-	ta.Placeholder = "Type your message... (Ctrl+D to send, Esc to quit)"
+	ta.Placeholder = "Digite sua mensagem..."
 	ta.Focus()
-	ta.Prompt = "┃ "
+	ta.Prompt = ""
 	ta.CharLimit = 2000
 	ta.SetWidth(80)
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
+	ta.BlurredStyle.CursorLine = lipgloss.NewStyle()
 
 	vp := viewport.New(80, 20)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	s.Style = lipgloss.NewStyle().Foreground(common.PrimaryColor)
 
 	// Load history from session events
 	history := make([]*genai.Content, 0)
 	msgs := make([]ChatMessage, 0)
 
-	// If session has events, load them
 	if sess != nil && sess.Events() != nil && sess.Events().Len() > 0 {
 		for ev := range sess.Events().All() {
 			if ev.Content != nil {
 				history = append(history, ev.Content)
-				// Also populate display messages
 				role := ev.Content.Role
 				if role == "model" {
 					role = "agent"
@@ -97,7 +142,7 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 		}
 	}
 
-	m := Model{
+	return Model{
 		llm:               llm,
 		tools:             tools,
 		systemInstruction: systemInstruction,
@@ -110,15 +155,6 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 		msgs:              &msgs,
 		ready:             false,
 	}
-
-	// Set initial content
-	if len(msgs) > 0 {
-		vp.SetContent(m.renderMessages())
-	} else {
-		vp.SetContent("Welcome to Pumbaa Chat! Ask me about your Cromwell workflows.\n\nPress Ctrl+D to send a message, Esc to quit.\n")
-	}
-
-	return m
 }
 
 func extractText(content *genai.Content) string {
@@ -131,11 +167,16 @@ func extractText(content *genai.Content) string {
 	return strings.Join(texts, "\n")
 }
 
-func (m Model) Init() tea.Cmd {
+// SetProgram sets the tea.Program pointer to enable real-time updates from goroutines
+func (m *Model) SetProgram(p *tea.Program) {
+	m.program = p
+}
+
+func (m *Model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, tea.EnterAltScreen)
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -148,19 +189,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		headerHeight := 0
-		footerHeight := 6
-		verticalMarginHeight := headerHeight + footerHeight
+		m.width = msg.Width
+		m.height = msg.Height
+
+		// Calculate available heights
+		headerHeight := 3
+		footerHeight := 3
+		inputHeight := 5
+		availableHeight := m.height - headerHeight - footerHeight - inputHeight
 
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+			m.viewport = viewport.New(m.width-4, availableHeight)
 			m.viewport.SetContent(m.renderMessages())
 			m.ready = true
 		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - verticalMarginHeight
+			m.viewport.Width = m.width - 4
+			m.viewport.Height = availableHeight
+			m.viewport.SetContent(m.renderMessages())
 		}
-		m.textarea.SetWidth(msg.Width - 2)
+		m.textarea.SetWidth(m.width - 6)
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -186,8 +233,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ResponseMsg:
 		m.loading = false
+		m.toolNotification = "" // Clear notification
 		if msg.Err != nil {
-			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("Error: %v", msg.Err)})
+			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("%v", msg.Err)})
 		} else {
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: msg.Content})
 		}
@@ -195,58 +243,176 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		m.textarea.Focus()
 		return m, textarea.Blink
+
+	case ToolNotificationMsg:
+		if msg.Action != "" {
+			m.toolNotification = fmt.Sprintf("%s (%s)", msg.ToolName, msg.Action)
+		} else {
+			m.toolNotification = msg.ToolName
+		}
+		return m, m.spinner.Tick
+
+	case ClearNotificationMsg:
+		m.toolNotification = ""
+		return m, nil
 	}
 
 	return m, tea.Batch(tiCmd, vpCmd, spCmd)
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
 
-	var sb strings.Builder
-	sb.WriteString(m.viewport.View())
-	sb.WriteString("\n")
+	header := m.renderHeader()
+	content := m.renderContent()
+	input := m.renderInput()
+	footer := m.renderFooter()
 
-	if m.loading {
-		sb.WriteString(fmt.Sprintf("\n%s Generating response...\n", m.spinner.View()))
-	} else {
-		sb.WriteString("\n")
+	return lipgloss.JoinVertical(lipgloss.Left, header, content, input, footer)
+}
+
+func (m Model) renderHeader() string {
+	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
+
+	sessionInfo := ""
+	if m.session != nil {
+		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", truncate(m.session.ID(), 20)))
 	}
 
-	sb.WriteString(m.textarea.View())
+	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", sessionInfo)
 
-	return sb.String()
+	return common.HeaderStyle.
+		Width(m.width - 2).
+		Render(headerContent)
+}
+
+func (m Model) renderContent() string {
+	return common.PanelStyle.
+		Width(m.width - 2).
+		Height(m.viewport.Height + 2).
+		Render(m.viewport.View())
+}
+
+func (m Model) renderInput() string {
+	var inputBox string
+	if m.loading {
+		var loadingText string
+		if m.toolNotification != "" {
+			loadingText = fmt.Sprintf("%s 🔧 Executando: %s", m.spinner.View(), m.toolNotification)
+		} else {
+			loadingText = fmt.Sprintf("%s Processando...", m.spinner.View())
+		}
+		inputBox = inputStyle.
+			Width(m.width - 4).
+			Render(loadingText)
+	} else {
+		inputBox = focusedInputStyle.
+			Width(m.width - 4).
+			Render(m.textarea.View())
+	}
+	return inputBox
+}
+
+func (m Model) renderFooter() string {
+	help := fmt.Sprintf(
+		"%s %s  %s %s  %s %s",
+		common.KeyStyle.Render("ctrl+d"),
+		common.DescStyle.Render("enviar"),
+		common.KeyStyle.Render("↑↓"),
+		common.DescStyle.Render("scroll"),
+		common.KeyStyle.Render("esc"),
+		common.DescStyle.Render("sair"),
+	)
+
+	return common.HelpBarStyle.
+		Width(m.width - 2).
+		Render(help)
 }
 
 func (m Model) renderMessages() string {
 	if m.msgs == nil || len(*m.msgs) == 0 {
-		return "Welcome to Pumbaa Chat! Ask me about your Cromwell workflows.\n\nPress Ctrl+D to send a message, Esc to quit.\n"
+		return common.MutedStyle.Render("Bem-vindo ao Pumbaa Chat!\n\nDigite sua mensagem e pressione Ctrl+D para enviar.")
 	}
 
-	var s strings.Builder
+	var sb strings.Builder
+	maxWidth := m.width - 8 // Account for padding and borders
+
 	for _, msg := range *m.msgs {
-		role := strings.ToUpper(msg.Role)
-		style := lipgloss.NewStyle().Bold(true)
-		if msg.Role == "user" {
-			style = style.Foreground(lipgloss.Color("39"))
-		} else if msg.Role == "agent" {
-			style = style.Foreground(lipgloss.Color("205"))
-		} else {
-			style = style.Foreground(lipgloss.Color("196"))
+		var roleStyle lipgloss.Style
+		var roleName string
+
+		switch msg.Role {
+		case "user":
+			roleStyle = userStyle
+			roleName = "Você"
+		case "agent":
+			roleStyle = agentStyle
+			roleName = "Pumbaa"
+		default:
+			roleStyle = errorStyle
+			roleName = "Erro"
 		}
 
-		s.WriteString(style.Render(role) + ": " + msg.Content + "\n\n")
+		// Render role
+		sb.WriteString(roleStyle.Render(roleName) + "\n")
+
+		// Wrap content to fit width
+		wrappedContent := wrapText(msg.Content, maxWidth)
+		sb.WriteString(messageStyle.Render(wrappedContent))
+		sb.WriteString("\n\n")
 	}
-	return s.String()
+
+	return sb.String()
+}
+
+// wrapText wraps text to the given width
+func wrapText(text string, width int) string {
+	if width <= 0 {
+		width = 80
+	}
+
+	var result strings.Builder
+	lines := strings.Split(text, "\n")
+
+	for i, line := range lines {
+		if i > 0 {
+			result.WriteString("\n")
+		}
+
+		// Handle lines that are too long
+		for len(line) > width {
+			// Find a good break point
+			breakPoint := width
+			for breakPoint > 0 && line[breakPoint] != ' ' {
+				breakPoint--
+			}
+			if breakPoint == 0 {
+				breakPoint = width // Force break if no space found
+			}
+
+			result.WriteString(line[:breakPoint])
+			result.WriteString("\n")
+			line = strings.TrimLeft(line[breakPoint:], " ")
+		}
+		result.WriteString(line)
+	}
+
+	return result.String()
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-3] + "..."
 }
 
 func (m Model) generateResponse(input string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		// Create user content
 		userContent := &genai.Content{
 			Role: "user",
 			Parts: []*genai.Part{
@@ -254,10 +420,8 @@ func (m Model) generateResponse(input string) tea.Cmd {
 			},
 		}
 
-		// Update history
 		*m.history = append(*m.history, userContent)
 
-		// Save user event to session
 		if m.sessionService != nil && m.session != nil {
 			ev := session.NewEvent("")
 			ev.Content = userContent
@@ -299,10 +463,8 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				return ResponseMsg{Err: fmt.Errorf("empty response from model")}
 			}
 
-			// Add model response to history
 			*m.history = append(*m.history, lastResp.Content)
 
-			// Save model event to session
 			if m.sessionService != nil && m.session != nil {
 				ev := session.NewEvent("")
 				ev.Content = lastResp.Content
@@ -310,12 +472,26 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				m.sessionService.AppendEvent(ctx, m.session, ev)
 			}
 
-			// Check for tool calls
 			toolCalls := getToolCalls(lastResp.Content)
 			if len(toolCalls) > 0 {
 				var toolParts []*genai.Part
 
 				for _, tc := range toolCalls {
+					// Extract action from tool args if available
+					action := ""
+					if tc.Args != nil {
+						if actionVal, ok := tc.Args["action"]; ok {
+							if actionStr, ok := actionVal.(string); ok {
+								action = actionStr
+							}
+						}
+					}
+
+					// Send notification to UI about tool being called
+					if m.program != nil {
+						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action})
+					}
+
 					result, err := m.executeTool(ctx, tc)
 					if err != nil {
 						toolParts = append(toolParts, &genai.Part{
@@ -343,7 +519,6 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 				*m.history = append(*m.history, toolContent)
 
-				// Save tool response event
 				if m.sessionService != nil && m.session != nil {
 					ev := session.NewEvent("")
 					ev.Content = toolContent
@@ -355,7 +530,6 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				continue
 			}
 
-			// Final text response
 			text := ""
 			for _, part := range lastResp.Content.Parts {
 				if part.Text != "" {
@@ -365,13 +539,11 @@ func (m Model) generateResponse(input string) tea.Cmd {
 			return ResponseMsg{Content: text}
 		}
 
-		// Max turns reached - provide a helpful message
-		// Summarize what was gathered from the conversation
+		// Max turns reached
 		var summary strings.Builder
 		summary.WriteString("⚠️ Atingi o limite de iterações de ferramentas.\n\n")
 		summary.WriteString("**Informações coletadas até agora:**\n")
 
-		// Look through history for tool responses
 		toolResultCount := 0
 		for _, content := range *m.history {
 			if content.Role == "tool" {
