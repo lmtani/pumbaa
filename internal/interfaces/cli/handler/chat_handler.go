@@ -104,6 +104,7 @@ d
 - Prefer query before using workflow_id
 - Do not mix runtime (Cromwell) with definition (WDL)
 - Be concise and technical
+- Use markdown to format responses
 - Respond in the user’s language (EN or PT)
 `
 

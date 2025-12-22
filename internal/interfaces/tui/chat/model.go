@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"google.golang.org/adk/model"
@@ -85,8 +86,9 @@ type Model struct {
 }
 
 type ChatMessage struct {
-	Role    string
-	Content string
+	Role     string
+	Content  string
+	Rendered string // Pre-rendered markdown (cached)
 }
 
 type ResponseMsg struct {
@@ -243,7 +245,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != nil {
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("%v", msg.Err)})
 		} else {
-			*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: msg.Content})
+			// Pre-render markdown for agent messages
+			rendered := renderMarkdown(msg.Content, m.width-8)
+			*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: msg.Content, Rendered: rendered})
 		}
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
@@ -344,6 +348,9 @@ func (m Model) renderMessages() string {
 
 	var sb strings.Builder
 	maxWidth := m.width - 8 // Account for padding and borders
+	if maxWidth <= 0 {
+		maxWidth = 80
+	}
 
 	for _, msg := range *m.msgs {
 		var roleStyle lipgloss.Style
@@ -364,13 +371,41 @@ func (m Model) renderMessages() string {
 		// Render role
 		sb.WriteString(roleStyle.Render(roleName) + "\n")
 
-		// Wrap content to fit width
-		wrappedContent := wrapText(msg.Content, maxWidth)
-		sb.WriteString(messageStyle.Render(wrappedContent))
+		// Use pre-rendered markdown for agent, plain text for others
+		if msg.Role == "agent" && msg.Rendered != "" {
+			sb.WriteString(msg.Rendered)
+		} else {
+			wrappedContent := wrapText(msg.Content, maxWidth)
+			sb.WriteString(messageStyle.Render(wrappedContent))
+		}
 		sb.WriteString("\n\n")
 	}
 
 	return sb.String()
+}
+
+// renderMarkdown renders markdown content using glamour
+func renderMarkdown(content string, width int) string {
+	if width <= 20 {
+		width = 80
+	}
+
+	// Use "dark" style for colored markdown rendering
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithStylePath("dark"),
+		glamour.WithWordWrap(width),
+		glamour.WithEmoji(),
+	)
+	if err != nil {
+		return content
+	}
+
+	rendered, err := renderer.Render(content)
+	if err != nil {
+		return content
+	}
+
+	return strings.TrimSpace(rendered)
 }
 
 // wrapText wraps text to the given width
