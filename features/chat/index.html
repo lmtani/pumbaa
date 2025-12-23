@@ -10,13 +10,9 @@
       
       
       
-        <link rel="canonical" href="https://lmtani.github.io/pumbaa/getting-started/quick-start/">
+        <link rel="canonical" href="https://lmtani.github.io/pumbaa/features/chat/">
       
       
-        <link rel="prev" href="../configuration/">
-      
-      
-        <link rel="next" href="../../features/dashboard/">
       
       
         
@@ -27,7 +23,7 @@
     
     
       
-        <title>Quick Start - Pumbaa</title>
+        <title>Chat Agent - Pumbaa</title>
       
     
     
@@ -78,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quick-start" class="md-skip">
+        <a href="#chat-agent" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Quick Start
+              Chat Agent
             
           </span>
         </div>
@@ -286,8 +282,6 @@
       
   
   
-    
-  
   
   
     
@@ -300,11 +294,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -325,7 +321,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -343,7 +339,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -371,7 +367,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../getting-started/configuration/" class="md-nav__link">
         
   
   
@@ -396,37 +392,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Start
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-start/" class="md-nav__link">
         
   
   
@@ -442,259 +411,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-configure-cromwell-server" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1: Configure Cromwell Server
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-verify-connection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2: Verify Connection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-explore-the-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Explore the Dashboard
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 3: Explore the Dashboard">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dashboard-navigation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dashboard Navigation
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-submit-a-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Submit a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-monitor-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Monitor Workflow
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 5: Monitor Workflow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#query-specific-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Query Specific Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Metadata
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#debug-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debug View
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-workflows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Workflows
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Common Workflows">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abort-a-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abort a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bundle-a-wdl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bundle a WDL
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#connection-refused" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Connection refused"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-workflows-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "No workflows found"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboard-not-updating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dashboard not updating
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#getting-help" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Getting Help
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -768,7 +484,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/dashboard/" class="md-nav__link">
+      <a href="../dashboard/" class="md-nav__link">
         
   
   
@@ -796,7 +512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/debug/" class="md-nav__link">
+      <a href="../debug/" class="md-nav__link">
         
   
   
@@ -824,7 +540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/submit/" class="md-nav__link">
+      <a href="../submit/" class="md-nav__link">
         
   
   
@@ -852,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/query/" class="md-nav__link">
+      <a href="../query/" class="md-nav__link">
         
   
   
@@ -880,7 +596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/metadata/" class="md-nav__link">
+      <a href="../metadata/" class="md-nav__link">
         
   
   
@@ -908,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/abort/" class="md-nav__link">
+      <a href="../abort/" class="md-nav__link">
         
   
   
@@ -936,7 +652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/bundle/" class="md-nav__link">
+      <a href="../bundle/" class="md-nav__link">
         
   
   
@@ -964,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/resource-monitoring/" class="md-nav__link">
+      <a href="../resource-monitoring/" class="md-nav__link">
         
   
   
@@ -1046,10 +762,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Quick Start
       
     </span>
   </a>
@@ -1057,10 +773,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-configure-cromwell-server" class="md-nav__link">
+  <a href="#usage-with-different-providers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Configure Cromwell Server
+        Usage with Different Providers
       
     </span>
   </a>
@@ -1068,10 +784,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-verify-connection" class="md-nav__link">
+  <a href="#capabilities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Verify Connection
+        Capabilities
       
     </span>
   </a>
@@ -1079,22 +795,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-explore-the-dashboard" class="md-nav__link">
+  <a href="#session-management" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Explore the Dashboard
+        Session Management
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 3: Explore the Dashboard">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#dashboard-navigation" class="md-nav__link">
+  <a href="#using-config-wizard-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Dashboard Navigation
+        Using Config Wizard (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Storage
       
     </span>
   </a>
@@ -1107,171 +867,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-submit-a-workflow" class="md-nav__link">
+  <a href="#example-prompts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Submit a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-monitor-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Monitor Workflow
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 5: Monitor Workflow">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#query-specific-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Query Specific Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Metadata
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#debug-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debug View
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#common-workflows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Workflows
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Common Workflows">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abort-a-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abort a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bundle-a-wdl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bundle a WDL
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#connection-refused" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Connection refused"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-workflows-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "No workflows found"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboard-not-updating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dashboard not updating
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#getting-help" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Getting Help
+        Example Prompts
       
     </span>
   </a>
@@ -1298,118 +897,113 @@
   
 
 
-<h1 id="quick-start">Quick Start</h1>
-<p>Get up and running with Pumbaa in 5 minutes.</p>
-<h2 id="prerequisites">Prerequisites</h2>
+<h1 id="chat-agent">Chat Agent</h1>
+<p>Interactive AI assistant for querying Cromwell workflows and reading files via natural language.</p>
+<h2 id="quick-start">Quick Start</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Run the configuration wizard (recommended for first time)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Or start chatting directly</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pumbaa<span class="w"> </span>chat
+</span></code></pre></div>
+<h2 id="usage-with-different-providers">Usage with Different Providers</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Gemini API (requires API key from https://aistudio.google.com/apikey)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pumbaa<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>gemini<span class="w"> </span>--gemini-api-key<span class="w"> </span>&lt;API_KEY&gt;
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Vertex AI (requires GCP project)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>pumbaa<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>vertex<span class="w"> </span>--vertex-project<span class="w"> </span>&lt;PROJECT_ID&gt;
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Ollama (local, free - default)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>pumbaa<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>ollama
+</span></code></pre></div>
+<h2 id="capabilities">Capabilities</h2>
+<p>The chat agent can:</p>
 <ul>
-<li>Pumbaa installed (<a href="../installation/">Installation Guide</a>)</li>
-<li>Access to a Cromwell server</li>
-<li>(Optional) A WDL workflow file</li>
+<li><strong>Query workflows</strong> - Search by status, name, or labels</li>
+<li><strong>Get workflow status</strong> - Check execution state</li>
+<li><strong>View metadata</strong> - Inspect workflow details and call information</li>
+<li><strong>Get outputs</strong> - List workflow output files</li>
+<li><strong>View logs</strong> - Access workflow log paths</li>
+<li><strong>Read files</strong> - Fetch files from Google Cloud Storage</li>
 </ul>
-<h2 id="step-1-configure-cromwell-server">Step 1: Configure Cromwell Server</h2>
-<p>The easiest way is using the config wizard:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
+<h2 id="session-management">Session Management</h2>
+<p>Conversations are persisted in SQLite for context retention.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># List existing sessions</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pumbaa<span class="w"> </span>chat<span class="w"> </span>--list
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Resume a session</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>pumbaa<span class="w"> </span>chat<span class="w"> </span>--session<span class="w"> </span>&lt;SESSION_ID&gt;
 </span></code></pre></div>
-<p>Or set your Cromwell server URL directly:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://localhost:8000
+<h2 id="controls">Controls</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ctrl+D</code></td>
+<td>Send message</td>
+</tr>
+<tr>
+<td><code>↑↓</code></td>
+<td>Scroll messages (when typing)</td>
+</tr>
+<tr>
+<td><code>Tab</code></td>
+<td>Switch to message navigation mode</td>
+</tr>
+<tr>
+<td><code>↑↓</code></td>
+<td>Navigate messages (in navigation mode)</td>
+</tr>
+<tr>
+<td><code>y</code></td>
+<td>Copy selected message to clipboard</td>
+</tr>
+<tr>
+<td><code>Tab</code></td>
+<td>Return to typing mode</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Exit</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration</h2>
+<h3 id="using-config-wizard-recommended">Using Config Wizard (Recommended)</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
 </span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Use <code>pumbaa config set cromwell_host &lt;url&gt;</code> to persist configuration.</p>
-</div>
-<h2 id="step-2-verify-connection">Step 2: Verify Connection</h2>
-<p>Test the connection to your Cromwell server:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+<h3 id="using-environment-variables">Using Environment Variables</h3>
+<p><strong>Gemini API:</strong>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_LLM_PROVIDER</span><span class="o">=</span>gemini
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span>&lt;your-api-key&gt;
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_MODEL</span><span class="o">=</span>gemini-2.0-flash
+</span></code></pre></div></p>
+<p><strong>Ollama (default):</strong>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_LLM_PROVIDER</span><span class="o">=</span>ollama
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OLLAMA_HOST</span><span class="o">=</span>http://localhost:11434
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OLLAMA_MODEL</span><span class="o">=</span>llama3.2:3b
+</span></code></pre></div></p>
+<p><strong>Vertex AI:</strong>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_LLM_PROVIDER</span><span class="o">=</span>vertex
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VERTEX_PROJECT</span><span class="o">=</span>&lt;project-id&gt;
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VERTEX_LOCATION</span><span class="o">=</span>us-central1
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VERTEX_MODEL</span><span class="o">=</span>gemini-2.0-flash
+</span></code></pre></div></p>
+<h3 id="session-storage">Session Storage</h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_SESSION_DB</span><span class="o">=</span>~/.pumbaa/sessions.db
 </span></code></pre></div>
-<p>You should see a list of recent workflows (or an empty list if none exist).</p>
-<h2 id="step-3-explore-the-dashboard">Step 3: Explore the Dashboard</h2>
-<p>Launch the interactive dashboard:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>dashboard
-</span></code></pre></div>
-<h3 id="dashboard-navigation">Dashboard Navigation</h3>
+<h2 id="example-prompts">Example Prompts</h2>
 <ul>
-<li><strong>↑/↓</strong>: Navigate through workflows</li>
-<li><strong>Enter</strong>: Open workflow in debug view</li>
-<li><strong>s</strong>: Filter by status (All/Running/Failed/Succeeded)</li>
-<li><strong>/</strong>: Filter by workflow name</li>
-<li><strong>a</strong>: Abort selected workflow</li>
-<li><strong>r</strong>: Refresh list</li>
-<li><strong>q</strong>: Quit</li>
-</ul>
-<p><img alt="Dashboard" src="../../assets/dashboard.png" /></p>
-<h2 id="step-4-submit-a-workflow">Step 4: Submit a Workflow</h2>
-<p>If you have a WDL file, submit it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>submit<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--workflow<span class="w"> </span>myworkflow.wdl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--inputs<span class="w"> </span>inputs.json
-</span></code></pre></div>
-<p>Example <code>inputs.json</code>:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;myworkflow.input_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gs://bucket/data.txt&quot;</span><span class="p">,</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;myworkflow.sample_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sample-001&quot;</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">}</span>
-</span></code></pre></div>
-<h2 id="step-5-monitor-workflow">Step 5: Monitor Workflow</h2>
-<h3 id="query-specific-workflow">Query Specific Workflow</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--status<span class="w"> </span>Running
-</span></code></pre></div>
-<h3 id="view-metadata">View Metadata</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div>
-<h3 id="debug-view">Debug View</h3>
-<p>Open detailed execution view:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>--id<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div>
-<p>Navigate the debug view:</p>
-<ul>
-<li><strong>↑/↓</strong> or <strong>j/k</strong>: Navigate through tasks</li>
-<li><strong>←/→</strong> or <strong>h/l</strong>: Collapse/expand nodes</li>
-<li><strong>Enter</strong>: Toggle expand</li>
-<li><strong>Tab</strong>: Switch between tree and details panel</li>
-<li><strong>c</strong>: View command</li>
-<li><strong>i</strong>: View inputs</li>
-<li><strong>o</strong>: View outputs</li>
-<li><strong>L</strong>: View log paths</li>
-<li><strong>t</strong>: View task duration timeline</li>
-<li><strong>q</strong>: Return to dashboard</li>
-</ul>
-<h2 id="common-workflows">Common Workflows</h2>
-<h3 id="abort-a-workflow">Abort a Workflow</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>abort<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div>
-<p>Or use the dashboard (press <code>a</code> on selected workflow).</p>
-<h3 id="bundle-a-wdl">Bundle a WDL</h3>
-<p>Package your WDL with all imports:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pumbaa<span class="w"> </span>bundle<span class="w"> </span>--workflow<span class="w"> </span>main.wdl<span class="w"> </span>--output<span class="w"> </span>my-bundle
-</span></code></pre></div>
-<p>This creates:
-- <code>my-bundle.wdl</code> - Main workflow file
-- <code>my-bundle.zip</code> - All dependencies bundled</p>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="connection-refused">"Connection refused"</h3>
-<p>Verify Cromwell is running:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>curl<span class="w"> </span><span class="nv">$CROMWELL_HOST</span>/api/workflows/v1/query
-</span></code></pre></div>
-<h3 id="no-workflows-found">"No workflows found"</h3>
-<p>Submit a test workflow:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Use the example workflow</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>submit<span class="w"> </span>--workflow<span class="w"> </span>&lt;simple-workflow&gt;.wdl
-</span></code></pre></div>
-<h3 id="dashboard-not-updating">Dashboard not updating</h3>
-<p>Press <code>r</code> to manually refresh, or check your connection.</p>
-<h2 id="next-steps">Next Steps</h2>
-<p>Now that you're familiar with the basics:</p>
-<ul>
-<li><a href="../../features/dashboard/">Dashboard Guide</a> - Master the interactive dashboard</li>
-<li><a href="../../features/debug/">Debug View</a> - Advanced debugging techniques</li>
-<li><a href="../../features/submit/">Submit Workflows</a> - Detailed submission options</li>
-<li><a href="../../features/bundle/">Bundle WDL</a> - Package workflows for distribution</li>
-</ul>
-<h2 id="getting-help">Getting Help</h2>
-<ul>
-<li>Run <code>pumbaa --help</code> for command reference</li>
-<li>Run <code>pumbaa &lt;command&gt; --help</code> for specific command help</li>
-<li>Visit <a href="https://github.com/lmtani/pumbaa/issues">GitHub Issues</a> for support</li>
+<li>"List my running workflows"</li>
+<li>"What is the status of workflow abc-123?"</li>
+<li>"Show me the outputs of workflow xyz-456"</li>
+<li>"Read gs://bucket/path/to/file.txt"</li>
+<li>"Query last 5 failed workflows"</li>
 </ul>
 
 

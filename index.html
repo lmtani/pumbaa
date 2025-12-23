@@ -354,6 +354,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#chat-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chat Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#debug-view" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -939,6 +950,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#chat-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chat Agent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#debug-view" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1024,6 +1046,7 @@
 <p>Pumbaa provides an intuitive command-line interface to:</p>
 <ul>
 <li>🎯 <strong>Manage workflows</strong> with an interactive terminal dashboard (TUI)</li>
+<li>🤖 <strong>Chat with AI</strong> to query workflows and download files via natural language</li>
 <li>🔍 <strong>Debug workflows</strong> with detailed execution views and preemption analysis</li>
 <li>📦 <strong>Bundle WDL files</strong> with all dependencies into portable packages</li>
 <li>📊 <strong>View metadata</strong>, logs, timing in a user-friendly format</li>
@@ -1034,14 +1057,23 @@
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>dashboard
 </span></code></pre></div>
 <p><img alt="Dashboard Screenshot" src="assets/dashboard.png" /></p>
+<h3 id="chat-agent">Chat Agent</h3>
+<p>Query workflows using natural language:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init<span class="w">  </span><span class="c1"># First time setup</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pumbaa<span class="w"> </span>chat
+</span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Experimental Feature</p>
+<p>The chat agent is currently experimental and meant for exploration. In the future, it may help understand workflow errors, but for now it's just fun to use! 🎉</p>
+</div>
 <h3 id="debug-view">Debug View</h3>
 <p>Explore workflow execution in detail with an interactive tree view showing tasks, calls, and timing:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>--id<span class="w"> </span>&lt;workflow-id&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>--id<span class="w"> </span>&lt;workflow-id&gt;
 </span></code></pre></div>
 <p><img alt="Debug View Screenshot" src="assets/debug.png" /></p>
 <h3 id="wdl-bundling">WDL Bundling</h3>
 <p>Package your WDL workflow with all imports into a single distributable file:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>bundle<span class="w"> </span>--workflow<span class="w"> </span>main.wdl<span class="w"> </span>--output<span class="w"> </span>my-workflow
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>bundle<span class="w"> </span>--workflow<span class="w"> </span>main.wdl<span class="w"> </span>--output<span class="w"> </span>my-workflow
 </span></code></pre></div>
 <h2 id="why-pumbaa">Why Pumbaa?</h2>
 <ul>

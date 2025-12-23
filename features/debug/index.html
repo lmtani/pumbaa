@@ -598,10 +598,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-actions-14" class="md-nav__link">
+  <a href="#quick-actions-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick actions (1–4)
+        Quick actions (1–5)
       
     </span>
   </a>
@@ -613,6 +613,17 @@
     <span class="md-ellipsis">
       
         Timing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#efficiency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Efficiency
       
     </span>
   </a>
@@ -890,10 +901,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-actions-14" class="md-nav__link">
+  <a href="#quick-actions-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick actions (1–4)
+        Quick actions (1–5)
       
     </span>
   </a>
@@ -905,6 +916,17 @@
     <span class="md-ellipsis">
       
         Timing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#efficiency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Efficiency
       
     </span>
   </a>
@@ -986,22 +1008,37 @@
 </tr>
 </tbody>
 </table>
-<h2 id="quick-actions-14">Quick actions (1–4)</h2>
+<h2 id="quick-actions-15">Quick actions (1–5)</h2>
 <p>The details panel exposes quick actions for the selected call:</p>
 <ul>
 <li><code>1</code> — Inputs: open a modal showing call inputs.</li>
 <li><code>2</code> — Outputs: open a modal showing call outputs.</li>
 <li><code>3</code> — Command: open a modal showing the command executed by the call.</li>
 <li><code>4</code> — Logs: switch to the Logs view for the selected call. Logs can be loaded from Google Cloud Storage if your environment has Google Application Default Credentials configured (or from local paths when available).</li>
+<li><code>5</code> — Efficiency: view resource efficiency metrics (CPU/memory usage vs. requested) for the selected call.</li>
 </ul>
 <p>In the modals you can press <code>y</code> to copy the displayed content to the system clipboard (works when the host environment provides a clipboard tool such as <code>xclip</code>, <code>xsel</code>, or <code>wl-copy</code>).</p>
 <h2 id="timing">Timing</h2>
 <p>Press <code>t</code> to open the timeline (global timeline) for the selected workflow or subworkflow. To inspect a subworkflow's timing, navigate to the subworkflow in the tree and press <code>t</code> — Pumbaa will show a timeline for that workflow. Timing and task durations update as you fetch or expand subworkflows (again, this requires the Cromwell server to be reachable).</p>
 <p><img alt="Debug View Screenshot" src="../../assets/timing.png" /></p>
+<h2 id="efficiency">Efficiency</h2>
+<p>The Efficiency view (action <code>5</code>) displays resource usage metrics for the selected call, comparing actual usage against allocated resources.</p>
+<div class="admonition warning">
+<p class="admonition-title">Requirement</p>
+<p>This feature requires the workflow to have been submitted with the <strong>monitoring script</strong> provided by Pumbaa. See <a href="../resource-monitoring/">Resource Monitoring Script</a> for setup instructions.</p>
+</div>
+<p><strong>Displayed metrics:</strong></p>
+<ul>
+<li>Peak CPU usage vs. allocated cores</li>
+<li>Peak memory usage vs. allocated memory</li>
+<li>Resource efficiency percentage</li>
+</ul>
+<p>This helps identify over-provisioned tasks where resources can be reduced to save costs.</p>
 <h2 id="see-also">See Also</h2>
 <ul>
 <li><a href="../dashboard/">Dashboard</a></li>
 <li><a href="../metadata/">Metadata</a></li>
+<li><a href="../resource-monitoring/">Resource Monitoring Script</a></li>
 </ul>
 
 
