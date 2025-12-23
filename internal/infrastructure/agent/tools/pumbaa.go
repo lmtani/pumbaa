@@ -59,6 +59,9 @@ type PumbaaInput struct {
 
 	// Type for wdl_info action: "task" or "workflow"
 	Type string `json:"type,omitempty"`
+
+	// PageSize for query action (default: 10)
+	PageSize int `json:"page_size,omitempty"`
 }
 
 // PumbaaOutput represents the output of the Pumbaa tool.
@@ -140,9 +143,14 @@ Available actions:
 // ============================================================================
 
 func handleQuery(ctx context.Context, repo CromwellRepository, input PumbaaInput) (PumbaaOutput, error) {
+	pageSize := input.PageSize
+	if pageSize <= 0 {
+		pageSize = 10 // Default
+	}
+
 	filter := workflow.QueryFilter{
 		Name:     input.Name,
-		PageSize: 10, // Limit to 100 records
+		PageSize: pageSize,
 	}
 	if input.Status != "" {
 		filter.Status = []workflow.Status{workflow.Status(input.Status)}

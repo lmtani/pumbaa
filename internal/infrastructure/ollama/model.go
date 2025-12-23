@@ -389,6 +389,10 @@ func getPumbaaParametersSchema() map[string]interface{} {
 				"description": "Type for wdl_info action",
 				"enum":        []string{"task", "workflow"},
 			},
+			"page_size": map[string]interface{}{
+				"type":        "integer",
+				"description": "Number of results to return for query action (default: 10)",
+			},
 		},
 		"required": []string{"action"},
 	}
