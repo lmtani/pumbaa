@@ -270,6 +270,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.scrollToSelectedMsg()
 				}
 				return m, nil
+			} else if m.focusMode == FocusInput {
+				// Scroll viewport up when focus is on input
+				m.viewport.LineUp(3)
+				return m, nil
 			}
 
 		case tea.KeyDown:
@@ -279,6 +283,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.SetContent(m.renderMessages())
 					m.scrollToSelectedMsg()
 				}
+				return m, nil
+			} else if m.focusMode == FocusInput {
+				// Scroll viewport down when focus is on input
+				m.viewport.LineDown(3)
 				return m, nil
 			}
 
@@ -461,9 +469,11 @@ func (m Model) renderFooter() string {
 		)
 	} else {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("enviar"),
+			common.KeyStyle.Render("↑↓"),
+			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("navegar msgs"),
 			common.KeyStyle.Render("esc"),
