@@ -134,7 +134,7 @@ func (h *ChatHandler) Command() *cli.Command {
 			&cli.StringFlag{
 				Name:    "provider",
 				Aliases: []string{"p"},
-				Usage:   "LLM provider: ollama or vertex",
+				Usage:   "LLM provider: ollama, vertex, or gemini",
 				EnvVars: []string{"PUMBAA_LLM_PROVIDER"},
 			},
 			&cli.StringFlag{
@@ -161,6 +161,16 @@ func (h *ChatHandler) Command() *cli.Command {
 				Name:  "rebuild-index",
 				Usage: "Force rebuild of WDL index cache",
 			},
+			&cli.StringFlag{
+				Name:    "gemini-api-key",
+				Usage:   "API key for Gemini (Google AI Studio)",
+				EnvVars: []string{"GEMINI_API_KEY"},
+			},
+			&cli.StringFlag{
+				Name:    "gemini-model",
+				Usage:   "Gemini model name",
+				EnvVars: []string{"GEMINI_MODEL"},
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if p := c.String("provider"); p != "" {
@@ -182,6 +192,13 @@ func (h *ChatHandler) Command() *cli.Command {
 			// Handle WDL dir
 			if wd := c.String("wdl-dir"); wd != "" {
 				h.config.WDLDirectory = wd
+			}
+			// Handle Gemini flags
+			if gk := c.String("gemini-api-key"); gk != "" {
+				h.config.GeminiAPIKey = gk
+			}
+			if gm := c.String("gemini-model"); gm != "" {
+				h.config.GeminiModel = gm
 			}
 			return h.Run(c.String("session"), c.Bool("rebuild-index"))
 		},

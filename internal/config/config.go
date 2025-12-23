@@ -25,6 +25,10 @@ type Config struct {
 	VertexLocation string
 	VertexModel    string
 
+	// Gemini API-specific (Google AI Studio)
+	GeminiAPIKey string
+	GeminiModel  string
+
 	// WDL Context configuration
 	WDLDirectory string // Directory containing WDL workflows for chat context
 	WDLIndexPath string // Path to cached WDL index JSON file
@@ -79,6 +83,13 @@ func Load() *Config {
 		wdlIndexPath = filepath.Join(home, ".pumbaa", "wdl_index.json")
 	}
 
+	// Gemini API config
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	geminiModel := os.Getenv("GEMINI_MODEL")
+	if geminiModel == "" {
+		geminiModel = "gemini-2.0-flash"
+	}
+
 	return &Config{
 		CromwellHost:    host,
 		CromwellTimeout: 30 * time.Second,
@@ -89,6 +100,8 @@ func Load() *Config {
 		VertexProject:   vertexProject,
 		VertexLocation:  vertexLocation,
 		VertexModel:     vertexModel,
+		GeminiAPIKey:    geminiAPIKey,
+		GeminiModel:     geminiModel,
 		WDLDirectory:    wdlDirectory,
 		WDLIndexPath:    wdlIndexPath,
 	}
