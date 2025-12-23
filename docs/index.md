@@ -1,73 +1,102 @@
-# Pumbaa 🐗
+# Pumbaa :boar:
 
-A powerful CLI tool for interacting with [Cromwell](https://cromwell.readthedocs.io/) workflow engine and managing WDL (Workflow Description Language) files.
+**Modern CLI for Cromwell workflow management and WDL files.**
 
-## What is Pumbaa?
+[:material-github: GitHub](https://github.com/lmtani/pumbaa){ .md-button }
+[:material-download: Installation](getting-started/installation.md){ .md-button .md-button--primary }
 
-Pumbaa provides an intuitive command-line interface to:
+---
 
-- 🎯 **Manage workflows** with an interactive terminal dashboard (TUI)
-- 🤖 **Chat with AI** to query workflows and download files via natural language
-- 🔍 **Debug workflows** with detailed execution views and preemption analysis
-- 📦 **Bundle WDL files** with all dependencies into portable packages
-- 📊 **View metadata**, logs, timing in a user-friendly format
+## :dart: What is Pumbaa?
 
-## Key Features
+Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https://cromwell.readthedocs.io/) — an execution engine for bioinformatics workflows.
 
-### Interactive Dashboard
+!!! tip "Who is it for?"
+    Bioinformaticians and developers running WDL pipelines who need practical tools for monitoring, debugging, and efficiency analysis.
 
-Browse and manage all your workflows in a beautiful terminal UI with real-time updates:
+---
 
-```bash
-pumbaa dashboard
-```
 
-![Dashboard Screenshot](assets/dashboard.png)
+## :rocket: Quick Start
 
-### Chat Agent
+=== "1. Install"
 
-Query workflows using natural language:
+    ```bash
+    curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash
+    ```
 
-```bash
-pumbaa config init  # First time setup
-pumbaa chat
-```
+=== "2. Configure"
 
-!!! note "Experimental Feature"
-    The chat agent is currently experimental and meant for exploration. In the future, it may help understand workflow errors, but for now it's just fun to use! 🎉
+    ```bash
+    pumbaa config init
+    ```
 
-### Debug View
+=== "3. Use"
 
-Explore workflow execution in detail with an interactive tree view showing tasks, calls, and timing:
+    ```bash
+    pumbaa dashboard
+    ```
 
-```bash
-pumbaa workflow debug --id <workflow-id>
-```
+---
 
-![Debug View Screenshot](assets/debug.png)
 
-### WDL Bundling
+## :sparkles: Features
 
-Package your WDL workflow with all imports into a single distributable file:
+<div class="grid cards" markdown>
 
-```bash
-pumbaa bundle --workflow main.wdl --output my-workflow
-```
+-   :material-view-dashboard: **Interactive Dashboard**
+    
+    View and manage workflows in a terminal UI (TUI) with real-time updates.
+    
+    ```bash
+    pumbaa dashboard
+    ```
 
-## Why Pumbaa?
+-   :material-robot: **AI Chat**
+    
+    Query workflows and read GCS files using natural language.
+    
+    ```bash
+    pumbaa chat
+    ```
 
-- **💻 Terminal-first** - Beautiful TUI interfaces for power users
-- **📦 Portable** - Single binary with no dependencies
-- **🎨 User-friendly** - Intuitive commands and a practical TUI for inspecting and debugging workflows
+-   :material-chart-timeline: **Efficiency Analysis**
+    
+    Compare actual execution time vs. allocated resources. Identify tasks with CPU/memory over-provisioning.
 
-## Next Steps
+-   :material-package-variant: **WDL Bundling**
+    
+    Package your workflow with all dependencies into a single distributable file.
+    
+    ```bash
+    pumbaa bundle --workflow main.wdl
+    ```
 
-- [Installation Guide](getting-started/installation.md) - Detailed installation instructions
-- [Quick Start](getting-started/quick-start.md) - Get up and running in 5 minutes
-- [Configuration](getting-started/configuration.md) - Configure Pumbaa for your environment
-- [Features](features/dashboard.md) - Explore all features in detail
+</div>
 
-## Need Help?
+---
 
-- [GitHub Issues](https://github.com/lmtani/pumbaa/issues) - Report bugs or request features
-- [Discussions](https://github.com/lmtani/pumbaa/discussions) - Ask questions and share ideas
+## :zap: Highlights
+
+| Feature | Description |
+|:---:|---|
+| :material-console: **Terminal-first** | Rich TUI interfaces for power users |
+| :material-package: **Portable** | Single binary, no dependencies |
+| :material-speedometer: **Efficient** | Resource utilization analysis for cost optimization |
+| :material-language-go: **Native Go** | Fast, compiled, cross-platform |
+
+---
+
+## :books: Next Steps
+
+- [:material-download: Installation](getting-started/installation.md) — Detailed instructions
+- [:material-play: Quick Start](getting-started/quick-start.md) — Get started
+- [:material-cog: Configuration](getting-started/configuration.md) — Options and providers
+- [:material-star: Features](features/dashboard.md) — All features in detail
+
+---
+
+## :handshake: Support
+
+- [:material-github: Issues](https://github.com/lmtani/pumbaa/issues) — Bugs and feature requests
+- [:material-forum: Discussions](https://github.com/lmtani/pumbaa/discussions) — Questions and ideas

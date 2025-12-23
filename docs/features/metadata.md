@@ -2,49 +2,80 @@
 
 Get detailed workflow metadata.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa workflow metadata <workflow-id> [FLAGS]
 ```
 
-## Flags
+---
+
+## :flags: Flags
 
 | Flag | Alias | Description |
-|------|-------|-------------|
+|------|:-----:|-------------|
 | `--verbose` | `-v` | Show detailed call information |
 
-## Examples
+---
 
-### Basic
+## :bulb: Examples
 
-```bash
-pumbaa workflow metadata abc12345
-```
+=== "Basic"
 
-### Verbose
+    ```bash
+    pumbaa workflow metadata abc12345
+    ```
 
-```bash
-pumbaa workflow metadata abc12345 --verbose
-```
+=== "Verbose"
 
-## Output
+    ```bash
+    pumbaa workflow metadata abc12345 --verbose
+    ```
 
-Shows:
-- Workflow ID and name
-- Status and timing
-- Inputs and outputs
-- Labels
-- Call details (with `--verbose`)
+---
 
-## Use Cases
+## :page_facing_up: Output
 
-- Debugging failed workflows
-- Extracting outputs
-- Checking execution times
-- Verifying inputs
+| Section | Description |
+|---------|-------------|
+| Workflow ID | Full UUID |
+| Name | WDL workflow name |
+| Status | Current state |
+| Timing | Start/end timestamps |
+| Inputs | Submitted inputs |
+| Outputs | Generated outputs |
+| Labels | User labels |
+| Calls | Task execution details (with `-v`) |
 
-## See Also
+---
 
-- [Debug View](debug.md) - Interactive metadata exploration
-- [Query](query.md) - List workflows
+## :wrench: Use Cases
+
+<div class="grid cards" markdown>
+
+-   :material-bug: **Debug Failures**
+    
+    Inspect failed task details
+
+-   :material-download: **Extract Outputs**
+    
+    Find output file paths
+
+-   :material-timer: **Check Timing**
+    
+    Review execution duration
+
+-   :material-check: **Verify Inputs**
+    
+    Confirm submitted parameters
+
+</div>
+
+---
+
+## :books: See Also
+
+- [:material-bug: Debug View](debug.md) — Interactive exploration
+- [:material-magnify: Query](query.md) — List workflows

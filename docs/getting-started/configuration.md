@@ -2,52 +2,27 @@
 
 Pumbaa can be configured through the interactive wizard, command-line flags, environment variables, or a configuration file.
 
-### Telemetry
+---
 
-Pumbaa collects **anonymous** usage statistics to help us improve the tool. We use [PostHog](https://posthog.com) to track command execution count, duration, and success/failure rates.
-
-**What we collect:**
-- Command name (e.g., `pumbaa chat`)
-- Pumbaa Version
-- OS / Architecture
-- Execution duration
-- Success/Failure status
-
-**What we DO NOT collect:**
-- Arguments or flags values (no file paths, no API keys)
-- File contents
-- Personal Information
-
-**How to Opt-Out:**
-You can disable telemetry at any time:
-
-```bash
-pumbaa config set telemetry_enabled false
-```
-
-Or via environment variable:
-```bash
-export PUMBAA_TELEMETRY_ENABLED=false
-```
-
-## Quick Setup (Recommended)
-
-The easiest way to configure Pumbaa is using the interactive wizard:
+## :zap: Quick Setup (Recommended)
 
 ```bash
 pumbaa config init
 ```
 
-This will guide you through:
+This wizard guides you through:
 
-1. Choosing your LLM provider (Ollama, Gemini API, or Vertex AI)
-2. Provider-specific settings (API key, model, etc.)
-3. Cromwell server URL
-4. Optional WDL directory for chat context
+1. :robot: Choosing your LLM provider (Ollama, Gemini API, or Vertex AI)
+2. :key: Provider-specific settings (API key, model, etc.)
+3. :link: Cromwell server URL
+4. :file_folder: Optional WDL directory for chat context
 
-Configuration is saved to `~/.pumbaa/config.yaml`.
+!!! info "Config Location"
+    Configuration is saved to `~/.pumbaa/config.yaml`
 
-## Configuration Commands
+---
+
+## :terminal: Configuration Commands
 
 ```bash
 # Interactive setup wizard
@@ -66,7 +41,9 @@ pumbaa config list
 pumbaa config path
 ```
 
-### Available Keys
+---
+
+## :gear: Available Keys
 
 | Key | Description | Example |
 |-----|-------------|---------|
@@ -81,76 +58,126 @@ pumbaa config path
 | `vertex_model` | Vertex AI model | `gemini-2.0-flash` |
 | `wdl_directory` | WDL files for context | `/path/to/workflows` |
 
-## Configuration Priority
+---
+
+## :arrows_counterclockwise: Configuration Priority
 
 Settings are applied in this order (later overrides earlier):
 
-1. Default values
-2. **Config file** (`~/.pumbaa/config.yaml`)
-3. Environment variables
-4. Command-line flags
-
-## Cromwell Server
-
-### Using Config Command
-```bash
-pumbaa config set cromwell_host http://cromwell.example.com:8000
+```mermaid
+flowchart LR
+    A[Default Values] --> B[Config File]
+    B --> C[Environment Variables]
+    C --> D[Command-line Flags]
 ```
 
-### Using Environment Variable
-```bash
-export CROMWELL_HOST=http://cromwell.example.com:8000
-```
+---
 
-### Using Command-Line Flag
-```bash
-pumbaa --host http://cromwell.example.com:8000 dashboard
-```
+## :link: Cromwell Server
 
-!!! note "Default value"
-    The default host is `http://localhost:8000`.
+=== "Config Command"
 
-## Chat LLM Providers
+    ```bash
+    pumbaa config set cromwell_host http://cromwell.example.com:8000
+    ```
 
-### Gemini API (Recommended for Quick Start)
+=== "Environment Variable"
 
-Get your API key at [Google AI Studio](https://aistudio.google.com/apikey).
+    ```bash
+    export CROMWELL_HOST=http://cromwell.example.com:8000
+    ```
 
-```bash
-pumbaa config set llm_provider gemini
-pumbaa config set gemini_api_key <your-api-key>
-```
+=== "Command-line Flag"
 
-### Ollama (Local, Free)
+    ```bash
+    pumbaa --host http://cromwell.example.com:8000 dashboard
+    ```
 
-```bash
-pumbaa config set llm_provider ollama
-pumbaa config set ollama_host http://localhost:11434
-pumbaa config set ollama_model llama3.2:3b
-```
+!!! note "Default"
+    The default host is `http://localhost:8000`
 
-### Vertex AI (for GCP Users)
+---
 
-```bash
-pumbaa config set llm_provider vertex
-pumbaa config set vertex_project <project-id>
-pumbaa config set vertex_location us-central1
-```
+## :robot: Chat LLM Providers
 
-## Authentication
+=== ":material-google: Gemini API"
+
+    Get your API key at [Google AI Studio](https://aistudio.google.com/apikey).
+
+    ```bash
+    pumbaa config set llm_provider gemini
+    pumbaa config set gemini_api_key <your-api-key>
+    ```
+
+=== ":material-server: Ollama (Local)"
+
+    ```bash
+    pumbaa config set llm_provider ollama
+    pumbaa config set ollama_host http://localhost:11434
+    pumbaa config set ollama_model llama3.2:3b
+    ```
+
+=== ":material-cloud: Vertex AI"
+
+    ```bash
+    pumbaa config set llm_provider vertex
+    pumbaa config set vertex_project <project-id>
+    pumbaa config set vertex_location us-central1
+    ```
+
+---
+
+## :lock: Authentication
 
 Pumbaa assumes a direct connection to a reachable Cromwell server; it does not perform authentication itself.
 
-If your Cromwell instance runs inside Kubernetes, expose it locally:
+??? example "Port-forwarding from Kubernetes"
+    ```bash
+    kubectl -n <namespace> port-forward svc/cromwell 8000:8000
+    pumbaa config set cromwell_host http://localhost:8000
+    ```
 
-```bash
-kubectl -n <namespace> port-forward svc/cromwell 8000:8000
-pumbaa config set cromwell_host http://localhost:8000
-```
+---
 
-## Next Steps
+## :bar_chart: Telemetry
 
-- [Quick Start](quick-start.md) - Run your first commands
-- [Dashboard](../features/dashboard.md) - Learn about the interactive dashboard
-- [Chat Agent](../features/chat.md) - Use AI to query workflows
+Pumbaa collects **anonymous** usage statistics to help improve the tool.
 
+<div class="grid" markdown>
+
+!!! success "What we collect"
+    - Command name (e.g., `pumbaa chat`)
+    - Pumbaa version
+    - OS / Architecture
+    - Execution duration
+    - Success/Failure status
+
+!!! danger "What we DO NOT collect"
+    - Argument or flag values
+    - File paths or API keys
+    - File contents
+    - Personal information
+
+</div>
+
+### Opt-Out
+
+=== "Config Command"
+
+    ```bash
+    pumbaa config set telemetry_enabled false
+    ```
+
+=== "Environment Variable"
+
+    ```bash
+    export PUMBAA_TELEMETRY_ENABLED=false
+    ```
+
+---
+
+## :books: Next Steps
+
+- [:material-play: Quick Start](quick-start.md) — Run your first commands
+- [:material-view-dashboard: Dashboard](../features/dashboard.md) — Interactive workflow management
+- [:material-robot: Chat Agent](../features/chat.md) — Query with AI

@@ -2,68 +2,83 @@
 
 List and filter workflows via CLI.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa workflow query [FLAGS]
 ```
 
-## Flags
+---
+
+## :flags: Flags
 
 | Flag | Alias | Description |
-|------|-------|-------------|
+|------|:-----:|-------------|
 | `--name` | `-n` | Filter by workflow name |
 | `--status` | `-s` | Filter by status (repeatable) |
 | `--limit` | `-l` | Max results (default: 20) |
 
-## Examples
+---
 
-### List All
+## :bulb: Examples
 
-```bash
-pumbaa workflow query
-```
+=== "List All"
 
-### Filter by Status
+    ```bash
+    pumbaa workflow query
+    ```
 
-```bash
-pumbaa workflow query --status Running
-pumbaa workflow query --status Failed --status Aborting
-```
+=== "By Status"
 
-### Filter by Name
+    ```bash
+    pumbaa workflow query --status Running
+    pumbaa workflow query --status Failed --status Aborting
+    ```
 
-```bash
-pumbaa workflow query --name variant-calling
-```
+=== "By Name"
 
-### Combined
+    ```bash
+    pumbaa workflow query --name variant-calling
+    ```
 
-```bash
-pumbaa workflow query \
-  --name pipeline \
-  --status Succeeded \
-  --limit 10
-```
+=== "Combined"
 
-## Status Values
+    ```bash
+    pumbaa workflow query \
+      --name pipeline \
+      --status Succeeded \
+      --limit 10
+    ```
 
-- `Submitted`
-- `Running`
-- `Succeeded`
-- `Failed`
-- `Aborting`
-- `Aborted`
+---
 
-## Output
+## :traffic_light: Status Values
+
+| Status | Description |
+|:------:|-------------|
+| `Submitted` | Pending execution |
+| `Running` | Currently executing |
+| `Succeeded` | Completed successfully |
+| `Failed` | Execution failed |
+| `Aborting` | Being aborted |
+| `Aborted` | Aborted by user |
+
+---
+
+## :page_facing_up: Output
 
 Displays table with:
-- ID (first 8 chars)
-- Name
-- Status (color-coded)
-- Submission time
 
-## See Also
+- **ID** — First 8 chars
+- **Name** — Workflow name
+- **Status** — Color-coded
+- **Submitted** — Timestamp
 
-- [Dashboard](dashboard.md) - Interactive query
-- [Metadata](metadata.md) - Detailed workflow info
+---
+
+## :books: See Also
+
+- [:material-view-dashboard: Dashboard](dashboard.md) — Interactive query
+- [:material-file-document: Metadata](metadata.md) — Detailed workflow info

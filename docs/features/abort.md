@@ -2,32 +2,46 @@
 
 Stop running workflows.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa workflow abort <workflow-id>
 ```
 
-## Examples
+---
+
+## :bulb: Example
 
 ```bash
 pumbaa workflow abort abc12345-6789-0def-ghij-klmnopqrstuv
 ```
 
-## Behavior
+---
 
-- Stops running tasks
-- Sets status to `Aborting` then `Aborted`
-- Doesn't clean up intermediate files
-- Irreversible operation
+## :warning: Behavior
 
-## From Dashboard
+!!! warning "Irreversible"
+    Aborting a workflow cannot be undone.
 
-1. Navigate to workflow
-2. Press `a`
+| Action | Description |
+|--------|-------------|
+| :material-stop: Stop tasks | Running tasks are terminated |
+| :material-sync: Status change | `Running` → `Aborting` → `Aborted` |
+| :material-folder: Intermediate files | **Not cleaned up** |
+
+---
+
+## :keyboard: From Dashboard
+
+1. Navigate to workflow with ++up++ / ++down++
+2. Press ++a++
 3. Confirm action
 
-## See Also
+---
 
-- [Dashboard](dashboard.md)
-- [Query](query.md)
+## :books: See Also
+
+- [:material-view-dashboard: Dashboard](dashboard.md)
+- [:material-magnify: Query](query.md)

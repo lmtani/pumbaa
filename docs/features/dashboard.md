@@ -2,52 +2,69 @@
 
 Interactive TUI for monitoring Cromwell workflows.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa dashboard
 ```
 
-## Interface Layout
+---
 
-
-![Dashboard Screenshot](../assets/dashboard.png)
-
-
-## Keys
+## :keyboard: Controls
 
 | Key | Action |
-|-----|--------|
-| `↑/↓` or `k/j` | Navigate |
-| `Enter` | Open debug view |
-| `a` | Abort workflow |
-| `s` | Filter by status |
-| `/` | Filter by name |
-| `l` | Filter by label |
-| `r` | Refresh |
-| `Ctrl+X` | Clear filters |
-| `q` | Quit |
+|:---:|--------|
+| ++up++ / ++down++ | Navigate |
+| ++enter++ | Open debug view |
+| ++a++ | Abort workflow |
+| ++s++ | Filter by status |
+| ++slash++ | Filter by name |
+| ++l++ | Filter by label |
+| ++r++ | Refresh |
+| ++ctrl+x++ | Clear filters |
+| ++q++ | Quit |
 
-## Features
+---
 
-- Filter by status (All/Running/Failed/Succeeded)
-- Filter by name or labels
-- Press `Enter` to debug selected workflow
-- Press `a` to abort (with confirmation)
+## :sparkles: Features
 
-![Dashboard Screenshot](../assets/dashboard-filter.png)
+<div class="grid cards" markdown>
 
+-   :material-filter: **Status Filter**
+    
+    Filter by All / Running / Failed / Succeeded
 
+-   :material-text-search: **Name Filter**
+    
+    Press ++slash++ to search by workflow name
 
-## Workflow Columns
+-   :material-label: **Label Filter**
+    
+    Press ++l++ to filter by workflow labels
 
-- **ID** - First 8 chars of workflow ID
-- **Name** - From WDL workflow definition
-- **Status** - Color-coded (Running/Succeeded/Failed/etc)
-- **Submitted** - Submission timestamp
-- **Labels** - Submitted labels
+-   :material-cancel: **Abort**
+    
+    Press ++a++ to abort with confirmation
 
-## See Also
+</div>
 
-- [Debug View](debug.md)
-- [Query](query.md)
+---
+
+## :page_facing_up: Workflow Columns
+
+| Column | Description |
+|--------|-------------|
+| **ID** | First 8 chars of workflow UUID |
+| **Name** | From WDL workflow definition |
+| **Status** | Color-coded (Running/Succeeded/Failed) |
+| **Submitted** | Submission timestamp |
+| **Labels** | User-submitted labels |
+
+---
+
+## :books: See Also
+
+- [:material-bug: Debug View](debug.md)
+- [:material-magnify: Query](query.md)

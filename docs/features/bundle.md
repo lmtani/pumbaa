@@ -2,29 +2,45 @@
 
 Package WDL workflows with dependencies into ZIP files.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa bundle create --workflow FILE --output FILE
 ```
 
-## Flags
+---
+
+## :flags: Flags
 
 | Flag | Alias | Required | Description |
-|------|-------|----------|-------------|
-| `--workflow` | `-w` | Yes | Main WDL file |
-| `--output` | `-o` | Yes | Output ZIP path |
+|------|:-----:|:--------:|-------------|
+| `--workflow` | `-w` | :white_check_mark: | Main WDL file |
+| `--output` | `-o` | :white_check_mark: | Output ZIP path |
 
-## How It Works
+---
+
+## :gear: How It Works
+
+```mermaid
+flowchart LR
+    A[Parse main WDL] --> B[Find imports]
+    B --> C[Resolve paths]
+    C --> D[Package to ZIP]
+```
 
 1. Parses main WDL file
 2. Finds all `import` statements
 3. Resolves import paths
 4. Packages all files into ZIP
 
-## Example
+---
+
+## :bulb: Example
 
 Given workflow structure:
+
 ```
 pipeline.wdl
 tasks/
@@ -32,20 +48,24 @@ tasks/
   calling.wdl
 ```
 
-Create bundle:
-```bash
-pumbaa bundle create \
-  --workflow pipeline.wdl \
-  --output bundle.zip
-```
+=== "Create Bundle"
 
-Submit with bundle:
-```bash
-pumbaa workflow submit \
-  --workflow pipeline.wdl \
-  --dependencies bundle.zip
-```
+    ```bash
+    pumbaa bundle create \
+      --workflow pipeline.wdl \
+      --output bundle.zip
+    ```
 
-## See Also
+=== "Submit with Bundle"
 
-- [Submit](submit.md) - Use bundles with submission
+    ```bash
+    pumbaa workflow submit \
+      --workflow pipeline.wdl \
+      --dependencies bundle.zip
+    ```
+
+---
+
+## :books: See Also
+
+- [:material-upload: Submit](submit.md) — Use bundles with submission

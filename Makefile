@@ -166,6 +166,18 @@ release-check:
 	goreleaser check
 	@echo "Configuration is valid"
 
+## Documentation
+
+# Serve documentation locally with live reload
+docs-serve:
+	@echo "Starting MkDocs development server..."
+	mkdocs serve
+
+# Build documentation for production
+docs-build:
+	@echo "Building documentation..."
+	mkdocs build
+
 ## Help
 
 help:

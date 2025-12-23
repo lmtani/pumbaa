@@ -2,50 +2,59 @@
 
 Submit WDL workflows to Cromwell.
 
-## Usage
+---
+
+## :rocket: Usage
 
 ```bash
 pumbaa workflow submit --workflow FILE [OPTIONS]
 ```
 
-## Flags
+---
+
+## :flags: Flags
 
 | Flag | Alias | Required | Description |
-|------|-------|----------|-------------|
-| `--workflow` | `-w` | Yes | WDL workflow file |
-| `--inputs` | `-i` | No | Inputs JSON file |
-| `--options` | `-o` | No | Options JSON file |
-| `--dependencies` | `-d` | No | Dependencies ZIP file |
-| `--label` | `-l` | No | Labels (format: `key=value`) |
+|------|:-----:|:--------:|-------------|
+| `--workflow` | `-w` | :white_check_mark: | WDL workflow file |
+| `--inputs` | `-i` | | Inputs JSON file |
+| `--options` | `-o` | | Options JSON file |
+| `--dependencies` | `-d` | | Dependencies ZIP file |
+| `--label` | `-l` | | Labels (`key=value`) |
 
-## Examples
+---
 
-### Basic
+## :bulb: Examples
 
-```bash
-pumbaa workflow submit --workflow hello.wdl
-```
+=== "Basic"
 
-### With Inputs
+    ```bash
+    pumbaa workflow submit --workflow hello.wdl
+    ```
 
-```bash
-pumbaa workflow submit \
-  --workflow pipeline.wdl \
-  --inputs inputs.json
-```
+=== "With Inputs"
 
-### Complete
+    ```bash
+    pumbaa workflow submit \
+      --workflow pipeline.wdl \
+      --inputs inputs.json
+    ```
 
-```bash
-pumbaa workflow submit \
-  --workflow analysis.wdl \
-  --inputs inputs.json \
-  --options options.json \
-  --dependencies deps.zip \
-  --label sample=S001 --label env=prod
-```
+=== "Complete"
 
-## Input File
+    ```bash
+    pumbaa workflow submit \
+      --workflow analysis.wdl \
+      --inputs inputs.json \
+      --options options.json \
+      --dependencies deps.zip \
+      --label sample=S001 \
+      --label env=prod
+    ```
+
+---
+
+## :page_facing_up: Input File
 
 JSON format matching WDL inputs:
 
@@ -57,7 +66,9 @@ JSON format matching WDL inputs:
 }
 ```
 
-## Options File
+---
+
+## :gear: Options File
 
 Configure workflow execution:
 
@@ -70,26 +81,31 @@ Configure workflow execution:
 }
 ```
 
-Common options:
-- `final_workflow_outputs_dir` - Output location
-- `delete_intermediate_output_files` - Cleanup
-- `write_to_cache`/`read_from_cache` - Call caching
+| Option | Description |
+|--------|-------------|
+| `final_workflow_outputs_dir` | Output location |
+| `delete_intermediate_output_files` | Cleanup intermediates |
+| `write_to_cache` / `read_from_cache` | Call caching |
 
-## Dependencies
+---
+
+## :package: Dependencies
 
 For workflows with imports, create ZIP with imported files:
 
 ```bash
-# Using pumbaa
 pumbaa bundle create --workflow workflow.wdl --output deps.zip
 ```
 
-Submit with:
+Then submit:
+
 ```bash
 pumbaa workflow submit --workflow workflow.wdl --dependencies deps.zip
 ```
 
-## Labels
+---
+
+## :label: Labels
 
 Organize workflows with labels:
 
@@ -101,11 +117,13 @@ pumbaa workflow submit \
   --label user=$USER
 ```
 
-Filter by labels in dashboard (press `l`).
+!!! tip "Filter in Dashboard"
+    Press ++l++ in dashboard to filter by labels.
 
-## Response
+---
 
-Success:
+## :white_check_mark: Response
+
 ```json
 {
   "id": "abc12345-6789-0def-ghij-klmnopqrstuv",
@@ -114,14 +132,17 @@ Success:
 ```
 
 Use the ID to monitor:
+
 ```bash
-pumbaa dashboard                        # Interactive
-pumbaa workflow debug <id>             # Debug view
-pumbaa workflow query --id <id>        # CLI query
+pumbaa dashboard                    # Interactive
+pumbaa workflow debug <id>          # Debug view  
+pumbaa workflow query --id <id>     # CLI query
 ```
 
-## See Also
+---
 
-- [Bundle Creation](bundle.md)
-- [Dashboard](dashboard.md)
-- [Debug View](debug.md)
+## :books: See Also
+
+- [:material-package: Bundle Creation](bundle.md)
+- [:material-view-dashboard: Dashboard](dashboard.md)
+- [:material-bug: Debug View](debug.md)

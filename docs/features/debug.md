@@ -2,68 +2,86 @@
 
 Inspect workflow execution tree and call-level details.
 
-Note: the information shown depends on a working connection to your Cromwell server (set via `--host` or `CROMWELL_HOST`).
+!!! note "Requirement"
+    Requires a working connection to your Cromwell server (set via `--host` or `CROMWELL_HOST`).
 
-![Debug View Screenshot](../assets/debug.png)
+---
 
-## Usage
+## :rocket: Usage
 
-From dashboard: Press `Enter` on any workflow
+=== "From Dashboard"
 
-CLI:
-```bash
-pumbaa workflow debug <workflow-id>
-```
+    Press ++enter++ on any workflow
 
-## Keys
+=== "CLI"
+
+    ```bash
+    pumbaa workflow debug <workflow-id>
+    ```
+
+---
+
+## :keyboard: Navigation
 
 | Key | Action |
-|-----|--------|
-| `↑/↓` or `k/j` | Navigate tree |
-| `→/←` or `l/h` | Expand/collapse |
-| `Enter` or `Space` | Toggle expand |
-| `d` | Show call details |
-| `o` | Show logs |
-| `q` or `Esc` | Back |
+|:---:|--------|
+| ++up++ / ++down++ | Navigate tree |
+| ++right++ / ++left++ | Expand / Collapse |
+| ++enter++ | Toggle expand |
+| ++d++ | Show call details |
+| ++o++ | Show logs |
+| ++q++ | Back |
 
-## Quick actions (1–5)
+---
+
+## :zap: Quick Actions (1–5)
 
 The details panel exposes quick actions for the selected call:
 
-- `1` — Inputs: open a modal showing call inputs.
-- `2` — Outputs: open a modal showing call outputs.
-- `3` — Command: open a modal showing the command executed by the call.
-- `4` — Logs: switch to the Logs view for the selected call. Logs can be loaded from Google Cloud Storage if your environment has Google Application Default Credentials configured (or from local paths when available).
-- `5` — Efficiency: view resource efficiency metrics (CPU/memory usage vs. requested) for the selected call.
+| Key | Action | Description |
+|:---:|--------|-------------|
+| ++1++ | **Inputs** | Open modal with call inputs |
+| ++2++ | **Outputs** | Open modal with call outputs |
+| ++3++ | **Command** | View executed command |
+| ++4++ | **Logs** | Load logs (from GCS or local) |
+| ++5++ | **Efficiency** | Resource usage metrics |
 
-In the modals you can press `y` to copy the displayed content to the system clipboard (works when the host environment provides a clipboard tool such as `xclip`, `xsel`, or `wl-copy`).
+!!! tip "Copy to Clipboard"
+    In modals, press ++y++ to copy content to clipboard.
 
+---
 
-## Timing
+## :stopwatch: Timing
 
-Press `t` to open the timeline (global timeline) for the selected workflow or subworkflow. To inspect a subworkflow's timing, navigate to the subworkflow in the tree and press `t` — Pumbaa will show a timeline for that workflow. Timing and task durations update as you fetch or expand subworkflows (again, this requires the Cromwell server to be reachable).
+Press ++t++ to open the timeline for the selected workflow or subworkflow.
 
-![Debug View Screenshot](../assets/timing.png)
+- Navigate to a subworkflow in the tree and press ++t++ to see its timeline
+- Timing updates as you expand subworkflows
 
+---
 
-## Efficiency
+## :chart_with_upwards_trend: Efficiency
 
-The Efficiency view (action `5`) displays resource usage metrics for the selected call, comparing actual usage against allocated resources.
+The Efficiency view (action ++5++) displays resource usage metrics:
 
 !!! warning "Requirement"
-    This feature requires the workflow to have been submitted with the **monitoring script** provided by Pumbaa. See [Resource Monitoring Script](resource-monitoring.md) for setup instructions.
+    This feature requires the **monitoring script**. See [Resource Monitoring](resource-monitoring.md).
 
 **Displayed metrics:**
 
-- Peak CPU usage vs. allocated cores
-- Peak memory usage vs. allocated memory
-- Resource efficiency percentage
+| Metric | Description |
+|--------|-------------|
+| Peak CPU | Usage vs. allocated cores |
+| Peak Memory | Usage vs. allocated memory |
+| Efficiency % | Resource utilization percentage |
 
-This helps identify over-provisioned tasks where resources can be reduced to save costs.
+!!! tip "Cost Optimization"
+    Identify over-provisioned tasks where resources can be reduced.
 
+---
 
-## See Also
+## :books: See Also
 
-- [Dashboard](dashboard.md)
-- [Metadata](metadata.md)
-- [Resource Monitoring Script](resource-monitoring.md)
+- [:material-view-dashboard: Dashboard](dashboard.md)
+- [:material-file-document: Metadata](metadata.md)
+- [:material-monitor: Resource Monitoring](resource-monitoring.md)

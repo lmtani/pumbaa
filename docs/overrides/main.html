@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+{% endblock %}

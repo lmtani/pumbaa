@@ -7,20 +7,21 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  custom_dir: docs/overrides
   icon:
     repo: fontawesome/brands/github
   palette:
     # Light mode
     - scheme: default
-      primary: deep-orange
-      accent: orange
+      primary: custom
+      accent: cyan
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     # Dark mode
     - scheme: slate
-      primary: deep-orange
-      accent: orange
+      primary: custom
+      accent: cyan
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -60,6 +61,7 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.keys
   - pymdownx.tabbed:
       alternate_style: true
   - tables
