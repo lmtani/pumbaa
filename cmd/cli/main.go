@@ -66,6 +66,7 @@ func main() {
 		cont.DashboardHandler.Command(),
 		cont.ChatHandler.Command(),
 		cont.AgentTestHandler.Command(),
+		cont.ConfigHandler.Command(),
 	}
 
 	if err := app.Run(os.Args); err != nil {
