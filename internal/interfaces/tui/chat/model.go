@@ -390,12 +390,24 @@ func (m *Model) View() string {
 func (m Model) renderHeader() string {
 	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
 
+	// LLM provider badge
+	llmBadge := ""
+	if m.llm != nil {
+		llmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#87CEEB")).
+			Padding(0, 1)
+		llmBadge = llmStyle.Render("🤖 " + m.llm.Name())
+	}
+
 	sessionInfo := ""
 	if m.session != nil {
 		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", m.session.ID()))
 	}
 
-	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", sessionInfo)
+	// Layout: Title | LLM Badge | Session (right aligned)
+	leftContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", llmBadge)
+	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
 
 	return common.HeaderStyle.
 		Width(m.width - 2).
