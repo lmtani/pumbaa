@@ -133,7 +133,7 @@ type clearStatusMsg struct{}
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
 func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
 	ta := textarea.New()
-	ta.Placeholder = "Digite sua mensagem..."
+	ta.Placeholder = "Type your message..."
 	ta.Focus()
 	ta.Prompt = ""
 	ta.CharLimit = 2000
@@ -343,7 +343,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				paramsStr = ", " + strings.Join(parts, ", ")
 			}
-			m.toolNotification = fmt.Sprintf("%s (action=%s%s)", msg.ToolName, msg.Action, paramsStr)
+			m.toolNotification = fmt.Sprintf("%s%s", msg.Action, paramsStr)
 		} else {
 			m.toolNotification = msg.ToolName
 		}
@@ -355,9 +355,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboardCopiedMsg:
 		if msg.success {
-			m.statusMessage = "✓ Copiado!"
+			m.statusMessage = "✓ Copied!"
 		} else {
-			m.statusMessage = fmt.Sprintf("✗ Erro: %v", msg.err)
+			m.statusMessage = "✗ Copy failed"
 		}
 		m.statusExpires = time.Now().Add(2 * time.Second)
 		return m, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
@@ -414,9 +414,9 @@ func (m Model) renderInput() string {
 	if m.loading {
 		var loadingText string
 		if m.toolNotification != "" {
-			loadingText = fmt.Sprintf("%s 🔧 Executando: %s", m.spinner.View(), m.toolNotification)
+			loadingText = fmt.Sprintf("%s 🔧 Executing: %s", m.spinner.View(), m.toolNotification)
 		} else {
-			loadingText = fmt.Sprintf("%s Processando...", m.spinner.View())
+			loadingText = fmt.Sprintf("%s Thinking...", m.spinner.View())
 		}
 		inputBox = inputStyle.
 			Width(m.width - 4).
@@ -459,25 +459,25 @@ func (m Model) renderFooter() string {
 		help = fmt.Sprintf(
 			"%s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("↑↓"),
-			common.DescStyle.Render("navegar"),
+			common.DescStyle.Render("navigate"),
 			common.KeyStyle.Render("y"),
-			common.DescStyle.Render("copiar"),
+			common.DescStyle.Render("copy"),
 			common.KeyStyle.Render("tab"),
-			common.DescStyle.Render("digitar"),
+			common.DescStyle.Render("type"),
 			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("sair"),
+			common.DescStyle.Render("exit"),
 		)
 	} else {
 		help = fmt.Sprintf(
 			"%s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
-			common.DescStyle.Render("enviar"),
+			common.DescStyle.Render("send"),
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),
-			common.DescStyle.Render("navegar msgs"),
+			common.DescStyle.Render("navigate msgs"),
 			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("sair"),
+			common.DescStyle.Render("exit"),
 		)
 	}
 
@@ -493,7 +493,7 @@ func (m Model) renderFooter() string {
 
 func (m Model) renderMessages() string {
 	if m.msgs == nil || len(*m.msgs) == 0 {
-		return common.MutedStyle.Render("Bem-vindo ao Pumbaa Chat!\n\nDigite sua mensagem e pressione Ctrl+D para enviar.")
+		return common.MutedStyle.Render("Welcome to Pumbaa Chat!\n\nType your message and press Ctrl+D to send.")
 	}
 
 	var sb strings.Builder
@@ -514,13 +514,13 @@ func (m Model) renderMessages() string {
 		switch msg.Role {
 		case "user":
 			roleStyle = userStyle
-			roleName = "Você"
+			roleName = "You"
 		case "agent":
 			roleStyle = agentStyle
 			roleName = "Pumbaa"
 		default:
 			roleStyle = errorStyle
-			roleName = "Erro"
+			roleName = "Error"
 		}
 
 		// Highlight if selected
@@ -795,8 +795,8 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		// Max turns reached
 		var summary strings.Builder
-		summary.WriteString("⚠️ Atingi o limite de iterações de ferramentas.\n\n")
-		summary.WriteString("**Informações coletadas até agora:**\n")
+		summary.WriteString("⚠️ I reached the tool iteration limit.\n\n")
+		summary.WriteString("**Information collected so far:**\n")
 
 		toolResultCount := 0
 		for _, content := range *m.history {
@@ -806,10 +806,10 @@ func (m Model) generateResponse(input string) tea.Cmd {
 		}
 
 		if toolResultCount > 0 {
-			summary.WriteString(fmt.Sprintf("- Executei %d chamadas de ferramentas\n", toolResultCount))
+			summary.WriteString(fmt.Sprintf("- Executed %d tool calls\n", toolResultCount))
 		}
 
-		summary.WriteString("\nSe precisar de mais informações, por favor faça uma pergunta mais específica ou peça para eu continuar de onde parei.")
+		summary.WriteString("\nIf you need more information, please ask a more specific question or ask me to continue from where I left off.")
 
 		return ResponseMsg{Content: summary.String()}
 	}
