@@ -29,11 +29,13 @@ pumbaa dashboard
 Interactive AI assistant for querying workflows and downloading files:
 
 ```bash
-# Using Ollama (default)
-pumbaa chat
+# Quick setup (interactive wizard)
+pumbaa config init
 
-# Using Vertex AI
+# Or run directly with a provider
+pumbaa chat --provider gemini --gemini-api-key <API_KEY>
 pumbaa chat --provider vertex --vertex-project <PROJECT_ID>
+pumbaa chat --provider ollama  # default, local
 ```
 
 **Capabilities:**
@@ -53,6 +55,8 @@ pumbaa chat --session <SESSION_ID>
 **Controls:**
 - `Ctrl+D` - Send message
 - `↑↓` - Scroll messages
+- `Tab` - Navigate between messages
+- `y` - Copy selected message
 - `Esc` - Exit
 
 ### Submit Workflow
@@ -75,36 +79,44 @@ pumbaa bundle --workflow main.wdl --output <name>
 
 ## Configuration
 
-### Cromwell Server
+### Quick Setup (Recommended)
+
+Run the interactive configuration wizard:
 
 ```bash
-# Via flag
-pumbaa --host http://cromwell:8000 dashboard
+pumbaa config init
+```
 
-# Via environment variable
+This saves your settings to `~/.pumbaa/config.yaml`.
+
+### Manual Configuration
+
+**Cromwell Server:**
+```bash
+pumbaa config set cromwell_host http://cromwell:8000
+# Or via environment variable
 export CROMWELL_HOST=http://cromwell:8000
 ```
 
-### Chat LLM Providers
+**Chat LLM Providers:**
 
-**Ollama (default):**
 ```bash
-export OLLAMA_HOST=http://localhost:11434
-export OLLAMA_MODEL=llama3.2:3b
+# Gemini API (recommended for most users)
+pumbaa config set llm_provider gemini
+pumbaa config set gemini_api_key <your-api-key>
+
+# Ollama (local, free)
+pumbaa config set llm_provider ollama
+pumbaa config set ollama_host http://localhost:11434
+
+# Vertex AI (for GCP users)
+pumbaa config set llm_provider vertex
+pumbaa config set vertex_project <project-id>
 ```
 
-**Vertex AI:**
+**View current configuration:**
 ```bash
-export VERTEX_PROJECT=<project-id>
-export VERTEX_LOCATION=us-central1
-export VERTEX_MODEL=gemini-2.0-flash
-```
-
-### Session Persistence
-
-Sessions are stored in SQLite:
-```bash
-export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db  # default
+pumbaa config list
 ```
 
 ## Contributing

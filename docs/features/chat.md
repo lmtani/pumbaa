@@ -2,14 +2,27 @@
 
 Interactive AI assistant for querying Cromwell workflows and reading files via natural language.
 
-## Usage
+## Quick Start
 
 ```bash
-# Using Ollama (default)
-pumbaa chat
+# Run the configuration wizard (recommended for first time)
+pumbaa config init
 
-# Using Vertex AI
+# Or start chatting directly
+pumbaa chat
+```
+
+## Usage with Different Providers
+
+```bash
+# Gemini API (requires API key from https://aistudio.google.com/apikey)
+pumbaa chat --provider gemini --gemini-api-key <API_KEY>
+
+# Vertex AI (requires GCP project)
 pumbaa chat --provider vertex --vertex-project <PROJECT_ID>
+
+# Ollama (local, free - default)
+pumbaa chat --provider ollama
 ```
 
 ## Capabilities
@@ -40,21 +53,40 @@ pumbaa chat --session <SESSION_ID>
 | Key | Action |
 |-----|--------|
 | `Ctrl+D` | Send message |
-| `↑↓` | Scroll messages |
+| `↑↓` | Scroll messages (when typing) |
+| `Tab` | Switch to message navigation mode |
+| `↑↓` | Navigate messages (in navigation mode) |
+| `y` | Copy selected message to clipboard |
+| `Tab` | Return to typing mode |
 | `Esc` | Exit |
 
 ## Configuration
 
-### Ollama (default)
+### Using Config Wizard (Recommended)
 
 ```bash
+pumbaa config init
+```
+
+### Using Environment Variables
+
+**Gemini API:**
+```bash
+export PUMBAA_LLM_PROVIDER=gemini
+export GEMINI_API_KEY=<your-api-key>
+export GEMINI_MODEL=gemini-2.0-flash
+```
+
+**Ollama (default):**
+```bash
+export PUMBAA_LLM_PROVIDER=ollama
 export OLLAMA_HOST=http://localhost:11434
 export OLLAMA_MODEL=llama3.2:3b
 ```
 
-### Vertex AI
-
+**Vertex AI:**
 ```bash
+export PUMBAA_LLM_PROVIDER=vertex
 export VERTEX_PROJECT=<project-id>
 export VERTEX_LOCATION=us-central1
 export VERTEX_MODEL=gemini-2.0-flash
@@ -72,3 +104,5 @@ export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db
 - "What is the status of workflow abc-123?"
 - "Show me the outputs of workflow xyz-456"
 - "Read gs://bucket/path/to/file.txt"
+- "Query last 5 failed workflows"
+
