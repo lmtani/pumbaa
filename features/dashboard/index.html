@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -559,21 +574,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#interface-layout" class="md-nav__link">
+  <a href="#controls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interface Layout
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Keys
+        Controls
       
     </span>
   </a>
@@ -890,21 +894,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#interface-layout" class="md-nav__link">
+  <a href="#controls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interface Layout
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Keys
+        Controls
       
     </span>
   </a>
@@ -966,78 +959,117 @@
 
 <h1 id="dashboard">Dashboard</h1>
 <p>Interactive TUI for monitoring Cromwell workflows.</p>
-<h2 id="usage">Usage</h2>
+<hr />
+<h2 id="usage"><img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /> Usage</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>dashboard
 </span></code></pre></div>
-<h2 id="interface-layout">Interface Layout</h2>
-<p><img alt="Dashboard Screenshot" src="../../assets/dashboard.png" /></p>
-<h2 id="keys">Keys</h2>
+<hr />
+<h2 id="controls"><img alt="⌨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2328.svg" title=":keyboard:" /> Controls</h2>
 <table>
 <thead>
 <tr>
-<th>Key</th>
+<th style="text-align: center;">Key</th>
 <th>Action</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>↑/↓</code> or <code>k/j</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-up">Up</kbd></span> / <span class="keys"><kbd class="key-arrow-down">Down</kbd></span></td>
 <td>Navigate</td>
 </tr>
 <tr>
-<td><code>Enter</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-enter">Enter</kbd></span></td>
 <td>Open debug view</td>
 </tr>
 <tr>
-<td><code>a</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-a">A</kbd></span></td>
 <td>Abort workflow</td>
 </tr>
 <tr>
-<td><code>s</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-s">S</kbd></span></td>
 <td>Filter by status</td>
 </tr>
 <tr>
-<td><code>/</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-slash">/</kbd></span></td>
 <td>Filter by name</td>
 </tr>
 <tr>
-<td><code>l</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-l">L</kbd></span></td>
 <td>Filter by label</td>
 </tr>
 <tr>
-<td><code>r</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-r">R</kbd></span></td>
 <td>Refresh</td>
 </tr>
 <tr>
-<td><code>Ctrl+X</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-x">X</kbd></span></td>
 <td>Clear filters</td>
 </tr>
 <tr>
-<td><code>q</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-q">Q</kbd></span></td>
 <td>Quit</td>
 </tr>
 </tbody>
 </table>
-<h2 id="features">Features</h2>
+<hr />
+<h2 id="features"><img alt="✨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2728.svg" title=":sparkles:" /> Features</h2>
+<div class="grid cards">
 <ul>
-<li>Filter by status (All/Running/Failed/Succeeded)</li>
-<li>Filter by name or labels</li>
-<li>Press <code>Enter</code> to debug selected workflow</li>
-<li>Press <code>a</code> to abort (with confirmation)</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 12v7.88c.04.3-.06.62-.29.83a.996.996 0 0 1-1.41 0l-2.01-2.01a.99.99 0 0 1-.29-.83V12h-.03L4.21 4.62a1 1 0 0 1 .17-1.4c.19-.14.4-.22.62-.22h14c.22 0 .43.08.62.22a1 1 0 0 1 .17 1.4L14.03 12z"/></svg></span> <strong>Status Filter</strong></p>
+<p>Filter by All / Running / Failed / Succeeded</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19.31 18.9 3.08 3.1L21 23.39l-3.12-3.07c-.69.43-1.51.68-2.38.68-2.5 0-4.5-2-4.5-4.5s2-4.5 4.5-4.5 4.5 2 4.5 4.5c0 .88-.25 1.71-.69 2.4m-3.81.1a2.5 2.5 0 0 0 0-5 2.5 2.5 0 0 0 0 5M21 4v2H3V4zM3 16v-2h6v2zm0-5V9h18v2h-2.03c-1.01-.63-2.2-1-3.47-1s-2.46.37-3.47 1z"/></svg></span> <strong>Name Filter</strong></p>
+<p>Press <span class="keys"><kbd class="key-slash">/</kbd></span> to search by workflow name</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11c.67 0 1.27-.34 1.63-.85L22 12z"/></svg></span> <strong>Label Filter</strong></p>
+<p>Press <span class="keys"><kbd class="key-l">L</kbd></span> to filter by workflow labels</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2m0 2c-1.9 0-3.6.6-4.9 1.7l11.2 11.2c1-1.4 1.7-3.1 1.7-4.9 0-4.4-3.6-8-8-8m4.9 14.3L5.7 7.1C4.6 8.4 4 10.1 4 12c0 4.4 3.6 8 8 8 1.9 0 3.6-.6 4.9-1.7"/></svg></span> <strong>Abort</strong></p>
+<p>Press <span class="keys"><kbd class="key-a">A</kbd></span> to abort with confirmation</p>
+</li>
 </ul>
-<p><img alt="Dashboard Screenshot" src="../../assets/dashboard-filter.png" /></p>
-<h2 id="workflow-columns">Workflow Columns</h2>
+</div>
+<hr />
+<h2 id="workflow-columns"><img alt="📄" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4c4.svg" title=":page_facing_up:" /> Workflow Columns</h2>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ID</strong></td>
+<td>First 8 chars of workflow UUID</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>From WDL workflow definition</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Color-coded (Running/Succeeded/Failed)</td>
+</tr>
+<tr>
+<td><strong>Submitted</strong></td>
+<td>Submission timestamp</td>
+</tr>
+<tr>
+<td><strong>Labels</strong></td>
+<td>User-submitted labels</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="see-also"><img alt="📚" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4da.svg" title=":books:" /> See Also</h2>
 <ul>
-<li><strong>ID</strong> - First 8 chars of workflow ID</li>
-<li><strong>Name</strong> - From WDL workflow definition</li>
-<li><strong>Status</strong> - Color-coded (Running/Succeeded/Failed/etc)</li>
-<li><strong>Submitted</strong> - Submission timestamp</li>
-<li><strong>Labels</strong> - Submitted labels</li>
-</ul>
-<h2 id="see-also">See Also</h2>
-<ul>
-<li><a href="../debug/">Debug View</a></li>
-<li><a href="../query/">Query</a></li>
+<li><a href="../debug/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 12h-4v-2h4m0 6h-4v-2h4m6-6h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6 6 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20z"/></svg></span> Debug View</a></li>
+<li><a href="../query/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg></span> Query</a></li>
 </ul>
 
 

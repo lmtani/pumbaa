@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -690,34 +705,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Examples">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#basic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#verbose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verbose
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -937,34 +924,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Examples">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#basic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#verbose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verbose
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1022,51 +981,113 @@
 
 <h1 id="metadata">Metadata</h1>
 <p>Get detailed workflow metadata.</p>
-<h2 id="usage">Usage</h2>
+<hr />
+<h2 id="usage"><img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /> Usage</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>&lt;workflow-id&gt;<span class="w"> </span><span class="o">[</span>FLAGS<span class="o">]</span>
 </span></code></pre></div>
-<h2 id="flags">Flags</h2>
+<hr />
+<h2 id="flags"><img alt="🎏" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f38f.svg" title=":flags:" /> Flags</h2>
 <table>
 <thead>
 <tr>
 <th>Flag</th>
-<th>Alias</th>
+<th style="text-align: center;">Alias</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>--verbose</code></td>
-<td><code>-v</code></td>
+<td style="text-align: center;"><code>-v</code></td>
 <td>Show detailed call information</td>
 </tr>
 </tbody>
 </table>
-<h2 id="examples">Examples</h2>
-<h3 id="basic">Basic</h3>
+<hr />
+<h2 id="examples"><img alt="💡" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4a1.svg" title=":bulb:" /> Examples</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Basic</label><label for="__tabbed_1_2">Verbose</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>abc12345
 </span></code></pre></div>
-<h3 id="verbose">Verbose</h3>
+</div>
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>abc12345<span class="w"> </span>--verbose
 </span></code></pre></div>
-<h2 id="output">Output</h2>
-<p>Shows:
-- Workflow ID and name
-- Status and timing
-- Inputs and outputs
-- Labels
-- Call details (with <code>--verbose</code>)</p>
-<h2 id="use-cases">Use Cases</h2>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="output"><img alt="📄" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4c4.svg" title=":page_facing_up:" /> Output</h2>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Workflow ID</td>
+<td>Full UUID</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>WDL workflow name</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Current state</td>
+</tr>
+<tr>
+<td>Timing</td>
+<td>Start/end timestamps</td>
+</tr>
+<tr>
+<td>Inputs</td>
+<td>Submitted inputs</td>
+</tr>
+<tr>
+<td>Outputs</td>
+<td>Generated outputs</td>
+</tr>
+<tr>
+<td>Labels</td>
+<td>User labels</td>
+</tr>
+<tr>
+<td>Calls</td>
+<td>Task execution details (with <code>-v</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="use-cases"><img alt="🔧" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f527.svg" title=":wrench:" /> Use Cases</h2>
+<div class="grid cards">
 <ul>
-<li>Debugging failed workflows</li>
-<li>Extracting outputs</li>
-<li>Checking execution times</li>
-<li>Verifying inputs</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 12h-4v-2h4m0 6h-4v-2h4m6-6h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6 6 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20z"/></svg></span> <strong>Debug Failures</strong></p>
+<p>Inspect failed task details</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span> <strong>Extract Outputs</strong></p>
+<p>Find output file paths</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19.03 7.39 1.42-1.42c-.45-.51-.9-.97-1.41-1.41L17.62 6c-1.55-1.26-3.5-2-5.62-2a9 9 0 0 0 0 18c5 0 9-4.03 9-9 0-2.12-.74-4.07-1.97-5.61M13 14h-2V7h2zm2-13H9v2h6z"/></svg></span> <strong>Check Timing</strong></p>
+<p>Review execution duration</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 7 9 19l-5.5-5.5 1.41-1.41L9 16.17 19.59 5.59z"/></svg></span> <strong>Verify Inputs</strong></p>
+<p>Confirm submitted parameters</p>
+</li>
 </ul>
-<h2 id="see-also">See Also</h2>
+</div>
+<hr />
+<h2 id="see-also"><img alt="📚" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4da.svg" title=":books:" /> See Also</h2>
 <ul>
-<li><a href="../debug/">Debug View</a> - Interactive metadata exploration</li>
-<li><a href="../query/">Query</a> - List workflows</li>
+<li><a href="../debug/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 12h-4v-2h4m0 6h-4v-2h4m6-6h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6 6 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20z"/></svg></span> Debug View</a> — Interactive exploration</li>
+<li><a href="../query/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg></span> Query</a> — List workflows</li>
 </ul>
 
 

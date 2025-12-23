@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -431,17 +446,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#telemetry" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Telemetry
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#quick-setup-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -461,10 +465,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Commands">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -472,11 +475,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -500,45 +498,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Cromwell Server">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-config-command" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Config Command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-environment-variable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Environment Variable
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-command-line-flag" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Command-Line Flag
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -550,45 +509,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Chat LLM Providers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#gemini-api-recommended-for-quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gemini API (Recommended for Quick Start)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ollama-local-free" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama (Local, Free)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vertex-ai-for-gcp-users" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Vertex AI (for GCP Users)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -599,6 +519,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Telemetry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Telemetry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opt-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Opt-Out
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -996,17 +944,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#telemetry" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Telemetry
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#quick-setup-recommended" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1026,10 +963,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Commands">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
+</li>
+      
+        <li class="md-nav__item">
   <a href="#available-keys" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1037,11 +973,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1065,45 +996,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Cromwell Server">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-config-command" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Config Command
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-environment-variable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Environment Variable
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-command-line-flag" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Command-Line Flag
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1115,45 +1007,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Chat LLM Providers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#gemini-api-recommended-for-quick-start" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gemini API (Recommended for Quick Start)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ollama-local-free" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama (Local, Free)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vertex-ai-for-gcp-users" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Vertex AI (for GCP Users)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1164,6 +1017,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Telemetry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Telemetry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opt-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Opt-Out
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1200,54 +1081,40 @@
 
 <h1 id="configuration">Configuration</h1>
 <p>Pumbaa can be configured through the interactive wizard, command-line flags, environment variables, or a configuration file.</p>
-<h3 id="telemetry">Telemetry</h3>
-<p>Pumbaa collects <strong>anonymous</strong> usage statistics to help us improve the tool. We use <a href="https://posthog.com">PostHog</a> to track command execution count, duration, and success/failure rates.</p>
-<p><strong>What we collect:</strong>
-- Command name (e.g., <code>pumbaa chat</code>)
-- Pumbaa Version
-- OS / Architecture
-- Execution duration
-- Success/Failure status</p>
-<p><strong>What we DO NOT collect:</strong>
-- Arguments or flags values (no file paths, no API keys)
-- File contents
-- Personal Information</p>
-<p><strong>How to Opt-Out:</strong>
-You can disable telemetry at any time:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>telemetry_enabled<span class="w"> </span><span class="nb">false</span>
+<hr />
+<h2 id="quick-setup-recommended"><img alt="⚡" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/26a1.svg" title=":zap:" /> Quick Setup (Recommended)</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
 </span></code></pre></div>
-<p>Or via environment variable:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_TELEMETRY_ENABLED</span><span class="o">=</span><span class="nb">false</span>
-</span></code></pre></div></p>
-<h2 id="quick-setup-recommended">Quick Setup (Recommended)</h2>
-<p>The easiest way to configure Pumbaa is using the interactive wizard:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
-</span></code></pre></div>
-<p>This will guide you through:</p>
+<p>This wizard guides you through:</p>
 <ol>
-<li>Choosing your LLM provider (Ollama, Gemini API, or Vertex AI)</li>
-<li>Provider-specific settings (API key, model, etc.)</li>
-<li>Cromwell server URL</li>
-<li>Optional WDL directory for chat context</li>
+<li><img alt="🤖" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f916.svg" title=":robot:" /> Choosing your LLM provider (Ollama, Gemini API, or Vertex AI)</li>
+<li><img alt="🔑" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f511.svg" title=":key:" /> Provider-specific settings (API key, model, etc.)</li>
+<li><img alt="🔗" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f517.svg" title=":link:" /> Cromwell server URL</li>
+<li><img alt="📁" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4c1.svg" title=":file_folder:" /> Optional WDL directory for chat context</li>
 </ol>
-<p>Configuration is saved to <code>~/.pumbaa/config.yaml</code>.</p>
-<h2 id="configuration-commands">Configuration Commands</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Interactive setup wizard</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Set individual values</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;key&gt;<span class="w"> </span>&lt;value&gt;
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Get a value</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>get<span class="w"> </span>&lt;key&gt;
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># List all configuration</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>list
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="c1"># Show config file path</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>path
+<div class="admonition info">
+<p class="admonition-title">Config Location</p>
+<p>Configuration is saved to <code>~/.pumbaa/config.yaml</code></p>
+</div>
+<hr />
+<h2 id="configuration-commands"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"/></svg></span> Configuration Commands</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Interactive setup wizard</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Set individual values</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>&lt;key&gt;<span class="w"> </span>&lt;value&gt;
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Get a value</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>get<span class="w"> </span>&lt;key&gt;
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># List all configuration</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>list
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Show config file path</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>path
 </span></code></pre></div>
-<h3 id="available-keys">Available Keys</h3>
+<hr />
+<h2 id="available-keys"><img alt="⚙" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2699.svg" title=":gear:" /> Available Keys</h2>
 <table>
 <thead>
 <tr>
@@ -1309,55 +1176,111 @@ You can disable telemetry at any time:</p>
 </tr>
 </tbody>
 </table>
-<h2 id="configuration-priority">Configuration Priority</h2>
+<hr />
+<h2 id="configuration-priority"><img alt="🔄" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f504.svg" title=":arrows_counterclockwise:" /> Configuration Priority</h2>
 <p>Settings are applied in this order (later overrides earlier):</p>
-<ol>
-<li>Default values</li>
-<li><strong>Config file</strong> (<code>~/.pumbaa/config.yaml</code>)</li>
-<li>Environment variables</li>
-<li>Command-line flags</li>
-</ol>
-<h2 id="cromwell-server">Cromwell Server</h2>
-<h3 id="using-config-command">Using Config Command</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://cromwell.example.com:8000
+<pre class="mermaid"><code>flowchart LR
+    A[Default Values] --&gt; B[Config File]
+    B --&gt; C[Environment Variables]
+    C --&gt; D[Command-line Flags]</code></pre>
+<hr />
+<h2 id="cromwell-server"><img alt="🔗" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f517.svg" title=":link:" /> Cromwell Server</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Config Command</label><label for="__tabbed_1_2">Environment Variable</label><label for="__tabbed_1_3">Command-line Flag</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://cromwell.example.com:8000
 </span></code></pre></div>
-<h3 id="using-environment-variable">Using Environment Variable</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://cromwell.example.com:8000
-</span></code></pre></div>
-<h3 id="using-command-line-flag">Using Command-Line Flag</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>--host<span class="w"> </span>http://cromwell.example.com:8000<span class="w"> </span>dashboard
-</span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Default value</p>
-<p>The default host is <code>http://localhost:8000</code>.</p>
 </div>
-<h2 id="chat-llm-providers">Chat LLM Providers</h2>
-<h3 id="gemini-api-recommended-for-quick-start">Gemini API (Recommended for Quick Start)</h3>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://cromwell.example.com:8000
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>--host<span class="w"> </span>http://cromwell.example.com:8000<span class="w"> </span>dashboard
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Default</p>
+<p>The default host is <code>http://localhost:8000</code></p>
+</div>
+<hr />
+<h2 id="chat-llm-providers"><img alt="🤖" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f916.svg" title=":robot:" /> Chat LLM Providers</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81"/></svg></span> Gemini API</label><label for="__tabbed_2_2"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1m0 8h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1M9 5h1V3H9zm0 8h1v-2H9zm0 8h1v-2H9zM5 3v2h2V3zm0 8v2h2v-2zm0 8v2h2v-2z"/></svg></span> Ollama (Local)</label><label for="__tabbed_2_3"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.5 20q-2.28 0-3.89-1.57Q1 16.85 1 14.58q0-1.95 1.17-3.48 1.18-1.53 3.08-1.95.63-2.3 2.5-3.72Q9.63 4 12 4q2.93 0 4.96 2.04Q19 8.07 19 11q1.73.2 2.86 1.5 1.14 1.28 1.14 3 0 1.88-1.31 3.19T18.5 20Z"/></svg></span> Vertex AI</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>Get your API key at <a href="https://aistudio.google.com/apikey">Google AI Studio</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>gemini
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>gemini_api_key<span class="w"> </span>&lt;your-api-key&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>gemini
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>gemini_api_key<span class="w"> </span>&lt;your-api-key&gt;
 </span></code></pre></div>
-<h3 id="ollama-local-free">Ollama (Local, Free)</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>ollama
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_host<span class="w"> </span>http://localhost:11434
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_model<span class="w"> </span>llama3.2:3b
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>ollama
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_host<span class="w"> </span>http://localhost:11434
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_model<span class="w"> </span>llama3.2:3b
 </span></code></pre></div>
-<h3 id="vertex-ai-for-gcp-users">Vertex AI (for GCP Users)</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>vertex
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_project<span class="w"> </span>&lt;project-id&gt;
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_location<span class="w"> </span>us-central1
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>vertex
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_project<span class="w"> </span>&lt;project-id&gt;
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_location<span class="w"> </span>us-central1
 </span></code></pre></div>
-<h2 id="authentication">Authentication</h2>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="authentication"><img alt="🔒" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f512.svg" title=":lock:" /> Authentication</h2>
 <p>Pumbaa assumes a direct connection to a reachable Cromwell server; it does not perform authentication itself.</p>
-<p>If your Cromwell instance runs inside Kubernetes, expose it locally:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>port-forward<span class="w"> </span>svc/cromwell<span class="w"> </span><span class="m">8000</span>:8000
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://localhost:8000
+<details class="example">
+<summary>Port-forwarding from Kubernetes</summary>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>port-forward<span class="w"> </span>svc/cromwell<span class="w"> </span><span class="m">8000</span>:8000
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://localhost:8000
 </span></code></pre></div>
-<h2 id="next-steps">Next Steps</h2>
+</details>
+<hr />
+<h2 id="telemetry"><img alt="📊" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4ca.svg" title=":bar_chart:" /> Telemetry</h2>
+<p>Pumbaa collects <strong>anonymous</strong> usage statistics to help improve the tool.</p>
+<div class="grid">
+<div class="admonition success">
+<p class="admonition-title">What we collect</p>
 <ul>
-<li><a href="../quick-start/">Quick Start</a> - Run your first commands</li>
-<li><a href="../../features/dashboard/">Dashboard</a> - Learn about the interactive dashboard</li>
-<li><a href="../../features/chat/">Chat Agent</a> - Use AI to query workflows</li>
+<li>Command name (e.g., <code>pumbaa chat</code>)</li>
+<li>Pumbaa version</li>
+<li>OS / Architecture</li>
+<li>Execution duration</li>
+<li>Success/Failure status</li>
+</ul>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">What we DO NOT collect</p>
+<ul>
+<li>Argument or flag values</li>
+<li>File paths or API keys</li>
+<li>File contents</li>
+<li>Personal information</li>
+</ul>
+</div>
+</div>
+<h3 id="opt-out">Opt-Out</h3>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Config Command</label><label for="__tabbed_3_2">Environment Variable</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>telemetry_enabled<span class="w"> </span><span class="nb">false</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_TELEMETRY_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="next-steps"><img alt="📚" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4da.svg" title=":books:" /> Next Steps</h2>
+<ul>
+<li><a href="../quick-start/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5.14v14l11-7z"/></svg></span> Quick Start</a> — Run your first commands</li>
+<li><a href="../../features/dashboard/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3v6h8V3m-8 18h8V11h-8M3 21h8v-6H3m0-2h8V3H3z"/></svg></span> Dashboard</a> — Interactive workflow management</li>
+<li><a href="../../features/chat/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg></span> Chat Agent</a> — Query with AI</li>
 </ul>
 
 

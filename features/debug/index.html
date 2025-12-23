@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -587,10 +602,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
+  <a href="#navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keys
+        Navigation
       
     </span>
   </a>
@@ -601,7 +616,7 @@
   <a href="#quick-actions-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick actions (1–5)
+        Quick Actions (1–5)
       
     </span>
   </a>
@@ -890,10 +905,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keys" class="md-nav__link">
+  <a href="#navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keys
+        Navigation
       
     </span>
   </a>
@@ -904,7 +919,7 @@
   <a href="#quick-actions-15" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick actions (1–5)
+        Quick Actions (1–5)
       
     </span>
   </a>
@@ -966,79 +981,149 @@
 
 <h1 id="debug-view">Debug View</h1>
 <p>Inspect workflow execution tree and call-level details.</p>
-<p>Note: the information shown depends on a working connection to your Cromwell server (set via <code>--host</code> or <code>CROMWELL_HOST</code>).</p>
-<p><img alt="Debug View Screenshot" src="../../assets/debug.png" /></p>
-<h2 id="usage">Usage</h2>
-<p>From dashboard: Press <code>Enter</code> on any workflow</p>
-<p>CLI:
+<div class="admonition note">
+<p class="admonition-title">Requirement</p>
+<p>Requires a working connection to your Cromwell server (set via <code>--host</code> or <code>CROMWELL_HOST</code>).</p>
+</div>
+<hr />
+<h2 id="usage"><img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /> Usage</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">From Dashboard</label><label for="__tabbed_1_2">CLI</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Press <span class="keys"><kbd class="key-enter">Enter</kbd></span> on any workflow</p>
+</div>
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div></p>
-<h2 id="keys">Keys</h2>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="navigation"><img alt="⌨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2328.svg" title=":keyboard:" /> Navigation</h2>
 <table>
 <thead>
 <tr>
-<th>Key</th>
+<th style="text-align: center;">Key</th>
 <th>Action</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>↑/↓</code> or <code>k/j</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-up">Up</kbd></span> / <span class="keys"><kbd class="key-arrow-down">Down</kbd></span></td>
 <td>Navigate tree</td>
 </tr>
 <tr>
-<td><code>→/←</code> or <code>l/h</code></td>
-<td>Expand/collapse</td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-right">Right</kbd></span> / <span class="keys"><kbd class="key-arrow-left">Left</kbd></span></td>
+<td>Expand / Collapse</td>
 </tr>
 <tr>
-<td><code>Enter</code> or <code>Space</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-enter">Enter</kbd></span></td>
 <td>Toggle expand</td>
 </tr>
 <tr>
-<td><code>d</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-d">D</kbd></span></td>
 <td>Show call details</td>
 </tr>
 <tr>
-<td><code>o</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-o">O</kbd></span></td>
 <td>Show logs</td>
 </tr>
 <tr>
-<td><code>q</code> or <code>Esc</code></td>
+<td style="text-align: center;"><span class="keys"><kbd class="key-q">Q</kbd></span></td>
 <td>Back</td>
 </tr>
 </tbody>
 </table>
-<h2 id="quick-actions-15">Quick actions (1–5)</h2>
+<hr />
+<h2 id="quick-actions-15"><img alt="⚡" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/26a1.svg" title=":zap:" /> Quick Actions (1–5)</h2>
 <p>The details panel exposes quick actions for the selected call:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Key</th>
+<th>Action</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-1">1</kbd></span></td>
+<td><strong>Inputs</strong></td>
+<td>Open modal with call inputs</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-2">2</kbd></span></td>
+<td><strong>Outputs</strong></td>
+<td>Open modal with call outputs</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-3">3</kbd></span></td>
+<td><strong>Command</strong></td>
+<td>View executed command</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-4">4</kbd></span></td>
+<td><strong>Logs</strong></td>
+<td>Load logs (from GCS or local)</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-5">5</kbd></span></td>
+<td><strong>Efficiency</strong></td>
+<td>Resource usage metrics</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Copy to Clipboard</p>
+<p>In modals, press <span class="keys"><kbd class="key-y">Y</kbd></span> to copy content to clipboard.</p>
+</div>
+<hr />
+<h2 id="timing"><img alt="⏱" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/23f1.svg" title=":stopwatch:" /> Timing</h2>
+<p>Press <span class="keys"><kbd class="key-t">T</kbd></span> to open the timeline for the selected workflow or subworkflow.</p>
 <ul>
-<li><code>1</code> — Inputs: open a modal showing call inputs.</li>
-<li><code>2</code> — Outputs: open a modal showing call outputs.</li>
-<li><code>3</code> — Command: open a modal showing the command executed by the call.</li>
-<li><code>4</code> — Logs: switch to the Logs view for the selected call. Logs can be loaded from Google Cloud Storage if your environment has Google Application Default Credentials configured (or from local paths when available).</li>
-<li><code>5</code> — Efficiency: view resource efficiency metrics (CPU/memory usage vs. requested) for the selected call.</li>
+<li>Navigate to a subworkflow in the tree and press <span class="keys"><kbd class="key-t">T</kbd></span> to see its timeline</li>
+<li>Timing updates as you expand subworkflows</li>
 </ul>
-<p>In the modals you can press <code>y</code> to copy the displayed content to the system clipboard (works when the host environment provides a clipboard tool such as <code>xclip</code>, <code>xsel</code>, or <code>wl-copy</code>).</p>
-<h2 id="timing">Timing</h2>
-<p>Press <code>t</code> to open the timeline (global timeline) for the selected workflow or subworkflow. To inspect a subworkflow's timing, navigate to the subworkflow in the tree and press <code>t</code> — Pumbaa will show a timeline for that workflow. Timing and task durations update as you fetch or expand subworkflows (again, this requires the Cromwell server to be reachable).</p>
-<p><img alt="Debug View Screenshot" src="../../assets/timing.png" /></p>
-<h2 id="efficiency">Efficiency</h2>
-<p>The Efficiency view (action <code>5</code>) displays resource usage metrics for the selected call, comparing actual usage against allocated resources.</p>
+<hr />
+<h2 id="efficiency"><img alt="📈" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4c8.svg" title=":chart_with_upwards_trend:" /> Efficiency</h2>
+<p>The Efficiency view (action <span class="keys"><kbd class="key-5">5</kbd></span>) displays resource usage metrics:</p>
 <div class="admonition warning">
 <p class="admonition-title">Requirement</p>
-<p>This feature requires the workflow to have been submitted with the <strong>monitoring script</strong> provided by Pumbaa. See <a href="../resource-monitoring/">Resource Monitoring Script</a> for setup instructions.</p>
+<p>This feature requires the <strong>monitoring script</strong>. See <a href="../resource-monitoring/">Resource Monitoring</a>.</p>
 </div>
 <p><strong>Displayed metrics:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Peak CPU</td>
+<td>Usage vs. allocated cores</td>
+</tr>
+<tr>
+<td>Peak Memory</td>
+<td>Usage vs. allocated memory</td>
+</tr>
+<tr>
+<td>Efficiency %</td>
+<td>Resource utilization percentage</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Cost Optimization</p>
+<p>Identify over-provisioned tasks where resources can be reduced.</p>
+</div>
+<hr />
+<h2 id="see-also"><img alt="📚" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4da.svg" title=":books:" /> See Also</h2>
 <ul>
-<li>Peak CPU usage vs. allocated cores</li>
-<li>Peak memory usage vs. allocated memory</li>
-<li>Resource efficiency percentage</li>
-</ul>
-<p>This helps identify over-provisioned tasks where resources can be reduced to save costs.</p>
-<h2 id="see-also">See Also</h2>
-<ul>
-<li><a href="../dashboard/">Dashboard</a></li>
-<li><a href="../metadata/">Metadata</a></li>
-<li><a href="../resource-monitoring/">Resource Monitoring Script</a></li>
+<li><a href="../dashboard/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3v6h8V3m-8 18h8V11h-8M3 21h8v-6H3m0-2h8V3H3z"/></svg></span> Dashboard</a></li>
+<li><a href="../metadata/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5zM6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2zm3-4v-2H6v2z"/></svg></span> Metadata</a></li>
+<li><a href="../resource-monitoring/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16H3V4h18m0-2H3c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2"/></svg></span> Resource Monitoring</a></li>
 </ul>
 
 

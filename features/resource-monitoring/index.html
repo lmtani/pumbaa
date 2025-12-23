@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -744,17 +759,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#download" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -831,56 +835,6 @@
     <span class="md-ellipsis">
       
         Cromwell Integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#analyzing-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyzing Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Analyzing Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-awk" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using awk
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-pythonpandas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python/Pandas
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#estimating-efficiency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Estimating Efficiency
       
     </span>
   </a>
@@ -957,17 +911,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#download" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1050,56 +993,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#analyzing-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Analyzing Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Analyzing Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-awk" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using awk
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-pythonpandas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python/Pandas
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#estimating-efficiency" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Estimating Efficiency
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1121,17 +1014,32 @@
 
 
 <h1 id="resource-monitoring-script">Resource Monitoring Script</h1>
-<p>Pumbaa provides a simple script to monitor computational resource usage over time. This script is designed to be used as a <strong>monitoring script</strong> in Cromwell, allowing you to estimate the resource usage efficiency for each task.</p>
-<h2 id="download">Download</h2>
+<p>Monitor computational resource usage for Cromwell tasks to estimate efficiency.</p>
 <p><a class="md-button md-button--primary" href="../../assets/resource_monitor.sh"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z"/></svg></span> Download resource_monitor.sh</a></p>
-<h2 id="features">Features</h2>
+<hr />
+<h2 id="features"><img alt="✨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2728.svg" title=":sparkles:" /> Features</h2>
+<div class="grid cards">
 <ul>
-<li><strong>Lightweight</strong>: Uses only native Linux tools (<code>/proc</code> filesystem).</li>
-<li><strong>No dependencies</strong>: Works on most Linux distributions.</li>
-<li><strong>Complete metrics</strong>: CPU, memory, disk I/O, disk space, and network.</li>
-<li><strong>TSV format</strong>: Easy to analyze with tools like <code>awk</code>, <code>pandas</code>, or Excel.</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 2s-7.64-.37-13.66 7.88C3.72 16.21 2 22 2 22l1.94-1c1.44-2.5 2.19-3.53 3.6-5 2.53.74 5.17.65 7.46-2-2-.56-3.6-.43-5.96-.19C11.69 12 13.5 11.6 16 12l1-2c-1.8-.34-3-.37-4.78.04C14.19 8.65 15.56 7.87 18 8l1.21-1.93c-1.56-.11-2.5.06-4.29.5 1.61-1.46 3.08-2.12 5.22-2.25 0 0 1.05-1.89 1.86-2.32"/></svg></span> <strong>Lightweight</strong></p>
+<p>Uses only native Linux tools (<code>/proc</code> filesystem)</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15l-1.89 1.07L16 8.61l1.96-1.11zM6.04 7.5 12 10.85l1.96-1.1-5.88-3.4zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"/></svg></span> <strong>No Dependencies</strong></p>
+<p>Works on most Linux distributions</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m16 11.78 4.24-7.33 1.73 1-5.23 9.05-6.51-3.75L5.46 19H22v2H2V3h2v14.54L9.5 8z"/></svg></span> <strong>Complete Metrics</strong></p>
+<p>CPU, memory, disk I/O, disk space, and network</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zm1 14-2 4h-3l2-4H9v-5h6zm-2-7V3.5L18.5 9z"/></svg></span> <strong>TSV Format</strong></p>
+<p>Easy to analyze with <code>awk</code>, <code>pandas</code>, or Excel</p>
+</li>
 </ul>
-<h2 id="collected-metrics">Collected Metrics</h2>
+</div>
+<hr />
+<h2 id="collected-metrics"><img alt="📊" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4ca.svg" title=":bar_chart:" /> Collected Metrics</h2>
 <table>
 <thead>
 <tr>
@@ -1142,63 +1050,63 @@
 <tbody>
 <tr>
 <td><code>timestamp</code></td>
-<td>Date and time of the measurement</td>
+<td>Date and time</td>
 </tr>
 <tr>
 <td><code>cpu_percent</code></td>
-<td>CPU usage percentage (all cores)</td>
+<td>CPU usage (all cores)</td>
 </tr>
 <tr>
 <td><code>mem_used_mb</code></td>
-<td>Used memory in MB</td>
+<td>Used memory (MB)</td>
 </tr>
 <tr>
 <td><code>mem_total_mb</code></td>
-<td>Total memory in MB</td>
+<td>Total memory (MB)</td>
 </tr>
 <tr>
 <td><code>mem_percent</code></td>
-<td>Memory usage percentage</td>
+<td>Memory usage %</td>
 </tr>
 <tr>
 <td><code>disk_total_gb</code></td>
-<td>Total disk space in GB</td>
+<td>Total disk (GB)</td>
 </tr>
 <tr>
 <td><code>disk_used_gb</code></td>
-<td>Used disk space in GB</td>
+<td>Used disk (GB)</td>
 </tr>
 <tr>
 <td><code>disk_avail_gb</code></td>
-<td>Available disk space in GB</td>
+<td>Available disk (GB)</td>
 </tr>
 <tr>
 <td><code>disk_percent</code></td>
-<td>Disk usage percentage</td>
+<td>Disk usage %</td>
 </tr>
 <tr>
 <td><code>disk_read_mb</code></td>
-<td>MB read from disk since last measurement</td>
+<td>MB read since last measurement</td>
 </tr>
 <tr>
 <td><code>disk_write_mb</code></td>
-<td>MB written to disk since last measurement</td>
+<td>MB written since last measurement</td>
 </tr>
 <tr>
 <td><code>net_rx_mb</code></td>
-<td>MB received via network since last measurement</td>
+<td>Network MB received</td>
 </tr>
 <tr>
 <td><code>net_tx_mb</code></td>
-<td>MB transmitted via network since last measurement</td>
+<td>Network MB transmitted</td>
 </tr>
 </tbody>
 </table>
-<h2 id="usage">Usage</h2>
+<hr />
+<h2 id="usage"><img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /> Usage</h2>
 <h3 id="syntax">Syntax</h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>./resource_monitor.sh<span class="w"> </span><span class="o">[</span>interval_seconds<span class="o">]</span><span class="w"> </span><span class="o">[</span>disk_path<span class="o">]</span>
 </span></code></pre></div>
-<p>The script outputs metrics to <strong>stdout</strong> in TSV format. Use redirection to save to a file.</p>
 <h3 id="parameters">Parameters</h3>
 <table>
 <thead>
@@ -1211,84 +1119,39 @@
 <tbody>
 <tr>
 <td><code>interval_seconds</code></td>
-<td>10</td>
-<td>Time between measurements in seconds</td>
+<td><code>10</code></td>
+<td>Time between measurements</td>
 </tr>
 <tr>
 <td><code>disk_path</code></td>
 <td><code>/mnt/disks/cromwell_root/</code></td>
-<td>Disk path to monitor space for</td>
+<td>Disk path to monitor</td>
 </tr>
 </tbody>
 </table>
 <h3 id="examples">Examples</h3>
-<p><strong>Basic usage</strong> (10-second interval, Cromwell's default disk):
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Basic</label><label for="__tabbed_1_2">Save to File</label><label for="__tabbed_1_3">Custom Interval</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>./resource_monitor.sh
-</span></code></pre></div></p>
-<p><strong>Save to a file</strong>:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./resource_monitor.sh<span class="w"> </span>&gt;<span class="w"> </span>resource_metrics.tsv
-</span></code></pre></div></p>
-<p><strong>Custom interval</strong> (5 seconds):
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./resource_monitor.sh<span class="w"> </span><span class="m">5</span><span class="w"> </span>&gt;<span class="w"> </span>resource_metrics.tsv
-</span></code></pre></div></p>
-<p><strong>Monitor a different disk</strong>:
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>./resource_monitor.sh<span class="w"> </span><span class="m">10</span><span class="w"> </span>/data<span class="w"> </span>&gt;<span class="w"> </span>resource_metrics.tsv
-</span></code></pre></div></p>
-<h2 id="cromwell-integration">Cromwell Integration</h2>
-<p>To use the script as a Cromwell monitoring script, add it to your backend configuration:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>backend {
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  providers {
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    Local {
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>      config {
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        # Executes the monitoring script for each task
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        submit = &quot;&quot;&quot;
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>          chmod +x ${cwd}/resource_monitor.sh
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>          ${cwd}/resource_monitor.sh 10 &gt; ${cwd}/resource_metrics.tsv &amp;
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>          MONITOR_PID=$!
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>          # Your original command here
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>          ${job_shell} ${script}
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>          EXIT_CODE=$?
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
-</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>          # Stop monitoring when the task finishes
-</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>          kill $MONITOR_PID 2&gt;/dev/null
-</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>          exit $EXIT_CODE
-</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        &quot;&quot;&quot;
-</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>      }
-</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>    }
-</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  }
-</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>}
 </span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Copy the script to a location accessible by Cromwell (e.g., alongside your WDL files) or include it as an input in your workflow.</p>
 </div>
-<h2 id="analyzing-results">Analyzing Results</h2>
-<h3 id="using-awk">Using awk</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Average CPU usage</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>awk<span class="w"> </span>-F<span class="s1">&#39;\t&#39;</span><span class="w"> </span><span class="s1">&#39;NR&gt;1 {sum+=$2; count++} END {print &quot;Average CPU:&quot;, sum/count&quot;%&quot;}&#39;</span><span class="w"> </span>resource_metrics.tsv
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Peak memory usage</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>awk<span class="w"> </span>-F<span class="s1">&#39;\t&#39;</span><span class="w"> </span><span class="s1">&#39;NR&gt;1 {if($5&gt;max) max=$5} END {print &quot;Peak Memory:&quot;, max&quot;%&quot;}&#39;</span><span class="w"> </span>resource_metrics.tsv
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>./resource_monitor.sh<span class="w"> </span>&gt;<span class="w"> </span>resource_metrics.tsv
 </span></code></pre></div>
-<h3 id="using-pythonpandas">Using Python/Pandas</h3>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;resource_metrics.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">describe</span><span class="p">())</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1"># Plot CPU usage over time</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;CPU Usage Over Time&#39;</span><span class="p">)</span>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>./resource_monitor.sh<span class="w"> </span><span class="m">5</span><span class="w"> </span>&gt;<span class="w"> </span>resource_metrics.tsv
 </span></code></pre></div>
-<h2 id="estimating-efficiency">Estimating Efficiency</h2>
-<p>With the collected data, you can calculate resource usage efficiency:</p>
-<p>$$
-\text{Efficiency} = \frac{\text{Resource Used}}{\text{Resource Allocated}} \times 100\%
-$$</p>
-<p>For example, if you allocated 16GB of RAM to a task that used a maximum of 8GB, the memory efficiency was 50%.</p>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="cromwell-integration"><img alt="⚙" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2699.svg" title=":gear:" /> Cromwell Integration</h2>
+<p>To use this script as a Cromwell monitoring script, configure it in your backend options.</p>
 <div class="admonition info">
-<p class="admonition-title">About efficiency</p>
-<p>Low efficiency indicates that you could potentially reduce the resources allocated to the task, saving costs in cloud environments.</p>
+<p class="admonition-title">Cromwell Documentation</p>
+<p>For detailed configuration instructions, see the official <a href="https://cromwell.readthedocs.io/en/stable/wf_options/Google/">Cromwell Workflow Options documentation</a>.</p>
 </div>
 
 

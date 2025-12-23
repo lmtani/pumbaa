@@ -31,6 +31,7 @@
       
     
     
+
       <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
@@ -40,6 +41,20 @@
 
 
     
+<style>
+    :root {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+
+    [data-md-color-scheme="slate"] {
+        --md-primary-fg-color: #09044a;
+        --md-primary-fg-color--light: #1a1566;
+        --md-primary-fg-color--dark: #050230;
+    }
+</style>
+
     
       
     
@@ -69,7 +84,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
@@ -127,7 +142,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
     
       <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -137,7 +152,7 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-orange" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
     
       <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
@@ -470,10 +485,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-configure-cromwell-server" class="md-nav__link">
+  <a href="#configure-cromwell-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Configure Cromwell Server
+        Configure Cromwell Server
       
     </span>
   </a>
@@ -481,10 +496,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-verify-connection" class="md-nav__link">
+  <a href="#verify-connection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Verify Connection
+        Verify Connection
       
     </span>
   </a>
@@ -492,15 +507,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-explore-the-dashboard" class="md-nav__link">
+  <a href="#explore-the-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Explore the Dashboard
+        Explore the Dashboard
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 3: Explore the Dashboard">
+    <nav class="md-nav" aria-label="Explore the Dashboard">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -520,10 +535,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-submit-a-workflow" class="md-nav__link">
+  <a href="#submit-a-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Submit a Workflow
+        Submit a Workflow
       
     </span>
   </a>
@@ -531,44 +546,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-monitor-workflow" class="md-nav__link">
+  <a href="#monitor-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Monitor Workflow
+        Monitor Workflow
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 5: Monitor Workflow">
+    <nav class="md-nav" aria-label="Monitor Workflow">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#query-specific-workflow" class="md-nav__link">
+  <a href="#debug-view-navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Query Specific Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Metadata
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#debug-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debug View
+        Debug View Navigation
       
     </span>
   </a>
@@ -581,41 +574,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-workflows" class="md-nav__link">
+  <a href="#common-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common Workflows
+        Common Tasks
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Common Workflows">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abort-a-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abort a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bundle-a-wdl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bundle a WDL
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -627,45 +592,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#connection-refused" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Connection refused"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-workflows-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "No workflows found"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboard-not-updating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dashboard not updating
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1057,10 +983,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-configure-cromwell-server" class="md-nav__link">
+  <a href="#configure-cromwell-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Configure Cromwell Server
+        Configure Cromwell Server
       
     </span>
   </a>
@@ -1068,10 +994,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-verify-connection" class="md-nav__link">
+  <a href="#verify-connection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Verify Connection
+        Verify Connection
       
     </span>
   </a>
@@ -1079,15 +1005,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-explore-the-dashboard" class="md-nav__link">
+  <a href="#explore-the-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Explore the Dashboard
+        Explore the Dashboard
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 3: Explore the Dashboard">
+    <nav class="md-nav" aria-label="Explore the Dashboard">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1107,10 +1033,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-submit-a-workflow" class="md-nav__link">
+  <a href="#submit-a-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Submit a Workflow
+        Submit a Workflow
       
     </span>
   </a>
@@ -1118,44 +1044,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-monitor-workflow" class="md-nav__link">
+  <a href="#monitor-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Monitor Workflow
+        Monitor Workflow
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step 5: Monitor Workflow">
+    <nav class="md-nav" aria-label="Monitor Workflow">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#query-specific-workflow" class="md-nav__link">
+  <a href="#debug-view-navigation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Query Specific Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View Metadata
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#debug-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debug View
+        Debug View Navigation
       
     </span>
   </a>
@@ -1168,41 +1072,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#common-workflows" class="md-nav__link">
+  <a href="#common-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common Workflows
+        Common Tasks
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Common Workflows">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#abort-a-workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abort a Workflow
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bundle-a-wdl" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Bundle a WDL
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1214,45 +1090,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#connection-refused" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Connection refused"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-workflows-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "No workflows found"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboard-not-updating" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dashboard not updating
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1300,117 +1137,205 @@
 
 <h1 id="quick-start">Quick Start</h1>
 <p>Get up and running with Pumbaa in 5 minutes.</p>
-<h2 id="prerequisites">Prerequisites</h2>
+<hr />
+<h2 id="prerequisites"><img alt="✅" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2705.svg" title=":white_check_mark:" /> Prerequisites</h2>
 <ul>
 <li>Pumbaa installed (<a href="../installation/">Installation Guide</a>)</li>
 <li>Access to a Cromwell server</li>
 <li>(Optional) A WDL workflow file</li>
 </ul>
-<h2 id="step-1-configure-cromwell-server">Step 1: Configure Cromwell Server</h2>
-<p>The easiest way is using the config wizard:</p>
+<hr />
+<h2 id="configure-cromwell-server"><img alt="1⃣" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/31-20e3.svg" title=":one:" /> Configure Cromwell Server</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Config Wizard (Recommended)</label><label for="__tabbed_1_2">Environment Variable</label><label for="__tabbed_1_3">Persisted Config</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span>init
 </span></code></pre></div>
-<p>Or set your Cromwell server URL directly:</p>
+</div>
+<div class="tabbed-block">
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://localhost:8000
 </span></code></pre></div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Use <code>pumbaa config set cromwell_host &lt;url&gt;</code> to persist configuration.</p>
 </div>
-<h2 id="step-2-verify-connection">Step 2: Verify Connection</h2>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://localhost:8000
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="verify-connection"><img alt="2⃣" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/32-20e3.svg" title=":two:" /> Verify Connection</h2>
 <p>Test the connection to your Cromwell server:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span>
 </span></code></pre></div>
+<div class="admonition success">
+<p class="admonition-title">Expected Result</p>
 <p>You should see a list of recent workflows (or an empty list if none exist).</p>
-<h2 id="step-3-explore-the-dashboard">Step 3: Explore the Dashboard</h2>
+</div>
+<hr />
+<h2 id="explore-the-dashboard"><img alt="3⃣" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/33-20e3.svg" title=":three:" /> Explore the Dashboard</h2>
 <p>Launch the interactive dashboard:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>dashboard
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>dashboard
 </span></code></pre></div>
-<h3 id="dashboard-navigation">Dashboard Navigation</h3>
+<h3 id="dashboard-navigation"><img alt="⌨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2328.svg" title=":keyboard:" /> Dashboard Navigation</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-up">Up</kbd></span> / <span class="keys"><kbd class="key-arrow-down">Down</kbd></span></td>
+<td>Navigate workflows</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-enter">Enter</kbd></span></td>
+<td>Open debug view</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-s">S</kbd></span></td>
+<td>Filter by status</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-slash">/</kbd></span></td>
+<td>Filter by name</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-a">A</kbd></span></td>
+<td>Abort workflow</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-r">R</kbd></span></td>
+<td>Refresh</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-q">Q</kbd></span></td>
+<td>Quit</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="submit-a-workflow"><img alt="4⃣" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/34-20e3.svg" title=":four:" /> Submit a Workflow</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>submit<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--workflow<span class="w"> </span>myworkflow.wdl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--inputs<span class="w"> </span>inputs.json
+</span></code></pre></div>
+<details class="example">
+<summary>Example inputs.json</summary>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">&quot;myworkflow.input_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gs://bucket/data.txt&quot;</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">&quot;myworkflow.sample_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sample-001&quot;</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="p">}</span>
+</span></code></pre></div>
+</details>
+<hr />
+<h2 id="monitor-workflow"><img alt="5⃣" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/35-20e3.svg" title=":five:" /> Monitor Workflow</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Query by Status</label><label for="__tabbed_2_2">View Metadata</label><label for="__tabbed_2_3">Debug View</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--status<span class="w"> </span>Running
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>&lt;workflow-id&gt;
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>--id<span class="w"> </span>&lt;workflow-id&gt;
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="debug-view-navigation"><img alt="⌨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2328.svg" title=":keyboard:" /> Debug View Navigation</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-up">Up</kbd></span> / <span class="keys"><kbd class="key-arrow-down">Down</kbd></span></td>
+<td>Navigate tasks</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-arrow-left">Left</kbd></span> / <span class="keys"><kbd class="key-arrow-right">Right</kbd></span></td>
+<td>Collapse/expand</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-tab">Tab</kbd></span></td>
+<td>Switch panels</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-c">C</kbd></span></td>
+<td>View command</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-i">I</kbd></span></td>
+<td>View inputs</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-o">O</kbd></span></td>
+<td>View outputs</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-l">L</kbd></span></td>
+<td>View logs</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-q">Q</kbd></span></td>
+<td>Back to dashboard</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="common-tasks"><img alt="🔧" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f527.svg" title=":wrench:" /> Common Tasks</h2>
+<div class="grid cards">
 <ul>
-<li><strong>↑/↓</strong>: Navigate through workflows</li>
-<li><strong>Enter</strong>: Open workflow in debug view</li>
-<li><strong>s</strong>: Filter by status (All/Running/Failed/Succeeded)</li>
-<li><strong>/</strong>: Filter by workflow name</li>
-<li><strong>a</strong>: Abort selected workflow</li>
-<li><strong>r</strong>: Refresh list</li>
-<li><strong>q</strong>: Quit</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2c5.5 0 10 4.5 10 10s-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2m0 2c-1.9 0-3.6.6-4.9 1.7l11.2 11.2c1-1.4 1.7-3.1 1.7-4.9 0-4.4-3.6-8-8-8m4.9 14.3L5.7 7.1C4.6 8.4 4 10.1 4 12c0 4.4 3.6 8 8 8 1.9 0 3.6-.6 4.9-1.7"/></svg></span> <strong>Abort Workflow</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>abort<span class="w"> </span>&lt;id&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.12 5h13.75l-.94-1h-12zm15.42.23c.29.34.46.77.46 1.27V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5c0-.5.17-.93.46-1.27l1.38-1.68C5.12 3.21 5.53 3 6 3h12c.47 0 .88.21 1.15.55zM6 18h6v-3H6z"/></svg></span> <strong>Bundle WDL</strong></p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>pumbaa<span class="w"> </span>bundle<span class="w"> </span>--workflow<span class="w"> </span>main.wdl
+</span></code></pre></div>
+</li>
 </ul>
-<p><img alt="Dashboard" src="../../assets/dashboard.png" /></p>
-<h2 id="step-4-submit-a-workflow">Step 4: Submit a Workflow</h2>
-<p>If you have a WDL file, submit it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>submit<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--workflow<span class="w"> </span>myworkflow.wdl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--inputs<span class="w"> </span>inputs.json
-</span></code></pre></div>
-<p>Example <code>inputs.json</code>:</p>
-<div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;myworkflow.input_file&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gs://bucket/data.txt&quot;</span><span class="p">,</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;myworkflow.sample_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sample-001&quot;</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="p">}</span>
-</span></code></pre></div>
-<h2 id="step-5-monitor-workflow">Step 5: Monitor Workflow</h2>
-<h3 id="query-specific-workflow">Query Specific Workflow</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>query<span class="w"> </span>--status<span class="w"> </span>Running
-</span></code></pre></div>
-<h3 id="view-metadata">View Metadata</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>metadata<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div>
-<h3 id="debug-view">Debug View</h3>
-<p>Open detailed execution view:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>debug<span class="w"> </span>--id<span class="w"> </span>&lt;workflow-id&gt;
-</span></code></pre></div>
-<p>Navigate the debug view:</p>
+</div>
+<hr />
+<h2 id="troubleshooting"><img alt="🐛" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f41b.svg" title=":bug:" /> Troubleshooting</h2>
+<details class="warning">
+<summary>Connection refused</summary>
+<p>Verify Cromwell is running:
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>curl<span class="w"> </span><span class="nv">$CROMWELL_HOST</span>/api/workflows/v1/query
+</span></code></pre></div></p>
+</details>
+<details class="warning">
+<summary>No workflows found</summary>
+<p>Submit a test workflow first.</p>
+</details>
+<details class="warning">
+<summary>Dashboard not updating</summary>
+<p>Press <span class="keys"><kbd class="key-r">R</kbd></span> to manually refresh.</p>
+</details>
+<hr />
+<h2 id="next-steps"><img alt="📚" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4da.svg" title=":books:" /> Next Steps</h2>
 <ul>
-<li><strong>↑/↓</strong> or <strong>j/k</strong>: Navigate through tasks</li>
-<li><strong>←/→</strong> or <strong>h/l</strong>: Collapse/expand nodes</li>
-<li><strong>Enter</strong>: Toggle expand</li>
-<li><strong>Tab</strong>: Switch between tree and details panel</li>
-<li><strong>c</strong>: View command</li>
-<li><strong>i</strong>: View inputs</li>
-<li><strong>o</strong>: View outputs</li>
-<li><strong>L</strong>: View log paths</li>
-<li><strong>t</strong>: View task duration timeline</li>
-<li><strong>q</strong>: Return to dashboard</li>
+<li><a href="../../features/dashboard/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 3v6h8V3m-8 18h8V11h-8M3 21h8v-6H3m0-2h8V3H3z"/></svg></span> Dashboard Guide</a></li>
+<li><a href="../../features/debug/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 12h-4v-2h4m0 6h-4v-2h4m6-6h-2.81a6 6 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6 6 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20z"/></svg></span> Debug View</a></li>
+<li><a href="../../features/submit/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16v-6H5l7-7 7 7h-4v6zm-4 4v-2h14v2z"/></svg></span> Submit Workflows</a></li>
+<li><a href="../../features/bundle/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.12 5h13.75l-.94-1h-12zm15.42.23c.29.34.46.77.46 1.27V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5c0-.5.17-.93.46-1.27l1.38-1.68C5.12 3.21 5.53 3 6 3h12c.47 0 .88.21 1.15.55zM6 18h6v-3H6z"/></svg></span> Bundle WDL</a></li>
 </ul>
-<h2 id="common-workflows">Common Workflows</h2>
-<h3 id="abort-a-workflow">Abort a Workflow</h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>abort<span class="w"> </span>&lt;workflow-id&gt;
+<hr />
+<h2 id="getting-help"><img alt="❓" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2753.svg" title=":question:" /> Getting Help</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>pumbaa<span class="w"> </span>--help
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>pumbaa<span class="w"> </span>&lt;command&gt;<span class="w"> </span>--help
 </span></code></pre></div>
-<p>Or use the dashboard (press <code>a</code> on selected workflow).</p>
-<h3 id="bundle-a-wdl">Bundle a WDL</h3>
-<p>Package your WDL with all imports:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pumbaa<span class="w"> </span>bundle<span class="w"> </span>--workflow<span class="w"> </span>main.wdl<span class="w"> </span>--output<span class="w"> </span>my-bundle
-</span></code></pre></div>
-<p>This creates:
-- <code>my-bundle.wdl</code> - Main workflow file
-- <code>my-bundle.zip</code> - All dependencies bundled</p>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="connection-refused">"Connection refused"</h3>
-<p>Verify Cromwell is running:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>curl<span class="w"> </span><span class="nv">$CROMWELL_HOST</span>/api/workflows/v1/query
-</span></code></pre></div>
-<h3 id="no-workflows-found">"No workflows found"</h3>
-<p>Submit a test workflow:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Use the example workflow</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>pumbaa<span class="w"> </span>workflow<span class="w"> </span>submit<span class="w"> </span>--workflow<span class="w"> </span>&lt;simple-workflow&gt;.wdl
-</span></code></pre></div>
-<h3 id="dashboard-not-updating">Dashboard not updating</h3>
-<p>Press <code>r</code> to manually refresh, or check your connection.</p>
-<h2 id="next-steps">Next Steps</h2>
-<p>Now that you're familiar with the basics:</p>
-<ul>
-<li><a href="../../features/dashboard/">Dashboard Guide</a> - Master the interactive dashboard</li>
-<li><a href="../../features/debug/">Debug View</a> - Advanced debugging techniques</li>
-<li><a href="../../features/submit/">Submit Workflows</a> - Detailed submission options</li>
-<li><a href="../../features/bundle/">Bundle WDL</a> - Package workflows for distribution</li>
-</ul>
-<h2 id="getting-help">Getting Help</h2>
-<ul>
-<li>Run <code>pumbaa --help</code> for command reference</li>
-<li>Run <code>pumbaa &lt;command&gt; --help</code> for specific command help</li>
-<li>Visit <a href="https://github.com/lmtani/pumbaa/issues">GitHub Issues</a> for support</li>
-</ul>
+<p><a class="md-button" href="https://github.com/lmtani/pumbaa/issues"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"/></svg></span> GitHub Issues</a></p>
 
 
 
