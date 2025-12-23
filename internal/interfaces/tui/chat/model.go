@@ -115,6 +115,7 @@ type ResponseMsg struct {
 type ToolNotificationMsg struct {
 	ToolName string
 	Action   string
+	Params   map[string]interface{} // Additional parameters
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -325,7 +326,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ToolNotificationMsg:
 		if msg.Action != "" {
-			m.toolNotification = fmt.Sprintf("%s (%s)", msg.ToolName, msg.Action)
+			// Format params if present
+			paramsStr := ""
+			if len(msg.Params) > 0 {
+				var parts []string
+				for k, v := range msg.Params {
+					parts = append(parts, fmt.Sprintf("%s=%v", k, v))
+				}
+				paramsStr = ", " + strings.Join(parts, ", ")
+			}
+			m.toolNotification = fmt.Sprintf("%s (action=%s%s)", msg.ToolName, msg.Action, paramsStr)
 		} else {
 			m.toolNotification = msg.ToolName
 		}
@@ -713,9 +723,17 @@ func (m Model) generateResponse(input string) tea.Cmd {
 						}
 					}
 
+					// Collect other relevant params to show
+					otherParams := make(map[string]interface{})
+					for k, v := range tc.Args {
+						if k != "action" && v != nil && v != "" {
+							otherParams[k] = v
+						}
+					}
+
 					// Send notification to UI about tool being called
 					if m.program != nil {
-						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action})
+						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams})
 					}
 
 					result, err := m.executeTool(ctx, tc)
