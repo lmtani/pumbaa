@@ -26,7 +26,7 @@ pumbaa workflow debug <workflow-id>
 | `o` | Show logs |
 | `q` or `Esc` | Back |
 
-## Quick actions (1–4)
+## Quick actions (1–5)
 
 The details panel exposes quick actions for the selected call:
 
@@ -34,6 +34,7 @@ The details panel exposes quick actions for the selected call:
 - `2` — Outputs: open a modal showing call outputs.
 - `3` — Command: open a modal showing the command executed by the call.
 - `4` — Logs: switch to the Logs view for the selected call. Logs can be loaded from Google Cloud Storage if your environment has Google Application Default Credentials configured (or from local paths when available).
+- `5` — Efficiency: view resource efficiency metrics (CPU/memory usage vs. requested) for the selected call.
 
 In the modals you can press `y` to copy the displayed content to the system clipboard (works when the host environment provides a clipboard tool such as `xclip`, `xsel`, or `wl-copy`).
 
@@ -45,7 +46,24 @@ Press `t` to open the timeline (global timeline) for the selected workflow or su
 ![Debug View Screenshot](../assets/timing.png)
 
 
+## Efficiency
+
+The Efficiency view (action `5`) displays resource usage metrics for the selected call, comparing actual usage against allocated resources.
+
+!!! warning "Requirement"
+    This feature requires the workflow to have been submitted with the **monitoring script** provided by Pumbaa. See [Resource Monitoring Script](resource-monitoring.md) for setup instructions.
+
+**Displayed metrics:**
+
+- Peak CPU usage vs. allocated cores
+- Peak memory usage vs. allocated memory
+- Resource efficiency percentage
+
+This helps identify over-provisioned tasks where resources can be reduced to save costs.
+
+
 ## See Also
 
 - [Dashboard](dashboard.md)
 - [Metadata](metadata.md)
+- [Resource Monitoring Script](resource-monitoring.md)

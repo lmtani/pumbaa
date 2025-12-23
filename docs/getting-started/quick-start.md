@@ -10,14 +10,20 @@ Get up and running with Pumbaa in 5 minutes.
 
 ## Step 1: Configure Cromwell Server
 
-Set your Cromwell server URL:
+The easiest way is using the config wizard:
+
+```bash
+pumbaa config init
+```
+
+Or set your Cromwell server URL directly:
 
 ```bash
 export CROMWELL_HOST=http://localhost:8000
 ```
 
 !!! tip
-    Add this to your `~/.bashrc` or `~/.zshrc` to persist across sessions.
+    Use `pumbaa config set cromwell_host <url>` to persist configuration.
 
 ## Step 2: Verify Connection
 

@@ -4,9 +4,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
+	"time"
 
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/container"
+	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,7 +28,8 @@ func main() {
 	cfg := config.Load()
 
 	// Create container with initial config
-	cont := container.New(cfg)
+	cont := container.New(cfg, Version)
+	defer cont.TelemetryService.Close()
 
 	app := &cli.App{
 		Name:    "pumbaa",
@@ -44,6 +49,49 @@ func main() {
 			if c.IsSet("host") {
 				cont.CromwellClient.BaseURL = c.String("host")
 			}
+
+			// Store start time for telemetry
+			c.App.Metadata["startTime"] = time.Now()
+			return nil
+		},
+		After: func(c *cli.Context) error {
+			// Don't track if no command command was run (e.g. root help)
+			if c.Command == nil || c.Command.Name == "" {
+				return nil
+			}
+
+			// Calculate duration
+			startTime, ok := c.App.Metadata["startTime"].(time.Time)
+			if !ok {
+				startTime = time.Now()
+			}
+			duration := time.Since(startTime).Milliseconds()
+
+			// Construct command name from args to ensure we capture subcommands
+			// c.Command.FullName() sometimes returns just the app name in global After hook
+			cmdName := c.Command.FullName()
+			if cmdName == "" || cmdName == c.App.Name {
+				// Fallback: try to reconstruct from args, excluding flags
+				args := []string{c.App.Name}
+				for _, arg := range os.Args[1:] {
+					if !strings.HasPrefix(arg, "-") {
+						args = append(args, arg)
+					}
+				}
+				if len(args) > 1 {
+					cmdName = strings.Join(args, " ")
+				}
+			}
+
+			cont.TelemetryService.Track(telemetry.Event{
+				Command:   cmdName,
+				Duration:  duration,
+				Success:   true, // We assume success here as we can't easily access error in After
+				Version:   Version,
+				OS:        runtime.GOOS,
+				Arch:      runtime.GOARCH,
+				Timestamp: time.Now().Unix(),
+			})
 			return nil
 		},
 	}
@@ -64,6 +112,8 @@ func main() {
 		},
 		cont.BundleHandler.Command(),
 		cont.DashboardHandler.Command(),
+		cont.ChatHandler.Command(),
+		cont.ConfigHandler.Command(),
 	}
 
 	if err := app.Run(os.Args); err != nil {
