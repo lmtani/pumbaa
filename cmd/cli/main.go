@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/config"
@@ -67,21 +66,8 @@ func main() {
 			}
 			duration := time.Since(startTime).Milliseconds()
 
-			// Construct command name from args to ensure we capture subcommands
-			// c.Command.FullName() sometimes returns just the app name in global After hook
-			cmdName := c.Command.FullName()
-			if cmdName == "" || cmdName == c.App.Name {
-				// Fallback: try to reconstruct from args, excluding flags
-				args := []string{c.App.Name}
-				for _, arg := range os.Args[1:] {
-					if !strings.HasPrefix(arg, "-") {
-						args = append(args, arg)
-					}
-				}
-				if len(args) > 1 {
-					cmdName = strings.Join(args, " ")
-				}
-			}
+			// Extract command name from args, matching only known commands/subcommands
+			cmdName := extractCommandName(c.App.Name, os.Args[1:])
 
 			cont.TelemetryService.Track(telemetry.Event{
 				Command:   cmdName,
@@ -120,4 +106,48 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// extractCommandName extracts just the command/subcommand from args,
+// ignoring flags and arguments.
+func extractCommandName(appName string, args []string) string {
+	// Known top-level commands and their subcommands
+	knownCommands := map[string][]string{
+		"workflow":  {"submit", "metadata", "abort", "query", "debug"},
+		"wf":        {"submit", "metadata", "abort", "query", "debug"},
+		"bundle":    {},
+		"dashboard": {},
+		"chat":      {},
+		"config":    {},
+	}
+
+	if len(args) == 0 {
+		return appName
+	}
+
+	// Check if first arg is a known command
+	firstArg := args[0]
+	subcommands, isKnown := knownCommands[firstArg]
+	if !isKnown {
+		// Not a known command, might be a flag like --help
+		return appName
+	}
+
+	// Normalize aliases
+	cmdName := firstArg
+	if cmdName == "wf" {
+		cmdName = "workflow"
+	}
+
+	// Check for subcommand
+	if len(args) > 1 && len(subcommands) > 0 {
+		secondArg := args[1]
+		for _, sub := range subcommands {
+			if secondArg == sub {
+				return appName + " " + cmdName + " " + sub
+			}
+		}
+	}
+
+	return appName + " " + cmdName
 }
