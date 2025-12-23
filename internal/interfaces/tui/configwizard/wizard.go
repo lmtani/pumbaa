@@ -1,4 +1,4 @@
-package tui
+package configwizard
 
 import (
 	"fmt"
@@ -225,8 +225,6 @@ func configureCromwell(cfg *config.FileConfig) error {
 }
 
 func configureWDL(cfg *config.FileConfig) error {
-	wdlDir := cfg.WDLDirectory
-
 	var configure bool
 	confirmForm := huh.NewForm(
 		huh.NewGroup(
@@ -242,19 +240,15 @@ func configureWDL(cfg *config.FileConfig) error {
 	}
 
 	if configure {
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("WDL Directory Path").
-					Description("Absolute path to your WDL workflows").
-					Value(&wdlDir),
-			),
-		).WithTheme(huh.ThemeDracula())
-
-		if err := form.Run(); err != nil {
+		// Use directory picker
+		startPath := cfg.WDLDirectory
+		selectedPath, err := RunDirectoryPicker(startPath)
+		if err != nil {
 			return err
 		}
-		cfg.WDLDirectory = wdlDir
+		if selectedPath != "" {
+			cfg.WDLDirectory = selectedPath
+		}
 	}
 
 	return nil

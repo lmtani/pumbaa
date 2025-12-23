@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/lmtani/pumbaa/internal/config"
-	tuiconfig "github.com/lmtani/pumbaa/internal/interfaces/tui/config"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/configwizard"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,7 +24,7 @@ func (h *ConfigHandler) Command() *cli.Command {
 				Name:  "init",
 				Usage: "Interactive configuration wizard",
 				Action: func(c *cli.Context) error {
-					return tuiconfig.ConfigWizard()
+					return configwizard.ConfigWizard()
 				},
 			},
 			{
