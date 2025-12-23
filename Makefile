@@ -5,7 +5,8 @@ CMD_DIR := ./cmd/cli
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(BUILD_TIME)"
+SENTRY_DSN ?= ""
+LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(BUILD_TIME) -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.DSN=$(SENTRY_DSN)"
 
 # Go variables
 GOCMD := go

@@ -29,6 +29,10 @@ type FileConfig struct {
 	GeminiAPIKey string `yaml:"gemini_api_key,omitempty"`
 	GeminiModel  string `yaml:"gemini_model,omitempty"`
 
+	// Telemetry
+	TelemetryEnabled *bool  `yaml:"telemetry_enabled,omitempty"`
+	ClientID         string `yaml:"client_id,omitempty"`
+
 	// WDL Context
 	WDLDirectory string `yaml:"wdl_directory,omitempty"`
 }
@@ -115,6 +119,13 @@ func (c *FileConfig) GetValue(key string) (string, bool) {
 		return c.GeminiModel, c.GeminiModel != ""
 	case "wdl_directory":
 		return c.WDLDirectory, c.WDLDirectory != ""
+	case "telemetry_enabled":
+		if c.TelemetryEnabled == nil {
+			return "", false
+		}
+		return fmt.Sprintf("%v", *c.TelemetryEnabled), true
+	case "client_id":
+		return c.ClientID, c.ClientID != ""
 	default:
 		return "", false
 	}
@@ -146,6 +157,9 @@ func (c *FileConfig) SetValue(key, value string) error {
 		c.GeminiModel = value
 	case "wdl_directory":
 		c.WDLDirectory = value
+	case "telemetry_enabled":
+		val := value == "true"
+		c.TelemetryEnabled = &val
 	default:
 		return fmt.Errorf("unknown config key: %s", key)
 	}
@@ -165,5 +179,7 @@ func AllKeys() []string {
 		"gemini_api_key",
 		"gemini_model",
 		"wdl_directory",
+		"telemetry_enabled",
+		"client_id",
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Config holds the application configuration.
@@ -28,6 +30,10 @@ type Config struct {
 	// Gemini API-specific (Google AI Studio)
 	GeminiAPIKey string
 	GeminiModel  string
+
+	// Telemetry
+	TelemetryEnabled bool   `yaml:"telemetry_enabled" env:"PUMBAA_TELEMETRY_ENABLED" default:"true"`
+	ClientID         string `yaml:"client_id" env:"PUMBAA_CLIENT_ID"`
 
 	// WDL Context configuration
 	WDLDirectory string // Directory containing WDL workflows for chat context
@@ -129,20 +135,55 @@ func Load() *Config {
 		geminiModel = "gemini-2.0-flash"
 	}
 
+	// Telemetry config
+	// Telemetry config
+	telemetryEnabled := true // default true by default
+	if os.Getenv("PUMBAA_TELEMETRY_ENABLED") == "false" {
+		telemetryEnabled = false
+	} else if fileCfg.TelemetryEnabled != nil && !*fileCfg.TelemetryEnabled {
+		// If file says false, respect it
+		telemetryEnabled = false
+	}
+
+	clientID := os.Getenv("PUMBAA_CLIENT_ID")
+	if clientID == "" {
+		clientID = fileCfg.ClientID
+	}
+
+	// First run / Missing ClientID setup
+	if clientID == "" {
+		clientID = uuid.New().String()
+		// Auto-enable telemetry on first run (create file with enabled=true)
+		fileCfg.ClientID = clientID
+		enabled := true
+		fileCfg.TelemetryEnabled = &enabled // Fix: pass pointer
+		_ = SaveFileConfig(fileCfg)         // Persist the new ID
+	} else if fileCfg.TelemetryEnabled != nil {
+		// If we had a client ID and telemetry setting is present, use it
+		telemetryEnabled = *fileCfg.TelemetryEnabled
+	}
+
+	// Override via ENV if set
+	if envTelemetry := os.Getenv("PUMBAA_TELEMETRY_ENABLED"); envTelemetry != "" {
+		telemetryEnabled = (envTelemetry == "true")
+	}
+
 	return &Config{
-		CromwellHost:    host,
-		CromwellTimeout: 30 * time.Second,
-		SessionDBPath:   sessionDBPath,
-		LLMProvider:     llmProvider,
-		OllamaHost:      ollamaHost,
-		OllamaModel:     ollamaModel,
-		VertexProject:   vertexProject,
-		VertexLocation:  vertexLocation,
-		VertexModel:     vertexModel,
-		GeminiAPIKey:    geminiAPIKey,
-		GeminiModel:     geminiModel,
-		WDLDirectory:    wdlDirectory,
-		WDLIndexPath:    wdlIndexPath,
+		CromwellHost:     host,
+		CromwellTimeout:  30 * time.Second,
+		SessionDBPath:    sessionDBPath,
+		LLMProvider:      llmProvider,
+		OllamaHost:       ollamaHost,
+		OllamaModel:      ollamaModel,
+		VertexProject:    vertexProject,
+		VertexLocation:   vertexLocation,
+		VertexModel:      vertexModel,
+		GeminiAPIKey:     geminiAPIKey,
+		GeminiModel:      geminiModel,
+		WDLDirectory:     wdlDirectory,
+		WDLIndexPath:     wdlIndexPath,
+		TelemetryEnabled: telemetryEnabled,
+		ClientID:         clientID,
 	}
 }
 

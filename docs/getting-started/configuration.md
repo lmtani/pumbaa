@@ -2,6 +2,34 @@
 
 Pumbaa can be configured through the interactive wizard, command-line flags, environment variables, or a configuration file.
 
+### Telemetry
+
+Pumbaa collects **anonymous** usage statistics to help us improve the tool. We use [PostHog](https://posthog.com) to track command execution count, duration, and success/failure rates.
+
+**What we collect:**
+- Command name (e.g., `pumbaa chat`)
+- Pumbaa Version
+- OS / Architecture
+- Execution duration
+- Success/Failure status
+
+**What we DO NOT collect:**
+- Arguments or flags values (no file paths, no API keys)
+- File contents
+- Personal Information
+
+**How to Opt-Out:**
+You can disable telemetry at any time:
+
+```bash
+pumbaa config set telemetry_enabled false
+```
+
+Or via environment variable:
+```bash
+export PUMBAA_TELEMETRY_ENABLED=false
+```
+
 ## Quick Setup (Recommended)
 
 The easiest way to configure Pumbaa is using the interactive wizard:

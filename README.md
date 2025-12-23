@@ -32,6 +32,10 @@ Interactive AI assistant for querying workflows and downloading files:
 # Quick setup (interactive wizard)
 pumbaa config init
 
+# Privacy Note: Pumbaa collects anonymous usage statistics. 
+# Opt-out: pumbaa config set telemetry_enabled false
+
+
 # Or run directly with a provider
 pumbaa chat --provider gemini --gemini-api-key <API_KEY>
 pumbaa chat --provider vertex --vertex-project <PROJECT_ID>

@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
@@ -21,7 +22,8 @@ type Container struct {
 	Presenter *presenter.Presenter
 
 	// Infrastructure
-	CromwellClient *cromwell.Client
+	CromwellClient   *cromwell.Client
+	TelemetryService telemetry.Service
 
 	// Use cases
 	SubmitUseCase   *submit.UseCase
@@ -43,7 +45,7 @@ type Container struct {
 }
 
 // New creates a new dependency injection container.
-func New(cfg *config.Config) *Container {
+func New(cfg *config.Config, version string) *Container {
 	c := &Container{
 		Config: cfg,
 	}
@@ -56,6 +58,19 @@ func New(cfg *config.Config) *Container {
 		Host:    cfg.CromwellHost,
 		Timeout: cfg.CromwellTimeout,
 	})
+
+	// Initialize Telemetry
+	if cfg.TelemetryEnabled {
+		ts, err := telemetry.NewSentryService(cfg.ClientID, version)
+		if err != nil || ts == nil {
+			// Fallback to NoOp if failed or DSN not configured
+			c.TelemetryService = telemetry.NewNoOpService()
+		} else {
+			c.TelemetryService = ts
+		}
+	} else {
+		c.TelemetryService = telemetry.NewNoOpService()
+	}
 
 	// Initialize use cases
 	c.SubmitUseCase = submit.New(c.CromwellClient)
