@@ -3,7 +3,10 @@ package chat
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -16,6 +19,14 @@ import (
 	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
+)
+
+// FocusMode indicates which panel has focus
+type FocusMode int
+
+const (
+	FocusInput FocusMode = iota
+	FocusMessages
 )
 
 // Interface to access the hidden definition method of functiontool
@@ -79,7 +90,11 @@ type Model struct {
 	// State
 	loading          bool
 	ready            bool
-	toolNotification string // Temporary notification for tool calls
+	toolNotification string    // Temporary notification for tool calls
+	focusMode        FocusMode // Current focus: input or messages
+	selectedMsg      int       // Currently selected message index (-1 = none)
+	statusMessage    string    // Temporary status message (e.g., "Copied!")
+	statusExpires    time.Time // When status message expires
 
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
@@ -104,6 +119,15 @@ type ToolNotificationMsg struct {
 
 // ClearNotificationMsg is sent to clear the tool notification
 type ClearNotificationMsg struct{}
+
+// clipboardCopiedMsg is sent when clipboard copy completes
+type clipboardCopiedMsg struct {
+	success bool
+	err     error
+}
+
+// clearStatusMsg is sent to clear the status message
+type clearStatusMsg struct{}
 
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
 func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
@@ -181,12 +205,13 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		tiCmd tea.Cmd
-		vpCmd tea.Cmd
 		spCmd tea.Cmd
 	)
 
-	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.viewport, vpCmd = m.viewport.Update(msg)
+	// Only update textarea when focused on input
+	if m.focusMode == FocusInput {
+		m.textarea, tiCmd = m.textarea.Update(msg)
+	}
 	m.spinner, spCmd = m.spinner.Update(msg)
 
 	switch msg := msg.(type) {
@@ -194,15 +219,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		// Calculate available heights
-		// Header: border (2) + padding (0) + content (1) = 3 lines
-		// Footer: border (1) + padding (0) + content (1) = 2 lines
-		// Input:  border (2) + padding (0) + content (3) = 5 lines
-		// Content panel: border (2) adds to viewport height
 		headerHeight := 3
 		footerHeight := 2
 		inputHeight := 5
-		contentBorderHeight := 2 // Top and bottom border of content panel
+		contentBorderHeight := 2
 
 		availableHeight := m.height - headerHeight - footerHeight - inputHeight - contentBorderHeight
 
@@ -221,6 +241,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
+
+		case tea.KeyTab:
+			// Toggle focus mode
+			if m.focusMode == FocusInput {
+				m.focusMode = FocusMessages
+				m.textarea.Blur()
+				// Select last message if none selected
+				if m.selectedMsg < 0 && m.msgs != nil && len(*m.msgs) > 0 {
+					m.selectedMsg = len(*m.msgs) - 1
+				}
+				m.viewport.SetContent(m.renderMessages())
+				m.scrollToSelectedMsg()
+			} else {
+				m.focusMode = FocusInput
+				m.selectedMsg = -1
+				m.textarea.Focus()
+				m.viewport.SetContent(m.renderMessages())
+			}
+			return m, nil
+
+		case tea.KeyUp:
+			if m.focusMode == FocusMessages && m.msgs != nil && len(*m.msgs) > 0 {
+				if m.selectedMsg > 0 {
+					m.selectedMsg--
+					m.viewport.SetContent(m.renderMessages())
+					m.scrollToSelectedMsg()
+				}
+				return m, nil
+			}
+
+		case tea.KeyDown:
+			if m.focusMode == FocusMessages && m.msgs != nil && len(*m.msgs) > 0 {
+				if m.selectedMsg < len(*m.msgs)-1 {
+					m.selectedMsg++
+					m.viewport.SetContent(m.renderMessages())
+					m.scrollToSelectedMsg()
+				}
+				return m, nil
+			}
+
 		case tea.KeyCtrlD:
 			if m.loading {
 				return m, nil
@@ -237,21 +297,30 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loading = true
 
 			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
+
+		case tea.KeyRunes:
+			// Handle 'y' for copy when in messages mode
+			if m.focusMode == FocusMessages && len(msg.Runes) > 0 && msg.Runes[0] == 'y' {
+				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+					content := (*m.msgs)[m.selectedMsg].Content
+					return m, copyToClipboard(content)
+				}
+			}
 		}
 
 	case ResponseMsg:
 		m.loading = false
-		m.toolNotification = "" // Clear notification
+		m.toolNotification = ""
 		if msg.Err != nil {
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("%v", msg.Err)})
 		} else {
-			// Pre-render markdown for agent messages
 			rendered := renderMarkdown(msg.Content, m.width-8)
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: msg.Content, Rendered: rendered})
 		}
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
 		m.textarea.Focus()
+		m.focusMode = FocusInput
 		return m, textarea.Blink
 
 	case ToolNotificationMsg:
@@ -265,9 +334,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ClearNotificationMsg:
 		m.toolNotification = ""
 		return m, nil
+
+	case clipboardCopiedMsg:
+		if msg.success {
+			m.statusMessage = "✓ Copiado!"
+		} else {
+			m.statusMessage = fmt.Sprintf("✗ Erro: %v", msg.err)
+		}
+		m.statusExpires = time.Now().Add(2 * time.Second)
+		return m, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+			return clearStatusMsg{}
+		})
+
+	case clearStatusMsg:
+		if time.Now().After(m.statusExpires) {
+			m.statusMessage = ""
+		}
+		return m, nil
 	}
 
-	return m, tea.Batch(tiCmd, vpCmd, spCmd)
+	return m, tea.Batch(tiCmd, spCmd)
 }
 
 func (m *Model) View() string {
@@ -325,16 +411,60 @@ func (m Model) renderInput() string {
 	return inputBox
 }
 
+// scrollToSelectedMsg scrolls the viewport to center the selected message
+func (m *Model) scrollToSelectedMsg() {
+	if m.msgs == nil || m.selectedMsg < 0 || m.selectedMsg >= len(*m.msgs) {
+		return
+	}
+
+	// Calculate approximate position based on message index
+	// Each message is roughly: role line (1) + content lines + spacing (2)
+	// We estimate ~6 lines per message on average for a good approximation
+	linesPerMsg := 6
+	targetLine := m.selectedMsg * linesPerMsg
+
+	// Center the message in the viewport
+	viewportHeight := m.viewport.Height
+	centeredOffset := targetLine - (viewportHeight / 2)
+
+	// Clamp to valid range
+	if centeredOffset < 0 {
+		centeredOffset = 0
+	}
+
+	m.viewport.SetYOffset(centeredOffset)
+}
+
 func (m Model) renderFooter() string {
-	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s",
-		common.KeyStyle.Render("ctrl+d"),
-		common.DescStyle.Render("enviar"),
-		common.KeyStyle.Render("↑↓"),
-		common.DescStyle.Render("scroll"),
-		common.KeyStyle.Render("esc"),
-		common.DescStyle.Render("sair"),
-	)
+	var help string
+	if m.focusMode == FocusMessages {
+		help = fmt.Sprintf(
+			"%s %s  %s %s  %s %s  %s %s",
+			common.KeyStyle.Render("↑↓"),
+			common.DescStyle.Render("navegar"),
+			common.KeyStyle.Render("y"),
+			common.DescStyle.Render("copiar"),
+			common.KeyStyle.Render("tab"),
+			common.DescStyle.Render("digitar"),
+			common.KeyStyle.Render("esc"),
+			common.DescStyle.Render("sair"),
+		)
+	} else {
+		help = fmt.Sprintf(
+			"%s %s  %s %s  %s %s",
+			common.KeyStyle.Render("ctrl+d"),
+			common.DescStyle.Render("enviar"),
+			common.KeyStyle.Render("tab"),
+			common.DescStyle.Render("navegar msgs"),
+			common.KeyStyle.Render("esc"),
+			common.DescStyle.Render("sair"),
+		)
+	}
+
+	// Show status message if present
+	if m.statusMessage != "" {
+		help = common.SuccessStyle.Render(m.statusMessage) + "  " + help
+	}
 
 	return common.HelpBarStyle.
 		Width(m.width - 2).
@@ -347,12 +477,17 @@ func (m Model) renderMessages() string {
 	}
 
 	var sb strings.Builder
-	maxWidth := m.width - 8 // Account for padding and borders
+	maxWidth := m.width - 8
 	if maxWidth <= 0 {
 		maxWidth = 80
 	}
 
-	for _, msg := range *m.msgs {
+	// Style for selected message
+	selectedStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#3a3a3a")).
+		Padding(0, 1)
+
+	for i, msg := range *m.msgs {
 		var roleStyle lipgloss.Style
 		var roleName string
 
@@ -368,15 +503,28 @@ func (m Model) renderMessages() string {
 			roleName = "Erro"
 		}
 
-		// Render role
-		sb.WriteString(roleStyle.Render(roleName) + "\n")
+		// Highlight if selected
+		isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
 
-		// Use pre-rendered markdown for agent, plain text for others
-		if msg.Role == "agent" && msg.Rendered != "" {
-			sb.WriteString(msg.Rendered)
+		// Render role with selection indicator
+		if isSelected {
+			sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
 		} else {
-			wrappedContent := wrapText(msg.Content, maxWidth)
-			sb.WriteString(messageStyle.Render(wrappedContent))
+			sb.WriteString(roleStyle.Render(roleName) + "\n")
+		}
+
+		// Render content
+		var content string
+		if msg.Role == "agent" && msg.Rendered != "" {
+			content = msg.Rendered
+		} else {
+			content = messageStyle.Render(wrapText(msg.Content, maxWidth))
+		}
+
+		if isSelected {
+			sb.WriteString(selectedStyle.Render(content))
+		} else {
+			sb.WriteString(content)
 		}
 		sb.WriteString("\n\n")
 	}
@@ -390,7 +538,6 @@ func renderMarkdown(content string, width int) string {
 		width = 80
 	}
 
-	// Use "dark" style for colored markdown rendering
 	renderer, err := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
 		glamour.WithWordWrap(width),
@@ -406,6 +553,51 @@ func renderMarkdown(content string, width int) string {
 	}
 
 	return strings.TrimSpace(rendered)
+}
+
+// copyToClipboard creates a tea.Cmd that copies text to the system clipboard
+func copyToClipboard(text string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+
+		switch runtime.GOOS {
+		case "darwin":
+			cmd = exec.Command("pbcopy")
+		case "linux":
+			if _, err := exec.LookPath("xclip"); err == nil {
+				cmd = exec.Command("xclip", "-selection", "clipboard")
+			} else if _, err := exec.LookPath("xsel"); err == nil {
+				cmd = exec.Command("xsel", "--clipboard", "--input")
+			} else if _, err := exec.LookPath("wl-copy"); err == nil {
+				cmd = exec.Command("wl-copy")
+			} else {
+				return clipboardCopiedMsg{success: false, err: fmt.Errorf("no clipboard tool found")}
+			}
+		default:
+			return clipboardCopiedMsg{success: false, err: fmt.Errorf("unsupported OS: %s", runtime.GOOS)}
+		}
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		if err := cmd.Start(); err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		_, err = stdin.Write([]byte(text))
+		if err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+		stdin.Close()
+
+		if err := cmd.Wait(); err != nil {
+			return clipboardCopiedMsg{success: false, err: err}
+		}
+
+		return clipboardCopiedMsg{success: true}
+	}
 }
 
 // wrapText wraps text to the given width
