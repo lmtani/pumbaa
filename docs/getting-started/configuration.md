@@ -22,7 +22,7 @@ This wizard guides you through:
 
 ---
 
-## :terminal: Configuration Commands
+## :material-console: Configuration Commands
 
 ```bash
 # Interactive setup wizard
