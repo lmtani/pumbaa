@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools"
 	"google.golang.org/adk/model"
 	"google.golang.org/genai"
 )
@@ -352,50 +353,10 @@ func (m *Model) convertTools(tools []*genai.Tool) []OllamaTool {
 	return ollamaTools
 }
 
-// getPumbaaParametersSchema returns the explicit JSON schema for the pumbaa tool
-// This is needed because ADK's functiontool doesn't populate the Parameters field properly
+// getPumbaaParametersSchema returns the schema from the tools package.
+// This ensures a single source of truth for the pumbaa tool parameters.
 func getPumbaaParametersSchema() map[string]interface{} {
-	return map[string]interface{}{
-		"type": "object",
-		"properties": map[string]interface{}{
-			"action": map[string]interface{}{
-				"type":        "string",
-				"description": "The action to perform",
-				"enum":        []string{"query", "status", "metadata", "outputs", "logs", "gcs_download", "wdl_list", "wdl_search", "wdl_info"},
-			},
-			"workflow_id": map[string]interface{}{
-				"type":        "string",
-				"description": "UUID of the workflow (required for status, metadata, outputs, logs actions)",
-			},
-			"status": map[string]interface{}{
-				"type":        "string",
-				"description": "Status filter for query action",
-				"enum":        []string{"Running", "Succeeded", "Failed", "Submitted", "Aborted"},
-			},
-			"name": map[string]interface{}{
-				"type":        "string",
-				"description": "Name filter for query action or name for wdl_info",
-			},
-			"path": map[string]interface{}{
-				"type":        "string",
-				"description": "GCS path (gs://bucket/file) for gcs_download action",
-			},
-			"query": map[string]interface{}{
-				"type":        "string",
-				"description": "Search query for wdl_search action",
-			},
-			"type": map[string]interface{}{
-				"type":        "string",
-				"description": "Type for wdl_info action",
-				"enum":        []string{"task", "workflow"},
-			},
-			"page_size": map[string]interface{}{
-				"type":        "integer",
-				"description": "Number of results to return for query action (default: 10)",
-			},
-		},
-		"required": []string{"action"},
-	}
+	return tools.GetParametersSchema()
 }
 
 // doRequest executes HTTP call to Ollama
