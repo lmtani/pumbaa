@@ -29,8 +29,12 @@ pumbaa dashboard
 Query workflows using natural language:
 
 ```bash
-pumbaa chat --provider vertex --vertex-project <PROJECT_ID>
+pumbaa config init  # First time setup
+pumbaa chat
 ```
+
+!!! note "Experimental Feature"
+    The chat agent is currently experimental and meant for exploration. In the future, it may help understand workflow errors, but for now it's just fun to use! 🎉
 
 ### Debug View
 
