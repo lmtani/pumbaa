@@ -65,7 +65,6 @@ func main() {
 		cont.BundleHandler.Command(),
 		cont.DashboardHandler.Command(),
 		cont.ChatHandler.Command(),
-		cont.AgentTestHandler.Command(),
 		cont.ConfigHandler.Command(),
 	}
 
