@@ -142,7 +142,7 @@ Available actions:
 func handleQuery(ctx context.Context, repo CromwellRepository, input PumbaaInput) (PumbaaOutput, error) {
 	filter := workflow.QueryFilter{
 		Name:     input.Name,
-		PageSize: 100, // Limit to 100 records
+		PageSize: 10, // Limit to 100 records
 	}
 	if input.Status != "" {
 		filter.Status = []workflow.Status{workflow.Status(input.Status)}

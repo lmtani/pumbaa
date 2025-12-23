@@ -23,10 +23,10 @@ import (
 
 // OllamaMessage represents a message in the Ollama API format
 type OllamaMessage struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
+	Role      string     `json:"role"`
+	Content   string     `json:"content"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+	ToolName  string     `json:"tool_name,omitempty"` // Ollama API uses tool_name, not tool_call_id
 }
 
 // ToolCall represents a tool call made by the model
@@ -163,22 +163,12 @@ func (m *Model) GenerateContent(
 			return
 		}
 
-		// Debug: show messages being sent
-		// for i, msg := range ollamaReq.Messages {
-		// 	fmt.Printf("[DEBUG] Message %d: role=%s, content_len=%d, tool_calls=%d, tool_call_id=%s\n",
-		// 		i, msg.Role, len(msg.Content), len(msg.ToolCalls), msg.ToolCallID)
-		// }
-
 		// Make HTTP call
 		ollamaResp, err := m.doRequest(ctx, ollamaReq)
 		if err != nil {
 			_ = yield(nil, err)
 			return
 		}
-
-		// Debug: show response received
-		// fmt.Printf("[DEBUG] Response: role=%s, content_len=%d, tool_calls=%d\n",
-		// 	ollamaResp.Message.Role, len(ollamaResp.Message.Content), len(ollamaResp.Message.ToolCalls))
 
 		// Convert response to ADK format
 		adkResp, err := m.buildResponse(ollamaResp)
@@ -213,6 +203,16 @@ func (m *Model) buildRequest(req *model.LLMRequest) (*OllamaChatRequest, error) 
 	// Convert message history
 	for _, content := range req.Contents {
 		if content == nil {
+			continue
+		}
+		// Check if this content has FunctionResponse parts - these need to be separate messages
+		if content.Role == "tool" {
+			for _, part := range content.Parts {
+				if part != nil && part.FunctionResponse != nil {
+					toolMsg := m.functionResponseToMessage(part.FunctionResponse)
+					ollamaReq.Messages = append(ollamaReq.Messages, toolMsg)
+				}
+			}
 			continue
 		}
 		msg := m.contentToMessage(content)
@@ -259,30 +259,42 @@ func (m *Model) contentToMessage(content *genai.Content) OllamaMessage {
 			})
 		}
 
+		// Note: FunctionResponse parts are now handled separately in buildRequest
+		// This block is kept for backwards compatibility but should not be reached
+		// when the Content.Role is "tool"
 		if part.FunctionResponse != nil {
-			msg.Role = "tool"
-			msg.ToolCallID = part.FunctionResponse.Name
-			if part.FunctionResponse.Response != nil {
-				// Convert errors to string before serializing
-				// ADK returns errors as map[string]any{"error": error}
-				// but error is an interface that serializes as {}
-				response := convertErrorsToStrings(part.FunctionResponse.Response)
-
-				// If there is an error, format explicitly for the model to understand
-				if errMsg, hasError := response["error"]; hasError {
-					msg.Content = fmt.Sprintf("ERROR: The tool failed with the following error: %v. Inform the user about this problem.", errMsg)
-				} else {
-					respJSON, _ := json.Marshal(response)
-					msg.Content = string(respJSON)
-				}
-			}
-			// Return immediately as FunctionResponse is a separate message
-			return msg
+			return m.functionResponseToMessage(part.FunctionResponse)
 		}
 	}
 
 	if len(textParts) > 0 {
 		msg.Content = strings.Join(textParts, "\n")
+	}
+
+	return msg
+}
+
+// functionResponseToMessage converts a FunctionResponse to an OllamaMessage
+// Each FunctionResponse becomes a separate tool message per Ollama API format
+func (m *Model) functionResponseToMessage(fr *genai.FunctionResponse) OllamaMessage {
+	msg := OllamaMessage{
+		Role:     "tool",
+		ToolName: fr.Name, // Ollama uses tool_name, not tool_call_id
+	}
+
+	if fr.Response != nil {
+		// Convert errors to string before serializing
+		// ADK returns errors as map[string]any{"error": error}
+		// but error is an interface that serializes as {}
+		response := convertErrorsToStrings(fr.Response)
+
+		// If there is an error, format explicitly for the model to understand
+		if errMsg, hasError := response["error"]; hasError {
+			msg.Content = fmt.Sprintf("ERROR: The tool failed with the following error: %v. Inform the user about this problem.", errMsg)
+		} else {
+			respJSON, _ := json.Marshal(response)
+			msg.Content = string(respJSON)
+		}
 	}
 
 	return msg
@@ -302,25 +314,28 @@ func (m *Model) convertTools(tools []*genai.Tool) []OllamaTool {
 			}
 
 			params := make(map[string]interface{})
-			if fn.Parameters != nil {
+			if fn.Parameters != nil && len(fn.Parameters.Properties) > 0 {
+				// Use the schema from ADK
 				params["type"] = fn.Parameters.Type
-				if len(fn.Parameters.Properties) > 0 {
-					props := make(map[string]interface{})
-					for name, prop := range fn.Parameters.Properties {
-						propMap := map[string]interface{}{
-							"type":        prop.Type,
-							"description": prop.Description,
-						}
-						if len(prop.Enum) > 0 {
-							propMap["enum"] = prop.Enum
-						}
-						props[name] = propMap
+				props := make(map[string]interface{})
+				for name, prop := range fn.Parameters.Properties {
+					propMap := map[string]interface{}{
+						"type":        prop.Type,
+						"description": prop.Description,
 					}
-					params["properties"] = props
+					if len(prop.Enum) > 0 {
+						propMap["enum"] = prop.Enum
+					}
+					props[name] = propMap
 				}
+				params["properties"] = props
 				if len(fn.Parameters.Required) > 0 {
 					params["required"] = fn.Parameters.Required
 				}
+			} else if fn.Name == "pumbaa" {
+				// Fallback: ADK functiontool doesn't populate Parameters for Ollama
+				// Provide explicit schema for the pumbaa tool
+				params = getPumbaaParametersSchema()
 			}
 
 			ollamaTools = append(ollamaTools, OllamaTool{
@@ -335,6 +350,48 @@ func (m *Model) convertTools(tools []*genai.Tool) []OllamaTool {
 	}
 
 	return ollamaTools
+}
+
+// getPumbaaParametersSchema returns the explicit JSON schema for the pumbaa tool
+// This is needed because ADK's functiontool doesn't populate the Parameters field properly
+func getPumbaaParametersSchema() map[string]interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"action": map[string]interface{}{
+				"type":        "string",
+				"description": "The action to perform",
+				"enum":        []string{"query", "status", "metadata", "outputs", "logs", "gcs_download", "wdl_list", "wdl_search", "wdl_info"},
+			},
+			"workflow_id": map[string]interface{}{
+				"type":        "string",
+				"description": "UUID of the workflow (required for status, metadata, outputs, logs actions)",
+			},
+			"status": map[string]interface{}{
+				"type":        "string",
+				"description": "Status filter for query action",
+				"enum":        []string{"Running", "Succeeded", "Failed", "Submitted", "Aborted"},
+			},
+			"name": map[string]interface{}{
+				"type":        "string",
+				"description": "Name filter for query action or name for wdl_info",
+			},
+			"path": map[string]interface{}{
+				"type":        "string",
+				"description": "GCS path (gs://bucket/file) for gcs_download action",
+			},
+			"query": map[string]interface{}{
+				"type":        "string",
+				"description": "Search query for wdl_search action",
+			},
+			"type": map[string]interface{}{
+				"type":        "string",
+				"description": "Type for wdl_info action",
+				"enum":        []string{"task", "workflow"},
+			},
+		},
+		"required": []string{"action"},
+	}
 }
 
 // doRequest executes HTTP call to Ollama
