@@ -111,7 +111,7 @@ func configureOllama(cfg *config.FileConfig) error {
 				Value(&host),
 			huh.NewInput().
 				Title("Ollama Model").
-				Description("Model name (e.g., llama3.2:3b, mistral, codellama)").
+				Description("Model name (e.g., llama3.2:3b, gpt-oss:20b)").
 				Value(&model),
 		),
 	).WithTheme(huh.ThemeDracula())
@@ -129,7 +129,7 @@ func configureGemini(cfg *config.FileConfig) error {
 	apiKey := cfg.GeminiAPIKey
 	model := cfg.GeminiModel
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-2.5-flash"
 	}
 
 	form := huh.NewForm(
@@ -142,7 +142,8 @@ func configureGemini(cfg *config.FileConfig) error {
 			huh.NewSelect[string]().
 				Title("Gemini Model").
 				Options(
-					huh.NewOption("gemini-2.0-flash (Recommended)", "gemini-2.0-flash"),
+					huh.NewOption("gemini-2.5-flash (Recommended)", "gemini-2.5-flash"),
+					huh.NewOption("gemini-2.0-flash", "gemini-2.0-flash"),
 					huh.NewOption("gemini-1.5-pro", "gemini-1.5-pro"),
 					huh.NewOption("gemini-1.5-flash", "gemini-1.5-flash"),
 				).
@@ -167,7 +168,7 @@ func configureVertex(cfg *config.FileConfig) error {
 	}
 	model := cfg.VertexModel
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-2.5-flash"
 	}
 
 	form := huh.NewForm(
@@ -183,7 +184,8 @@ func configureVertex(cfg *config.FileConfig) error {
 			huh.NewSelect[string]().
 				Title("Vertex AI Model").
 				Options(
-					huh.NewOption("gemini-2.0-flash (Recommended)", "gemini-2.0-flash"),
+					huh.NewOption("gemini-2.5-flash (Recommended)", "gemini-2.5-flash"),
+					huh.NewOption("gemini-2.0-flash", "gemini-2.0-flash"),
 					huh.NewOption("gemini-1.5-pro", "gemini-1.5-pro"),
 					huh.NewOption("gemini-1.5-flash", "gemini-1.5-flash"),
 				).
