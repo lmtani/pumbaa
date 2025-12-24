@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/wdl"
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
@@ -268,7 +269,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	})
 
 	// Initialize WDL indexer if configured
-	var wdlRepo tools.WDLRepository
+	var wdlRepo wdl.Repository
 	if h.config.WDLDirectory != "" {
 		fmt.Printf("Indexing WDL workflows from: %s\n", h.config.WDLDirectory)
 		indexer, err := wdlindexer.NewIndexer(h.config.WDLDirectory, h.config.WDLIndexPath, rebuildIndex)
