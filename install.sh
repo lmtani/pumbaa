@@ -76,7 +76,8 @@ install() {
 
     # Build download URL based on GoReleaser naming
     # Archive format: pumbaa_Linux_x86_64.tar.gz
-    OS_TITLE=$(echo "${OS}" | sed 's/.*/\u&/')  # Capitalize first letter
+    # Capitalize first letter (POSIX-compatible, works on both GNU and BSD sed/awk)
+    OS_TITLE=$(echo "${OS}" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
     ARCH_NAME="${ARCH}"
     if [ "$ARCH" = "amd64" ]; then
         ARCH_NAME="x86_64"
