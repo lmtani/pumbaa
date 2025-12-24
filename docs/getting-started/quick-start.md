@@ -59,11 +59,15 @@ pumbaa dashboard
 
 | Key | Action |
 |:---:|--------|
-| ++up++ / ++down++ | Navigate workflows |
+| ++up++ / ++k++ | Move up |
+| ++down++ / ++j++ | Move down |
 | ++enter++ | Open debug view |
-| ++s++ | Filter by status |
+| ++s++ | Cycle status filter |
 | ++slash++ | Filter by name |
+| ++l++ | Filter by label |
+| ++ctrl+x++ | Clear all filters |
 | ++a++ | Abort workflow |
+| ++shift+l++ | Manage labels |
 | ++r++ | Refresh |
 | ++q++ | Quit |
 
@@ -106,19 +110,6 @@ pumbaa workflow submit \
     ```bash
     pumbaa workflow debug --id <workflow-id>
     ```
-
-### :keyboard: Debug View Navigation
-
-| Key | Action |
-|:---:|--------|
-| ++up++ / ++down++ | Navigate tasks |
-| ++left++ / ++right++ | Collapse/expand |
-| ++tab++ | Switch panels |
-| ++c++ | View command |
-| ++i++ | View inputs |
-| ++o++ | View outputs |
-| ++l++ | View logs |
-| ++q++ | Back to dashboard |
 
 ---
 
