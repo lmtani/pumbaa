@@ -16,7 +16,7 @@ import (
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // SQLiteService implements session.Service using SQLite for persistence.
@@ -119,7 +119,7 @@ func NewSQLiteService(dbPath string) (*SQLiteService, error) {
 		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
