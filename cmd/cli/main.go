@@ -4,7 +4,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/config"
@@ -30,6 +29,11 @@ func main() {
 	cont := container.New(cfg, Version)
 	defer cont.TelemetryService.Close()
 
+	// Log app start for telemetry breadcrumb trail
+	cont.TelemetryService.AddBreadcrumb("app", fmt.Sprintf("pumbaa %s started", Version))
+
+	var startTime time.Time
+
 	app := &cli.App{
 		Name:    "pumbaa",
 		Usage:   "A CLI tool for interacting with Cromwell workflow engine and WDL files",
@@ -49,35 +53,17 @@ func main() {
 				cont.CromwellClient.BaseURL = c.String("host")
 			}
 
+			// Log command execution breadcrumb
+			if len(c.Args().Slice()) > 0 || c.Command != nil {
+				cmdName := "pumbaa"
+				if c.Command != nil {
+					cmdName = c.Command.FullName()
+				}
+				cont.TelemetryService.AddBreadcrumb("navigation", fmt.Sprintf("executing: %s", cmdName))
+			}
+
 			// Store start time for telemetry
-			c.App.Metadata["startTime"] = time.Now()
-			return nil
-		},
-		After: func(c *cli.Context) error {
-			// Don't track if no command command was run (e.g. root help)
-			if c.Command == nil || c.Command.Name == "" {
-				return nil
-			}
-
-			// Calculate duration
-			startTime, ok := c.App.Metadata["startTime"].(time.Time)
-			if !ok {
-				startTime = time.Now()
-			}
-			duration := time.Since(startTime).Milliseconds()
-
-			// Extract command name from args, matching only known commands/subcommands
-			cmdName := extractCommandName(c.App.Name, os.Args[1:])
-
-			cont.TelemetryService.Track(telemetry.Event{
-				Command:   cmdName,
-				Duration:  duration,
-				Success:   true, // We assume success here as we can't easily access error in After
-				Version:   Version,
-				OS:        runtime.GOOS,
-				Arch:      runtime.GOARCH,
-				Timestamp: time.Now().Unix(),
-			})
+			startTime = time.Now()
 			return nil
 		},
 	}
@@ -102,52 +88,20 @@ func main() {
 		cont.ConfigHandler.Command(),
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	// Run the app and track telemetry at the end
+	err := app.Run(os.Args)
+
+	// Track command execution (only if a command was invoked)
+	if len(os.Args) > 1 && !startTime.IsZero() {
+		cont.TelemetryService.TrackCommand(telemetry.CommandContext{
+			AppName:   app.Name,
+			Args:      os.Args[1:],
+			StartTime: startTime,
+		}, err)
+	}
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-// extractCommandName extracts just the command/subcommand from args,
-// ignoring flags and arguments.
-func extractCommandName(appName string, args []string) string {
-	// Known top-level commands and their subcommands
-	knownCommands := map[string][]string{
-		"workflow":  {"submit", "metadata", "abort", "query", "debug"},
-		"wf":        {"submit", "metadata", "abort", "query", "debug"},
-		"bundle":    {},
-		"dashboard": {},
-		"chat":      {},
-		"config":    {},
-	}
-
-	if len(args) == 0 {
-		return appName
-	}
-
-	// Check if first arg is a known command
-	firstArg := args[0]
-	subcommands, isKnown := knownCommands[firstArg]
-	if !isKnown {
-		// Not a known command, might be a flag like --help
-		return appName
-	}
-
-	// Normalize aliases
-	cmdName := firstArg
-	if cmdName == "wf" {
-		cmdName = "workflow"
-	}
-
-	// Check for subcommand
-	if len(args) > 1 && len(subcommands) > 0 {
-		secondArg := args[1]
-		for _, sub := range subcommands {
-			if secondArg == sub {
-				return appName + " " + cmdName + " " + sub
-			}
-		}
-	}
-
-	return appName + " " + cmdName
 }

@@ -83,6 +83,7 @@ type Model struct {
 	// Navigation state (for external handlers to check)
 	NavigateToDebugID string
 	ShouldQuit        bool
+	LastError         error // Last error for telemetry capture
 }
 
 // FilterState holds the current filter configuration
@@ -183,6 +184,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case workflowsErrorMsg:
 		m.loading = false
 		m.error = msg.err.Error()
+		m.LastError = msg.err
 
 	case abortResultMsg:
 		m.showConfirm = false
@@ -205,6 +207,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingDebug = false
 		m.loadingDebugID = ""
 		m.statusMsg = fmt.Sprintf("✗ Failed to load metadata: %v", msg.err)
+		m.LastError = msg.err
 
 	case healthStatusLoadedMsg:
 		m.healthStatus = msg.status
@@ -227,6 +230,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.labelsLoading = false
 		m.showLabelsModal = false
 		m.statusMsg = fmt.Sprintf("✗ Failed to load labels: %v", msg.err)
+		m.LastError = msg.err
 
 	case labelsUpdatedMsg:
 		m.labelsUpdating = false
