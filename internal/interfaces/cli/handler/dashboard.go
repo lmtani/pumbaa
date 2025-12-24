@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
+	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 	"github.com/urfave/cli/v2"
@@ -18,13 +19,15 @@ import (
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	client *cromwell.Client
+	client    *cromwell.Client
+	telemetry telemetry.Service
 }
 
 // NewDashboardHandler creates a new dashboard handler.
-func NewDashboardHandler(client *cromwell.Client) *DashboardHandler {
+func NewDashboardHandler(client *cromwell.Client, ts telemetry.Service) *DashboardHandler {
 	return &DashboardHandler{
-		client: client,
+		client:    client,
+		telemetry: ts,
 	}
 }
 
@@ -87,6 +90,11 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 			return nil
 		}
 
+		// Capture any TUI errors for telemetry before exiting
+		if dashModel.LastError != nil {
+			h.telemetry.CaptureError("dashboard.tui", dashModel.LastError)
+		}
+
 		// Check if user wants to quit
 		if dashModel.ShouldQuit {
 			return nil
@@ -105,14 +113,16 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 				metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, dashModel.NavigateToDebugID, false)
 				if err != nil {
 					fmt.Printf("Error fetching metadata: %v\n", err)
+					h.telemetry.CaptureError("dashboard.fetchMetadata", err)
 					continue
 				}
 			}
 
 			err := h.runDebugWithMetadata(metadataBytes)
 			if err != nil {
-				// Log error but continue - will restart dashboard
+				// Log error and send to telemetry
 				fmt.Printf("Error opening debug view: %v\n", err)
+				h.telemetry.CaptureError("dashboard.runDebugWithMetadata", err)
 			}
 			// After debug closes, loop back to restart dashboard
 			continue

@@ -43,6 +43,8 @@ func NewSentryService(clientID string, version string) (*SentryService, error) {
 		Dsn:              DSN,
 		Release:          version,
 		Environment:      "production",
+		AttachStacktrace: true,
+		MaxErrorDepth:    10,
 		TracesSampleRate: 1.0,
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			// Add anonymous client ID as tag
@@ -122,6 +124,26 @@ func (s *SentryService) Close() {
 	if s.initialized {
 		sentry.Flush(2 * time.Second)
 	}
+}
+
+// CaptureError captures an error with operation context.
+// Use for TUI errors or background operations that don't go through TrackCommand.
+func (s *SentryService) CaptureError(operation string, err error) {
+	if !s.initialized || err == nil {
+		return
+	}
+
+	errType := categorizeError(err)
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("operation", operation)
+		scope.SetTag("error_type", errType)
+		scope.SetExtra("version", s.version)
+		scope.SetExtra("os", runtime.GOOS)
+		scope.SetExtra("arch", runtime.GOARCH)
+
+		sentry.CaptureException(fmt.Errorf("%s: %w", operation, err))
+	})
 }
 
 // extractCommandName extracts just the command/subcommand from args,

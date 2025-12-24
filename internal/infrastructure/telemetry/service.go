@@ -30,6 +30,11 @@ type Service interface {
 	// It handles duration calculation, command name extraction, and error details.
 	TrackCommand(ctx CommandContext, err error)
 
+	// CaptureError captures an error with operation context.
+	// Use this for errors that occur outside the normal command flow,
+	// such as errors in TUI interactions or background operations.
+	CaptureError(operation string, err error)
+
 	// Close flushes any pending events.
 	Close()
 }
