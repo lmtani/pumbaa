@@ -68,6 +68,7 @@ KEY BINDINGS:
 
 func (h *DashboardHandler) handle(c *cli.Context) error {
 	fetcher := &dashboardFetcher{client: h.client}
+	h.telemetry.AddBreadcrumb("navigation", "entering dashboard")
 
 	for {
 		// Create dashboard model with metadata fetcher for smooth transitions
@@ -97,6 +98,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 		// Check if user wants to quit
 		if dashModel.ShouldQuit {
+			h.telemetry.AddBreadcrumb("navigation", "exiting dashboard")
 			return nil
 		}
 
@@ -117,7 +119,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 					continue
 				}
 			}
-
+			h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("opening debug view for %s", dashModel.NavigateToDebugID[:8]))
 			err := h.runDebugWithMetadata(metadataBytes)
 			if err != nil {
 				// Log error and send to telemetry
@@ -125,6 +127,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 				h.telemetry.CaptureError("dashboard.runDebugWithMetadata", err)
 			}
 			// After debug closes, loop back to restart dashboard
+			h.telemetry.AddBreadcrumb("navigation", "returning to dashboard from debug")
 			continue
 		}
 

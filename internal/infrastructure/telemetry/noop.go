@@ -13,4 +13,6 @@ func (s *NoOpService) TrackCommand(ctx CommandContext, err error) {}
 
 func (s *NoOpService) CaptureError(operation string, err error) {}
 
+func (s *NoOpService) AddBreadcrumb(category, message string) {}
+
 func (s *NoOpService) Close() {}

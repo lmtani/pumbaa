@@ -146,6 +146,21 @@ func (s *SentryService) CaptureError(operation string, err error) {
 	})
 }
 
+// AddBreadcrumb logs an event that will appear as context when an error occurs.
+// Breadcrumbs create a trail of events leading up to an error.
+func (s *SentryService) AddBreadcrumb(category, message string) {
+	if !s.initialized {
+		return
+	}
+
+	sentry.AddBreadcrumb(&sentry.Breadcrumb{
+		Category:  category,
+		Message:   message,
+		Level:     sentry.LevelInfo,
+		Timestamp: time.Now(),
+	})
+}
+
 // extractCommandName extracts just the command/subcommand from args,
 // ignoring flags and arguments.
 func extractCommandName(appName string, args []string) string {

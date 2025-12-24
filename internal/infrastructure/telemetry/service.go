@@ -35,6 +35,11 @@ type Service interface {
 	// such as errors in TUI interactions or background operations.
 	CaptureError(operation string, err error)
 
+	// AddBreadcrumb logs an event that will appear as context when an error occurs.
+	// Breadcrumbs create a trail of events leading up to an error.
+	// Categories: "app", "navigation", "user", "http", "query"
+	AddBreadcrumb(category, message string)
+
 	// Close flushes any pending events.
 	Close()
 }

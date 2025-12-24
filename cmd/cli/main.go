@@ -29,6 +29,9 @@ func main() {
 	cont := container.New(cfg, Version)
 	defer cont.TelemetryService.Close()
 
+	// Log app start for telemetry breadcrumb trail
+	cont.TelemetryService.AddBreadcrumb("app", fmt.Sprintf("pumbaa %s started", Version))
+
 	var startTime time.Time
 
 	app := &cli.App{
@@ -48,6 +51,15 @@ func main() {
 			// Update config with CLI flags
 			if c.IsSet("host") {
 				cont.CromwellClient.BaseURL = c.String("host")
+			}
+
+			// Log command execution breadcrumb
+			if len(c.Args().Slice()) > 0 || c.Command != nil {
+				cmdName := "pumbaa"
+				if c.Command != nil {
+					cmdName = c.Command.FullName()
+				}
+				cont.TelemetryService.AddBreadcrumb("navigation", fmt.Sprintf("executing: %s", cmdName))
 			}
 
 			// Store start time for telemetry
