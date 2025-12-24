@@ -9,4 +9,6 @@ func NewNoOpService() *NoOpService {
 
 func (s *NoOpService) Track(event Event) {}
 
+func (s *NoOpService) TrackCommand(ctx CommandContext, err error) {}
+
 func (s *NoOpService) Close() {}

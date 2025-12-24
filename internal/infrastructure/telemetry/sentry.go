@@ -1,8 +1,10 @@
 package telemetry
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -11,12 +13,23 @@ import (
 // SentryService implements the Service interface using Sentry
 type SentryService struct {
 	initialized bool
+	version     string
 }
 
 var (
 	// DSN is the Sentry DSN for Pumbaa project.
 	// Injected at build time via: -ldflags "-X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.DSN=..."
 	DSN = ""
+
+	// knownCommands maps top-level commands to their subcommands for extraction
+	knownCommands = map[string][]string{
+		"workflow":  {"submit", "metadata", "abort", "query", "debug"},
+		"wf":        {"submit", "metadata", "abort", "query", "debug"},
+		"bundle":    {},
+		"dashboard": {},
+		"chat":      {},
+		"config":    {},
+	}
 )
 
 // NewSentryService creates a new Sentry telemetry service
@@ -43,7 +56,7 @@ func NewSentryService(clientID string, version string) (*SentryService, error) {
 		return nil, fmt.Errorf("failed to initialize sentry: %w", err)
 	}
 
-	return &SentryService{initialized: true}, nil
+	return &SentryService{initialized: true, version: version}, nil
 }
 
 func (s *SentryService) Track(event Event) {
@@ -70,8 +83,147 @@ func (s *SentryService) Track(event Event) {
 	})
 }
 
+// TrackCommand tracks a command execution with automatic event creation.
+func (s *SentryService) TrackCommand(ctx CommandContext, err error) {
+	if !s.initialized {
+		return
+	}
+
+	cmdName := extractCommandName(ctx.AppName, ctx.Args)
+	duration := time.Since(ctx.StartTime).Milliseconds()
+	success := err == nil
+
+	var errType string
+	if err != nil {
+		errType = categorizeError(err)
+	}
+
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("command", cmdName)
+		scope.SetTag("success", fmt.Sprintf("%t", success))
+		scope.SetExtra("duration_ms", duration)
+		scope.SetExtra("version", s.version)
+		scope.SetExtra("os", runtime.GOOS)
+		scope.SetExtra("arch", runtime.GOARCH)
+
+		if success {
+			sentry.CaptureMessage(fmt.Sprintf("command:%s", cmdName))
+		} else {
+			scope.SetTag("error_type", errType)
+			scope.SetExtra("args", sanitizeArgs(ctx.Args))
+
+			// Capture the original error with stack trace if available
+			sentry.CaptureException(fmt.Errorf("command %s failed: %w", cmdName, err))
+		}
+	})
+}
+
 func (s *SentryService) Close() {
 	if s.initialized {
 		sentry.Flush(2 * time.Second)
 	}
+}
+
+// extractCommandName extracts just the command/subcommand from args,
+// ignoring flags and arguments.
+func extractCommandName(appName string, args []string) string {
+	if len(args) == 0 {
+		return appName
+	}
+
+	// Check if first arg is a known command
+	firstArg := args[0]
+	subcommands, isKnown := knownCommands[firstArg]
+	if !isKnown {
+		// Not a known command, might be a flag like --help
+		return appName
+	}
+
+	// Normalize aliases
+	cmdName := firstArg
+	if cmdName == "wf" {
+		cmdName = "workflow"
+	}
+
+	// Check for subcommand
+	if len(args) > 1 && len(subcommands) > 0 {
+		secondArg := args[1]
+		for _, sub := range subcommands {
+			if secondArg == sub {
+				return appName + " " + cmdName + " " + sub
+			}
+		}
+	}
+
+	return appName + " " + cmdName
+}
+
+// categorizeError attempts to categorize an error by its type
+func categorizeError(err error) string {
+	if err == nil {
+		return "none"
+	}
+
+	errStr := strings.ToLower(err.Error())
+
+	switch {
+	case strings.Contains(errStr, "connection") || strings.Contains(errStr, "network") ||
+		strings.Contains(errStr, "timeout") || strings.Contains(errStr, "dial"):
+		return "network"
+	case strings.Contains(errStr, "permission") || strings.Contains(errStr, "access denied"):
+		return "permission"
+	case strings.Contains(errStr, "not found") || strings.Contains(errStr, "no such file"):
+		return "not_found"
+	case strings.Contains(errStr, "invalid") || strings.Contains(errStr, "validation"):
+		return "validation"
+	case strings.Contains(errStr, "parse") || strings.Contains(errStr, "syntax"):
+		return "parse"
+	default:
+		// Try to get the error type from wrapped errors
+		var targetErr interface{ Unwrap() error }
+		if errors.As(err, &targetErr) {
+			return fmt.Sprintf("wrapped:%T", err)
+		}
+		return "internal"
+	}
+}
+
+// sanitizeArgs removes sensitive information from command args
+func sanitizeArgs(args []string) []string {
+	sanitized := make([]string, 0, len(args))
+	skipNext := false
+
+	sensitiveFlags := []string{"--token", "--password", "--secret", "--key", "--api-key"}
+
+	for _, arg := range args {
+		if skipNext {
+			sanitized = append(sanitized, "[REDACTED]")
+			skipNext = false
+			continue
+		}
+
+		isSensitive := false
+		for _, flag := range sensitiveFlags {
+			if strings.HasPrefix(arg, flag+"=") {
+				// Flag with value: --token=xxx
+				parts := strings.SplitN(arg, "=", 2)
+				sanitized = append(sanitized, parts[0]+"=[REDACTED]")
+				isSensitive = true
+				break
+			}
+			if arg == flag {
+				// Flag without value: --token xxx
+				sanitized = append(sanitized, arg)
+				skipNext = true
+				isSensitive = true
+				break
+			}
+		}
+
+		if !isSensitive {
+			sanitized = append(sanitized, arg)
+		}
+	}
+
+	return sanitized
 }
