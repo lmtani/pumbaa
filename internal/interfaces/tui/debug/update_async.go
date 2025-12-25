@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 

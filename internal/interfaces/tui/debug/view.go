@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 )
 

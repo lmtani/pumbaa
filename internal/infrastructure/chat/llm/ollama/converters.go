@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
 	"google.golang.org/adk/model"
 	"google.golang.org/genai"
+
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
 )
 
 // buildRequest converts an ADK LLMRequest to OllamaChatRequest

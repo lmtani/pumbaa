@@ -5,9 +5,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
-	"github.com/urfave/cli/v2"
 )
 
 // SubmitHandler handles the workflow submission command.

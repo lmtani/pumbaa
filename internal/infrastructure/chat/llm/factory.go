@@ -4,9 +4,10 @@ package llm
 import (
 	"fmt"
 
+	"google.golang.org/adk/model"
+
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm/ollama"
-	"google.golang.org/adk/model"
 )
 
 // Provider constants

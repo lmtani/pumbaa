@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"

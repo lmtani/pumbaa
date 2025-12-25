@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
@@ -14,7 +16,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/urfave/cli/v2"
 )
 
 // DashboardHandler handles the dashboard TUI command.

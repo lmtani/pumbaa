@@ -5,6 +5,8 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
@@ -12,7 +14,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/urfave/cli/v2"
 )
 
 // DebugHandler handles workflow debug TUI commands.

@@ -17,11 +17,12 @@ GOMOD := $(GOCMD) mod
 GOFMT := gofmt
 GOVET := $(GOCMD) vet
 GOLINT := golangci-lint
+GOIMPORTS := goimports
 
 # Platforms for cross-compilation
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
 
-.PHONY: all build clean test test-verbose test-coverage fmt tidy vet lint help run dev deps antlr release-dry-run release-check
+.PHONY: all build clean test test-verbose test-coverage fmt goimports goimports-check fmt-check tidy vet lint help run dev deps antlr release-dry-run release-check
 
 # Default target
 all: fmt vet test build
@@ -44,11 +45,39 @@ fmt:
 	$(GOFMT) -s -w .
 	@echo "Done formatting"
 
+# Format imports
+goimports:
+	@echo "Formatting imports..."
+	@which $(GOIMPORTS) > /dev/null || (echo "goimports not installed. Run: go install golang.org/x/tools/cmd/goimports@latest" && exit 1)
+	$(GOIMPORTS) -w -local github.com/lmtani/pumbaa .
+	@echo "Done formatting imports"
+
 # Run go vet
 vet:
 	@echo "Running go vet (excluding generated code)..."
 	$(GOCMD) list ./... | grep -v "pkg/wdl/parser" | xargs $(GOVET)
 	@echo "Done vetting"
+
+# Check if code is formatted
+fmt-check:
+	@echo "Checking formatting..."
+	@if [ -n "$$($(GOFMT) -l .)" ]; then \
+		echo "The following files are not formatted:"; \
+		$(GOFMT) -l .; \
+		exit 1; \
+	fi
+	@echo "Formatting is correct"
+
+# Check if imports are formatted
+goimports-check:
+	@echo "Checking imports..."
+	@which $(GOIMPORTS) > /dev/null || (echo "goimports not installed. Run: go install golang.org/x/tools/cmd/goimports@latest" && exit 1)
+	@if [ -n "$$($(GOIMPORTS) -l -local github.com/lmtani/pumbaa .)" ]; then \
+		echo "The following files have incorrect imports:"; \
+		$(GOIMPORTS) -l -local github.com/lmtani/pumbaa .; \
+		exit 1; \
+	fi
+	@echo "Imports are correct"
 
 # Run golangci-lint (must be installed separately)
 lint:
@@ -195,6 +224,8 @@ help:
 	@echo "Code quality targets:"
 	@echo "  fmt          Format code with gofmt"
 	@echo "  fmt-check    Check if code is formatted"
+	@echo "  goimports    Format imports with goimports"
+	@echo "  goimports-check Check if imports are formatted"
 	@echo "  tidy         Tidy go.mod dependencies"
 	@echo "  deps         Download dependencies"
 	@echo "  verify       Verify dependencies"

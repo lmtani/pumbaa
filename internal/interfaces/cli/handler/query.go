@@ -4,9 +4,10 @@ package handler
 import (
 	"context"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/query"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
-	"github.com/urfave/cli/v2"
 )
 
 // QueryHandler handles the workflow query command.

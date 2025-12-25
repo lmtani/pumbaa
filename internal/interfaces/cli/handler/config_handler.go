@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/configwizard"
-	"github.com/urfave/cli/v2"
 )
 
 type ConfigHandler struct{}

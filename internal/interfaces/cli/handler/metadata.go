@@ -5,9 +5,10 @@ import (
 	"context"
 	"sort"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/application/workflow/metadata"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
-	"github.com/urfave/cli/v2"
 )
 
 // MetadataHandler handles the workflow metadata command.
