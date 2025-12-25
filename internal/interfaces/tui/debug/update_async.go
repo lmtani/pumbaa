@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 )
 
 // fetchSubWorkflowMetadata returns a command to fetch subworkflow metadata
@@ -25,7 +25,7 @@ func (m Model) fetchSubWorkflowMetadata(node *TreeNode) tea.Cmd {
 			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
 		}
 
-		metadata, err := debuginfo.ParseMetadata(data)
+		metadata, err := cromwell.ParseDetailedMetadata(data)
 		if err != nil {
 			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
 		}

@@ -6,7 +6,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
+	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 )
 
 // statusStyle returns a styled status icon
@@ -136,12 +137,13 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 		return ""
 	}
 
-	var summary *debuginfo.WorkflowPreemptionSummary
+	var summary *preemption.WorkflowSummary
 	if m.preemption != nil && node.Type == NodeTypeWorkflow {
 		// If model was constructed with DebugInfo, use its precomputed summary for the workflow root
 		summary = m.preemption
 	} else {
-		summary = debuginfo.CalculateWorkflowPreemptionSummary(workflowID, workflowName, calls)
+		callData := cromwell.ConvertToPreemptionCallData(calls)
+		summary = preemption.NewAnalyzer().AnalyzeWorkflow(workflowID, workflowName, callData)
 	}
 	subworkflowCount := countSubworkflows(calls)
 
@@ -235,7 +237,7 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 
 			sb.WriteString(fmt.Sprintf("  • %s: %d preemptions, eff: %s, wasted: %.2f%s\n",
 				valueStyle.Render(task.Name),
-				task.Preemptions,
+				task.TotalPreemptions,
 				taskEffStyle,
 				task.WastedCost,
 				mutedStyle.Render(impactStr),

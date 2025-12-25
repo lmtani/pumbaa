@@ -1,13 +1,45 @@
-package debuginfo
+// Package tree provides tree visualization logic for workflow debugging.
+// This handles the construction and traversal of the workflow call tree
+// for rendering in the TUI.
+package tree
 
 import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
+
+	"github.com/lmtani/pumbaa/internal/domain/workflow/metadata"
 )
 
+// NodeType represents the type of node in the call tree.
+type NodeType int
+
+const (
+	NodeTypeWorkflow NodeType = iota
+	NodeTypeCall
+	NodeTypeSubWorkflow
+	NodeTypeShard
+)
+
+// TreeNode represents a node in the workflow call tree.
+type TreeNode struct {
+	ID            string
+	Name          string
+	Type          NodeType
+	Status        string
+	Duration      time.Duration
+	Start         time.Time
+	End           time.Time
+	Expanded      bool
+	Children      []*TreeNode
+	Parent        *TreeNode
+	CallData      *metadata.CallDetails
+	SubWorkflowID string
+	Depth         int
+}
+
 // treeBuilder encapsulates the logic for building workflow tree nodes.
-// It follows the Builder pattern to construct complex tree structures.
 type treeBuilder struct {
 	baseDepth int
 	parent    *TreeNode
@@ -22,19 +54,19 @@ func newTreeBuilder(baseDepth int, parent *TreeNode) *treeBuilder {
 }
 
 // BuildTree builds a tree structure from WorkflowMetadata.
-func BuildTree(wm *WorkflowMetadata) *TreeNode {
+func BuildTree(wm *metadata.WorkflowMetadata) *TreeNode {
 	builder := newTreeBuilder(0, nil)
 	return builder.buildWorkflowNode(wm)
 }
 
 // AddSubWorkflowChildren adds the calls from a subworkflow as children of the given node.
-func AddSubWorkflowChildren(node *TreeNode, subWM *WorkflowMetadata, baseDepth int) {
+func AddSubWorkflowChildren(node *TreeNode, subWM *metadata.WorkflowMetadata, baseDepth int) {
 	builder := newTreeBuilder(baseDepth, node)
 	builder.addCallsToParent(node, subWM.Calls)
 }
 
 // buildWorkflowNode creates the root workflow node and populates its children.
-func (b *treeBuilder) buildWorkflowNode(wm *WorkflowMetadata) *TreeNode {
+func (b *treeBuilder) buildWorkflowNode(wm *metadata.WorkflowMetadata) *TreeNode {
 	root := &TreeNode{
 		ID:       wm.ID,
 		Name:     wm.Name,
@@ -54,7 +86,7 @@ func (b *treeBuilder) buildWorkflowNode(wm *WorkflowMetadata) *TreeNode {
 }
 
 // addCallsToParent processes all calls and adds them as children to the parent node.
-func (b *treeBuilder) addCallsToParent(parent *TreeNode, calls map[string][]CallDetails) {
+func (b *treeBuilder) addCallsToParent(parent *TreeNode, calls map[string][]metadata.CallDetails) {
 	callNames := sortedCallNames(calls)
 
 	for _, callName := range callNames {
@@ -72,7 +104,7 @@ func (b *treeBuilder) addCallsToParent(parent *TreeNode, calls map[string][]Call
 }
 
 // addSingleCallNode creates and adds a node for a single non-sharded call.
-func (b *treeBuilder) addSingleCallNode(parent *TreeNode, callName, taskName string, call CallDetails) {
+func (b *treeBuilder) addSingleCallNode(parent *TreeNode, callName, taskName string, call metadata.CallDetails) {
 	nodeType, isSubWorkflow := determineNodeType(call, NodeTypeCall)
 	childDepth := b.calculateChildDepth(parent)
 
@@ -100,7 +132,7 @@ func (b *treeBuilder) addSingleCallNode(parent *TreeNode, callName, taskName str
 }
 
 // addShardedCallNode creates a parent node for sharded calls and adds individual shard nodes.
-func (b *treeBuilder) addShardedCallNode(parent *TreeNode, callName, taskName string, calls []CallDetails) {
+func (b *treeBuilder) addShardedCallNode(parent *TreeNode, callName, taskName string, calls []metadata.CallDetails) {
 	childDepth := b.calculateChildDepth(parent)
 
 	shardParent := &TreeNode{
@@ -128,7 +160,7 @@ func (b *treeBuilder) addShardedCallNode(parent *TreeNode, callName, taskName st
 }
 
 // addShardNode creates and adds a node for a single shard (aggregating all attempts).
-func (b *treeBuilder) addShardNode(parent *TreeNode, callName, taskName string, shardIdx int, shardCalls []CallDetails, depth int) {
+func (b *treeBuilder) addShardNode(parent *TreeNode, callName, taskName string, shardIdx int, shardCalls []metadata.CallDetails, depth int) {
 	mostRecentCall := getMostRecentAttempt(shardCalls)
 	shardStatus := AggregateStatus(shardCalls)
 	shardName := buildShardName(taskName, shardIdx, mostRecentCall.Attempt)
@@ -158,18 +190,32 @@ func (b *treeBuilder) addShardNode(parent *TreeNode, callName, taskName string, 
 
 // calculateChildDepth determines the depth for child nodes based on context.
 func (b *treeBuilder) calculateChildDepth(parent *TreeNode) int {
-	// For workflow roots, children are at baseDepth + 1
-	// For subworkflow additions, we use the builder's baseDepth directly
 	if parent.Type == NodeTypeWorkflow {
 		return b.baseDepth + 1
 	}
 	return b.baseDepth
 }
 
+// GetVisibleNodes returns a flat list of visible nodes for rendering.
+func GetVisibleNodes(root *TreeNode) []*TreeNode {
+	var result []*TreeNode
+	collectVisible(root, &result)
+	return result
+}
+
+func collectVisible(node *TreeNode, result *[]*TreeNode) {
+	*result = append(*result, node)
+	if node.Expanded {
+		for _, child := range node.Children {
+			collectVisible(child, result)
+		}
+	}
+}
+
 // --- Helper Functions ---
 
 // sortedCallNames returns call names sorted alphabetically.
-func sortedCallNames(calls map[string][]CallDetails) []string {
+func sortedCallNames(calls map[string][]metadata.CallDetails) []string {
 	names := make([]string, 0, len(calls))
 	for name := range calls {
 		names = append(names, name)
@@ -187,12 +233,12 @@ func extractTaskName(callName string) string {
 }
 
 // isSingleNonShardedCall checks if there's only one call without sharding.
-func isSingleNonShardedCall(calls []CallDetails) bool {
+func isSingleNonShardedCall(calls []metadata.CallDetails) bool {
 	return len(calls) == 1 && calls[0].ShardIndex == -1
 }
 
 // determineNodeType determines the node type based on whether it's a subworkflow.
-func determineNodeType(call CallDetails, defaultType NodeType) (NodeType, bool) {
+func determineNodeType(call metadata.CallDetails, defaultType NodeType) (NodeType, bool) {
 	isSubWorkflow := call.SubWorkflowID != "" || call.SubWorkflowMetadata != nil
 	if isSubWorkflow {
 		return NodeTypeSubWorkflow, true
@@ -201,8 +247,8 @@ func determineNodeType(call CallDetails, defaultType NodeType) (NodeType, bool) 
 }
 
 // groupCallsByShardIndex groups calls by their shard index.
-func groupCallsByShardIndex(calls []CallDetails) map[int][]CallDetails {
-	groups := make(map[int][]CallDetails)
+func groupCallsByShardIndex(calls []metadata.CallDetails) map[int][]metadata.CallDetails {
+	groups := make(map[int][]metadata.CallDetails)
 	for _, call := range calls {
 		groups[call.ShardIndex] = append(groups[call.ShardIndex], call)
 	}
@@ -210,7 +256,7 @@ func groupCallsByShardIndex(calls []CallDetails) map[int][]CallDetails {
 }
 
 // sortedShardIndices returns shard indices sorted in ascending order.
-func sortedShardIndices(groups map[int][]CallDetails) []int {
+func sortedShardIndices(groups map[int][]metadata.CallDetails) []int {
 	indices := make([]int, 0, len(groups))
 	for idx := range groups {
 		indices = append(indices, idx)
@@ -220,11 +266,11 @@ func sortedShardIndices(groups map[int][]CallDetails) []int {
 }
 
 // getMostRecentAttempt returns the call with the highest attempt number.
-func getMostRecentAttempt(calls []CallDetails) CallDetails {
+func getMostRecentAttempt(calls []metadata.CallDetails) metadata.CallDetails {
 	if len(calls) == 0 {
-		return CallDetails{}
+		return metadata.CallDetails{}
 	}
-	sorted := make([]CallDetails, len(calls))
+	sorted := make([]metadata.CallDetails, len(calls))
 	copy(sorted, calls)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Attempt > sorted[j].Attempt
@@ -249,20 +295,4 @@ func sortChildrenByStartTime(children []*TreeNode) {
 	sort.Slice(children, func(i, j int) bool {
 		return children[i].Start.Before(children[j].Start)
 	})
-}
-
-// GetVisibleNodes returns a flat list of visible nodes for rendering.
-func GetVisibleNodes(root *TreeNode) []*TreeNode {
-	var result []*TreeNode
-	collectVisible(root, &result)
-	return result
-}
-
-func collectVisible(node *TreeNode, result *[]*TreeNode) {
-	*result = append(*result, node)
-	if node.Expanded {
-		for _, child := range node.Children {
-			collectVisible(child, result)
-		}
-	}
 }

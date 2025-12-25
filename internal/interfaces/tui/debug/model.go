@@ -14,6 +14,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
+	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -102,7 +103,7 @@ type Model struct {
 	fileProvider ports.FileProvider
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
-	preemption *debuginfo.WorkflowPreemptionSummary
+	preemption *preemption.WorkflowSummary
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
