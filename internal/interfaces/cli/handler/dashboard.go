@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
@@ -144,7 +144,7 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 
 	// Initialize infrastructure and use cases
 	fp := storage.NewFileProvider()
-	muc := monitoringuc.NewUsecase(fp)
+	muc := workflowapp.NewMonitoringUseCase(fp)
 
 	// Create and run the debug TUI
 	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.repository, muc, fp)

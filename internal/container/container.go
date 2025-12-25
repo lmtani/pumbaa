@@ -5,10 +5,7 @@ import (
 	"os"
 
 	"github.com/lmtani/pumbaa/internal/application/bundle/create"
-	"github.com/lmtani/pumbaa/internal/application/workflow/abort"
-	"github.com/lmtani/pumbaa/internal/application/workflow/metadata"
-	"github.com/lmtani/pumbaa/internal/application/workflow/query"
-	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
@@ -26,10 +23,10 @@ type Container struct {
 	TelemetryService telemetry.Service
 
 	// Use cases
-	SubmitUseCase   *submit.UseCase
-	MetadataUseCase *metadata.UseCase
-	AbortUseCase    *abort.UseCase
-	QueryUseCase    *query.UseCase
+	SubmitUseCase   *workflow.SubmitUseCase
+	MetadataUseCase *workflow.MetadataUseCase
+	AbortUseCase    *workflow.AbortUseCase
+	QueryUseCase    *workflow.QueryUseCase
 	BundleUseCase   *create.UseCase
 
 	// Handlers
@@ -73,10 +70,10 @@ func New(cfg *config.Config, version string) *Container {
 	}
 
 	// Initialize use cases
-	c.SubmitUseCase = submit.New(c.CromwellClient)
-	c.MetadataUseCase = metadata.New(c.CromwellClient)
-	c.AbortUseCase = abort.New(c.CromwellClient)
-	c.QueryUseCase = query.New(c.CromwellClient)
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient)
+	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
+	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
+	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
 	c.BundleUseCase = create.New()
 
 	// Initialize handlers

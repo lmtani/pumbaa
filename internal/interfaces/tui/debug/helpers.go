@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -8,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"context"
-
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 )
 
 // countPreemptions counts the number of preempted tasks in a node and its children
@@ -255,7 +256,7 @@ func (m Model) loadResourceAnalysis(path string) tea.Cmd {
 
 		// Use the injected monitoring use case to analyze resource usage
 		// We use context.Background() here as we don't have a context in the Model yet
-		result, err := m.monitoringUC.AnalyzeResourceUsage(context.Background(), path)
+		result, err := m.monitoringUC.Execute(context.Background(), workflow.MonitoringInput{LogPath: path})
 		if err != nil {
 			return resourceAnalysisErrorMsg{err: err}
 		}

@@ -6,18 +6,18 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/abort"
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
 // AbortHandler handles the workflow abort command.
 type AbortHandler struct {
-	useCase   *abort.UseCase
+	useCase   *workflow.AbortUseCase
 	presenter *presenter.Presenter
 }
 
 // NewAbortHandler creates a new AbortHandler.
-func NewAbortHandler(uc *abort.UseCase, p *presenter.Presenter) *AbortHandler {
+func NewAbortHandler(uc *workflow.AbortUseCase, p *presenter.Presenter) *AbortHandler {
 	return &AbortHandler{
 		useCase:   uc,
 		presenter: p,
@@ -44,7 +44,7 @@ func (h *AbortHandler) handle(c *cli.Context) error {
 	ctx := context.Background()
 	workflowID := c.Args().First()
 
-	input := abort.Input{
+	input := workflow.AbortInput{
 		WorkflowID: workflowID,
 	}
 

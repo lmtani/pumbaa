@@ -10,8 +10,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
@@ -98,7 +98,7 @@ type Model struct {
 	statusMessageExpires time.Time // When the status message should disappear
 
 	// Infrastructure
-	monitoringUC monitoringuc.Usecase
+	monitoringUC *workflow.MonitoringUseCase
 	fileProvider ports.FileProvider
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
@@ -106,7 +106,7 @@ type Model struct {
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
-func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp ports.FileProvider) Model {
+func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc *workflow.MonitoringUseCase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
