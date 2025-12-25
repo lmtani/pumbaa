@@ -13,7 +13,7 @@ import (
 	"github.com/lmtani/pumbaa/pkg/wdl/ast"
 )
 
-// Indexer indexes WDL files and implements wdlindex.Repository.
+// Indexer indexes WDL files and implements ports.WDLRepository.
 type Indexer struct {
 	index     *wdlindex.Index
 	indexPath string

@@ -33,6 +33,7 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 │   ├── container/              # Dependency injection container
 │   ├── domain/                 # Domain entities and interfaces (Domain Layer)
 │   │   ├── bundle/             # Bundle entities
+│   │   ├── ports/              # Port interfaces (Hexagonal Architecture)
 │   │   ├── wdlindex/           # WDL index entities
 │   │   └── workflow/           # Workflow entities
 │   │       ├── monitoring/     # Resource monitoring domain
@@ -67,12 +68,17 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 
 ### 1. Domain Layer (`internal/domain/`)
 
-Contains business entities, value objects, and repository interfaces (ports). This layer has no dependencies on external frameworks or libraries.
+Contains business entities, value objects, and port interfaces. This layer has no dependencies on external frameworks or libraries.
 
 **Packages:**
 
-- **`workflow/`**: Core workflow entities (`Workflow`, `Call`, `Status`), repository interface, health checks, and errors
-- **`workflow/monitoring/`**: Resource monitoring entities (`MonitoringMetrics`, `EfficiencyReport`), file provider interface, and usage statistics
+- **`ports/`**: **Port interfaces (Hexagonal Architecture)**
+  - `WorkflowRepository` - Primary port for all workflow operations (execution, metadata, health, labels)
+  - `FileProvider` - Port for file storage access (local and cloud)
+  - `WDLRepository` - Port for WDL indexing operations
+
+- **`workflow/`**: Core workflow entities (`Workflow`, `Call`, `Status`, `HealthStatus`), and errors
+- **`workflow/monitoring/`**: Resource monitoring entities (`MonitoringMetrics`, `EfficiencyReport`) and usage statistics
 - **`workflow/preemption/`**: Preemption detection and analysis logic
 - **`bundle/`**: WDL bundle entities for packaging workflows
 - **`wdlindex/`**: WDL index entities (`Index`, `IndexedTask`, `IndexedWorkflow`) for knowledge base
@@ -97,10 +103,11 @@ Contains implementations of external services and adapters for domain interfaces
 
 **Implementations:**
 
-- **`cromwell/`**: Cromwell REST API client implementing `workflow.Repository`
+- **`cromwell/`**: Cromwell REST API client implementing `ports.WorkflowRepository`
   - HTTP client with timeout configuration
   - JSON marshaling/unmarshaling
   - Error handling and status code mapping
+  - Complete workflow lifecycle management
 
 - **`chat/llm/`**: LLM provider implementations
   - `ollama/` - Local Ollama integration
@@ -114,13 +121,13 @@ Contains implementations of external services and adapters for domain interfaces
   - **`wdl/`**: WDL search, list, and info tools
   - **`registry.go`**: Tool registration and schema generation
 
-- **`wdl/`**: WDL indexer implementing `wdlindex.Repository`
+- **`wdl/`**: WDL indexer implementing `ports.WDLRepository`
   - File system traversal
   - ANTLR-based parsing
   - JSON cache persistence
 
 - **`storage/`**: File provider for local and GCS paths
-  - Implements `monitoring.FileProvider` interface
+  - Implements `ports.FileProvider` interface
   - Size limits and validation
 
 - **`session/`**: SQLite-based session storage for chat history
@@ -232,8 +239,8 @@ The container wires all dependencies together following the dependency inversion
 
 ## Key Design Patterns
 
-### 1. Repository Pattern
-Domain defines `workflow.Repository` interface, implemented by `cromwell.Client` in infrastructure.
+### 1. Ports & Adapters (Hexagonal Architecture)
+Domain defines port interfaces in `domain/ports/`, implemented by adapters in `infrastructure/`. This inverts dependencies and allows business logic to remain independent of technical details.
 
 ### 2. Use Case Pattern
 Each business operation is encapsulated in a use case with:
@@ -265,32 +272,33 @@ Infrastructure adapters translate between external APIs and domain interfaces.
 
 ### Current Simplifications
 
-1. **DebugHandler and DashboardHandler** receive `*cromwell.Client` directly instead of an interface
-   - **Reason**: These handlers interact directly with the Cromwell API for real-time streaming and don't follow the standard use case pattern
-   - **Impact**: Tighter coupling, but acceptable for TUI applications that need direct API access
-
-2. **debuginfo package** contains both parsing and tree building logic
+1. **debuginfo package** contains both parsing and tree building logic
    - **Reason**: Tree building is tightly coupled to metadata structure and not reused elsewhere
    - **Impact**: Slightly mixed responsibilities, but isolated to one package
 
-3. **Submit UseCase** reads files directly with `os.ReadFile()`
+2. **Submit UseCase** reads files directly with `os.ReadFile()`
    - **Reason**: Simple file operations don't warrant additional abstraction for current use cases
    - **Impact**: Harder to test, but file I/O is straightforward
 
-4. **Container exposes concrete types** (`CromwellClient`)
-   - **Reason**: Some handlers need direct access for TUI streaming
-   - **Future**: Could introduce specific interfaces for streaming operations
-
-5. **preemption package in domain**
+3. **preemption package in domain**
    - **Reason**: Preemption detection is domain logic, even if it feels like analysis
    - **Impact**: Acceptable as it represents business rules
 
 ### Design Decisions
 
-- **Chat agent tools in infrastructure**: Tools are adapters to external services (Cromwell API, GCS, WDL files)
-- **Monitoring FileProvider interface**: Allows testing and supports both local and GCS paths
-- **Session management**: Delegates to Google ADK interfaces for compatibility with future storage backends
-- **Telemetry service**: Interface-based design allows NoOp implementation for privacy and development
+- **Centralized Ports Package**: All port interfaces are defined in `domain/ports/` following Hexagonal Architecture. This makes it easy to see all external dependencies and maintains a clear boundary between domain and infrastructure.
+
+- **Unified WorkflowRepository**: Single comprehensive interface for all workflow operations (execution, metadata, health, labels, costs). This eliminates interface redundancy and provides a complete contract for workflow management. Both CLI use cases and TUI handlers use the same port.
+
+- **FileProvider abstraction**: Single interface (`ports.FileProvider`) for file access, allowing implementations for local files, GCS, S3, or any other storage backend. Application layer depends only on the port.
+
+- **WDLRepository**: Dedicated port for WDL indexing operations, separating concerns between workflow execution (Cromwell) and workflow discovery (WDL index).
+
+- **Chat agent tools in infrastructure**: Tools are adapters to external services (Cromwell API, GCS, WDL files), implementing domain ports where appropriate.
+
+- **Session management**: Delegates to Google ADK interfaces for compatibility with future storage backends.
+
+- **Telemetry service**: Interface-based design allows NoOp implementation for privacy and development.
 
 ## CI/CD Pipeline
 
@@ -340,7 +348,7 @@ The project uses GitHub Actions for continuous integration and releases:
 
 1. **File Reader Interface**: Inject file reading into Submit UseCase
 2. **Workflow Events**: Domain events for workflow state changes
-
+3. **Local Workflow Cache**: Reduce API calls with intelligent caching
 
 ---
 

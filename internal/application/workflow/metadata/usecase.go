@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // UseCase handles workflow metadata retrieval.
 type UseCase struct {
-	repo workflow.Repository
+	repo ports.WorkflowRepository
 }
 
 // New creates a new metadata use case.
-func New(repo workflow.Repository) *UseCase {
+func New(repo ports.WorkflowRepository) *UseCase {
 	return &UseCase{repo: repo}
 }
 

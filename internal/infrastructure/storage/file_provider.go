@@ -9,13 +9,13 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
 
 // maxFileSize is the maximum file size we'll read (1 MB)
 const maxFileSize = 1 * 1024 * 1024
 
-// FileProvider implements monitoring.FileProvider to read from local or GCS storage.
+// FileProvider implements ports.FileProvider to read from local or GCS storage.
 type FileProvider struct{}
 
 // NewFileProvider creates a new FileProvider.
@@ -91,4 +91,4 @@ func (f *FileProvider) readLocalFile(path string) (string, error) {
 }
 
 // Ensure FileProvider implements the domain interface
-var _ monitoring.FileProvider = (*FileProvider)(nil)
+var _ ports.FileProvider = (*FileProvider)(nil)

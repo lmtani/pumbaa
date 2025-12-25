@@ -5,16 +5,17 @@ import (
 	"context"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // UseCase handles workflow queries.
 type UseCase struct {
-	repo workflow.Repository
+	repo ports.WorkflowRepository
 }
 
 // New creates a new query use case.
-func New(repo workflow.Repository) *UseCase {
+func New(repo ports.WorkflowRepository) *UseCase {
 	return &UseCase{repo: repo}
 }
 

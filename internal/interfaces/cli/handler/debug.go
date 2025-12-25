@@ -9,8 +9,8 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
@@ -18,14 +18,14 @@ import (
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	client    *cromwell.Client
+	repository ports.WorkflowRepository
 	telemetry telemetry.Service
 }
 
 // NewDebugHandler creates a new debug handler.
-func NewDebugHandler(client *cromwell.Client, ts telemetry.Service) *DebugHandler {
+func NewDebugHandler(client ports.WorkflowRepository, ts telemetry.Service) *DebugHandler {
 	return &DebugHandler{
-		client:    client,
+		repository: client,
 		telemetry: ts,
 	}
 }
@@ -106,7 +106,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	} else {
 		// Fetch from Cromwell
 		h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("debug workflow: %s", workflowID[:8]))
-		metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
+		metadataBytes, err = h.repository.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
 		if err != nil {
 			return fmt.Errorf("failed to fetch metadata: %w", err)
 		}
@@ -123,7 +123,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	muc := monitoringuc.NewUsecase(fp)
 
 	// Create and run the TUI
-	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.client, muc, fp)
+	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.repository, muc, fp)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 

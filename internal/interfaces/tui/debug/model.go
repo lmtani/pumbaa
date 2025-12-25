@@ -12,6 +12,7 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
@@ -98,14 +99,14 @@ type Model struct {
 
 	// Infrastructure
 	monitoringUC monitoringuc.Usecase
-	fileProvider monitoring.FileProvider
+	fileProvider ports.FileProvider
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
 	preemption *debuginfo.WorkflowPreemptionSummary
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
-func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
+func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))

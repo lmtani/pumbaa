@@ -3,17 +3,11 @@ package monitoring
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
-
-// FileProvider defines the interface for reading file contents.
-type FileProvider interface {
-	Read(ctx context.Context, path string) (string, error)
-}
 
 const (
 	ColTimestamp   = "timestamp"

@@ -4,6 +4,7 @@ package monitoring
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
@@ -20,11 +21,11 @@ type Usecase interface {
 
 // usecaseImpl is the concrete implementation of the monitoring Usecase.
 type usecaseImpl struct {
-	fileProvider monitoring.FileProvider
+	fileProvider ports.FileProvider
 }
 
 // NewUsecase creates a new monitoring Usecase instance.
-func NewUsecase(fp monitoring.FileProvider) Usecase {
+func NewUsecase(fp ports.FileProvider) Usecase {
 	return &usecaseImpl{fileProvider: fp}
 }
 
