@@ -19,7 +19,7 @@ type Model struct {
 	baseURL string
 	model   string
 	client  *http.Client
-	options *OllamaOptions
+	options *Options
 }
 
 // Config contains configurations for creating a new Model
@@ -52,9 +52,9 @@ func NewModelWithConfig(cfg Config) model.LLM {
 		cfg.Timeout = 120 * time.Second
 	}
 
-	var opts *OllamaOptions
+	var opts *Options
 	if cfg.Temperature > 0 || cfg.TopP > 0 {
-		opts = &OllamaOptions{
+		opts = &Options{
 			Temperature: cfg.Temperature,
 			TopP:        cfg.TopP,
 		}
@@ -112,7 +112,7 @@ func (m *Model) GenerateContent(
 }
 
 // doRequest executes HTTP call to Ollama
-func (m *Model) doRequest(ctx context.Context, req *OllamaChatRequest) (*OllamaChatResponse, error) {
+func (m *Model) doRequest(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("error serializing request: %w", err)
@@ -136,7 +136,7 @@ func (m *Model) doRequest(ctx context.Context, req *OllamaChatRequest) (*OllamaC
 		return nil, fmt.Errorf("Ollama returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var ollamaResp OllamaChatResponse
+	var ollamaResp ChatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}

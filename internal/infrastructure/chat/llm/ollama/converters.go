@@ -11,9 +11,9 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
 )
 
-// buildRequest converts an ADK LLMRequest to OllamaChatRequest
-func (m *Model) buildRequest(req *model.LLMRequest) (*OllamaChatRequest, error) {
-	ollamaReq := &OllamaChatRequest{
+// buildRequest converts an ADK LLMRequest to ChatRequest
+func (m *Model) buildRequest(req *model.LLMRequest) (*ChatRequest, error) {
+	ollamaReq := &ChatRequest{
 		Model:   m.model,
 		Stream:  false,
 		Options: m.options,
@@ -23,7 +23,7 @@ func (m *Model) buildRequest(req *model.LLMRequest) (*OllamaChatRequest, error) 
 	if req.Config != nil && req.Config.SystemInstruction != nil {
 		systemText := extractTextFromContent(req.Config.SystemInstruction)
 		if systemText != "" {
-			ollamaReq.Messages = append(ollamaReq.Messages, OllamaMessage{
+			ollamaReq.Messages = append(ollamaReq.Messages, Message{
 				Role:    "system",
 				Content: systemText,
 			})
@@ -59,9 +59,9 @@ func (m *Model) buildRequest(req *model.LLMRequest) (*OllamaChatRequest, error) 
 	return ollamaReq, nil
 }
 
-// contentToMessage converts genai.Content to OllamaMessage
-func (m *Model) contentToMessage(content *genai.Content) OllamaMessage {
-	msg := OllamaMessage{
+// contentToMessage converts genai.Content to Message
+func (m *Model) contentToMessage(content *genai.Content) Message {
+	msg := Message{
 		Role: mapRole(content.Role),
 	}
 
@@ -104,10 +104,10 @@ func (m *Model) contentToMessage(content *genai.Content) OllamaMessage {
 	return msg
 }
 
-// functionResponseToMessage converts a FunctionResponse to an OllamaMessage
+// functionResponseToMessage converts a FunctionResponse to an Message
 // Each FunctionResponse becomes a separate tool message per Ollama API format
-func (m *Model) functionResponseToMessage(fr *genai.FunctionResponse) OllamaMessage {
-	msg := OllamaMessage{
+func (m *Model) functionResponseToMessage(fr *genai.FunctionResponse) Message {
+	msg := Message{
 		Role:     "tool",
 		ToolName: fr.Name, // Ollama uses tool_name, not tool_call_id
 	}
@@ -131,8 +131,8 @@ func (m *Model) functionResponseToMessage(fr *genai.FunctionResponse) OllamaMess
 }
 
 // convertTools converts ADK tools to Ollama format
-func (m *Model) convertTools(tools []*genai.Tool) []OllamaTool {
-	var ollamaTools []OllamaTool
+func (m *Model) convertTools(tools []*genai.Tool) []Tool {
+	var ollamaTools []Tool
 
 	for _, tool := range tools {
 		if tool == nil {
@@ -168,9 +168,9 @@ func (m *Model) convertTools(tools []*genai.Tool) []OllamaTool {
 				params = getPumbaaParametersSchema()
 			}
 
-			ollamaTools = append(ollamaTools, OllamaTool{
+			ollamaTools = append(ollamaTools, Tool{
 				Type: "function",
-				Function: OllamaFunction{
+				Function: Function{
 					Name:        fn.Name,
 					Description: fn.Description,
 					Parameters:  params,
@@ -188,8 +188,8 @@ func getPumbaaParametersSchema() map[string]interface{} {
 	return tools.GetParametersSchema()
 }
 
-// buildResponse converts OllamaChatResponse to model.LLMResponse
-func (m *Model) buildResponse(resp *OllamaChatResponse) (*model.LLMResponse, error) {
+// buildResponse converts ChatResponse to model.LLMResponse
+func (m *Model) buildResponse(resp *ChatResponse) (*model.LLMResponse, error) {
 	var parts []*genai.Part
 
 	// Check for tool calls in response
