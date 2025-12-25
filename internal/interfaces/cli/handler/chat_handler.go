@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"

@@ -3,7 +3,7 @@ package cromwell
 import (
 	"context"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // MetadataHandler handles the "metadata" action to get workflow metadata.

@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // Repository defines the interface for Cromwell operations.

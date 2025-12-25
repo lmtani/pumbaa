@@ -3,7 +3,7 @@ package wdl
 import (
 	"context"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // SearchHandler handles the "wdl_search" action to search tasks/workflows.

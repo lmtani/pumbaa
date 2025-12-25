@@ -3,7 +3,7 @@ package wdl
 import (
 	"context"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // ListHandler handles the "wdl_list" action to list all indexed WDL tasks and workflows.

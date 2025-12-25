@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/gcs"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/gcs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 )

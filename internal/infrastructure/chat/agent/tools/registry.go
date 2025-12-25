@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // Registry manages the mapping between action names and their handlers.

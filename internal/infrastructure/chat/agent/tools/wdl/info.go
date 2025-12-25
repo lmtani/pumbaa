@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/lmtani/pumbaa/internal/domain/wdlindex"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 )
 
 // InfoHandler handles the "wdl_info" action to get detailed info about a task or workflow.

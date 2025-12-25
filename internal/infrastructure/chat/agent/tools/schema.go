@@ -1,6 +1,6 @@
 package tools
 
-import "github.com/lmtani/pumbaa/internal/infrastructure/agent/tools/types"
+import "github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
 
 // GetParametersSchema returns the JSON schema for the Pumbaa tool parameters.
 // This is the single source of truth for the tool's parameter schema.
