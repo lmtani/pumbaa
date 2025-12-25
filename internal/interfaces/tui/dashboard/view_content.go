@@ -14,24 +14,25 @@ func (m Model) renderContent() string {
 	}
 
 	if m.error != "" {
-		// Parse error to make it more user-friendly
-		errorMsg := m.error
+		// Determine error category and appropriate title/tips
+		errorTitle, troubleshootingTips := categorizeErrorForDisplay(m.error)
 
 		// Build a compact, helpful error display
 		var errorContent strings.Builder
 		errorContent.WriteString(lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF6B6B")).
 			Bold(true).
-			Render("⚠ Query Failed") + "\n\n")
+			Render(errorTitle) + "\n\n")
 
 		errorContent.WriteString(common.MutedStyle.Render("Backend response:") + "\n")
 		errorContent.WriteString(lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF8E8E")).
-			Render(errorMsg) + "\n\n")
+			Render(m.error) + "\n\n")
 
 		errorContent.WriteString(common.MutedStyle.Render("Troubleshooting:") + "\n")
-		errorContent.WriteString("  • Check your filter values\n")
-		errorContent.WriteString("  • Press " + common.KeyStyle.Render("ctrl+x") + " to clear all filters\n")
+		for _, tip := range troubleshootingTips {
+			errorContent.WriteString("  • " + tip + "\n")
+		}
 
 		errorBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

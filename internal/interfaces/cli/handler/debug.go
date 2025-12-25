@@ -10,19 +10,22 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
+	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 	"github.com/urfave/cli/v2"
 )
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	client *cromwell.Client
+	client    *cromwell.Client
+	telemetry telemetry.Service
 }
 
 // NewDebugHandler creates a new debug handler.
-func NewDebugHandler(client *cromwell.Client) *DebugHandler {
+func NewDebugHandler(client *cromwell.Client, ts telemetry.Service) *DebugHandler {
 	return &DebugHandler{
-		client: client,
+		client:    client,
+		telemetry: ts,
 	}
 }
 
@@ -94,12 +97,14 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 
 	if filePath != "" {
 		// Load from file
+		h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("debug from file: %s", filePath))
 		metadataBytes, err = os.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 	} else {
 		// Fetch from Cromwell
+		h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("debug workflow: %s", workflowID[:8]))
 		metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
 		if err != nil {
 			return fmt.Errorf("failed to fetch metadata: %w", err)

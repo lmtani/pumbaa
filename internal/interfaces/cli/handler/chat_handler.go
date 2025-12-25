@@ -12,6 +12,7 @@ import (
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
+	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 	"github.com/urfave/cli/v2"
@@ -110,11 +111,12 @@ d
 `
 
 type ChatHandler struct {
-	config *config.Config
+	config    *config.Config
+	telemetry telemetry.Service
 }
 
-func NewChatHandler(cfg *config.Config) *ChatHandler {
-	return &ChatHandler{config: cfg}
+func NewChatHandler(cfg *config.Config, ts telemetry.Service) *ChatHandler {
+	return &ChatHandler{config: cfg, telemetry: ts}
 }
 
 func (h *ChatHandler) Command() *cli.Command {
@@ -247,6 +249,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 			return fmt.Errorf("failed to get session %s: %w", sessionID, err)
 		}
 		sess = resp.Session
+		h.telemetry.AddBreadcrumb("chat", "resumed existing session")
 		fmt.Printf("Resuming session: %s\n", sessionID)
 	} else {
 		resp, err := svc.Create(ctx, &adksession.CreateRequest{AppName: appName, UserID: defaultUserID})
@@ -254,6 +257,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
 		sess = resp.Session
+		h.telemetry.AddBreadcrumb("chat", "created new session")
 		fmt.Printf("Created new session: %s\n", sess.ID())
 	}
 
@@ -261,6 +265,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize LLM: %w", err)
 	}
+	h.telemetry.AddBreadcrumb("chat", fmt.Sprintf("using LLM provider: %s", h.config.LLMProvider))
 	fmt.Printf("Using LLM: %s | Cromwell: %s\n", llmModel.Name(), h.config.CromwellHost)
 
 	cromwellClient := cromwellclient.NewClient(cromwellclient.Config{
