@@ -3,6 +3,8 @@ package workflow
 
 import (
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
 // Status represents the current state of a workflow execution.
@@ -21,17 +23,31 @@ const (
 
 // Workflow represents a WDL workflow execution in Cromwell.
 type Workflow struct {
+	// Basic info
 	ID          string
 	Name        string
 	Status      Status
 	Start       time.Time
 	End         time.Time
-	Labels      map[string]string
-	Inputs      map[string]interface{}
-	Outputs     map[string]interface{}
-	Failures    []Failure
-	Calls       map[string][]Call
 	SubmittedAt time.Time
+
+	// Labels, Inputs, Outputs
+	Labels  map[string]string
+	Inputs  map[string]interface{}
+	Outputs map[string]interface{}
+
+	// Calls and Failures
+	Calls    map[string][]Call
+	Failures []Failure
+
+	// Debug/detailed fields
+	WorkflowRoot            string
+	WorkflowLog             string
+	SubmittedWorkflow       string
+	SubmittedInputs         string
+	SubmittedOptions        string
+	WorkflowLanguage        string
+	WorkflowLanguageVersion string
 }
 
 // Failure represents a failure in workflow execution.
@@ -42,22 +58,79 @@ type Failure struct {
 
 // Call represents a task/call execution within a workflow.
 type Call struct {
-	Name              string
-	Status            Status
-	Start             time.Time
-	End               time.Time
-	Attempt           int
-	ShardIndex        int
+	// Identification
+	Name       string
+	ShardIndex int
+	Attempt    int
+	JobID      string
+
+	// Status
+	Status        Status
+	BackendStatus string
+	ReturnCode    *int
+
+	// Timing
+	Start       time.Time
+	End         time.Time
+	VMStartTime time.Time
+	VMEndTime   time.Time
+
+	// Execution
 	Backend           string
-	ReturnCode        *int
-	Stdout            string
-	Stderr            string
 	CommandLine       string
-	Inputs            map[string]interface{}
-	Outputs           map[string]interface{}
+	CallRoot          string
 	RuntimeAttributes map[string]interface{}
-	Failures          []Failure
-	SubWorkflowID     string
+
+	// Logs
+	Stdout        string
+	Stderr        string
+	MonitoringLog string
+
+	// Docker
+	DockerImage     string
+	DockerImageUsed string
+	DockerSize      string
+
+	// Resources (parsed from RuntimeAttributes for convenience)
+	CPU         string
+	Memory      string
+	Disk        string
+	Preemptible string
+	Zones       string
+
+	// Cache
+	CacheHit    bool
+	CacheResult string
+
+	// Cost
+	VMCostPerHour float64
+
+	// Inputs/Outputs
+	Inputs  map[string]interface{}
+	Outputs map[string]interface{}
+
+	// Events
+	ExecutionEvents []ExecutionEvent
+
+	// Labels
+	Labels map[string]string
+
+	// Failures (task-level errors)
+	Failures []Failure
+
+	// SubWorkflow
+	SubWorkflowID       string
+	SubWorkflowMetadata *Workflow
+
+	// Cache for expensive calculations
+	EfficiencyReport *monitoring.EfficiencyReport
+}
+
+// ExecutionEvent represents a single execution event in the timeline.
+type ExecutionEvent struct {
+	Description string
+	Start       time.Time
+	End         time.Time
 }
 
 // IsTerminal returns true if the workflow is in a terminal state.

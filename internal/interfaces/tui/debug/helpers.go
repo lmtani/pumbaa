@@ -22,7 +22,7 @@ func countPreemptions(node *TreeNode) int {
 		count++
 	}
 	// Also check CallData for preemption status
-	if node.CallData != nil && (node.CallData.ExecutionStatus == "Preempted" || node.CallData.ExecutionStatus == "RetryableFailure") {
+	if node.CallData != nil && (string(node.CallData.Status) == "Preempted" || string(node.CallData.Status) == "RetryableFailure") {
 		if node.Status != "Preempted" && node.Status != "RetryableFailure" {
 			count++ // Only count if not already counted
 		}

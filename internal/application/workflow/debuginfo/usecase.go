@@ -4,7 +4,7 @@
 package debuginfo
 
 import (
-	"github.com/lmtani/pumbaa/internal/domain/workflow/metadata"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
@@ -18,7 +18,7 @@ type Usecase interface {
 
 // DebugInfo is a high-level composite used by UI layers to render debug views.
 type DebugInfo struct {
-	Metadata   *metadata.WorkflowMetadata
+	Metadata   *workflow.Workflow
 	Root       *tree.TreeNode
 	Visible    []*tree.TreeNode
 	Preemption *preemption.WorkflowSummary
@@ -40,21 +40,21 @@ func NewUsecase(analyzer *preemption.Analyzer) Usecase {
 // GetDebugInfo performs orchestration: parsing -> tree building -> preemption analysis
 func (u *usecaseImpl) GetDebugInfo(data []byte) (*DebugInfo, error) {
 	// 1. Parse metadata using infrastructure layer
-	wm, err := cromwell.ParseDetailedMetadata(data)
+	wf, err := cromwell.ParseDetailedMetadata(data)
 	if err != nil {
 		return nil, err
 	}
 
 	// 2. Build call tree using TUI tree package
-	root := tree.BuildTree(wm)
+	root := tree.BuildTree(wf)
 	visible := tree.GetVisibleNodes(root)
 
 	// 3. Analyze preemption using domain layer
-	callData := cromwell.ConvertToPreemptionCallData(wm.Calls)
-	summary := u.analyzer.AnalyzeWorkflow(wm.ID, wm.Name, callData)
+	callData := cromwell.ConvertToPreemptionCallData(wf.Calls)
+	summary := u.analyzer.AnalyzeWorkflow(wf.ID, wf.Name, callData)
 
 	return &DebugInfo{
-		Metadata:   wm,
+		Metadata:   wf,
 		Root:       root,
 		Visible:    visible,
 		Preemption: summary,

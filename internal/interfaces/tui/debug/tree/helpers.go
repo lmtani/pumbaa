@@ -4,11 +4,11 @@ package tree
 import (
 	"time"
 
-	"github.com/lmtani/pumbaa/internal/domain/workflow/metadata"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // AggregateStatus determines the overall status from multiple calls.
-func AggregateStatus(calls []metadata.CallDetails) string {
+func AggregateStatus(calls []workflow.Call) string {
 	if len(calls) == 0 {
 		return "Unknown"
 	}
@@ -18,10 +18,10 @@ func AggregateStatus(calls []metadata.CallDetails) string {
 	hasFailed := false
 
 	for _, call := range calls {
-		switch call.ExecutionStatus {
-		case "Failed":
+		switch call.Status {
+		case workflow.StatusFailed:
 			hasFailed = true
-		case "Running", "Starting":
+		case workflow.StatusRunning, workflow.StatusSubmitted:
 			hasRunning = true
 		}
 	}
@@ -36,7 +36,7 @@ func AggregateStatus(calls []metadata.CallDetails) string {
 	// Check if all succeeded
 	allDone := true
 	for _, call := range calls {
-		if call.ExecutionStatus != "Done" {
+		if call.Status != workflow.StatusSucceeded && string(call.Status) != "Done" {
 			allDone = false
 			break
 		}
@@ -46,11 +46,11 @@ func AggregateStatus(calls []metadata.CallDetails) string {
 	}
 
 	// Return status of most recent attempt
-	return getMostRecentAttempt(calls).ExecutionStatus
+	return string(getMostRecentAttempt(calls).Status)
 }
 
 // EarliestStart returns the earliest start time from a list of calls.
-func EarliestStart(calls []metadata.CallDetails) time.Time {
+func EarliestStart(calls []workflow.Call) time.Time {
 	if len(calls) == 0 {
 		return time.Time{}
 	}
@@ -64,7 +64,7 @@ func EarliestStart(calls []metadata.CallDetails) time.Time {
 }
 
 // LatestEnd returns the latest end time from a list of calls.
-func LatestEnd(calls []metadata.CallDetails) time.Time {
+func LatestEnd(calls []workflow.Call) time.Time {
 	if len(calls) == 0 {
 		return time.Time{}
 	}

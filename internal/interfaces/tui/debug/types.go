@@ -3,7 +3,6 @@ package debug
 
 import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/metadata"
 	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
@@ -12,12 +11,12 @@ import (
 type (
 	NodeType                  = tree.NodeType
 	TreeNode                  = tree.TreeNode
-	CallDetails               = metadata.CallDetails
-	ExecutionEvent            = metadata.ExecutionEvent
+	CallDetails               = workflow.Call
+	ExecutionEvent            = workflow.ExecutionEvent
 	WorkflowPreemptionSummary = preemption.WorkflowSummary
 	ProblematicTask           = preemption.ProblematicTask
 	Failure                   = workflow.Failure
-	WorkflowMetadata          = metadata.WorkflowMetadata
+	WorkflowMetadata          = workflow.Workflow
 )
 
 // NodeType constants
