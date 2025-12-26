@@ -3,7 +3,6 @@ package debug
 
 import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
@@ -13,8 +12,8 @@ type (
 	TreeNode                  = tree.TreeNode
 	CallDetails               = workflow.Call
 	ExecutionEvent            = workflow.ExecutionEvent
-	WorkflowPreemptionSummary = preemption.WorkflowSummary
-	ProblematicTask           = preemption.ProblematicTask
+	WorkflowPreemptionSummary = workflow.PreemptionSummary
+	ProblematicTask           = workflow.PreemptionProblematicTask
 	Failure                   = workflow.Failure
 	WorkflowMetadata          = workflow.Workflow
 )

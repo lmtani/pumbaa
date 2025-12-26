@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 )
 
 // mapMetadataToWorkflow converts a metadata response to a domain Workflow.
@@ -187,47 +186,6 @@ func ParseDetailedMetadata(data []byte) (*workflow.Workflow, error) {
 		return nil, err
 	}
 	return mapMetadataResponseToWorkflow(&m), nil
-}
-
-// ConvertToPreemptionCallData converts workflow calls to preemption.CallData.
-func ConvertToPreemptionCallData(calls map[string][]workflow.Call) map[string][]preemption.CallData {
-	result := make(map[string][]preemption.CallData)
-
-	for callName, callList := range calls {
-		var data []preemption.CallData
-		for _, c := range callList {
-			// Calculate duration in hours
-			var durationHours float64
-			if !c.Start.IsZero() && !c.End.IsZero() {
-				durationHours = c.End.Sub(c.Start).Hours()
-			}
-
-			data = append(data, preemption.CallData{
-				Name:            c.Name,
-				ShardIndex:      c.ShardIndex,
-				Attempt:         c.Attempt,
-				ExecutionStatus: string(c.Status),
-				Preemptible:     c.Preemptible,
-				ReturnCode:      c.ReturnCode,
-				CPU:             parseCPU(c.CPU),
-				MemoryGB:        parseMemoryGB(c.Memory),
-				DurationHours:   durationHours,
-				VMCostPerHour:   c.VMCostPerHour,
-			})
-
-			// Recursively process subworkflows
-			if c.SubWorkflowMetadata != nil {
-				subData := ConvertToPreemptionCallData(c.SubWorkflowMetadata.Calls)
-				for subName, subCalls := range subData {
-					fullName := callName + "." + subName
-					result[fullName] = append(result[fullName], subCalls...)
-				}
-			}
-		}
-		result[callName] = data
-	}
-
-	return result
 }
 
 // --- Helper Functions ---

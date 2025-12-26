@@ -5,7 +5,6 @@ package debuginfo
 
 import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
@@ -21,18 +20,18 @@ type DebugInfo struct {
 	Metadata   *workflow.Workflow
 	Root       *tree.TreeNode
 	Visible    []*tree.TreeNode
-	Preemption *preemption.WorkflowSummary
+	Preemption *workflow.PreemptionSummary
 }
 
 // usecaseImpl is the concrete implementation.
 type usecaseImpl struct {
-	analyzer *preemption.Analyzer
+	analyzer *workflow.PreemptionAnalyzer
 }
 
 // NewUsecase creates a new Usecase instance.
-func NewUsecase(analyzer *preemption.Analyzer) Usecase {
+func NewUsecase(analyzer *workflow.PreemptionAnalyzer) Usecase {
 	if analyzer == nil {
-		analyzer = preemption.NewAnalyzer()
+		analyzer = workflow.NewPreemptionAnalyzer()
 	}
 	return &usecaseImpl{analyzer: analyzer}
 }
@@ -49,9 +48,8 @@ func (u *usecaseImpl) GetDebugInfo(data []byte) (*DebugInfo, error) {
 	root := tree.BuildTree(wf)
 	visible := tree.GetVisibleNodes(root)
 
-	// 3. Analyze preemption using domain layer
-	callData := cromwell.ConvertToPreemptionCallData(wf.Calls)
-	summary := u.analyzer.AnalyzeWorkflow(wf.ID, wf.Name, callData)
+	// 3. Analyze preemption using domain layer - now works directly with Workflow
+	summary := u.analyzer.AnalyzePreemption(wf)
 
 	return &DebugInfo{
 		Metadata:   wf,

@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // MonitoringUseCase handles resource usage analysis from monitoring logs.
@@ -25,7 +25,7 @@ type MonitoringInput struct {
 
 // MonitoringOutput contains the result of resource usage analysis.
 type MonitoringOutput struct {
-	Report *monitoring.EfficiencyReport
+	Report *workflowDomain.EfficiencyReport
 }
 
 // Execute analyzes resource usage from a monitoring log file.
@@ -37,7 +37,7 @@ func (uc *MonitoringUseCase) Execute(ctx context.Context, input MonitoringInput)
 	}
 
 	// Parse the TSV content into metrics
-	metrics, err := monitoring.ParseFromTSV(content)
+	metrics, err := workflowDomain.ParseMonitoringTSV(content)
 	if err != nil {
 		return nil, err
 	}

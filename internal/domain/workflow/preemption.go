@@ -1,13 +1,14 @@
-// Package preemption provides analysis of preemptible task efficiency.
-package preemption
+// preemption.go contains preemption analysis types and logic for workflows.
+// This includes efficiency analysis, statistics, and reporting for preemptible tasks.
+package workflow
 
 import (
 	"sort"
 	"strings"
 )
 
-// TaskStats represents preemption statistics for a single task/shard.
-type TaskStats struct {
+// PreemptionTaskStats represents preemption statistics for a single task/shard.
+type PreemptionTaskStats struct {
 	TaskName        string  // Full task name (workflow.task)
 	ShardIndex      int     // Shard index (-1 for non-scattered)
 	TotalAttempts   int     // Total number of attempts
@@ -23,8 +24,8 @@ type TaskStats struct {
 	CostEfficiency float64 // 1.0 = no waste, 0.0 = all wasted
 }
 
-// ProblematicTask represents an aggregated view of a task with poor preemption efficiency.
-type ProblematicTask struct {
+// PreemptionProblematicTask represents an aggregated view of a task with poor preemption efficiency.
+type PreemptionProblematicTask struct {
 	Name             string  // Short task name (without workflow prefix)
 	ShardCount       int     // Number of shards (1 for non-scattered)
 	TotalAttempts    int     // Total attempts across all shards
@@ -38,16 +39,16 @@ type ProblematicTask struct {
 	ImpactPercent  float64 // WastedCost / WorkflowTotalWastedCost × 100
 }
 
-// WorkflowSummary represents aggregated preemption statistics for a workflow.
-type WorkflowSummary struct {
+// PreemptionSummary represents aggregated preemption statistics for a workflow.
+type PreemptionSummary struct {
 	WorkflowID        string
 	WorkflowName      string
-	TotalTasks        int               // Total number of tasks/shards
-	PreemptibleTasks  int               // Number of preemptible tasks/shards
-	TotalAttempts     int               // Total attempts across all tasks
-	TotalPreemptions  int               // Total preemptions across all tasks
-	OverallEfficiency float64           // Average efficiency across all preemptible tasks
-	ProblematicTasks  []ProblematicTask // Tasks with low efficiency (aggregated by task name)
+	TotalTasks        int                         // Total number of tasks/shards
+	PreemptibleTasks  int                         // Number of preemptible tasks/shards
+	TotalAttempts     int                         // Total attempts across all tasks
+	TotalPreemptions  int                         // Total preemptions across all tasks
+	OverallEfficiency float64                     // Average efficiency across all preemptible tasks
+	ProblematicTasks  []PreemptionProblematicTask // Tasks with low efficiency (aggregated by task name)
 
 	// Cost-weighted metrics
 	TotalCost      float64 // Total cost of all attempts (resource-hours)
@@ -56,63 +57,20 @@ type WorkflowSummary struct {
 	CostUnit       string  // Unit for cost display (e.g., "resource-hours" or "$")
 }
 
-// CallData represents the minimal call data needed for analysis.
-type CallData struct {
-	Name            string
-	ShardIndex      int
-	Attempt         int
-	ExecutionStatus string
-	Preemptible     string // "true", "false", or number of max attempts
-	ReturnCode      *int
+// PreemptionAnalyzer analyzes preemption efficiency from workflow metadata.
+type PreemptionAnalyzer struct{}
 
-	// Resource information for cost-weighted analysis
-	CPU           float64 // Number of CPUs
-	MemoryGB      float64 // Memory in GB
-	DurationHours float64 // Duration in hours
-	VMCostPerHour float64 // If available from cloud provider
+// NewPreemptionAnalyzer creates a new preemption analyzer.
+func NewPreemptionAnalyzer() *PreemptionAnalyzer {
+	return &PreemptionAnalyzer{}
 }
 
-// AttemptCost calculates the estimated cost of a single attempt.
-// Cost = CPU × Memory(GB) × Duration(hours)
-// This gives a "resource-hours" metric that's proportional to actual cloud costs.
-func (c CallData) AttemptCost() float64 {
-	// If we have actual VM cost per hour, use it
-	if c.VMCostPerHour > 0 && c.DurationHours > 0 {
-		return c.VMCostPerHour * c.DurationHours
-	}
-
-	// Otherwise, estimate using resource-hours
-	// Default to 1 CPU, 1GB if not specified
-	cpu := c.CPU
-	if cpu <= 0 {
-		cpu = 1
-	}
-	mem := c.MemoryGB
-	if mem <= 0 {
-		mem = 1
-	}
-	dur := c.DurationHours
-	if dur <= 0 {
-		dur = 0.01 // Minimum 36 seconds
-	}
-
-	return cpu * mem * dur
-}
-
-// Analyzer analyzes preemption efficiency from workflow metadata.
-type Analyzer struct{}
-
-// NewAnalyzer creates a new preemption analyzer.
-func NewAnalyzer() *Analyzer {
-	return &Analyzer{}
-}
-
-// AnalyzeWorkflow analyzes preemption statistics and returns a summary.
-func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[string][]CallData) *WorkflowSummary {
-	summary := &WorkflowSummary{
-		WorkflowID:       workflowID,
-		WorkflowName:     workflowName,
-		ProblematicTasks: []ProblematicTask{},
+// AnalyzePreemption analyzes preemption statistics for a workflow and returns a summary.
+func (a *PreemptionAnalyzer) AnalyzePreemption(wf *Workflow) *PreemptionSummary {
+	summary := &PreemptionSummary{
+		WorkflowID:       wf.ID,
+		WorkflowName:     wf.Name,
+		ProblematicTasks: []PreemptionProblematicTask{},
 		CostUnit:         "resource-hours",
 	}
 
@@ -133,15 +91,14 @@ func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[st
 		totalPreemptions int
 		totalEfficiency  float64
 		shardsCounted    int
-		// Cost metrics
-		totalCost  float64
-		wastedCost float64
+		totalCost        float64
+		wastedCost       float64
 	}
 	taskAggregations := make(map[string]*taskAggregation)
 
-	for callName, callList := range calls {
+	for callName, callList := range wf.Calls {
 		// Group by shard index to calculate per-shard stats
-		shardGroups := make(map[int][]CallData)
+		shardGroups := make(map[int][]Call)
 		for _, call := range callList {
 			shardGroups[call.ShardIndex] = append(shardGroups[call.ShardIndex], call)
 		}
@@ -168,7 +125,7 @@ func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[st
 				summary.WastedCost += stats.WastedCost
 
 				// Aggregate by short task name
-				taskName := shortTaskName(callName)
+				taskName := preemptionShortTaskName(callName)
 				if taskAggregations[taskName] == nil {
 					taskAggregations[taskName] = &taskAggregation{}
 				}
@@ -192,7 +149,6 @@ func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[st
 	}
 
 	// Build problematic tasks list from aggregations
-	// Now we prioritize by wasted cost (impact) rather than just efficiency
 	for taskName, agg := range taskAggregations {
 		avgEfficiency := agg.totalEfficiency / float64(agg.shardsCounted)
 
@@ -209,10 +165,8 @@ func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[st
 		}
 
 		// Track problematic tasks: either low efficiency OR significant cost impact
-		// - Cost efficiency < 70% (lots of waste relative to task's total cost)
-		// - OR impact > 10% (this task contributes significantly to total waste)
 		if (costEfficiency < 0.7 || impactPercent > 10) && agg.totalPreemptions > 0 {
-			summary.ProblematicTasks = append(summary.ProblematicTasks, ProblematicTask{
+			summary.ProblematicTasks = append(summary.ProblematicTasks, PreemptionProblematicTask{
 				Name:             taskName,
 				ShardCount:       agg.shardCount,
 				TotalAttempts:    agg.totalAttempts,
@@ -242,8 +196,8 @@ func (a *Analyzer) AnalyzeWorkflow(workflowID, workflowName string, calls map[st
 }
 
 // analyzeTaskShard analyzes preemption stats for a single task/shard.
-func (a *Analyzer) analyzeTaskShard(attempts []CallData) TaskStats {
-	stats := TaskStats{}
+func (a *PreemptionAnalyzer) analyzeTaskShard(attempts []Call) PreemptionTaskStats {
+	stats := PreemptionTaskStats{}
 
 	if len(attempts) == 0 {
 		stats.EfficiencyScore = 1.0
@@ -260,13 +214,13 @@ func (a *Analyzer) analyzeTaskShard(attempts []CallData) TaskStats {
 
 	// Get final attempt info
 	finalAttempt := attempts[len(attempts)-1]
-	stats.FinalStatus = finalAttempt.ExecutionStatus
+	stats.FinalStatus = string(finalAttempt.Status)
 	stats.IsPreemptible = IsPreemptible(finalAttempt.Preemptible)
 	stats.MaxPreemptible = ParseMaxPreemptible(finalAttempt.Preemptible)
 
 	// Calculate costs for all attempts
 	for i, attempt := range attempts {
-		cost := attempt.AttemptCost()
+		cost := calculateAttemptCost(attempt)
 		stats.TotalCost += cost
 
 		// All attempts except the last one are "wasted" (preempted)
@@ -307,6 +261,35 @@ func (a *Analyzer) analyzeTaskShard(attempts []CallData) TaskStats {
 	return stats
 }
 
+// calculateAttemptCost calculates the estimated cost of a single attempt.
+func calculateAttemptCost(call Call) float64 {
+	// If we have actual VM cost per hour, use it
+	if call.VMCostPerHour > 0 && !call.Start.IsZero() && !call.End.IsZero() {
+		durationHours := call.End.Sub(call.Start).Hours()
+		return call.VMCostPerHour * durationHours
+	}
+
+	// Otherwise, estimate using resource-hours
+	cpu := parseCPUFromString(call.CPU)
+	if cpu <= 0 {
+		cpu = 1
+	}
+	mem := parseMemoryGBFromString(call.Memory)
+	if mem <= 0 {
+		mem = 1
+	}
+
+	var durationHours float64
+	if !call.Start.IsZero() && !call.End.IsZero() {
+		durationHours = call.End.Sub(call.Start).Hours()
+	}
+	if durationHours <= 0 {
+		durationHours = 0.01 // Minimum 36 seconds
+	}
+
+	return cpu * mem * durationHours
+}
+
 // IsPreemptible checks if a task is configured as preemptible.
 func IsPreemptible(value string) bool {
 	if value == "" || value == "false" || value == "0" {
@@ -334,11 +317,80 @@ func ParseMaxPreemptible(value string) int {
 	return n
 }
 
-// shortTaskName extracts just the task name from "Workflow.Task" format.
-func shortTaskName(fullName string) string {
+// preemptionShortTaskName extracts just the task name from "Workflow.Task" format.
+func preemptionShortTaskName(fullName string) string {
 	parts := strings.Split(fullName, ".")
 	if len(parts) > 1 {
 		return parts[len(parts)-1]
 	}
 	return fullName
+}
+
+// parseCPUFromString parses CPU string (e.g., "4", "4.0") to float64.
+func parseCPUFromString(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	var cpu float64
+	for i, c := range s {
+		if c == '.' {
+			var decimal float64
+			var divisor float64 = 10
+			for _, d := range s[i+1:] {
+				if d < '0' || d > '9' {
+					break
+				}
+				decimal += float64(d-'0') / divisor
+				divisor *= 10
+			}
+			return cpu + decimal
+		}
+		if c < '0' || c > '9' {
+			break
+		}
+		cpu = cpu*10 + float64(c-'0')
+	}
+	return cpu
+}
+
+// parseMemoryGBFromString parses memory string (e.g., "8 GB", "8GB", "8192 MB") to GB.
+func parseMemoryGBFromString(s string) float64 {
+	if s == "" {
+		return 0
+	}
+
+	var num float64
+	var i int
+	for i = 0; i < len(s); i++ {
+		c := s[i]
+		if c == '.' {
+			var decimal float64
+			var divisor float64 = 10
+			for j := i + 1; j < len(s); j++ {
+				d := s[j]
+				if d < '0' || d > '9' {
+					i = j
+					break
+				}
+				decimal += float64(d-'0') / divisor
+				divisor *= 10
+				i = j + 1
+			}
+			num += decimal
+			break
+		}
+		if c < '0' || c > '9' {
+			break
+		}
+		num = num*10 + float64(c-'0')
+	}
+
+	rest := strings.ToUpper(strings.TrimSpace(s[i:]))
+	if strings.HasPrefix(rest, "MB") {
+		return num / 1024
+	}
+	if strings.HasPrefix(rest, "TB") {
+		return num * 1024
+	}
+	return num
 }

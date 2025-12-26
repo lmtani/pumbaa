@@ -6,10 +6,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
@@ -19,14 +19,14 @@ import (
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
 	repository ports.WorkflowRepository
-	telemetry telemetry.Service
+	telemetry  telemetry.Service
 }
 
 // NewDashboardHandler creates a new dashboard handler.
 func NewDashboardHandler(client ports.WorkflowRepository, ts telemetry.Service) *DashboardHandler {
 	return &DashboardHandler{
 		repository: client,
-		telemetry: ts,
+		telemetry:  ts,
 	}
 }
 
@@ -136,7 +136,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	// Build DebugInfo using usecase
-	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
+	uc := debuginfo.NewUsecase(workflowDomain.NewPreemptionAnalyzer())
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

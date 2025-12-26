@@ -3,8 +3,6 @@ package workflow
 
 import (
 	"time"
-
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
 )
 
 // Status represents the current state of a workflow execution.
@@ -123,7 +121,7 @@ type Call struct {
 	SubWorkflowMetadata *Workflow
 
 	// Cache for expensive calculations
-	EfficiencyReport *monitoring.EfficiencyReport
+	EfficiencyReport *EfficiencyReport
 }
 
 // ExecutionEvent represents a single execution event in the timeline.

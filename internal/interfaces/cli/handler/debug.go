@@ -7,10 +7,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
@@ -19,14 +19,14 @@ import (
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
 	repository ports.WorkflowRepository
-	telemetry telemetry.Service
+	telemetry  telemetry.Service
 }
 
 // NewDebugHandler creates a new debug handler.
 func NewDebugHandler(client ports.WorkflowRepository, ts telemetry.Service) *DebugHandler {
 	return &DebugHandler{
 		repository: client,
-		telemetry: ts,
+		telemetry:  ts,
 	}
 }
 
@@ -112,7 +112,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
+	uc := debuginfo.NewUsecase(workflowDomain.NewPreemptionAnalyzer())
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

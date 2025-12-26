@@ -26,6 +26,18 @@ var (
 			Padding(0, 1).
 			MarginBottom(0)
 
+	// Tree panel style
+	treePanelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#444444")).
+			Padding(0, 1)
+
+	// Details panel style
+	detailsPanelStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#444444")).
+				Padding(0, 1)
+
 	// Header title style
 	headerTitleStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -146,6 +158,12 @@ var (
 	// Section separator style
 	sectionSeparatorStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#444444"))
+
+	// Selected tree node style
+	selectedStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color("#333333")).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Bold(true)
 )
 
 // StatusStyle returns the appropriate style for a status.

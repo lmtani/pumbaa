@@ -13,8 +13,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -86,7 +85,7 @@ type Model struct {
 	globalTimelineTitle     string
 
 	// Resource analysis modal state
-	resourceReport *monitoring.EfficiencyReport
+	resourceReport *workflowDomain.EfficiencyReport
 	resourceError  string
 
 	// Components
@@ -103,7 +102,7 @@ type Model struct {
 	fileProvider ports.FileProvider
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
-	preemption *preemption.WorkflowSummary
+	preemption *workflowDomain.PreemptionSummary
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
