@@ -76,7 +76,7 @@ type Model struct {
 	healthStatus  *workflow.HealthStatus
 
 	// Labels modal state
-	labelManager LabelManager
+	labelManager       LabelManager
 	showLabelsModal    bool
 	labelsWorkflowID   string
 	labelsWorkflowName string

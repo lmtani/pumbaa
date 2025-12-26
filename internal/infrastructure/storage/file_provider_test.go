@@ -40,7 +40,7 @@ func TestFileProvider_Read_Local(t *testing.T) {
 	t.Run("file too large", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmpFile := filepath.Join(tmpDir, "large.txt")
-		
+
 		// Create a file larger than 1MB
 		largeContent := make([]byte, maxFileSize+1)
 		err := os.WriteFile(tmpFile, largeContent, 0644)
@@ -82,8 +82,8 @@ func TestFileProvider_Read_GCS_Validation(t *testing.T) {
 			return
 		}
 		// We just check that it returns an error, specifically mention client creation or attributes
-		if !strings.Contains(err.Error(), "failed to create GCS client") && 
-		   !strings.Contains(err.Error(), "failed to get object attributes") {
+		if !strings.Contains(err.Error(), "failed to create GCS client") &&
+			!strings.Contains(err.Error(), "failed to get object attributes") {
 			t.Errorf("unexpected error message: %v", err)
 		}
 	})
