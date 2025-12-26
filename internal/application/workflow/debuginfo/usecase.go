@@ -24,16 +24,11 @@ type DebugInfo struct {
 }
 
 // usecaseImpl is the concrete implementation.
-type usecaseImpl struct {
-	analyzer *workflow.PreemptionAnalyzer
-}
+type usecaseImpl struct{}
 
 // NewUsecase creates a new Usecase instance.
-func NewUsecase(analyzer *workflow.PreemptionAnalyzer) Usecase {
-	if analyzer == nil {
-		analyzer = workflow.NewPreemptionAnalyzer()
-	}
-	return &usecaseImpl{analyzer: analyzer}
+func NewUsecase() Usecase {
+	return &usecaseImpl{}
 }
 
 // GetDebugInfo performs orchestration: parsing -> tree building -> preemption analysis
@@ -48,8 +43,8 @@ func (u *usecaseImpl) GetDebugInfo(data []byte) (*DebugInfo, error) {
 	root := tree.BuildTree(wf)
 	visible := tree.GetVisibleNodes(root)
 
-	// 3. Analyze preemption using domain layer - now works directly with Workflow
-	summary := u.analyzer.AnalyzePreemption(wf)
+	// 3. Analyze preemption - now a method on Workflow (DDD pattern)
+	summary := wf.CalculatePreemptionSummary()
 
 	return &DebugInfo{
 		Metadata:   wf,

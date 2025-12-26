@@ -20,7 +20,8 @@ const (
 	ColDiskTotalGB = "disk_total_gb"
 )
 
-// MonitoringMetrics holds parsed monitoring data from resource_monitor.sh output.
+// MonitoringMetrics is a Value Object holding parsed monitoring data from resource_monitor.sh output.
+// It provides the Analyze() method to compute an EfficiencyReport.
 type MonitoringMetrics struct {
 	Timestamps []time.Time
 	CPU        []float64 // 0-100%
@@ -30,7 +31,7 @@ type MonitoringMetrics struct {
 	DiskTotal  float64   // GB
 }
 
-// ResourceUsageStats holds aggregated statistics for a specific resource.
+// ResourceUsageStats is a Value Object holding aggregated statistics for a specific resource.
 type ResourceUsageStats struct {
 	Peak       float64
 	Avg        float64
@@ -38,7 +39,8 @@ type ResourceUsageStats struct {
 	Efficiency float64
 }
 
-// EfficiencyReport summarizes resource usage efficiency.
+// EfficiencyReport is a Value Object summarizing resource usage efficiency.
+// It is computed by MonitoringMetrics.Analyze() and represents a snapshot analysis.
 type EfficiencyReport struct {
 	CPU  ResourceUsageStats
 	Mem  ResourceUsageStats

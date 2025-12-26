@@ -9,7 +9,6 @@ import (
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
@@ -136,7 +135,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	// Build DebugInfo using usecase
-	uc := debuginfo.NewUsecase(workflowDomain.NewPreemptionAnalyzer())
+	uc := debuginfo.NewUsecase()
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

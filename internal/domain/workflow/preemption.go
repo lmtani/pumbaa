@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// PreemptionTaskStats represents preemption statistics for a single task/shard.
+// PreemptionTaskStats is a Value Object containing preemption statistics for a single task/shard.
+// Value Objects are immutable and compared by value.
 type PreemptionTaskStats struct {
 	TaskName        string  // Full task name (workflow.task)
 	ShardIndex      int     // Shard index (-1 for non-scattered)
@@ -24,7 +25,8 @@ type PreemptionTaskStats struct {
 	CostEfficiency float64 // 1.0 = no waste, 0.0 = all wasted
 }
 
-// PreemptionProblematicTask represents an aggregated view of a task with poor preemption efficiency.
+// PreemptionProblematicTask is a Value Object representing an aggregated view
+// of a task with poor preemption efficiency.
 type PreemptionProblematicTask struct {
 	Name             string  // Short task name (without workflow prefix)
 	ShardCount       int     // Number of shards (1 for non-scattered)
@@ -39,7 +41,8 @@ type PreemptionProblematicTask struct {
 	ImpactPercent  float64 // WastedCost / WorkflowTotalWastedCost × 100
 }
 
-// PreemptionSummary represents aggregated preemption statistics for a workflow.
+// PreemptionSummary is a Value Object containing aggregated preemption statistics for a workflow.
+// It is computed by Workflow.CalculatePreemptionSummary() and represents a snapshot analysis.
 type PreemptionSummary struct {
 	WorkflowID        string
 	WorkflowName      string
@@ -57,19 +60,11 @@ type PreemptionSummary struct {
 	CostUnit       string  // Unit for cost display (e.g., "resource-hours" or "$")
 }
 
-// PreemptionAnalyzer analyzes preemption efficiency from workflow metadata.
-type PreemptionAnalyzer struct{}
-
-// NewPreemptionAnalyzer creates a new preemption analyzer.
-func NewPreemptionAnalyzer() *PreemptionAnalyzer {
-	return &PreemptionAnalyzer{}
-}
-
-// AnalyzePreemption analyzes preemption statistics for a workflow and returns a summary.
-func (a *PreemptionAnalyzer) AnalyzePreemption(wf *Workflow) *PreemptionSummary {
+// CalculatePreemptionSummary analyzes preemption statistics for this workflow and returns a summary.
+func (w *Workflow) CalculatePreemptionSummary() *PreemptionSummary {
 	summary := &PreemptionSummary{
-		WorkflowID:       wf.ID,
-		WorkflowName:     wf.Name,
+		WorkflowID:       w.ID,
+		WorkflowName:     w.Name,
 		ProblematicTasks: []PreemptionProblematicTask{},
 		CostUnit:         "resource-hours",
 	}
@@ -96,7 +91,7 @@ func (a *PreemptionAnalyzer) AnalyzePreemption(wf *Workflow) *PreemptionSummary 
 	}
 	taskAggregations := make(map[string]*taskAggregation)
 
-	for callName, callList := range wf.Calls {
+	for callName, callList := range w.Calls {
 		// Group by shard index to calculate per-shard stats
 		shardGroups := make(map[int][]Call)
 		for _, call := range callList {
@@ -110,7 +105,7 @@ func (a *PreemptionAnalyzer) AnalyzePreemption(wf *Workflow) *PreemptionSummary 
 			}
 			seen[key] = true
 
-			stats := a.analyzeTaskShard(attempts)
+			stats := analyzeTaskShard(attempts)
 			summary.TotalTasks++
 
 			if stats.IsPreemptible {
@@ -196,7 +191,7 @@ func (a *PreemptionAnalyzer) AnalyzePreemption(wf *Workflow) *PreemptionSummary 
 }
 
 // analyzeTaskShard analyzes preemption stats for a single task/shard.
-func (a *PreemptionAnalyzer) analyzeTaskShard(attempts []Call) PreemptionTaskStats {
+func analyzeTaskShard(attempts []Call) PreemptionTaskStats {
 	stats := PreemptionTaskStats{}
 
 	if len(attempts) == 0 {

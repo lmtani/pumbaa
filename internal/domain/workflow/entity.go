@@ -1,11 +1,16 @@
 // Package workflow contains the domain entities and business logic for workflows.
+// This package follows Domain-Driven Design (DDD) principles:
+//   - Aggregate Root: Workflow (main entry point with identity)
+//   - Entity: Call (has identity within the aggregate)
+//   - Value Objects: Status, Failure, ExecutionEvent, PreemptionSummary, EfficiencyReport
 package workflow
 
 import (
 	"time"
 )
 
-// Status represents the current state of a workflow execution.
+// Status is a Value Object representing the current state of a workflow execution.
+// Value Objects are immutable and compared by value, not identity.
 type Status string
 
 const (
@@ -19,7 +24,9 @@ const (
 	StatusUnknown   Status = "Unknown"
 )
 
-// Workflow represents a WDL workflow execution in Cromwell.
+// Workflow is the Aggregate Root for the workflow domain.
+// It encapsulates the entire workflow execution lifecycle and provides
+// domain behavior through methods like CalculatePreemptionSummary().
 type Workflow struct {
 	// Basic info
 	ID          string
@@ -48,13 +55,15 @@ type Workflow struct {
 	WorkflowLanguageVersion string
 }
 
-// Failure represents a failure in workflow execution.
+// Failure is a Value Object representing an error that occurred during execution.
+// It forms a tree structure via CausedBy for nested failures.
 type Failure struct {
 	Message  string
 	CausedBy []Failure
 }
 
-// Call represents a task/call execution within a workflow.
+// Call is an Entity representing a task execution within a workflow.
+// It has identity (Name + ShardIndex + Attempt) within the Workflow aggregate.
 type Call struct {
 	// Identification
 	Name       string

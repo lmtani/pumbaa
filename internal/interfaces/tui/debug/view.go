@@ -112,15 +112,14 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 		// If model was constructed with DebugInfo, use its precomputed summary for the workflow root
 		summary = m.preemption
 	} else {
-		// Analyze preemption for this specific workflow/subworkflow
-		analyzer := workflowDomain.NewPreemptionAnalyzer()
+		// Analyze preemption for this specific workflow/subworkflow - DDD pattern
 		// Create a temporary workflow to analyze
 		tempWf := &workflowDomain.Workflow{
 			ID:    workflowID,
 			Name:  workflowName,
 			Calls: wf.Calls,
 		}
-		summary = analyzer.AnalyzePreemption(tempWf)
+		summary = tempWf.CalculatePreemptionSummary()
 	}
 	subworkflowCount := countSubworkflows(wf.Calls)
 
