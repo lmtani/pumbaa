@@ -14,11 +14,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // FocusMode indicates which panel has focus

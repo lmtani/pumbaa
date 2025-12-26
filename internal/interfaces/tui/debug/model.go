@@ -9,9 +9,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -83,7 +84,7 @@ type Model struct {
 	globalTimelineTitle     string
 
 	// Resource analysis modal state
-	resourceReport *monitoring.EfficiencyReport
+	resourceReport *workflowDomain.EfficiencyReport
 	resourceError  string
 
 	// Components
@@ -96,15 +97,15 @@ type Model struct {
 	statusMessageExpires time.Time // When the status message should disappear
 
 	// Infrastructure
-	monitoringUC monitoringuc.Usecase
-	fileProvider monitoring.FileProvider
+	monitoringUC *workflow.MonitoringUseCase
+	fileProvider ports.FileProvider
 
 	// Pre-computed preemption summary when using a DebugInfo-based model
-	preemption *debuginfo.WorkflowPreemptionSummary
+	preemption *workflowDomain.PreemptionSummary
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
-func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc monitoringuc.Usecase, fp monitoring.FileProvider) Model {
+func NewModelWithDebugInfoAndMonitoring(di *workflow.DebugInfo, fetcher MetadataFetcher, muc *workflow.MonitoringUseCase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))

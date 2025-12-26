@@ -2,28 +2,34 @@
 
 Stop running workflows.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-stop-circle: **Immediate Stop**
+
+    Terminate running tasks immediately
+
+-   :material-keyboard: **TUI Support**
+
+    Abort from Dashboard with confirmation
+
+</div>
+
+!!! warning "Irreversible"
+    Aborting a workflow cannot be undone.
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa workflow abort <workflow-id>
 ```
 
----
-
-## :bulb: Example
+## :material-lightbulb: Example
 
 ```bash
 pumbaa workflow abort abc12345-6789-0def-ghij-klmnopqrstuv
 ```
 
----
-
-## :warning: Behavior
-
-!!! warning "Irreversible"
-    Aborting a workflow cannot be undone.
+## :material-alert: Behavior
 
 | Action | Description |
 |--------|-------------|
@@ -31,17 +37,13 @@ pumbaa workflow abort abc12345-6789-0def-ghij-klmnopqrstuv
 | :material-sync: Status change | `Running` → `Aborting` → `Aborted` |
 | :material-folder: Intermediate files | **Not cleaned up** |
 
----
-
-## :keyboard: From Dashboard
+## :material-keyboard: From Dashboard
 
 1. Navigate to workflow with ++up++ / ++down++
 2. Press ++a++
 3. Confirm action
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-view-dashboard: Dashboard](dashboard.md)
 - [:material-magnify: Query](query.md)

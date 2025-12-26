@@ -5,19 +5,20 @@ import (
 	"context"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
-	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 	"github.com/urfave/cli/v2"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
 // SubmitHandler handles the workflow submission command.
 type SubmitHandler struct {
-	useCase   *submit.UseCase
+	useCase   *workflow.SubmitUseCase
 	presenter *presenter.Presenter
 }
 
 // NewSubmitHandler creates a new SubmitHandler.
-func NewSubmitHandler(uc *submit.UseCase, p *presenter.Presenter) *SubmitHandler {
+func NewSubmitHandler(uc *workflow.SubmitUseCase, p *presenter.Presenter) *SubmitHandler {
 	return &SubmitHandler{
 		useCase:   uc,
 		presenter: p,
@@ -76,7 +77,7 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	input := submit.Input{
+	input := workflow.SubmitInput{
 		WorkflowFile:     c.String("workflow"),
 		InputsFile:       c.String("inputs"),
 		OptionsFile:      c.String("options"),

@@ -2,17 +2,25 @@
 
 List and filter workflows via CLI.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-filter: **Flexible Filters**
+
+    Filter by name, status, or combine criteria
+
+-   :material-table: **Table Output**
+
+    Clean, color-coded workflow listings
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa workflow query [FLAGS]
 ```
 
----
-
-## :flags: Flags
+## :material-flag: Flags
 
 | Flag | Alias | Description |
 |------|:-----:|-------------|
@@ -20,9 +28,7 @@ pumbaa workflow query [FLAGS]
 | `--status` | `-s` | Filter by status (repeatable) |
 | `--limit` | `-l` | Max results (default: 20) |
 
----
-
-## :bulb: Examples
+## :material-lightbulb: Examples
 
 === "List All"
 
@@ -52,9 +58,7 @@ pumbaa workflow query [FLAGS]
       --limit 10
     ```
 
----
-
-## :traffic_light: Status Values
+## :material-traffic-light: Status Values
 
 | Status | Description |
 |:------:|-------------|
@@ -65,9 +69,7 @@ pumbaa workflow query [FLAGS]
 | `Aborting` | Being aborted |
 | `Aborted` | Aborted by user |
 
----
-
-## :page_facing_up: Output
+## :material-file-document: Output
 
 Displays table with:
 
@@ -76,9 +78,7 @@ Displays table with:
 - **Status** — Color-coded
 - **Submitted** — Timestamp
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-view-dashboard: Dashboard](dashboard.md) — Interactive query
 - [:material-file-document: Metadata](metadata.md) — Detailed workflow info

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
+
 	"github.com/lmtani/pumbaa/pkg/wdl/ast"
 	"github.com/lmtani/pumbaa/pkg/wdl/parser"
 )

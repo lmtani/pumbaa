@@ -2,25 +2,35 @@
 
 Get detailed workflow metadata.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-file-search: **Complete Info**
+
+    Inputs, outputs, timing, labels, and more
+
+-   :material-bug: **Debug Failures**
+
+    Inspect failed task details
+
+-   :material-timer: **Execution Timing**
+
+    Review start/end timestamps
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa workflow metadata <workflow-id> [FLAGS]
 ```
 
----
-
-## :flags: Flags
+## :material-flag: Flags
 
 | Flag | Alias | Description |
 |------|:-----:|-------------|
 | `--verbose` | `-v` | Show detailed call information |
 
----
-
-## :bulb: Examples
+## :material-lightbulb: Examples
 
 === "Basic"
 
@@ -34,9 +44,7 @@ pumbaa workflow metadata <workflow-id> [FLAGS]
     pumbaa workflow metadata abc12345 --verbose
     ```
 
----
-
-## :page_facing_up: Output
+## :material-file-document: Output
 
 | Section | Description |
 |---------|-------------|
@@ -49,9 +57,7 @@ pumbaa workflow metadata <workflow-id> [FLAGS]
 | Labels | User labels |
 | Calls | Task execution details (with `-v`) |
 
----
-
-## :wrench: Use Cases
+## :material-wrench: Use Cases
 
 <div class="grid cards" markdown>
 
@@ -73,9 +79,7 @@ pumbaa workflow metadata <workflow-id> [FLAGS]
 
 </div>
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-bug: Debug View](debug.md) — Interactive exploration
 - [:material-magnify: Query](query.md) — List workflows

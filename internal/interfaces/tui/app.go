@@ -4,6 +4,7 @@ package tui
 import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"

@@ -1,8 +1,6 @@
 module github.com/lmtani/pumbaa
 
-go 1.24.4
-
-toolchain go1.24.11
+go 1.25.5
 
 require (
 	cloud.google.com/go/storage v1.58.0

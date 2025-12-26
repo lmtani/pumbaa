@@ -5,19 +5,20 @@ import (
 	"context"
 	"sort"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/metadata"
-	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 	"github.com/urfave/cli/v2"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
 // MetadataHandler handles the workflow metadata command.
 type MetadataHandler struct {
-	useCase   *metadata.UseCase
+	useCase   *workflow.MetadataUseCase
 	presenter *presenter.Presenter
 }
 
 // NewMetadataHandler creates a new MetadataHandler.
-func NewMetadataHandler(uc *metadata.UseCase, p *presenter.Presenter) *MetadataHandler {
+func NewMetadataHandler(uc *workflow.MetadataUseCase, p *presenter.Presenter) *MetadataHandler {
 	return &MetadataHandler{
 		useCase:   uc,
 		presenter: p,
@@ -51,7 +52,7 @@ func (h *MetadataHandler) handle(c *cli.Context) error {
 	ctx := context.Background()
 	workflowID := c.Args().First()
 
-	input := metadata.Input{
+	input := workflow.MetadataInput{
 		WorkflowID: workflowID,
 	}
 
@@ -66,7 +67,7 @@ func (h *MetadataHandler) handle(c *cli.Context) error {
 	return nil
 }
 
-func (h *MetadataHandler) displayMetadata(m *metadata.Output, verbose bool) {
+func (h *MetadataHandler) displayMetadata(m *workflow.MetadataOutput, verbose bool) {
 	// Workflow overview
 	h.presenter.Title("Workflow Details")
 	h.presenter.KeyValue("ID", m.ID)

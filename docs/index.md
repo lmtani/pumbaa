@@ -1,11 +1,11 @@
-# Pumbaa :boar:
-
-**Modern CLI for Cromwell workflow management and WDL files.**
-
-[:material-github: GitHub](https://github.com/lmtani/pumbaa){ .md-button }
-[:material-download: Installation](getting-started/installation.md){ .md-button .md-button--primary }
-
 ---
+title: Pumbaa
+hide:
+  - title
+---
+
+![Pumbaa Social](assets/pumbaa-social.png)
+
 
 ## :dart: What is Pumbaa?
 
@@ -14,7 +14,6 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
 !!! tip "Who is it for?"
     Bioinformaticians and developers running WDL pipelines who need practical tools for monitoring, debugging, and efficiency analysis.
 
----
 
 
 ## :rocket: Quick Start
@@ -37,7 +36,6 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
     pumbaa dashboard
     ```
 
----
 
 
 ## :sparkles: Features
@@ -74,7 +72,6 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
 
 </div>
 
----
 
 ## :zap: Highlights
 
@@ -85,7 +82,6 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
 | :material-speedometer: **Efficient** | Resource utilization analysis for cost optimization |
 | :material-language-go: **Native Go** | Fast, compiled, cross-platform |
 
----
 
 ## :books: Next Steps
 
@@ -93,8 +89,8 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
 - [:material-play: Quick Start](getting-started/quick-start.md) — Get started
 - [:material-cog: Configuration](getting-started/configuration.md) — Options and providers
 - [:material-star: Features](features/dashboard.md) — All features in detail
+- [:material-robot: Chat Agent](features/chat.md) — Query workflows with AI
 
----
 
 ## :handshake: Support
 

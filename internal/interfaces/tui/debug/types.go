@@ -2,28 +2,28 @@
 package debug
 
 import (
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
-// Type aliases from debuginfo package for backward compatibility
+// Type aliases from new packages for backward compatibility
 type (
-	NodeType                  = debuginfo.NodeType
-	TreeNode                  = debuginfo.TreeNode
-	CallDetails               = debuginfo.CallDetails
-	ExecutionEvent            = debuginfo.ExecutionEvent
-	PreemptionStats           = debuginfo.PreemptionStats
-	WorkflowPreemptionSummary = debuginfo.WorkflowPreemptionSummary
-	ProblematicTask           = debuginfo.ProblematicTask
-	Failure                   = debuginfo.Failure
-	WorkflowMetadata          = debuginfo.WorkflowMetadata
+	NodeType                  = tree.NodeType
+	TreeNode                  = tree.TreeNode
+	CallDetails               = workflow.Call
+	ExecutionEvent            = workflow.ExecutionEvent
+	WorkflowPreemptionSummary = workflow.PreemptionSummary
+	ProblematicTask           = workflow.PreemptionProblematicTask
+	Failure                   = workflow.Failure
+	WorkflowMetadata          = workflow.Workflow
 )
 
 // NodeType constants
 const (
-	NodeTypeWorkflow    = debuginfo.NodeTypeWorkflow
-	NodeTypeCall        = debuginfo.NodeTypeCall
-	NodeTypeSubWorkflow = debuginfo.NodeTypeSubWorkflow
-	NodeTypeShard       = debuginfo.NodeTypeShard
+	NodeTypeWorkflow    = tree.NodeTypeWorkflow
+	NodeTypeCall        = tree.NodeTypeCall
+	NodeTypeSubWorkflow = tree.NodeTypeSubWorkflow
+	NodeTypeShard       = tree.NodeTypeShard
 )
 
 // ViewMode represents the current view mode of the TUI.

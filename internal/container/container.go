@@ -4,13 +4,11 @@ package container
 import (
 	"os"
 
-	"github.com/lmtani/pumbaa/internal/application/bundle/create"
-	"github.com/lmtani/pumbaa/internal/application/workflow/abort"
-	"github.com/lmtani/pumbaa/internal/application/workflow/metadata"
-	"github.com/lmtani/pumbaa/internal/application/workflow/query"
-	"github.com/lmtani/pumbaa/internal/application/workflow/submit"
+	"github.com/lmtani/pumbaa/internal/application/bundle"
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
@@ -26,11 +24,11 @@ type Container struct {
 	TelemetryService telemetry.Service
 
 	// Use cases
-	SubmitUseCase   *submit.UseCase
-	MetadataUseCase *metadata.UseCase
-	AbortUseCase    *abort.UseCase
-	QueryUseCase    *query.UseCase
-	BundleUseCase   *create.UseCase
+	SubmitUseCase   *workflow.SubmitUseCase
+	MetadataUseCase *workflow.MetadataUseCase
+	AbortUseCase    *workflow.AbortUseCase
+	QueryUseCase    *workflow.QueryUseCase
+	BundleUseCase   *bundle.BundleUseCase
 
 	// Handlers
 	SubmitHandler    *handler.SubmitHandler
@@ -59,6 +57,9 @@ func New(cfg *config.Config, version string) *Container {
 		Timeout: cfg.CromwellTimeout,
 	})
 
+	// Initialize FileProvider for file system access
+	fileProvider := storage.NewFileProvider()
+
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
 		ts, err := telemetry.NewSentryService(cfg.ClientID, version)
@@ -73,11 +74,11 @@ func New(cfg *config.Config, version string) *Container {
 	}
 
 	// Initialize use cases
-	c.SubmitUseCase = submit.New(c.CromwellClient)
-	c.MetadataUseCase = metadata.New(c.CromwellClient)
-	c.AbortUseCase = abort.New(c.CromwellClient)
-	c.QueryUseCase = query.New(c.CromwellClient)
-	c.BundleUseCase = create.New()
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider)
+	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
+	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
+	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
+	c.BundleUseCase = bundle.New()
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)

@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/container"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
-	"github.com/urfave/cli/v2"
 )
 
 var (

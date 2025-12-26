@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"github.com/charmbracelet/bubbles/key"
+
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )

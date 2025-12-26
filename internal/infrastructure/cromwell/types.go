@@ -28,10 +28,25 @@ type metadataResponse struct {
 	Outputs      map[string]interface{}    `json:"outputs"`
 	Calls        map[string][]callMetadata `json:"calls"`
 	Failures     []failureMetadata         `json:"failures"`
+
+	// Detailed fields
+	WorkflowRoot                  string          `json:"workflowRoot"`
+	WorkflowLog                   string          `json:"workflowLog"`
+	SubmittedFiles                *submittedFiles `json:"submittedFiles"`
+	ActualWorkflowLanguage        string          `json:"actualWorkflowLanguage"`
+	ActualWorkflowLanguageVersion string          `json:"actualWorkflowLanguageVersion"`
+}
+
+// submittedFiles contains the submitted workflow files.
+type submittedFiles struct {
+	Workflow string `json:"workflow"`
+	Inputs   string `json:"inputs"`
+	Options  string `json:"options"`
 }
 
 // callMetadata represents metadata for a single call.
 type callMetadata struct {
+	// Basic fields
 	ExecutionStatus   string                 `json:"executionStatus"`
 	Start             time.Time              `json:"start"`
 	End               time.Time              `json:"end"`
@@ -47,6 +62,34 @@ type callMetadata struct {
 	RuntimeAttributes map[string]interface{} `json:"runtimeAttributes"`
 	Failures          []failureMetadata      `json:"failures"`
 	SubWorkflowID     string                 `json:"subWorkflowId"`
+
+	// Detailed fields
+	JobID                string               `json:"jobId"`
+	BackendStatus        string               `json:"backendStatus"`
+	VMStartTime          time.Time            `json:"vmStartTime"`
+	VMEndTime            time.Time            `json:"vmEndTime"`
+	CallRoot             string               `json:"callRoot"`
+	MonitoringLog        string               `json:"monitoringLog"`
+	DockerImageUsed      string               `json:"dockerImageUsed"`
+	CompressedDockerSize interface{}          `json:"compressedDockerSize"`
+	VMCostPerHour        float64              `json:"vmCostPerHour"`
+	CallCaching          *callCachingInfo     `json:"callCaching"`
+	Labels               map[string]string    `json:"labels"`
+	ExecutionEvents      []executionEventMeta `json:"executionEvents"`
+	SubWorkflowMetadata  *metadataResponse    `json:"subWorkflowMetadata"`
+}
+
+// callCachingInfo contains caching information for a call.
+type callCachingInfo struct {
+	Hit    bool   `json:"hit"`
+	Result string `json:"result"`
+}
+
+// executionEventMeta represents an execution event in metadata.
+type executionEventMeta struct {
+	Description string `json:"description"`
+	StartTime   string `json:"startTime"`
+	EndTime     string `json:"endTime"`
 }
 
 // failureMetadata represents failure information.

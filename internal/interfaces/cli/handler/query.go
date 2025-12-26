@@ -4,19 +4,20 @@ package handler
 import (
 	"context"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow/query"
-	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 	"github.com/urfave/cli/v2"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
 // QueryHandler handles the workflow query command.
 type QueryHandler struct {
-	useCase   *query.UseCase
+	useCase   *workflow.QueryUseCase
 	presenter *presenter.Presenter
 }
 
 // NewQueryHandler creates a new QueryHandler.
-func NewQueryHandler(uc *query.UseCase, p *presenter.Presenter) *QueryHandler {
+func NewQueryHandler(uc *workflow.QueryUseCase, p *presenter.Presenter) *QueryHandler {
 	return &QueryHandler{
 		useCase:   uc,
 		presenter: p,
@@ -54,7 +55,7 @@ func (h *QueryHandler) Command() *cli.Command {
 func (h *QueryHandler) handle(c *cli.Context) error {
 	ctx := context.Background()
 
-	input := query.Input{
+	input := workflow.QueryInput{
 		Name:     c.String("name"),
 		Status:   c.StringSlice("status"),
 		PageSize: c.Int("limit"),

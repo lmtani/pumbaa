@@ -5,27 +5,26 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/urfave/cli/v2"
+
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/urfave/cli/v2"
 )
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	client    *cromwell.Client
-	telemetry telemetry.Service
+	repository ports.WorkflowRepository
+	telemetry  telemetry.Service
 }
 
 // NewDebugHandler creates a new debug handler.
-func NewDebugHandler(client *cromwell.Client, ts telemetry.Service) *DebugHandler {
+func NewDebugHandler(client ports.WorkflowRepository, ts telemetry.Service) *DebugHandler {
 	return &DebugHandler{
-		client:    client,
-		telemetry: ts,
+		repository: client,
+		telemetry:  ts,
 	}
 }
 
@@ -40,10 +39,10 @@ Navigate through the call tree, view task details, commands, inputs,
 and outputs.
 
 USAGE EXAMPLES:
-  # Debug a workflow by ID (fetches metadata from Cromwell)
+  # DebugUseCase a workflow by ID (fetches metadata from Cromwell)
   pumbaa workflow debug --id abc123
 
-  # Debug from a local metadata JSON file
+  # DebugUseCase from a local metadata JSON file
   pumbaa workflow debug --file metadata.json
 
 KEY BINDINGS:
@@ -105,13 +104,13 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	} else {
 		// Fetch from Cromwell
 		h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("debug workflow: %s", workflowID[:8]))
-		metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
+		metadataBytes, err = h.repository.GetRawMetadataWithOptions(c.Context, workflowID, expandSubWorkflows)
 		if err != nil {
 			return fmt.Errorf("failed to fetch metadata: %w", err)
 		}
 	}
 
-	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
+	uc := workflowapp.NewUsecase()
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)
@@ -119,10 +118,10 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 
 	// Initialize infrastructure and use cases
 	fp := storage.NewFileProvider()
-	muc := monitoringuc.NewUsecase(fp)
+	muc := workflowapp.NewMonitoringUseCase(fp)
 
 	// Create and run the TUI
-	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.client, muc, fp)
+	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.repository, muc, fp)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 

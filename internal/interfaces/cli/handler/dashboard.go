@@ -1,33 +1,30 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	monitoringuc "github.com/lmtani/pumbaa/internal/application/workflow/monitoring"
-	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/preemption"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/urfave/cli/v2"
+
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
-	"github.com/urfave/cli/v2"
 )
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	client    *cromwell.Client
-	telemetry telemetry.Service
+	repository ports.WorkflowRepository
+	telemetry  telemetry.Service
 }
 
 // NewDashboardHandler creates a new dashboard handler.
-func NewDashboardHandler(client *cromwell.Client, ts telemetry.Service) *DashboardHandler {
+func NewDashboardHandler(client ports.WorkflowRepository, ts telemetry.Service) *DashboardHandler {
 	return &DashboardHandler{
-		client:    client,
-		telemetry: ts,
+		repository: client,
+		telemetry:  ts,
 	}
 }
 
@@ -67,15 +64,14 @@ KEY BINDINGS:
 }
 
 func (h *DashboardHandler) handle(c *cli.Context) error {
-	fetcher := &dashboardFetcher{client: h.client}
 	h.telemetry.AddBreadcrumb("navigation", "entering dashboard")
 
 	for {
-		// Create dashboard model with metadata fetcher for smooth transitions
-		model := dashboard.NewModelWithFetcher(fetcher)
-		model.SetMetadataFetcher(h.client)
-		model.SetHealthChecker(&healthCheckerAdapter{client: h.client})
-		model.SetLabelManager(&labelManagerAdapter{client: h.client})
+		// Create dashboard model with TUI client
+		model := dashboard.NewModelWithFetcher(h.repository)
+		model.SetMetadataFetcher(h.repository)
+		model.SetHealthChecker(h.repository)
+		model.SetLabelManager(h.repository)
 
 		// Create and run the program
 		p := tea.NewProgram(model, tea.WithAltScreen())
@@ -112,7 +108,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 			} else {
 				// Fallback: fetch metadata (shouldn't happen with new flow)
 				var err error
-				metadataBytes, err = h.client.GetRawMetadataWithOptions(c.Context, dashModel.NavigateToDebugID, false)
+				metadataBytes, err = h.repository.GetRawMetadataWithOptions(c.Context, dashModel.NavigateToDebugID, false)
 				if err != nil {
 					fmt.Printf("Error fetching metadata: %v\n", err)
 					h.telemetry.CaptureError("dashboard.fetchMetadata", err)
@@ -138,7 +134,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	// Build DebugInfo using usecase
-	uc := debuginfo.NewUsecase(preemption.NewAnalyzer())
+	uc := workflowapp.NewUsecase()
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)
@@ -146,10 +142,10 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 
 	// Initialize infrastructure and use cases
 	fp := storage.NewFileProvider()
-	muc := monitoringuc.NewUsecase(fp)
+	muc := workflowapp.NewMonitoringUseCase(fp)
 
 	// Create and run the debug TUI
-	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.client, muc, fp)
+	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.repository, muc, fp)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
@@ -157,39 +153,4 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	}
 
 	return nil
-}
-
-// dashboardFetcher adapts the Cromwell client to the dashboard.WorkflowFetcher interface
-type dashboardFetcher struct {
-	client *cromwell.Client
-}
-
-func (f *dashboardFetcher) Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error) {
-	return f.client.Query(ctx, filter)
-}
-
-func (f *dashboardFetcher) Abort(ctx context.Context, workflowID string) error {
-	return f.client.Abort(ctx, workflowID)
-}
-
-// healthCheckerAdapter adapts the Cromwell client to the workflow.HealthChecker interface
-type healthCheckerAdapter struct {
-	client *cromwell.Client
-}
-
-func (a *healthCheckerAdapter) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error) {
-	return a.client.GetHealthStatus(ctx)
-}
-
-// labelManagerAdapter adapts the Cromwell client to the workflow.LabelManager interface
-type labelManagerAdapter struct {
-	client *cromwell.Client
-}
-
-func (a *labelManagerAdapter) GetLabels(ctx context.Context, workflowID string) (map[string]string, error) {
-	return a.client.GetLabels(ctx, workflowID)
-}
-
-func (a *labelManagerAdapter) UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error {
-	return a.client.UpdateLabels(ctx, workflowID, labels)
 }

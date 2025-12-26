@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
@@ -25,7 +26,16 @@ type MetadataFetcher interface {
 	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
 }
 
-// Note: HealthChecker and LabelManager interfaces are defined in domain/workflow/health.go
+// HealthChecker provides health status checking for the workflow server.
+type HealthChecker interface {
+	GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error)
+}
+
+// LabelManager provides label management for workflows.
+type LabelManager interface {
+	GetLabels(ctx context.Context, workflowID string) (map[string]string, error)
+	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
+}
 
 // Model represents the dashboard screen state.
 type Model struct {
@@ -62,11 +72,11 @@ type Model struct {
 	DebugMetadataReady []byte // Metadata ready for debug view
 
 	// Health status
-	healthChecker workflow.HealthChecker
+	healthChecker HealthChecker
 	healthStatus  *workflow.HealthStatus
 
 	// Labels modal state
-	labelManager       workflow.LabelManager
+	labelManager       LabelManager
 	showLabelsModal    bool
 	labelsWorkflowID   string
 	labelsWorkflowName string
@@ -125,12 +135,12 @@ func (m *Model) SetMetadataFetcher(fetcher MetadataFetcher) {
 }
 
 // SetHealthChecker sets the health checker for server status monitoring
-func (m *Model) SetHealthChecker(checker workflow.HealthChecker) {
+func (m *Model) SetHealthChecker(checker HealthChecker) {
 	m.healthChecker = checker
 }
 
 // SetLabelManager sets the label manager for workflow labels
-func (m *Model) SetLabelManager(manager workflow.LabelManager) {
+func (m *Model) SetLabelManager(manager LabelManager) {
 	m.labelManager = manager
 }
 

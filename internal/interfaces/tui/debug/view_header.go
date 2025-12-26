@@ -8,15 +8,15 @@ import (
 
 func (m Model) renderHeader() string {
 	// Get just the icon without styling
-	statusIcon := StatusIcon(m.metadata.Status)
+	statusIcon := StatusIcon(string(m.metadata.Status))
 
 	// Use cached total cost
 	totalCost := m.totalCost
 
 	// Build status badge based on workflow status
-	statusText := m.metadata.Status
+	statusText := string(m.metadata.Status)
 	var statusBadge string
-	switch m.metadata.Status {
+	switch statusText {
 	case "Succeeded", "Done":
 		statusBadge = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).

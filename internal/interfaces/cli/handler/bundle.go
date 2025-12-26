@@ -5,19 +5,20 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/lmtani/pumbaa/internal/application/bundle/create"
-	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
+	"github.com/lmtani/pumbaa/internal/application/bundle"
 	"github.com/urfave/cli/v2"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
 // BundleHandler handles the WDL bundle command.
 type BundleHandler struct {
-	useCase   *create.UseCase
+	useCase   *bundle.BundleUseCase
 	presenter *presenter.Presenter
 }
 
 // NewBundleHandler creates a new BundleHandler.
-func NewBundleHandler(uc *create.UseCase, p *presenter.Presenter) *BundleHandler {
+func NewBundleHandler(uc *bundle.BundleUseCase, p *presenter.Presenter) *BundleHandler {
 	return &BundleHandler{
 		useCase:   uc,
 		presenter: p,
@@ -51,7 +52,7 @@ func (h *BundleHandler) Command() *cli.Command {
 func (h *BundleHandler) handle(c *cli.Context) error {
 	ctx := context.Background()
 
-	input := create.Input{
+	input := bundle.Input{
 		MainWorkflowPath: c.String("workflow"),
 		OutputPath:       c.String("output"),
 	}

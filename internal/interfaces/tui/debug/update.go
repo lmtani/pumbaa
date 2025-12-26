@@ -9,9 +9,10 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
-	"github.com/lmtani/pumbaa/internal/domain/workflow/monitoring"
+
+	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
 // Message types for async operations
@@ -42,7 +43,7 @@ type costLoadedMsg struct {
 }
 
 type resourceAnalysisLoadedMsg struct {
-	report *monitoring.EfficiencyReport
+	report *workflowDomain.EfficiencyReport
 }
 
 type resourceAnalysisErrorMsg struct {
@@ -109,9 +110,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if node != nil && node.CallData != nil {
 			node.CallData.SubWorkflowMetadata = msg.metadata
 			// Rebuild children for this node
-			debuginfo.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
+			tree.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
 			node.Expanded = true
-			m.nodes = debuginfo.GetVisibleNodes(m.tree)
+			m.nodes = tree.GetVisibleNodes(m.tree)
 			m.updateDetailsContent()
 		}
 		return m, nil
@@ -277,7 +278,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			node := m.nodes[m.cursor]
 			if node.Expanded && len(node.Children) > 0 {
 				node.Expanded = false
-				m.nodes = debuginfo.GetVisibleNodes(m.tree)
+				m.nodes = tree.GetVisibleNodes(m.tree)
 			} else if node.Parent != nil {
 				// Move to parent
 				for i, n := range m.nodes {
@@ -312,11 +313,11 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.ExpandAll):
 		m.expandAll(m.tree)
-		m.nodes = debuginfo.GetVisibleNodes(m.tree)
+		m.nodes = tree.GetVisibleNodes(m.tree)
 
 	case key.Matches(msg, m.keys.CollapseAll):
 		m.collapseAll(m.tree)
-		m.nodes = debuginfo.GetVisibleNodes(m.tree)
+		m.nodes = tree.GetVisibleNodes(m.tree)
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)
@@ -403,7 +404,7 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 			}
 		} else if len(node.Children) > 0 {
 			node.Expanded = !node.Expanded
-			m.nodes = debuginfo.GetVisibleNodes(m.tree)
+			m.nodes = tree.GetVisibleNodes(m.tree)
 		}
 		m.updateDetailsContent()
 	}

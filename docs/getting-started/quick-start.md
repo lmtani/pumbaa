@@ -153,6 +153,7 @@ pumbaa workflow submit \
 
 - [:material-view-dashboard: Dashboard Guide](../features/dashboard.md)
 - [:material-bug: Debug View](../features/debug.md)
+- [:material-robot: Chat Agent](../features/chat.md)
 - [:material-upload: Submit Workflows](../features/submit.md)
 - [:material-package: Bundle WDL](../features/bundle.md)
 

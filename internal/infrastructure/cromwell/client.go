@@ -1,4 +1,4 @@
-// Package cromwell provides an implementation of the workflow repository using the Cromwell API.
+// Package cromwell provides an implementation of ports.WorkflowRepository using the Cromwell API.
 package cromwell
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
-// Client implements workflow.Repository for Cromwell.
+// Client implements ports.WorkflowRepository for Cromwell.
 type Client struct {
 	BaseURL    string
 	httpClient *http.Client

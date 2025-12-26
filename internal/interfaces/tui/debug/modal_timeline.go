@@ -181,7 +181,7 @@ func collectTaskTimelineEntriesFromMetadata(metadata *WorkflowMetadata) []taskTi
 
 			entries = append(entries, taskTimelineEntry{
 				Name:     name,
-				Status:   call.ExecutionStatus,
+				Status:   string(call.Status),
 				Start:    start,
 				End:      end,
 				Duration: duration,
