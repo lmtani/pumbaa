@@ -79,7 +79,8 @@ func (m *VertexModel) GenerateContent(
 
 		candidate := resp.Candidates[0]
 		adkResp := &model.LLMResponse{
-			Content: candidate.Content,
+			Content:       candidate.Content,
+			UsageMetadata: resp.UsageMetadata,
 		}
 
 		_ = yield(adkResp, nil)
