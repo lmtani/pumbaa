@@ -6,17 +6,39 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
 
-func TestFileProvider_Read_Local(t *testing.T) {
-	fp := NewFileProvider()
+func TestFileProvider_DelegatesToCorrectBackend(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("read valid local file", func(t *testing.T) {
-		content := "hello world"
+	// Create a mock backend for testing
+	mockBackend := &mockStorageBackend{
+		canHandleFunc: func(path string) bool {
+			return strings.HasPrefix(path, "mock://")
+		},
+		readFunc: func(_ context.Context, path string) (string, error) {
+			return "mock content for " + path, nil
+		},
+	}
+
+	fp := NewFileProviderWithBackends(mockBackend, NewLocalBackend())
+
+	t.Run("delegates to mock backend", func(t *testing.T) {
+		got, err := fp.Read(ctx, "mock://test/file.txt")
+		if err != nil {
+			t.Errorf("Read() unexpected error: %v", err)
+		}
+		if got != "mock content for mock://test/file.txt" {
+			t.Errorf("Read() = %q, want mock content", got)
+		}
+	})
+
+	t.Run("falls back to local backend", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		tmpFile := filepath.Join(tmpDir, "test.txt")
-		err := os.WriteFile(tmpFile, []byte(content), 0644)
+		err := os.WriteFile(tmpFile, []byte("local content"), 0644)
 		if err != nil {
 			t.Fatalf("failed to create temp file: %v", err)
 		}
@@ -25,66 +47,101 @@ func TestFileProvider_Read_Local(t *testing.T) {
 		if err != nil {
 			t.Errorf("Read() unexpected error: %v", err)
 		}
-		if got != content {
-			t.Errorf("Read() = %q, want %q", got, content)
-		}
-	})
-
-	t.Run("read non-existent file", func(t *testing.T) {
-		_, err := fp.Read(ctx, "non-existent-file.txt")
-		if err == nil {
-			t.Error("Read() expected error for non-existent file, got nil")
-		}
-	})
-
-	t.Run("file too large", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		tmpFile := filepath.Join(tmpDir, "large.txt")
-
-		// Create a file larger than 1MB
-		largeContent := make([]byte, maxFileSize+1)
-		err := os.WriteFile(tmpFile, largeContent, 0644)
-		if err != nil {
-			t.Fatalf("failed to create large temp file: %v", err)
-		}
-
-		_, err = fp.Read(ctx, tmpFile)
-		if err == nil {
-			t.Error("Read() expected error for large file, got nil")
-		}
-		if !strings.Contains(err.Error(), "file too large") {
-			t.Errorf("expected 'file too large' error, got: %v", err)
+		if got != "local content" {
+			t.Errorf("Read() = %q, want %q", got, "local content")
 		}
 	})
 }
 
-func TestFileProvider_Read_GCS_Validation(t *testing.T) {
-	fp := NewFileProvider()
+func TestFileProvider_ReadBytes_DelegatesToCorrectBackend(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("invalid GCS path", func(t *testing.T) {
-		_, err := fp.Read(ctx, "gs://invalid-path")
-		if err == nil {
-			t.Error("Read() expected error for invalid GCS path, got nil")
-		}
-		if !strings.Contains(err.Error(), "invalid GCS path") {
-			t.Errorf("expected 'invalid GCS path' error, got: %v", err)
-		}
-	})
+	mockBackend := &mockStorageBackend{
+		canHandleFunc: func(path string) bool {
+			return strings.HasPrefix(path, "mock://")
+		},
+		readBytesFunc: func(_ context.Context, path string) ([]byte, error) {
+			return []byte("mock bytes"), nil
+		},
+	}
 
-	t.Run("failed to create GCS client", func(t *testing.T) {
-		// This should fail in most CI/test environments because of missing credentials
-		// unless GOOGLE_APPLICATION_CREDENTIALS is set.
-		// We want to verify it handles the error.
-		_, err := fp.Read(ctx, "gs://bucket/object")
-		if err == nil {
-			// If it doesn't fail, maybe the environment has credentials, but usually it should.
-			return
+	fp := NewFileProviderWithBackends(mockBackend, NewLocalBackend())
+
+	t.Run("delegates to mock backend", func(t *testing.T) {
+		got, err := fp.ReadBytes(ctx, "mock://test/file.bin")
+		if err != nil {
+			t.Errorf("ReadBytes() unexpected error: %v", err)
 		}
-		// We just check that it returns an error, specifically mention client creation or attributes
-		if !strings.Contains(err.Error(), "failed to create GCS client") &&
-			!strings.Contains(err.Error(), "failed to get object attributes") {
-			t.Errorf("unexpected error message: %v", err)
+		if string(got) != "mock bytes" {
+			t.Errorf("ReadBytes() = %q, want mock bytes", got)
 		}
 	})
 }
+
+func TestFileProvider_NoBackendFound(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a FileProvider with a backend that handles nothing
+	neverHandles := &mockStorageBackend{
+		canHandleFunc: func(_ string) bool { return false },
+	}
+	fp := NewFileProviderWithBackends(neverHandles)
+
+	t.Run("Read returns error", func(t *testing.T) {
+		_, err := fp.Read(ctx, "any://path")
+		if err == nil {
+			t.Error("Read() expected error when no backend found, got nil")
+		}
+		if !strings.Contains(err.Error(), "no storage backend found") {
+			t.Errorf("expected 'no storage backend found' error, got: %v", err)
+		}
+	})
+
+	t.Run("ReadBytes returns error", func(t *testing.T) {
+		_, err := fp.ReadBytes(ctx, "any://path")
+		if err == nil {
+			t.Error("ReadBytes() expected error when no backend found, got nil")
+		}
+		if !strings.Contains(err.Error(), "no storage backend found") {
+			t.Errorf("expected 'no storage backend found' error, got: %v", err)
+		}
+	})
+}
+
+func TestNewFileProvider_DefaultBackends(t *testing.T) {
+	fp := NewFileProvider()
+
+	if len(fp.backends) != 2 {
+		t.Errorf("NewFileProvider() should have 2 backends, got %d", len(fp.backends))
+	}
+}
+
+// mockStorageBackend is a configurable mock for testing.
+type mockStorageBackend struct {
+	canHandleFunc func(path string) bool
+	readFunc      func(ctx context.Context, path string) (string, error)
+	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
+}
+
+func (m *mockStorageBackend) CanHandle(path string) bool {
+	if m.canHandleFunc != nil {
+		return m.canHandleFunc(path)
+	}
+	return false
+}
+
+func (m *mockStorageBackend) Read(ctx context.Context, path string) (string, error) {
+	if m.readFunc != nil {
+		return m.readFunc(ctx, path)
+	}
+	return "", nil
+}
+
+func (m *mockStorageBackend) ReadBytes(ctx context.Context, path string) ([]byte, error) {
+	if m.readBytesFunc != nil {
+		return m.readBytesFunc(ctx, path)
+	}
+	return nil, nil
+}
+
+var _ ports.StorageBackend = (*mockStorageBackend)(nil)
