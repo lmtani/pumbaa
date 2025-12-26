@@ -5,21 +5,7 @@ import (
 	"testing"
 )
 
-type mockFileProvider struct {
-	readFunc      func(ctx context.Context, path string) (string, error)
-	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
-}
-
-func (m *mockFileProvider) Read(ctx context.Context, path string) (string, error) {
-	return m.readFunc(ctx, path)
-}
-
-func (m *mockFileProvider) ReadBytes(ctx context.Context, path string) ([]byte, error) {
-	if m.readBytesFunc != nil {
-		return m.readBytesFunc(ctx, path)
-	}
-	return nil, nil
-}
+// mockFileProvider is defined in testutil_test.go
 
 func TestMonitoringUseCase_Execute(t *testing.T) {
 	tsvContent := "timestamp\tcpu_percent\tmem_used_mb\tmem_total_mb\tdisk_used_gb\tdisk_total_gb\n2023-01-01 00:00:00\t10.0\t20.0\t100.0\t5.0\t50.0\n2023-01-01 00:01:00\t15.0\t25.0\t100.0\t6.0\t50.0"

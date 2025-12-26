@@ -8,21 +8,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
-// mockSubmitFileProvider is a test double for FileProvider
-type mockSubmitFileProvider struct {
-	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
-}
-
-func (m *mockSubmitFileProvider) Read(ctx context.Context, path string) (string, error) {
-	return "", nil
-}
-
-func (m *mockSubmitFileProvider) ReadBytes(ctx context.Context, path string) ([]byte, error) {
-	if m.readBytesFunc != nil {
-		return m.readBytesFunc(ctx, path)
-	}
-	return nil, nil
-}
+// mockWorkflowRepository and mockFileProvider are defined in testutil_test.go
 
 func TestSubmitUseCase_Execute(t *testing.T) {
 	repo := &mockWorkflowRepository{
@@ -30,7 +16,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 			return &workflow.SubmitResponse{ID: "test-id", Status: workflow.StatusSubmitted}, nil
 		},
 	}
-	fp := &mockSubmitFileProvider{
+	fp := &mockFileProvider{
 		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
 			return []byte("workflow test {}"), nil
 		},
@@ -52,7 +38,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 
 func TestSubmitUseCase_Execute_Error(t *testing.T) {
 	repo := &mockWorkflowRepository{}
-	fp := &mockSubmitFileProvider{
+	fp := &mockFileProvider{
 		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
 			return nil, errors.New("file not found")
 		},
