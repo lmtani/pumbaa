@@ -1,4 +1,4 @@
-# Pumbaa 🐗
+# Pumbaa
 
 A CLI tool for interacting with [Cromwell](https://cromwell.readthedocs.io/) workflow engine and WDL files.
 
