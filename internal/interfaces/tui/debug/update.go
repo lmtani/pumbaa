@@ -66,7 +66,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboardCopiedMsg:
 		if msg.success {
-			m.setStatusMessage("✓ Copied to clipboard!")
+			m.setStatusMessage(fmt.Sprintf("✓ Copied %s!", msg.context))
 		} else {
 			m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
 		}
@@ -352,7 +352,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil && node.CallData.DockerImage != "" {
-				return m, copyToClipboard(node.CallData.DockerImage)
+				return m, copyToClipboard(node.CallData.DockerImage, "Docker image")
 			} else {
 				m.setStatusMessage("No Docker image to copy")
 				return m, getClearStatusCmd()
@@ -384,6 +384,7 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 			if logPath != "" {
 				m.isLoading = true
 				m.loadingMessage = "Loading log file..."
+				m.loadingStartTime = time.Now()
 				return m, tea.Batch(m.loadingSpinner.Tick, m.openLogFile(logPath))
 			}
 		}
@@ -396,6 +397,7 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 				if m.fetcher != nil {
 					m.isLoading = true
 					m.loadingMessage = "Loading subworkflow metadata..."
+					m.loadingStartTime = time.Now()
 					return m, tea.Batch(m.loadingSpinner.Tick, m.fetchSubWorkflowMetadata(node))
 				} else {
 					m.setStatusMessage("Cannot fetch subworkflow: no server connection (use --id flag)")
@@ -487,6 +489,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 		if meta.WorkflowLog != "" {
 			m.isLoading = true
 			m.loadingMessage = "Loading workflow log..."
+			m.loadingStartTime = time.Now()
 			return m, m.openWorkflowLog(meta.WorkflowLog)
 		}
 		m.setStatusMessage("No workflow log available")
@@ -557,6 +560,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 			m.resourceError = ""
 			m.isLoading = true
 			m.loadingMessage = "Analyzing resource efficiency..."
+			m.loadingStartTime = time.Now()
 			m.updateDetailsContent()
 			return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
 		}
