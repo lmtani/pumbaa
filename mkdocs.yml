@@ -43,6 +43,7 @@ nav:
   - Features:
     - Dashboard (TUI): features/dashboard.md
     - Debug View (TUI): features/debug.md
+    - Chat Agent (AI): features/chat.md
     - Submit Workflow: features/submit.md
     - Query Workflows: features/query.md
     - Workflow Metadata: features/metadata.md

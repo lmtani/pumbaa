@@ -89,6 +89,7 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
 - [:material-play: Quick Start](getting-started/quick-start.md) — Get started
 - [:material-cog: Configuration](getting-started/configuration.md) — Options and providers
 - [:material-star: Features](features/dashboard.md) — All features in detail
+- [:material-robot: Chat Agent](features/chat.md) — Query workflows with AI
 
 
 ## :handshake: Support
