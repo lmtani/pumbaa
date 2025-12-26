@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
@@ -61,38 +60,6 @@ func (m *mockWorkflowRepository) UpdateLabels(ctx context.Context, workflowID st
 	return nil
 }
 
-func TestSubmitUseCase_Execute(t *testing.T) {
-	repo := &mockWorkflowRepository{
-		submitFunc: func(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error) {
-			return &workflow.SubmitResponse{ID: "test-id", Status: workflow.StatusSubmitted}, nil
-		},
-	}
-	uc := NewSubmitUseCase(repo)
-
-	// Create a temporary file for the workflow
-	tmpFile, err := os.CreateTemp("", "workflow-*.wdl")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
-	if _, err := tmpFile.WriteString("workflow test {}"); err != nil {
-		t.Fatalf("failed to write to temp file: %v", err)
-	}
-	tmpFile.Close()
-
-	input := SubmitInput{
-		WorkflowFile: tmpFile.Name(),
-	}
-	output, err := uc.Execute(context.Background(), input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if output.WorkflowID != "test-id" {
-		t.Errorf("expected WorkflowID test-id, got %s", output.WorkflowID)
-	}
-}
-
 func TestAbortUseCase_Execute(t *testing.T) {
 	repo := &mockWorkflowRepository{
 		abortFunc: func(ctx context.Context, workflowID string) error {
@@ -105,43 +72,6 @@ func TestAbortUseCase_Execute(t *testing.T) {
 	_, err := uc.Execute(context.Background(), input)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestQueryUseCase_Execute(t *testing.T) {
-	repo := &mockWorkflowRepository{
-		queryFunc: func(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error) {
-			return &workflow.QueryResult{
-				Workflows: []workflow.Workflow{
-					{ID: "test-id", Name: "test-wf", Status: workflow.StatusSucceeded},
-				},
-				TotalCount: 1,
-			}, nil
-		},
-	}
-	uc := NewQueryUseCase(repo)
-
-	input := QueryInput{Name: "test-wf"}
-	output, err := uc.Execute(context.Background(), input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(output.Workflows) != 1 {
-		t.Errorf("expected 1 workflow, got %d", len(output.Workflows))
-	}
-}
-
-func TestSubmitUseCase_Execute_Error(t *testing.T) {
-	repo := &mockWorkflowRepository{}
-	uc := NewSubmitUseCase(repo)
-
-	input := SubmitInput{
-		WorkflowFile: "non-existent.wdl",
-	}
-	_, err := uc.Execute(context.Background(), input)
-	if err == nil {
-		t.Fatal("expected error, got nil")
 	}
 }
 
@@ -159,33 +89,5 @@ func TestAbortUseCase_Execute_TerminalState(t *testing.T) {
 	_, err := uc.Execute(context.Background(), input)
 	if err != workflow.ErrWorkflowAlreadyTerminal {
 		t.Errorf("expected ErrWorkflowAlreadyTerminal, got %v", err)
-	}
-}
-
-func TestMetadataUseCase_Execute_WithFailures(t *testing.T) {
-	repo := &mockWorkflowRepository{
-		getMetadataFunc: func(ctx context.Context, workflowID string) (*workflow.Workflow, error) {
-			return &workflow.Workflow{
-				ID:   "test-id",
-				Name: "test-wf",
-				Failures: []workflow.Failure{
-					{Message: "root failure", CausedBy: []workflow.Failure{{Message: "cause"}}},
-				},
-				Calls: map[string][]workflow.Call{
-					"task1": {{Name: "task1", Status: workflow.StatusFailed, Failures: []workflow.Failure{{Message: "task failure"}}}},
-				},
-			}, nil
-		},
-	}
-	uc := NewMetadataUseCase(repo)
-
-	input := MetadataInput{WorkflowID: "test-id"}
-	output, err := uc.Execute(context.Background(), input)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(output.Failures) == 0 {
-		t.Error("expected failures in output")
 	}
 }

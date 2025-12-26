@@ -7,7 +7,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
@@ -135,7 +134,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	// Build DebugInfo using usecase
-	uc := debuginfo.NewUsecase()
+	uc := workflowapp.NewUsecase()
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

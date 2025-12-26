@@ -1,4 +1,4 @@
-package create
+package bundle
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func TestUseCase_Execute_Validation(t *testing.T) {
 }
 
 func TestUseCase_Execute_Success(t *testing.T) {
-	// Este teste usa arquivos reais pois o UseCase chama pkg/wdl.CreateBundle diretamente,
+	// Este teste usa arquivos reais pois o BundleUseCase chama pkg/wdl.CreateBundle diretamente,
 	// que por sua vez manipula o sistema de arquivos.
 
 	uc := New()

@@ -1,5 +1,5 @@
 // Package create contains the use case for creating WDL bundles.
-package create
+package bundle
 
 import (
 	"context"
@@ -9,12 +9,12 @@ import (
 	"github.com/lmtani/pumbaa/pkg/wdl"
 )
 
-// UseCase handles WDL bundle creation.
-type UseCase struct{}
+// BundleUseCase handles WDL bundle creation.
+type BundleUseCase struct{}
 
 // New creates a new bundle creation use case.
-func New() *UseCase {
-	return &UseCase{}
+func New() *BundleUseCase {
+	return &BundleUseCase{}
 }
 
 // Input represents the input for the bundle creation use case.
@@ -35,7 +35,7 @@ type Output struct {
 // It produces two files:
 // 1. A main WDL file with imports rewritten to reference flattened paths
 // 2. A ZIP file containing all dependencies (only if there are dependencies)
-func (uc *UseCase) Execute(ctx context.Context, input Input) (*Output, error) {
+func (uc *BundleUseCase) Execute(ctx context.Context, input Input) (*Output, error) {
 	// Validate input
 	if input.MainWorkflowPath == "" {
 		return nil, bundle.ErrMainWorkflowNotFound

@@ -8,7 +8,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
@@ -40,10 +39,10 @@ Navigate through the call tree, view task details, commands, inputs,
 and outputs.
 
 USAGE EXAMPLES:
-  # Debug a workflow by ID (fetches metadata from Cromwell)
+  # DebugUseCase a workflow by ID (fetches metadata from Cromwell)
   pumbaa workflow debug --id abc123
 
-  # Debug from a local metadata JSON file
+  # DebugUseCase from a local metadata JSON file
   pumbaa workflow debug --file metadata.json
 
 KEY BINDINGS:
@@ -111,7 +110,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	uc := debuginfo.NewUsecase()
+	uc := workflowapp.NewUsecase()
 	di, err := uc.GetDebugInfo(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to build debug info: %w", err)

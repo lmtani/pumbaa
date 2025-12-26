@@ -4,7 +4,7 @@ package container
 import (
 	"os"
 
-	"github.com/lmtani/pumbaa/internal/application/bundle/create"
+	"github.com/lmtani/pumbaa/internal/application/bundle"
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
@@ -27,7 +27,7 @@ type Container struct {
 	MetadataUseCase *workflow.MetadataUseCase
 	AbortUseCase    *workflow.AbortUseCase
 	QueryUseCase    *workflow.QueryUseCase
-	BundleUseCase   *create.UseCase
+	BundleUseCase   *bundle.BundleUseCase
 
 	// Handlers
 	SubmitHandler    *handler.SubmitHandler
@@ -74,7 +74,7 @@ func New(cfg *config.Config, version string) *Container {
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
-	c.BundleUseCase = create.New()
+	c.BundleUseCase = bundle.New()
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)

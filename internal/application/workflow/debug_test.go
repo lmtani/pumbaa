@@ -1,4 +1,4 @@
-package debuginfo
+package workflow
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetDebugInfo(t *testing.T) {
-	data, err := os.ReadFile("../../../../test_data/metadata.json")
+	data, err := os.ReadFile("../../../test_data/metadata.json")
 	if err != nil {
 		t.Fatalf("Failed to read test data: %v", err)
 	}

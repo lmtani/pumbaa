@@ -11,7 +11,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/application/workflow/debuginfo"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
@@ -106,7 +105,7 @@ type Model struct {
 }
 
 // NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
-func NewModelWithDebugInfoAndMonitoring(di *debuginfo.DebugInfo, fetcher MetadataFetcher, muc *workflow.MonitoringUseCase, fp ports.FileProvider) Model {
+func NewModelWithDebugInfoAndMonitoring(di *workflow.DebugInfo, fetcher MetadataFetcher, muc *workflow.MonitoringUseCase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
