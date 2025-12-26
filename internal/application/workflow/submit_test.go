@@ -2,11 +2,27 @@ package workflow
 
 import (
 	"context"
-	"os"
+	"errors"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
+
+// mockSubmitFileProvider is a test double for FileProvider
+type mockSubmitFileProvider struct {
+	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
+}
+
+func (m *mockSubmitFileProvider) Read(ctx context.Context, path string) (string, error) {
+	return "", nil
+}
+
+func (m *mockSubmitFileProvider) ReadBytes(ctx context.Context, path string) ([]byte, error) {
+	if m.readBytesFunc != nil {
+		return m.readBytesFunc(ctx, path)
+	}
+	return nil, nil
+}
 
 func TestSubmitUseCase_Execute(t *testing.T) {
 	repo := &mockWorkflowRepository{
@@ -14,21 +30,15 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 			return &workflow.SubmitResponse{ID: "test-id", Status: workflow.StatusSubmitted}, nil
 		},
 	}
-	uc := NewSubmitUseCase(repo)
-
-	// Create a temporary file for the workflow
-	tmpFile, err := os.CreateTemp("", "workflow-*.wdl")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
+	fp := &mockSubmitFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			return []byte("workflow test {}"), nil
+		},
 	}
-	defer os.Remove(tmpFile.Name())
-	if _, err := tmpFile.WriteString("workflow test {}"); err != nil {
-		t.Fatalf("failed to write to temp file: %v", err)
-	}
-	tmpFile.Close()
+	uc := NewSubmitUseCase(repo, fp)
 
 	input := SubmitInput{
-		WorkflowFile: tmpFile.Name(),
+		WorkflowFile: "test.wdl",
 	}
 	output, err := uc.Execute(context.Background(), input)
 	if err != nil {
@@ -42,7 +52,12 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 
 func TestSubmitUseCase_Execute_Error(t *testing.T) {
 	repo := &mockWorkflowRepository{}
-	uc := NewSubmitUseCase(repo)
+	fp := &mockSubmitFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			return nil, errors.New("file not found")
+		},
+	}
+	uc := NewSubmitUseCase(repo, fp)
 
 	input := SubmitInput{
 		WorkflowFile: "non-existent.wdl",

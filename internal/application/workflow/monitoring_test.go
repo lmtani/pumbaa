@@ -6,11 +6,19 @@ import (
 )
 
 type mockFileProvider struct {
-	readFunc func(ctx context.Context, path string) (string, error)
+	readFunc      func(ctx context.Context, path string) (string, error)
+	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
 }
 
 func (m *mockFileProvider) Read(ctx context.Context, path string) (string, error) {
 	return m.readFunc(ctx, path)
+}
+
+func (m *mockFileProvider) ReadBytes(ctx context.Context, path string) ([]byte, error) {
+	if m.readBytesFunc != nil {
+		return m.readBytesFunc(ctx, path)
+	}
+	return nil, nil
 }
 
 func TestMonitoringUseCase_Execute(t *testing.T) {

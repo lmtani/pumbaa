@@ -3,15 +3,20 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
+// SubmitUseCase handles workflow submission.
+type SubmitUseCase struct {
+	repo         ports.WorkflowRepository
+	fileProvider ports.FileProvider
+}
+
 // NewSubmitUseCase creates a new submit use case.
-func NewSubmitUseCase(repo ports.WorkflowRepository) *SubmitUseCase {
-	return &SubmitUseCase{repo: repo}
+func NewSubmitUseCase(repo ports.WorkflowRepository, fileProvider ports.FileProvider) *SubmitUseCase {
+	return &SubmitUseCase{repo: repo, fileProvider: fileProvider}
 }
 
 // SubmitInput represents the input for workflow submission.
@@ -32,7 +37,7 @@ type SubmitOutput struct {
 // Execute submits a workflow to Cromwell.
 func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*SubmitOutput, error) {
 	// Read workflow source
-	workflowSource, err := os.ReadFile(input.WorkflowFile)
+	workflowSource, err := uc.fileProvider.ReadBytes(ctx, input.WorkflowFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read workflow file: %w", err)
 	}
@@ -41,21 +46,21 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 	var inputsData, optionsData, depsData []byte
 
 	if input.InputsFile != "" {
-		inputsData, err = os.ReadFile(input.InputsFile)
+		inputsData, err = uc.fileProvider.ReadBytes(ctx, input.InputsFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read inputs file: %w", err)
 		}
 	}
 
 	if input.OptionsFile != "" {
-		optionsData, err = os.ReadFile(input.OptionsFile)
+		optionsData, err = uc.fileProvider.ReadBytes(ctx, input.OptionsFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read options file: %w", err)
 		}
 	}
 
 	if input.DependenciesFile != "" {
-		depsData, err = os.ReadFile(input.DependenciesFile)
+		depsData, err = uc.fileProvider.ReadBytes(ctx, input.DependenciesFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read dependencies file: %w", err)
 		}
@@ -80,9 +85,4 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		WorkflowID: resp.ID,
 		Status:     string(resp.Status),
 	}, nil
-}
-
-// SubmitUseCase handles workflow submission.
-type SubmitUseCase struct {
-	repo ports.WorkflowRepository
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
@@ -56,6 +57,9 @@ func New(cfg *config.Config, version string) *Container {
 		Timeout: cfg.CromwellTimeout,
 	})
 
+	// Initialize FileProvider for file system access
+	fileProvider := storage.NewFileProvider()
+
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
 		ts, err := telemetry.NewSentryService(cfg.ClientID, version)
@@ -70,7 +74,7 @@ func New(cfg *config.Config, version string) *Container {
 	}
 
 	// Initialize use cases
-	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient)
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
