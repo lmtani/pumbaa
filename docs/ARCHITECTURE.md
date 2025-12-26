@@ -21,29 +21,26 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 ├── cmd/cli/                    # Application entry point
 ├── internal/                   # Private application code
 │   ├── application/            # Use cases (Application Layer)
-│   │   ├── bundle/create/      # WDL bundle creation
-│   │   └── workflow/
-│   │       ├── abort/          # Workflow abortion
-│   │       ├── debuginfo/      # Debug info parsing and tree building
-│   │       ├── metadata/       # Metadata retrieval
-│   │       ├── monitoring/     # Resource usage analysis
-│   │       ├── query/          # Workflow querying
-│   │       └── submit/         # Workflow submission
+│   │   ├── errors.go           # Application layer error types
+│   │   ├── bundle/             # WDL bundle creation
+│   │   └── workflow/           # Workflow use cases (flat structure)
+│   │       ├── abort.go        # Abort running workflows
+│   │       ├── debug.go        # Debug info parsing
+│   │       ├── metadata.go     # Metadata retrieval
+│   │       ├── monitoring.go   # Resource usage analysis
+│   │       ├── query.go        # Workflow querying
+│   │       ├── submit.go       # Workflow submission
+│   │       └── testutil_test.go # Shared test mocks
 │   ├── config/                 # Configuration management
 │   ├── container/              # Dependency injection container
 │   ├── domain/                 # Domain entities and interfaces (Domain Layer)
-│   │   ├── bundle/             # Bundle entities
-│   │   ├── ports/              # Port interfaces (Hexagonal Architecture)
+│   │   ├── bundle/             # Bundle entities and errors
+│   │   ├── ports/              # Port interfaces and errors
 │   │   ├── wdlindex/           # WDL index entities
-│   │   └── workflow/           # Workflow entities
-│   │       ├── monitoring/     # Resource monitoring domain
-│   │       └── preemption/     # Preemption analysis
+│   │   └── workflow/           # Workflow entities and errors
 │   ├── infrastructure/         # External services adapters (Infrastructure Layer)
 │   │   ├── chat/               # LLM integrations and agent tools
 │   │   │   ├── agent/tools/    # Tool registry for chat agent
-│   │   │   │   ├── cromwell/   # Cromwell API tools
-│   │   │   │   ├── gcs/        # Google Cloud Storage tools
-│   │   │   │   └── wdl/        # WDL knowledge base tools
 │   │   │   └── llm/            # LLM providers (Gemini, Vertex, Ollama)
 │   │   ├── cromwell/           # Cromwell API client
 │   │   ├── session/            # SQLite session management
@@ -76,26 +73,33 @@ Contains business entities, value objects, and port interfaces. This layer has n
   - `WorkflowRepository` - Primary port for all workflow operations (execution, metadata, health, labels)
   - `FileProvider` - Port for file storage access (local and cloud)
   - `WDLRepository` - Port for WDL indexing operations
+  - `errors.go` - Port-level errors (`ErrFileNotFound`, `ErrFileTooLarge`, `FileError`)
 
-- **`workflow/`**: Core workflow entities (`Workflow`, `Call`, `Status`, `HealthStatus`), and errors
-- **`workflow/monitoring/`**: Resource monitoring entities (`MonitoringMetrics`, `EfficiencyReport`) and usage statistics
-- **`workflow/preemption/`**: Preemption detection and analysis logic
-- **`bundle/`**: WDL bundle entities for packaging workflows
-- **`wdlindex/`**: WDL index entities (`Index`, `IndexedTask`, `IndexedWorkflow`) for knowledge base
+- **`workflow/`**: Core workflow entities (`Workflow`, `Call`, `Status`, `HealthStatus`)
+  - `errors.go` - Domain errors (`ErrWorkflowNotFound`, `ValidationError`, `APIError`)
+- **`bundle/`**: WDL bundle entities
+  - `errors.go` - Bundle errors (`ErrCircularDependency`, `DependencyError`)
+- **`wdlindex/`**: WDL index entities (`Index`, `IndexedTask`, `IndexedWorkflow`)
 
 ### 2. Application Layer (`internal/application/`)
 
 Contains use cases that orchestrate domain logic. Each use case is a single business operation with a clear input and output.
 
-**Use Cases:**
+**Error Handling:**
 
-- **`workflow/submit/`**: Submit workflows to Cromwell with validation
-- **`workflow/metadata/`**: Retrieve workflow execution metadata
-- **`workflow/abort/`**: Abort running workflows
-- **`workflow/query/`**: Query workflows with filters (status, name, dates)
-- **`workflow/debuginfo/`**: Parse metadata and build execution trees for debugging
-- **`workflow/monitoring/`**: Analyze resource usage from monitoring logs (CPU, memory, disk)
-- **`bundle/create/`**: Create WDL bundles with dependency resolution
+- `errors.go` - Application-level errors (`UseCaseError`, `InputValidationError`)
+  - Wraps domain/infrastructure errors with operation context
+  - Allows handlers to differentiate error types
+
+**Use Cases (flat structure in `workflow/`):**
+
+- `submit.go` - Submit workflows to Cromwell with validation
+- `metadata.go` - Retrieve workflow execution metadata
+- `abort.go` - Abort running workflows
+- `query.go` - Query workflows with filters (status, name, dates)
+- `debug.go` - Parse metadata and build execution trees for debugging
+- `monitoring.go` - Analyze resource usage from monitoring logs (CPU, memory, disk)
+- `bundle/` - Create WDL bundles with dependency resolution
 
 ### 3. Infrastructure Layer (`internal/infrastructure/`)
 
@@ -276,14 +280,6 @@ Infrastructure adapters translate between external APIs and domain interfaces.
    - **Reason**: Tree building is tightly coupled to metadata structure and not reused elsewhere
    - **Impact**: Slightly mixed responsibilities, but isolated to one package
 
-2. **Submit UseCase** reads files directly with `os.ReadFile()`
-   - **Reason**: Simple file operations don't warrant additional abstraction for current use cases
-   - **Impact**: Harder to test, but file I/O is straightforward
-
-3. **preemption package in domain**
-   - **Reason**: Preemption detection is domain logic, even if it feels like analysis
-   - **Impact**: Acceptable as it represents business rules
-
 ### Design Decisions
 
 - **Centralized Ports Package**: All port interfaces are defined in `domain/ports/` following Hexagonal Architecture. This makes it easy to see all external dependencies and maintains a clear boundary between domain and infrastructure.
@@ -344,14 +340,8 @@ The project uses GitHub Actions for continuous integration and releases:
 - **`google.golang.org/adk`**: Agent Development Kit (sessions, tools)
 - **`mattn/go-sqlite3`**: Session storage
 
-## Future Improvements
-
-1. **File Reader Interface**: Inject file reading into Submit UseCase
-2. **Workflow Events**: Domain events for workflow state changes
-3. **Local Workflow Cache**: Reduce API calls with intelligent caching
-
 ---
 
-**Last Updated**: 2025-01-25
-**Document Version**: 2.0
+**Last Updated**: 2025-12-26
+**Document Version**: 2.1
 **Project Version**: See [releases](https://github.com/lmtani/pumbaa/releases)
