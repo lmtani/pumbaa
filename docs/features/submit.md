@@ -2,29 +2,39 @@
 
 Submit WDL workflows to Cromwell.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-upload: **One Command**
+
+    Submit workflows with a single CLI command
+
+-   :material-label: **Labels Support**
+
+    Organize workflows with custom labels
+
+-   :material-package: **Dependencies**
+
+    Include imported WDL files via ZIP bundles
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa workflow submit --workflow FILE [OPTIONS]
 ```
 
----
-
-## :flags: Flags
+## :material-flag: Flags
 
 | Flag | Alias | Required | Description |
 |------|:-----:|:--------:|-------------|
-| `--workflow` | `-w` | :white_check_mark: | WDL workflow file |
+| `--workflow` | `-w` | :material-check: | WDL workflow file |
 | `--inputs` | `-i` | | Inputs JSON file |
 | `--options` | `-o` | | Options JSON file |
 | `--dependencies` | `-d` | | Dependencies ZIP file |
 | `--label` | `-l` | | Labels (`key=value`) |
 
----
-
-## :bulb: Examples
+## :material-lightbulb: Examples
 
 === "Basic"
 
@@ -52,9 +62,7 @@ pumbaa workflow submit --workflow FILE [OPTIONS]
       --label env=prod
     ```
 
----
-
-## :page_facing_up: Input File
+## :material-file-document: Input File
 
 JSON format matching WDL inputs:
 
@@ -66,9 +74,7 @@ JSON format matching WDL inputs:
 }
 ```
 
----
-
-## :gear: Options File
+## :material-cog: Options File
 
 Configure workflow execution:
 
@@ -87,9 +93,7 @@ Configure workflow execution:
 | `delete_intermediate_output_files` | Cleanup intermediates |
 | `write_to_cache` / `read_from_cache` | Call caching |
 
----
-
-## :package: Dependencies
+## :material-package-variant: Dependencies
 
 For workflows with imports, create ZIP with imported files:
 
@@ -103,9 +107,7 @@ Then submit:
 pumbaa workflow submit --workflow workflow.wdl --dependencies deps.zip
 ```
 
----
-
-## :label: Labels
+## :material-label: Labels
 
 Organize workflows with labels:
 
@@ -120,9 +122,7 @@ pumbaa workflow submit \
 !!! tip "Filter in Dashboard"
     Press ++l++ in dashboard to filter by labels.
 
----
-
-## :white_check_mark: Response
+## :material-check-circle: Response
 
 ```json
 {
@@ -139,9 +139,7 @@ pumbaa workflow debug <id>          # Debug view
 pumbaa workflow query --id <id>     # CLI query
 ```
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-package: Bundle Creation](bundle.md)
 - [:material-view-dashboard: Dashboard](dashboard.md)

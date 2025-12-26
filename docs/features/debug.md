@@ -2,12 +2,30 @@
 
 Inspect workflow execution tree and call-level details.
 
+<div class="grid cards" markdown>
+
+-   :material-file-tree: **Execution Tree**
+
+    Navigate workflow structure with expandable nodes
+
+-   :material-clipboard-text: **Call Details**
+
+    View inputs, outputs, commands, and logs
+
+-   :material-chart-timeline: **Timeline Analysis**
+
+    Visualize task durations and identify bottlenecks
+
+-   :material-chart-box: **Resource Efficiency**
+
+    Analyze CPU, memory, and disk utilization
+
+</div>
+
 !!! note "Requirement"
     Requires a working connection to your Cromwell server (set via `--host` or `CROMWELL_HOST`).
 
----
-
-## :rocket: Usage
+## :material-rocket-launch: Quick Start
 
 === "From Dashboard"
 
@@ -19,68 +37,108 @@ Inspect workflow execution tree and call-level details.
     pumbaa workflow debug <workflow-id>
     ```
 
----
-
-## :keyboard: Navigation
+## :material-keyboard: Navigation
 
 | Key | Action |
 |:---:|--------|
 | ++up++ / ++down++ | Navigate tree |
 | ++right++ / ++left++ | Expand / Collapse |
 | ++enter++ | Toggle expand |
-| ++d++ | Show call details |
-| ++o++ | Show logs |
-| ++q++ | Back |
+| ++tab++ | Switch panel focus |
+| ++e++ | Expand all nodes |
+| ++c++ | Collapse all nodes |
+| ++q++ | Back / Quit |
 
----
+## :material-lightning-bolt: Quick Actions
 
-## :zap: Quick Actions (1–5)
+Quick actions are context-sensitive and depend on the selected node type. Press number keys ++1++ to ++5++ to trigger actions.
 
-The details panel exposes quick actions for the selected call:
+### Workflow / SubWorkflow Nodes
 
 | Key | Action | Description |
 |:---:|--------|-------------|
-| ++1++ | **Inputs** | Open modal with call inputs |
-| ++2++ | **Outputs** | Open modal with call outputs |
+| ++1++ | **Inputs** | Open modal with workflow inputs |
+| ++2++ | **Outputs** | Open modal with workflow outputs |
+| ++3++ | **Options** | View submitted workflow options |
+| ++4++ | **Timeline** | Open timeline modal (tasks sorted by duration) |
+| ++5++ | **Workflow Log** | Load and display workflow log |
+
+### Task / Shard Nodes
+
+| Key | Action | Description |
+|:---:|--------|-------------|
+| ++1++ | **Inputs** | Open modal with task inputs |
+| ++2++ | **Outputs** | Open modal with task outputs |
 | ++3++ | **Command** | View executed command |
-| ++4++ | **Logs** | Load logs (from GCS or local) |
-| ++5++ | **Efficiency** | Resource usage metrics |
+| ++4++ | **Logs** | Switch to logs view (stdout/stderr/monitoring) |
+| ++5++ | **Efficiency** | Analyze resource usage (requires monitoring script) |
 
 !!! tip "Copy to Clipboard"
     In modals, press ++y++ to copy content to clipboard.
 
----
+## :material-timer-outline: Timeline Analysis
 
-## :stopwatch: Timing
+Press ++4++ on a **Workflow** or **SubWorkflow** node to open the timeline modal.
 
-Press ++t++ to open the timeline for the selected workflow or subworkflow.
+The timeline shows:
 
-- Navigate to a subworkflow in the tree and press ++t++ to see its timeline
-- Timing updates as you expand subworkflows
+- **Tasks sorted by duration** (longest first)
+- **Visual timeline bars** showing when each task ran relative to workflow start
+- **Time range** for each task (start → end)
+- **Status icons** (✓ Done, ● Running, ✗ Failed, ↺ Preempted)
 
----
+!!! tip "Subworkflow Timelines"
+    Navigate to a subworkflow node and press ++4++ to see its specific timeline, separate from the parent workflow.
 
-## :chart_with_upwards_trend: Efficiency
+## :material-chart-areaspline: Resource Efficiency
 
-The Efficiency view (action ++5++) displays resource usage metrics:
+Press ++5++ on a **Task** or **Shard** node to analyze resource utilization.
 
 !!! warning "Requirement"
-    This feature requires the **monitoring script**. See [Resource Monitoring](resource-monitoring.md).
+    This feature requires the **monitoring script** to be configured in Cromwell. See [Resource Monitoring](resource-monitoring.md).
 
 **Displayed metrics:**
 
 | Metric | Description |
 |--------|-------------|
-| Peak CPU | Usage vs. allocated cores |
-| Peak Memory | Usage vs. allocated memory |
-| Efficiency % | Resource utilization percentage |
+| **CPU** | Peak and average usage vs. allocated cores |
+| **Memory** | Peak usage vs. allocated memory |
+| **Disk** | Peak usage vs. allocated disk space |
+| **Efficiency %** | Visual gauge showing utilization percentage |
 
 !!! tip "Cost Optimization"
-    Identify over-provisioned tasks where resources can be reduced.
+    Low efficiency indicates over-provisioned resources. Consider reducing CPU/memory/disk allocations for tasks with < 50% efficiency.
 
----
+## :material-sync: Preemption Summary
 
-## :books: See Also
+For **Workflow** and **SubWorkflow** nodes running with preemptible instances, the details panel shows:
+
+- **Cost Efficiency** — Overall efficiency considering preemption overhead
+- **Preemptible/Total Tasks** — How many tasks used preemptible instances
+- **Total Attempts** — Including retries after preemptions
+- **Total Preemptions** — Number of times tasks were preempted
+
+### Problematic Tasks
+
+Tasks with high preemption impact are highlighted:
+
+- Tasks with **< 70% cost efficiency**
+- Tasks where preemption caused **> 10% cost overhead**
+
+!!! info "Subworkflows"
+    Preemption stats are calculated per-level. Navigate into subworkflows to see their individual preemption analysis.
+
+## :material-chart-bar: Scatter/Shard Summary
+
+For **Call** nodes with multiple shards (scatter operations), the panel shows:
+
+- **Total Shards** count
+- **Status Breakdown** — Done, Running, Failed, Preempted counts
+- **Timing Statistics** — Wall clock, min/max/avg per-shard duration
+
+Expand the node to navigate individual shards.
+
+## :material-book-open-variant: See Also
 
 - [:material-view-dashboard: Dashboard](dashboard.md)
 - [:material-file-document: Metadata](metadata.md)

@@ -2,26 +2,36 @@
 
 Package WDL workflows with dependencies into ZIP files.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-package-variant: **Auto-Detection**
+
+    Automatically finds all imported WDL files
+
+-   :material-zip-box: **Single File**
+
+    Creates a portable ZIP for submission
+
+-   :material-link-variant: **Import Resolution**
+
+    Resolves nested import paths
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa bundle create --workflow FILE --output FILE
 ```
 
----
-
-## :flags: Flags
+## :material-flag: Flags
 
 | Flag | Alias | Required | Description |
 |------|:-----:|:--------:|-------------|
-| `--workflow` | `-w` | :white_check_mark: | Main WDL file |
-| `--output` | `-o` | :white_check_mark: | Output ZIP path |
+| `--workflow` | `-w` | :material-check: | Main WDL file |
+| `--output` | `-o` | :material-check: | Output ZIP path |
 
----
-
-## :gear: How It Works
+## :material-cog: How It Works
 
 ```mermaid
 flowchart LR
@@ -35,9 +45,7 @@ flowchart LR
 3. Resolves import paths
 4. Packages all files into ZIP
 
----
-
-## :bulb: Example
+## :material-lightbulb: Example
 
 Given workflow structure:
 
@@ -64,8 +72,6 @@ tasks/
       --dependencies bundle.zip
     ```
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-upload: Submit](submit.md) — Use bundles with submission

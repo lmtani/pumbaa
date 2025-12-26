@@ -2,7 +2,23 @@
 
 Interactive AI assistant for querying Cromwell workflows and reading files via natural language.
 
-## Quick Start
+<div class="grid cards" markdown>
+
+-   :material-chat-processing: **Natural Language**
+
+    Ask questions about workflows in plain English
+
+-   :material-tools: **Built-in Tools**
+
+    Query workflows, read GCS files, check status
+
+-   :material-database: **Session Persistence**
+
+    Resume conversations with context retention
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 === "Using Config Wizard"
 
@@ -18,7 +34,7 @@ Interactive AI assistant for querying Cromwell workflows and reading files via n
     pumbaa chat
     ```
 
-## :robot: LLM Providers
+## :material-robot: LLM Providers
 
 Choose your preferred AI backend:
 
@@ -49,9 +65,7 @@ Choose your preferred AI backend:
     !!! info "Default Option"
         Runs locally, no API key needed. Install from [ollama.ai](https://ollama.ai)
 
----
-
-## :sparkles: Capabilities
+## :material-star: Capabilities
 
 <div class="grid cards" markdown>
 
@@ -81,9 +95,7 @@ Choose your preferred AI backend:
 
 </div>
 
----
-
-## :keyboard: Controls
+## :material-keyboard: Controls
 
 | Key | Action |
 |:---:|--------|
@@ -93,9 +105,7 @@ Choose your preferred AI backend:
 | ++y++ | Copy selected message |
 | ++esc++ | Exit chat |
 
----
-
-## :floppy_disk: Session Management
+## :material-floppy: Session Management
 
 Conversations are persisted in SQLite for context retention.
 
@@ -107,9 +117,7 @@ pumbaa chat --list
 pumbaa chat --session <SESSION_ID>
 ```
 
----
-
-## :gear: Configuration
+## :material-cog: Configuration
 
 ### Environment Variables
 
@@ -144,9 +152,7 @@ pumbaa chat --session <SESSION_ID>
 export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db
 ```
 
----
-
-## :speech_balloon: Example Prompts
+## :material-message-text: Example Prompts
 
 !!! example "Try these prompts"
 

@@ -2,17 +2,25 @@
 
 Interactive TUI for monitoring Cromwell workflows.
 
----
+<div class="grid cards" markdown>
 
-## :rocket: Usage
+-   :material-filter: **Smart Filtering**
+
+    Filter by status, name, or labels
+
+-   :material-keyboard: **Keyboard-first**
+
+    Navigate efficiently without touching the mouse
+
+</div>
+
+## :material-rocket-launch: Quick Start
 
 ```bash
 pumbaa dashboard
 ```
 
----
-
-## :keyboard: Controls
+## :material-keyboard: Controls
 
 | Key | Action |
 |:---:|--------|
@@ -26,9 +34,8 @@ pumbaa dashboard
 | ++ctrl+x++ | Clear filters |
 | ++q++ | Quit |
 
----
 
-## :sparkles: Features
+## :material-star: Features
 
 <div class="grid cards" markdown>
 
@@ -50,9 +57,8 @@ pumbaa dashboard
 
 </div>
 
----
 
-## :page_facing_up: Workflow Columns
+## :material-table: Workflow Columns
 
 | Column | Description |
 |--------|-------------|
@@ -62,9 +68,7 @@ pumbaa dashboard
 | **Submitted** | Submission timestamp |
 | **Labels** | User-submitted labels |
 
----
-
-## :books: See Also
+## :material-book-open-variant: See Also
 
 - [:material-bug: Debug View](debug.md)
 - [:material-magnify: Query](query.md)

@@ -80,7 +80,7 @@ Use **only** to understand or explain WDL definitions.
 ### Actions
 - action="wdl_list"  
   List indexed WDL tasks and workflows
-d
+
 - action="wdl_search"  
   Search by name or command content  
   Required: query
@@ -108,7 +108,7 @@ d
 - Do not mix runtime (Cromwell) with definition (WDL)
 - Be concise and technical
 - Use markdown to format responses
-- Respond in the user’s language (EN or PT)
+- Respond in the user's language (EN or PT)
 `
 
 type ChatHandler struct {
