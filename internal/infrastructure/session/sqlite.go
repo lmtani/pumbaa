@@ -33,6 +33,8 @@ type sqliteSession struct {
 	state          *sqliteState
 	events         *sqliteEvents
 	lastUpdateTime time.Time
+	inputTokens    int
+	outputTokens   int
 }
 
 func (s *sqliteSession) ID() string                { return s.id }
@@ -41,6 +43,8 @@ func (s *sqliteSession) UserID() string            { return s.userID }
 func (s *sqliteSession) State() session.State      { return s.state }
 func (s *sqliteSession) Events() session.Events    { return s.events }
 func (s *sqliteSession) LastUpdateTime() time.Time { return s.lastUpdateTime }
+func (s *sqliteSession) InputTokens() int          { return s.inputTokens }
+func (s *sqliteSession) OutputTokens() int         { return s.outputTokens }
 
 // sqliteState implements session.State interface.
 type sqliteState struct {
@@ -140,6 +144,8 @@ func (s *SQLiteService) initSchema() error {
 		app_name TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		state TEXT DEFAULT '{}',
+		input_tokens INTEGER DEFAULT 0,
+		output_tokens INTEGER DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -158,8 +164,15 @@ func (s *SQLiteService) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_app_user ON sessions(app_name, user_id);
 	`
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+
+	// Migration: add token columns if they don't exist (for existing databases)
+	s.db.Exec(`ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0`)
+	s.db.Exec(`ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0`)
+
+	return nil
 }
 
 // Close closes the database connection.
@@ -214,11 +227,13 @@ func (s *SQLiteService) Get(ctx context.Context, req *session.GetRequest) (*sess
 
 	var stateJSON string
 	var updatedAt time.Time
+	var inputTokens, outputTokens int
 
 	err := s.db.QueryRowContext(ctx,
-		`SELECT state, updated_at FROM sessions WHERE id = ? AND app_name = ? AND user_id = ?`,
+		`SELECT state, updated_at, COALESCE(input_tokens, 0), COALESCE(output_tokens, 0) 
+		 FROM sessions WHERE id = ? AND app_name = ? AND user_id = ?`,
 		req.SessionID, req.AppName, req.UserID,
-	).Scan(&stateJSON, &updatedAt)
+	).Scan(&stateJSON, &updatedAt, &inputTokens, &outputTokens)
 
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("session not found: %s", req.SessionID)
@@ -245,6 +260,8 @@ func (s *SQLiteService) Get(ctx context.Context, req *session.GetRequest) (*sess
 		state:          &sqliteState{data: state},
 		events:         &sqliteEvents{events: events},
 		lastUpdateTime: updatedAt,
+		inputTokens:    inputTokens,
+		outputTokens:   outputTokens,
 	}
 
 	return &session.GetResponse{Session: sess}, nil
@@ -404,6 +421,22 @@ func (s *SQLiteService) AppendEvent(ctx context.Context, sess session.Session, e
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update session timestamp: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateTokenUsage updates the accumulated token counts for a session.
+func (s *SQLiteService) UpdateTokenUsage(ctx context.Context, sessionID string, inputTokens, outputTokens int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE sessions SET input_tokens = ?, output_tokens = ?, updated_at = ? WHERE id = ?`,
+		inputTokens, outputTokens, time.Now(), sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update token usage: %w", err)
 	}
 
 	return nil

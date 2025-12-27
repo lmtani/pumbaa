@@ -216,9 +216,20 @@ func (m *Model) buildResponse(resp *ChatResponse) (*model.LLMResponse, error) {
 
 	turnComplete := len(resp.Message.ToolCalls) == 0
 
+	// Create usage metadata from Ollama token counts
+	var usageMetadata *genai.GenerateContentResponseUsageMetadata
+	if resp.PromptEvalCount > 0 || resp.EvalCount > 0 {
+		usageMetadata = &genai.GenerateContentResponseUsageMetadata{
+			PromptTokenCount:     int32(resp.PromptEvalCount),
+			CandidatesTokenCount: int32(resp.EvalCount),
+			TotalTokenCount:      int32(resp.PromptEvalCount + resp.EvalCount),
+		}
+	}
+
 	return &model.LLMResponse{
-		Content:      content,
-		TurnComplete: turnComplete,
+		Content:       content,
+		TurnComplete:  turnComplete,
+		UsageMetadata: usageMetadata,
 	}, nil
 }
 

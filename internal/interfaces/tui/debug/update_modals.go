@@ -17,7 +17,7 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.logModalHScrollOffset = 0
 	case key.Matches(msg, m.keys.Copy):
 		if m.logModalRawContent != "" {
-			return m, copyToClipboard(m.logModalRawContent)
+			return m, copyToClipboard(m.logModalRawContent, m.logModalTitle+" content")
 		}
 	case key.Matches(msg, m.keys.Up):
 		m.logModalViewport.ScrollUp(1)
@@ -60,7 +60,7 @@ func (m Model) handleInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showInputsModal = false
 	case key.Matches(msg, m.keys.Copy):
-		return m, copyToClipboard(m.getRawInputsJSON())
+		return m, copyToClipboard(m.getRawInputsJSON(), "workflow inputs")
 	case key.Matches(msg, m.keys.Up):
 		m.inputsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
@@ -82,7 +82,7 @@ func (m Model) handleOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showOutputsModal = false
 	case key.Matches(msg, m.keys.Copy):
-		return m, copyToClipboard(m.getRawOutputsJSON())
+		return m, copyToClipboard(m.getRawOutputsJSON(), "workflow outputs")
 	case key.Matches(msg, m.keys.Up):
 		m.outputsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
@@ -104,7 +104,7 @@ func (m Model) handleOptionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showOptionsModal = false
 	case key.Matches(msg, m.keys.Copy):
-		return m, copyToClipboard(m.getRawOptionsJSON())
+		return m, copyToClipboard(m.getRawOptionsJSON(), "workflow options")
 	case key.Matches(msg, m.keys.Up):
 		m.optionsModalViewport.ScrollUp(1)
 	case key.Matches(msg, m.keys.Down):
@@ -129,7 +129,7 @@ func (m Model) handleCallInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil {
-				return m, copyToClipboard(m.getRawCallInputsJSON(node))
+				return m, copyToClipboard(m.getRawCallInputsJSON(node), "task inputs")
 			}
 		}
 	case key.Matches(msg, m.keys.Up):
@@ -156,7 +156,7 @@ func (m Model) handleCallOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil {
-				return m, copyToClipboard(m.getRawCallOutputsJSON(node))
+				return m, copyToClipboard(m.getRawCallOutputsJSON(node), "task outputs")
 			}
 		}
 	case key.Matches(msg, m.keys.Up):
@@ -183,7 +183,7 @@ func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.cursor < len(m.nodes) {
 			node := m.nodes[m.cursor]
 			if node.CallData != nil && node.CallData.CommandLine != "" {
-				return m, copyToClipboard(node.CallData.CommandLine)
+				return m, copyToClipboard(node.CallData.CommandLine, "command")
 			}
 		}
 	case key.Matches(msg, m.keys.Up):

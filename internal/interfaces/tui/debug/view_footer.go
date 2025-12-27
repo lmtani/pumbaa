@@ -8,26 +8,44 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
+// loadingDuration is the expected duration for loading operations (for progress bar)
+const loadingDuration = 5 * time.Second
+
+// statusDuration is the duration for temporary status messages
+const statusDuration = 3 * time.Second
+
 func (m Model) renderFooter() string {
 	var parts []string
 
-	// Status message (if any)
-	if m.statusMessage != "" {
-		// Calculate time remaining for visual feedback
+	// Loading indicator with increasing progress bar (takes priority)
+	if m.isLoading && m.loadingMessage != "" {
+		elapsed := time.Since(m.loadingStartTime)
+		percentage := int(elapsed.Seconds() * 100 / loadingDuration.Seconds())
+		if percentage > 100 {
+			percentage = 100
+		}
+
+		barLength := (percentage * 20) / 100 // 20 chars max
+		progressBar := " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
+
+		loadingStyle := temporaryStatusStyle
+		parts = append(parts, loadingStyle.Render("⏳ "+m.loadingMessage+progressBar))
+		parts = append(parts, " • ")
+	} else if m.statusMessage != "" {
+		// Status message with decreasing progress bar
 		timeRemaining := time.Until(m.statusMessageExpires)
 		progressBar := ""
 
 		if timeRemaining > 0 {
-			// Show a progress bar that fades out
-			percentage := int(timeRemaining.Seconds() * 100 / 3) // 3 seconds total
+			percentage := int(timeRemaining.Seconds() * 100 / statusDuration.Seconds())
 			if percentage > 100 {
 				percentage = 100
 			}
-			barLength := (percentage * 30) / 100 // 30 chars max
-			progressBar = " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 30-barLength) + "]"
+			barLength := (percentage * 20) / 100 // 20 chars max
+			progressBar = " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
 		}
 
-		parts = append(parts, temporaryStatusStyle.Render("⏱ "+m.statusMessage+progressBar))
+		parts = append(parts, temporaryStatusStyle.Render(m.statusMessage+progressBar))
 		parts = append(parts, " • ")
 	}
 
