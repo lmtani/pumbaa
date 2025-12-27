@@ -10,9 +10,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/lmtani/pumbaa/internal/application/workflow"
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
 // MetadataFetcher is an interface for fetching workflow metadata.
@@ -84,7 +85,7 @@ type Model struct {
 	globalTimelineTitle     string
 
 	// Resource analysis modal state
-	resourceReport *workflowDomain.EfficiencyReport
+	resourceReport *workflow.EfficiencyReport
 	resourceError  string
 
 	// Components
@@ -97,24 +98,32 @@ type Model struct {
 	statusMessageExpires time.Time // When the status message should disappear
 
 	// Infrastructure
-	monitoringUC *workflow.MonitoringUseCase
+	monitoringUC *workflowapp.MonitoringUseCase
 	fileProvider ports.FileProvider
 
-	// Pre-computed preemption summary when using a DebugInfo-based model
-	preemption *workflowDomain.PreemptionSummary
+	// Pre-computed preemption summary
+	preemption *workflow.PreemptionSummary
 }
 
-// NewModelWithDebugInfoAndMonitoring creates a model with all dependencies.
-func NewModelWithDebugInfoAndMonitoring(di *workflow.DebugInfo, fetcher MetadataFetcher, muc *workflow.MonitoringUseCase, fp ports.FileProvider) Model {
+// NewModel creates a model with all dependencies.
+// The workflow is parsed by the handler and passed in; tree building happens here.
+func NewModel(wf *workflow.Workflow, fetcher MetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
 
+	// Build the tree and visible nodes in the TUI layer (presentation concern)
+	root := tree.BuildTree(wf)
+	visible := tree.GetVisibleNodes(root)
+
+	// Calculate preemption summary (domain logic on aggregate)
+	preemption := wf.CalculatePreemptionSummary()
+
 	return Model{
-		metadata:       di.Metadata,
-		tree:           di.Root,
-		nodes:          di.Visible,
-		preemption:     di.Preemption,
+		metadata:       wf,
+		tree:           root,
+		nodes:          visible,
+		preemption:     preemption,
 		fetcher:        fetcher,
 		monitoringUC:   muc,
 		fileProvider:   fp,

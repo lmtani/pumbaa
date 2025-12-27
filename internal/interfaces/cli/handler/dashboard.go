@@ -8,6 +8,7 @@ import (
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
@@ -133,19 +134,18 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 }
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
-	// Build DebugInfo using usecase
-	uc := workflowapp.NewUsecase()
-	di, err := uc.GetDebugInfo(metadataBytes)
+	// Parse metadata using infrastructure layer (handler can know infra)
+	wf, err := cromwell.ParseDetailedMetadata(metadataBytes)
 	if err != nil {
-		return fmt.Errorf("failed to build debug info: %w", err)
+		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
 	// Initialize infrastructure and use cases
 	fp := storage.NewFileProvider()
 	muc := workflowapp.NewMonitoringUseCase(fp)
 
-	// Create and run the debug TUI
-	model := debug.NewModelWithDebugInfoAndMonitoring(di, h.repository, muc, fp)
+	// Create and run the debug TUI (tree building happens inside NewModel)
+	model := debug.NewModel(wf, h.repository, muc, fp)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
