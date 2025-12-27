@@ -63,8 +63,10 @@ type Options struct {
 
 // ChatResponse is the response from Ollama
 type ChatResponse struct {
-	Model     string  `json:"model"`
-	CreatedAt string  `json:"created_at"`
-	Message   Message `json:"message"`
-	Done      bool    `json:"done"`
+	Model           string  `json:"model"`
+	CreatedAt       string  `json:"created_at"`
+	Message         Message `json:"message"`
+	Done            bool    `json:"done"`
+	PromptEvalCount int     `json:"prompt_eval_count"` // Input tokens
+	EvalCount       int     `json:"eval_count"`        // Output tokens
 }

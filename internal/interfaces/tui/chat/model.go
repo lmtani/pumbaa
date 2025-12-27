@@ -97,6 +97,10 @@ type Model struct {
 	statusMessage    string    // Temporary status message (e.g., "Copied!")
 	statusExpires    time.Time // When status message expires
 
+	// Token usage tracking
+	inputTokens  int // Accumulated input tokens for the session
+	outputTokens int // Accumulated output tokens for the session
+
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
 }
@@ -108,8 +112,10 @@ type ChatMessage struct {
 }
 
 type ResponseMsg struct {
-	Content string
-	Err     error
+	Content      string
+	Err          error
+	InputTokens  int // Input tokens used in this response
+	OutputTokens int // Output tokens generated in this response
 }
 
 // ToolNotificationMsg is sent when a tool is being called
@@ -170,6 +176,18 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 		}
 	}
 
+	// Load token counts from session if available
+	var inputTokens, outputTokens int
+	if sess != nil {
+		// Try to get tokens from session (using interface assertion for our extended session)
+		if tokenSession, ok := sess.(interface{ InputTokens() int }); ok {
+			inputTokens = tokenSession.InputTokens()
+		}
+		if tokenSession, ok := sess.(interface{ OutputTokens() int }); ok {
+			outputTokens = tokenSession.OutputTokens()
+		}
+	}
+
 	return Model{
 		llm:               llm,
 		tools:             tools,
@@ -182,6 +200,8 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 		history:           &history,
 		msgs:              &msgs,
 		ready:             false,
+		inputTokens:       inputTokens,
+		outputTokens:      outputTokens,
 	}
 }
 
@@ -326,6 +346,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			rendered := renderMarkdown(msg.Content, m.width-8)
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: msg.Content, Rendered: rendered})
+
+			// Accumulate token usage
+			m.inputTokens += msg.InputTokens
+			m.outputTokens += msg.OutputTokens
+
+			// Persist token usage to session
+			if m.session != nil && m.sessionService != nil {
+				if sqliteSvc, ok := m.sessionService.(interface {
+					UpdateTokenUsage(ctx context.Context, sessionID string, inputTokens, outputTokens int) error
+				}); ok {
+					go sqliteSvc.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
+				}
+			}
 		}
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
@@ -401,13 +434,26 @@ func (m Model) renderHeader() string {
 		llmBadge = llmStyle.Render("🤖 " + m.llm.Name())
 	}
 
+	// Token usage badge
+	tokenBadge := ""
+	if m.inputTokens > 0 || m.outputTokens > 0 {
+		tokenStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#98FB98")).
+			Padding(0, 1)
+		tokenBadge = tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens)))
+	}
+
 	sessionInfo := ""
 	if m.session != nil {
 		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", m.session.ID()))
 	}
 
-	// Layout: Title | LLM Badge | Session (right aligned)
+	// Layout: Title | LLM Badge | Token Badge | Session
 	leftContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", llmBadge)
+	if tokenBadge != "" {
+		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", tokenBadge)
+	}
 	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
 
 	return common.HeaderStyle.
@@ -668,6 +714,17 @@ func wrapText(text string, width int) string {
 	return result.String()
 }
 
+// formatTokenCount formats a token count in a human-readable format (e.g., 1.2K, 3.4M)
+func formatTokenCount(count int) string {
+	if count >= 1000000 {
+		return fmt.Sprintf("%.1fM", float64(count)/1000000)
+	}
+	if count >= 1000 {
+		return fmt.Sprintf("%.1fK", float64(count)/1000)
+	}
+	return fmt.Sprintf("%d", count)
+}
+
 func (m Model) generateResponse(input string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
@@ -690,6 +747,8 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		maxTurns := 15
 		currentTurn := 0
+		totalInputTokens := 0
+		totalOutputTokens := 0
 
 		for currentTurn < maxTurns {
 			req := &model.LLMRequest{
@@ -720,6 +779,12 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 			if lastResp == nil || lastResp.Content == nil {
 				return ResponseMsg{Err: fmt.Errorf("empty response from model")}
+			}
+
+			// Accumulate token usage from this response
+			if lastResp.UsageMetadata != nil {
+				totalInputTokens += int(lastResp.UsageMetadata.PromptTokenCount)
+				totalOutputTokens += int(lastResp.UsageMetadata.CandidatesTokenCount)
 			}
 
 			*m.history = append(*m.history, lastResp.Content)
@@ -803,7 +868,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 					text += part.Text
 				}
 			}
-			return ResponseMsg{Content: text}
+			return ResponseMsg{Content: text, InputTokens: totalInputTokens, OutputTokens: totalOutputTokens}
 		}
 
 		// Max turns reached
