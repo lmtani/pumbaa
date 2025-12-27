@@ -229,6 +229,7 @@ func wrapText(text string, maxWidth int) string {
 type clipboardCopiedMsg struct {
 	success bool
 	err     error
+	context string // What was copied (e.g., "Docker image", "log content")
 }
 
 // fetchTotalCost fetches the total cost asynchronously.
@@ -265,8 +266,9 @@ func (m Model) loadResourceAnalysis(path string) tea.Cmd {
 	}
 }
 
-// copyToClipboard creates a tea.Cmd that copies text to the system clipboard
-func copyToClipboard(text string) tea.Cmd {
+// copyToClipboard creates a tea.Cmd that copies text to the system clipboard.
+// The context parameter describes what was copied (e.g., "Docker image", "command").
+func copyToClipboard(text, context string) tea.Cmd {
 	return func() tea.Msg {
 		var cmd *exec.Cmd
 
@@ -282,34 +284,34 @@ func copyToClipboard(text string) tea.Cmd {
 			} else if _, err := exec.LookPath("wl-copy"); err == nil {
 				cmd = exec.Command("wl-copy")
 			} else {
-				return clipboardCopiedMsg{success: false, err: fmt.Errorf("no clipboard tool found (install xclip, xsel, or wl-copy)")}
+				return clipboardCopiedMsg{success: false, err: fmt.Errorf("no clipboard tool found (install xclip, xsel, or wl-copy)"), context: context}
 			}
 		case "windows":
 			cmd = exec.Command("clip")
 		default:
-			return clipboardCopiedMsg{success: false, err: fmt.Errorf("unsupported OS: %s", runtime.GOOS)}
+			return clipboardCopiedMsg{success: false, err: fmt.Errorf("unsupported OS: %s", runtime.GOOS), context: context}
 		}
 
 		stdin, err := cmd.StdinPipe()
 		if err != nil {
-			return clipboardCopiedMsg{success: false, err: err}
+			return clipboardCopiedMsg{success: false, err: err, context: context}
 		}
 
 		if err := cmd.Start(); err != nil {
-			return clipboardCopiedMsg{success: false, err: err}
+			return clipboardCopiedMsg{success: false, err: err, context: context}
 		}
 
 		_, err = stdin.Write([]byte(text))
 		if err != nil {
-			return clipboardCopiedMsg{success: false, err: err}
+			return clipboardCopiedMsg{success: false, err: err, context: context}
 		}
 		stdin.Close()
 
 		if err := cmd.Wait(); err != nil {
-			return clipboardCopiedMsg{success: false, err: err}
+			return clipboardCopiedMsg{success: false, err: err, context: context}
 		}
 
-		return clipboardCopiedMsg{success: true}
+		return clipboardCopiedMsg{success: true, context: context}
 	}
 }
 

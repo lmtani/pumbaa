@@ -23,6 +23,9 @@ func (m Model) View() string {
 	}
 
 	// Check for modal states first
+	if m.showHelp {
+		return m.renderHelpOverlay()
+	}
 	if m.showLogModal {
 		return m.renderLogModal()
 	}
