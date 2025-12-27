@@ -2,7 +2,6 @@
 package dashboard
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -15,27 +14,14 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// WorkflowFetcher interface for fetching workflows
-type WorkflowFetcher interface {
-	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
-	Abort(ctx context.Context, workflowID string) error
-}
-
-// MetadataFetcher interface for fetching workflow metadata (for debug transition)
-type MetadataFetcher interface {
-	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
-}
-
-// HealthChecker provides health status checking for the workflow server.
-type HealthChecker interface {
-	GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error)
-}
-
-// LabelManager provides label management for workflows.
-type LabelManager interface {
-	GetLabels(ctx context.Context, workflowID string) (map[string]string, error)
-	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
-}
+// Type aliases for interfaces from common package.
+// This allows existing code to work without changes while consolidating definitions.
+type (
+	WorkflowFetcher = common.WorkflowFetcher
+	MetadataFetcher = common.MetadataFetcher
+	HealthChecker   = common.HealthChecker
+	LabelManager    = common.LabelManager
+)
 
 // Model represents the dashboard screen state.
 type Model struct {
