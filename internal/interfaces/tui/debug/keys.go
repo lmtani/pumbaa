@@ -1,72 +1,30 @@
 package debug
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"github.com/charmbracelet/bubbles/key"
 
-// KeyMap defines all key bindings for the TUI.
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
+)
+
+// KeyMap defines all key bindings for the debug TUI.
+// It embeds common key bindings for consistency across screens.
 type KeyMap struct {
-	Up          key.Binding
-	Down        key.Binding
-	Left        key.Binding
-	Right       key.Binding
-	Enter       key.Binding
-	Space       key.Binding
-	Tab         key.Binding
-	Quit        key.Binding
-	Help        key.Binding
-	Escape      key.Binding
+	common.NavigationKeys // Embedded navigation (Up, Down, Left, Right, Enter, Space, Tab, etc.)
+	common.GlobalKeys     // Embedded globals (Quit, Help)
+
+	// Debug-specific keys
 	Details     key.Binding
 	ExpandAll   key.Binding
 	CollapseAll key.Binding
-	Home        key.Binding
-	End         key.Binding
-	PageUp      key.Binding
-	PageDown    key.Binding
 	Copy        key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "down"),
-		),
-		Left: key.NewBinding(
-			key.WithKeys("left", "h"),
-			key.WithHelp("←/h", "collapse"),
-		),
-		Right: key.NewBinding(
-			key.WithKeys("right", "l"),
-			key.WithHelp("→/l", "expand"),
-		),
-		Enter: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "toggle/select"),
-		),
-		Space: key.NewBinding(
-			key.WithKeys(" "),
-			key.WithHelp("space", "toggle expand"),
-		),
-		Tab: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "switch panel"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
-		Help: key.NewBinding(
-			key.WithKeys("?"),
-			key.WithHelp("?", "help"),
-		),
-		Escape: key.NewBinding(
-			key.WithKeys("esc"),
-			key.WithHelp("esc", "back"),
-		),
+		NavigationKeys: common.DefaultNavigationKeys(),
+		GlobalKeys:     common.DefaultGlobalKeys(),
+
 		Details: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("d", "view details"),
@@ -78,22 +36,6 @@ func DefaultKeyMap() KeyMap {
 		CollapseAll: key.NewBinding(
 			key.WithKeys("C"),
 			key.WithHelp("C", "collapse all"),
-		),
-		Home: key.NewBinding(
-			key.WithKeys("home", "g"),
-			key.WithHelp("g/home", "go to top"),
-		),
-		End: key.NewBinding(
-			key.WithKeys("end", "G"),
-			key.WithHelp("G/end", "go to bottom"),
-		),
-		PageUp: key.NewBinding(
-			key.WithKeys("pgup", "ctrl+u"),
-			key.WithHelp("pgup", "page up"),
-		),
-		PageDown: key.NewBinding(
-			key.WithKeys("pgdown", "ctrl+d"),
-			key.WithHelp("pgdn", "page down"),
 		),
 		Copy: key.NewBinding(
 			key.WithKeys("y"),

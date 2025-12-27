@@ -1,41 +1,30 @@
 package debug
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
 
-// Colors
-var (
-	// Status colors
-	statusSucceeded = lipgloss.Color("#00ff00")
-	statusFailed    = lipgloss.Color("#ff0000")
-	statusRunning   = lipgloss.Color("#ffff00")
-	statusPending   = lipgloss.Color("#888888")
-
-	// UI colors
-	primaryColor = lipgloss.Color("#7D56F4")
-	borderColor  = lipgloss.Color("#444444")
-	textColor    = lipgloss.Color("#FAFAFA")
-	mutedColor   = lipgloss.Color("#888888")
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// Styles
+// Styles - all styles use colors from common/ for consistency
 var (
 	// Header style
 	headerStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(primaryColor).
+			BorderForeground(common.PrimaryColor).
 			Padding(0, 1).
 			MarginBottom(0)
 
 	// Tree panel style
 	treePanelStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#444444")).
+			BorderForeground(common.BorderColor).
 			Padding(0, 1)
 
 	// Details panel style
 	detailsPanelStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#444444")).
+				BorderForeground(common.BorderColor).
 				Padding(0, 1)
 
 	// Header title style
@@ -43,51 +32,33 @@ var (
 				Bold(true).
 				Foreground(lipgloss.Color("#FFFFFF"))
 
-	durationBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#000000")).
-				Background(lipgloss.Color("#87CEEB")).
-				Padding(0, 1).
-				MarginLeft(1)
+	durationBadgeStyle = common.DurationBadgeStyle
 
-	costBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#98FB98")).
-			Padding(0, 1).
-			MarginLeft(1)
+	costBadgeStyle = common.CostBadgeStyle
 
 	// Title styles
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(primaryColor).
-			MarginBottom(1)
+	titleStyle = common.TitleStyle
 
-	// Status styles
+	// Status styles - using common colors
 	statusDoneStyle = lipgloss.NewStyle().
-			Foreground(statusSucceeded)
+			Foreground(common.StatusSucceeded)
 
 	statusFailedStyle = lipgloss.NewStyle().
-				Foreground(statusFailed)
+				Foreground(common.StatusFailed)
 
 	statusRunningStyle = lipgloss.NewStyle().
-				Foreground(statusRunning)
+				Foreground(common.StatusRunning)
 
 	statusPendingStyle = lipgloss.NewStyle().
-				Foreground(statusPending)
+				Foreground(common.StatusPending)
 
 	// Label styles
-	labelStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
+	labelStyle = common.LabelStyle
 
-	valueStyle = lipgloss.NewStyle().
-			Foreground(textColor)
+	valueStyle = common.ValueStyle
 
 	// Help bar style
-	helpBarStyle = lipgloss.NewStyle().
-			Foreground(mutedColor).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderTop(true).
-			BorderForeground(borderColor).
-			Padding(0, 1)
+	helpBarStyle = common.HelpBarStyle
 
 	// Path style (for GCS/file paths)
 	pathStyle = lipgloss.NewStyle().
@@ -95,19 +66,13 @@ var (
 			Italic(true)
 
 	// Muted style for less important text
-	mutedStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
+	mutedStyle = common.MutedStyle
 
 	// Error style
-	errorStyle = lipgloss.NewStyle().
-			Foreground(statusFailed).
-			Bold(true)
+	errorStyle = common.ErrorStyle
 
 	// Modal style
-	modalStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(primaryColor).
-			Padding(1, 2)
+	modalStyle = common.ModalStyle
 
 	// Modal label style (brighter for dark background)
 	modalLabelStyle = lipgloss.NewStyle().
@@ -125,12 +90,12 @@ var (
 	// Button styles for quick actions
 	buttonStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).
-			Background(primaryColor).
+			Background(common.PrimaryColor).
 			Bold(true).
 			Padding(0, 1)
 
 	disabledButtonStyle = lipgloss.NewStyle().
-				Foreground(mutedColor).
+				Foreground(common.MutedColor).
 				Background(lipgloss.Color("#333333")).
 				Padding(0, 1)
 
@@ -146,7 +111,7 @@ var (
 
 	// Breadcrumb styles - inline, no margins
 	breadcrumbStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
+			Foreground(common.MutedColor)
 
 	breadcrumbSeparatorStyle = lipgloss.NewStyle().
 					Foreground(lipgloss.Color("#555555"))
@@ -167,31 +132,15 @@ var (
 )
 
 // StatusStyle returns the appropriate style for a status.
+// Delegates to common.StatusStyle for consistency across screens.
 func StatusStyle(status string) lipgloss.Style {
-	switch status {
-	case "Done", "Succeeded":
-		return statusDoneStyle
-	case "Failed":
-		return statusFailedStyle
-	case "Running":
-		return statusRunningStyle
-	default:
-		return statusPendingStyle
-	}
+	return common.StatusStyle(status)
 }
 
 // StatusIcon returns an icon for the status.
+// Delegates to common.StatusIcon for consistency across screens.
 func StatusIcon(status string) string {
-	switch status {
-	case "Done", "Succeeded":
-		return "✓"
-	case "Failed":
-		return "✗"
-	case "Running":
-		return "●"
-	default:
-		return "○"
-	}
+	return common.StatusIcon(status)
 }
 
 // NodeTypeIcon returns an icon for the node type.
