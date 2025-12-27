@@ -14,7 +14,7 @@ import (
 func (m Model) modalFooter() string {
 	baseFooter := "↑↓/PgUp/PgDn scroll • y copy • esc close"
 	if m.statusMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
+		return mutedStyle.Render(baseFooter) + "  " + common.RenderNotification(m.statusMessage, common.NotifySuccess)
 	}
 	return mutedStyle.Render(baseFooter)
 }

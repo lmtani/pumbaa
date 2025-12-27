@@ -94,16 +94,6 @@ var (
 			Bold(true).
 			Padding(0, 1)
 
-	disabledButtonStyle = lipgloss.NewStyle().
-				Foreground(common.MutedColor).
-				Background(lipgloss.Color("#333333")).
-				Padding(0, 1)
-
-	// Temporary status message style
-	temporaryStatusStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFF00")).
-				Bold(true)
-
 	// Docker tag style (highlighted for visibility)
 	tagStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#00FFAA")).

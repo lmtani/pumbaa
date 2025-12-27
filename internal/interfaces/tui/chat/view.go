@@ -138,7 +138,11 @@ func (m Model) renderFooter() string {
 
 	// Show status message if present
 	if m.statusMessage != "" {
-		help = common.SuccessStyle.Render(m.statusMessage) + "  " + help
+		notifyType := common.NotifySuccess
+		if strings.Contains(strings.ToLower(m.statusMessage), "failed") {
+			notifyType = common.NotifyError
+		}
+		help = common.RenderNotification(m.statusMessage, notifyType) + "  " + help
 	}
 
 	return common.HelpBarStyle.

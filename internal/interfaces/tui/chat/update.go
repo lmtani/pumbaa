@@ -177,9 +177,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case clipboardCopiedMsg:
 		if msg.success {
-			m.statusMessage = "✓ Copied!"
+			m.statusMessage = "Copied!"
 		} else {
-			m.statusMessage = "✗ Copy failed"
+			m.statusMessage = "Copy failed"
 		}
 		m.statusExpires = time.Now().Add(2 * time.Second)
 		return m, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {

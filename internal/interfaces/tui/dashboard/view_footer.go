@@ -15,7 +15,17 @@ func (m Model) renderFooter() string {
 
 	// Status message
 	if m.statusMsg != "" {
-		parts = append(parts, m.statusMsg)
+		// Determine notification type based on message prefix
+		notifyType := common.NotifyInfo
+		msg := m.statusMsg
+		if strings.HasPrefix(m.statusMsg, "✓") {
+			notifyType = common.NotifySuccess
+			msg = strings.TrimPrefix(m.statusMsg, "✓ ")
+		} else if strings.HasPrefix(m.statusMsg, "✗") {
+			notifyType = common.NotifyError
+			msg = strings.TrimPrefix(m.statusMsg, "✗ ")
+		}
+		parts = append(parts, common.RenderNotification(msg, notifyType))
 		parts = append(parts, " • ")
 	}
 

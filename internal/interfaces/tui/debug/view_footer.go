@@ -19,33 +19,13 @@ func (m Model) renderFooter() string {
 
 	// Loading indicator with increasing progress bar (takes priority)
 	if m.isLoading && m.loadingMessage != "" {
-		elapsed := time.Since(m.loadingStartTime)
-		percentage := int(elapsed.Seconds() * 100 / loadingDuration.Seconds())
-		if percentage > 100 {
-			percentage = 100
-		}
-
-		barLength := (percentage * 20) / 100 // 20 chars max
-		progressBar := " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
-
-		loadingStyle := temporaryStatusStyle
-		parts = append(parts, loadingStyle.Render("⏳ "+m.loadingMessage+progressBar))
+		loadingMsg := common.RenderLoadingMessage(m.loadingMessage, m.loadingStartTime, loadingDuration)
+		parts = append(parts, loadingMsg)
 		parts = append(parts, " • ")
 	} else if m.statusMessage != "" {
 		// Status message with decreasing progress bar
-		timeRemaining := time.Until(m.statusMessageExpires)
-		progressBar := ""
-
-		if timeRemaining > 0 {
-			percentage := int(timeRemaining.Seconds() * 100 / statusDuration.Seconds())
-			if percentage > 100 {
-				percentage = 100
-			}
-			barLength := (percentage * 20) / 100 // 20 chars max
-			progressBar = " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
-		}
-
-		parts = append(parts, temporaryStatusStyle.Render(m.statusMessage+progressBar))
+		statusMsg := common.RenderStatusMessage(m.statusMessage, m.statusMessageExpires, statusDuration)
+		parts = append(parts, statusMsg)
 		parts = append(parts, " • ")
 	}
 

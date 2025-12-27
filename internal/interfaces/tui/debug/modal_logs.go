@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"github.com/muesli/reflow/ansi"
 )
 
@@ -63,7 +64,7 @@ func (m Model) renderLogModal() string {
 func (m Model) logModalFooter() string {
 	baseFooter := "↑↓ scroll • ←→ pan • y copy • esc close"
 	if m.statusMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
+		return mutedStyle.Render(baseFooter) + "  " + common.RenderNotification(m.statusMessage, common.NotifySuccess)
 	}
 	return mutedStyle.Render(baseFooter)
 }
