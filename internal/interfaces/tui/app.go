@@ -5,6 +5,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
@@ -89,11 +90,11 @@ func (m AppModel) View() string {
 // NavigateToDebugMsg is a message to navigate to the debug screen.
 type NavigateToDebugMsg struct {
 	Metadata *debug.WorkflowMetadata
-	Fetcher  debug.MetadataFetcher
+	Fetcher  ports.WorkflowMetadataFetcher
 }
 
 // NavigateToDebug creates a command to navigate to the debug screen.
-func NavigateToDebug(metadata *debug.WorkflowMetadata, fetcher debug.MetadataFetcher) tea.Cmd {
+func NavigateToDebug(metadata *debug.WorkflowMetadata, fetcher ports.WorkflowMetadataFetcher) tea.Cmd {
 	return func() tea.Msg {
 		return NavigateToDebugMsg{Metadata: metadata, Fetcher: fetcher}
 	}

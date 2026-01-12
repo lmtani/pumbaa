@@ -2,7 +2,6 @@
 package dashboard
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -11,31 +10,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
-
-// WorkflowFetcher interface for fetching workflows
-type WorkflowFetcher interface {
-	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
-	Abort(ctx context.Context, workflowID string) error
-}
-
-// MetadataFetcher interface for fetching workflow metadata (for debug transition)
-type MetadataFetcher interface {
-	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
-}
-
-// HealthChecker provides health status checking for the workflow server.
-type HealthChecker interface {
-	GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error)
-}
-
-// LabelManager provides label management for workflows.
-type LabelManager interface {
-	GetLabels(ctx context.Context, workflowID string) (map[string]string, error)
-	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
-}
 
 // Model represents the dashboard screen state.
 type Model struct {
@@ -47,7 +25,7 @@ type Model struct {
 	scrollY     int
 	keys        KeyMap
 	globalKeys  common.GlobalKeys
-	fetcher     WorkflowFetcher
+	fetcher     ports.WorkflowQuerier
 	loading     bool
 	spinner     spinner.Model
 	error       string
@@ -68,15 +46,15 @@ type Model struct {
 	// Debug transition state
 	loadingDebug       bool
 	loadingDebugID     string
-	metadataFetcher    MetadataFetcher
+	metadataFetcher    ports.WorkflowMetadataFetcher
 	DebugMetadataReady []byte // Metadata ready for debug view
 
 	// Health status
-	healthChecker HealthChecker
+	healthChecker ports.HealthChecker
 	healthStatus  *workflow.HealthStatus
 
 	// Labels modal state
-	labelManager       LabelManager
+	labelManager       ports.LabelManager
 	showLabelsModal    bool
 	labelsWorkflowID   string
 	labelsWorkflowName string
@@ -122,7 +100,7 @@ func NewModel() Model {
 }
 
 // NewModelWithFetcher creates a new dashboard model with a workflow fetcher.
-func NewModelWithFetcher(fetcher WorkflowFetcher) Model {
+func NewModelWithFetcher(fetcher ports.WorkflowQuerier) Model {
 	m := NewModel()
 	m.fetcher = fetcher
 	m.loading = true
@@ -130,17 +108,17 @@ func NewModelWithFetcher(fetcher WorkflowFetcher) Model {
 }
 
 // SetMetadataFetcher sets the metadata fetcher for debug transitions
-func (m *Model) SetMetadataFetcher(fetcher MetadataFetcher) {
+func (m *Model) SetMetadataFetcher(fetcher ports.WorkflowMetadataFetcher) {
 	m.metadataFetcher = fetcher
 }
 
 // SetHealthChecker sets the health checker for server status monitoring
-func (m *Model) SetHealthChecker(checker HealthChecker) {
+func (m *Model) SetHealthChecker(checker ports.HealthChecker) {
 	m.healthChecker = checker
 }
 
 // SetLabelManager sets the label manager for workflow labels
-func (m *Model) SetLabelManager(manager LabelManager) {
+func (m *Model) SetLabelManager(manager ports.LabelManager) {
 	m.labelManager = manager
 }
 

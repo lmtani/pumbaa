@@ -1,7 +1,6 @@
 package debug
 
 import (
-	"context"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -16,12 +15,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
-// MetadataFetcher is an interface for fetching workflow metadata.
-type MetadataFetcher interface {
-	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
-	GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error)
-}
-
 // Model is the main model for the debug TUI.
 type Model struct {
 	// Data
@@ -30,7 +23,7 @@ type Model struct {
 	nodes    []*TreeNode
 
 	// Metadata fetcher for on-demand subworkflow loading
-	fetcher MetadataFetcher
+	fetcher ports.WorkflowMetadataFetcher
 
 	totalCost float64 // Cached total cost from API
 
@@ -109,7 +102,7 @@ type Model struct {
 
 // NewModel creates a model with all dependencies.
 // The workflow is parsed by the handler and passed in; tree building happens here.
-func NewModel(wf *workflow.Workflow, fetcher MetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider) Model {
+func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))

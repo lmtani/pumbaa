@@ -9,6 +9,33 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
+// WorkflowQuerier handles workflow listing and abort operations.
+// Used by TUI dashboard for displaying and managing workflows.
+type WorkflowQuerier interface {
+	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
+	Abort(ctx context.Context, workflowID string) error
+}
+
+// WorkflowMetadataFetcher handles raw metadata and cost retrieval.
+// Used by TUI debug view for loading workflow details and subworkflows.
+type WorkflowMetadataFetcher interface {
+	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
+	GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error)
+}
+
+// HealthChecker handles server health monitoring.
+// Used by TUI dashboard to display server status.
+type HealthChecker interface {
+	GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error)
+}
+
+// LabelManager handles workflow label operations.
+// Used by TUI dashboard for viewing and editing workflow labels.
+type LabelManager interface {
+	GetLabels(ctx context.Context, workflowID string) (map[string]string, error)
+	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
+}
+
 // WorkflowRepository defines the interface for workflow management operations.
 // This is the primary port for all workflow-related operations including
 // execution management, metadata retrieval, and server health monitoring.
