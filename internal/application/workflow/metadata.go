@@ -10,12 +10,12 @@ import (
 
 // MetadataUseCase handles workflow metadata retrieval.
 type MetadataUseCase struct {
-	repo ports.WorkflowRepository
+	reader ports.WorkflowMetadataReader
 }
 
 // NewMetadataUseCase creates a new metadata use case.
-func NewMetadataUseCase(repo ports.WorkflowRepository) *MetadataUseCase {
-	return &MetadataUseCase{repo: repo}
+func NewMetadataUseCase(reader ports.WorkflowMetadataReader) *MetadataUseCase {
+	return &MetadataUseCase{reader: reader}
 }
 
 // MetadataInput represents the input for metadata retrieval.
@@ -30,7 +30,7 @@ func (uc *MetadataUseCase) Execute(ctx context.Context, input MetadataInput) (*w
 		return nil, workflow2.ErrInvalidWorkflowID
 	}
 
-	wf, err := uc.repo.GetMetadata(ctx, input.WorkflowID)
+	wf, err := uc.reader.GetMetadata(ctx, input.WorkflowID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workflow metadata: %w", err)
 	}

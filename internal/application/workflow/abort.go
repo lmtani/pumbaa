@@ -10,12 +10,12 @@ import (
 
 // AbortUseCase handles workflow abortion.
 type AbortUseCase struct {
-	repo ports.WorkflowRepository
+	aborter ports.WorkflowAborter
 }
 
 // NewAbortUseCase creates a new abort use case.
-func NewAbortUseCase(repo ports.WorkflowRepository) *AbortUseCase {
-	return &AbortUseCase{repo: repo}
+func NewAbortUseCase(aborter ports.WorkflowAborter) *AbortUseCase {
+	return &AbortUseCase{aborter: aborter}
 }
 
 // AbortInput represents the input for workflow abortion.
@@ -36,7 +36,7 @@ func (uc *AbortUseCase) Execute(ctx context.Context, input AbortInput) (*AbortOu
 	}
 
 	// Check current status before aborting
-	status, err := uc.repo.GetStatus(ctx, input.WorkflowID)
+	status, err := uc.aborter.GetStatus(ctx, input.WorkflowID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workflow status: %w", err)
 	}
@@ -48,7 +48,7 @@ func (uc *AbortUseCase) Execute(ctx context.Context, input AbortInput) (*AbortOu
 	}
 
 	// Abort the workflow
-	if err := uc.repo.Abort(ctx, input.WorkflowID); err != nil {
+	if err := uc.aborter.Abort(ctx, input.WorkflowID); err != nil {
 		return nil, fmt.Errorf("failed to abort workflow: %w", err)
 	}
 

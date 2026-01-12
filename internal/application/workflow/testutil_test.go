@@ -10,7 +10,7 @@ import (
 // Mock WorkflowRepository
 // =============================================================================
 
-// mockWorkflowRepository is a test double for ports.WorkflowRepository.
+// mockWorkflowRepository is a test double for workflow ports used by use cases.
 // Configure the *Func fields to control behavior in tests.
 type mockWorkflowRepository struct {
 	submitFunc      func(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error)
@@ -53,35 +53,6 @@ func (m *mockWorkflowRepository) GetStatus(ctx context.Context, workflowID strin
 		return m.getStatusFunc(ctx, workflowID)
 	}
 	return workflow.StatusRunning, nil
-}
-
-// Stub implementations for interface compliance
-func (m *mockWorkflowRepository) GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error) {
-	return nil, nil
-}
-
-func (m *mockWorkflowRepository) GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (m *mockWorkflowRepository) GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error) {
-	return nil, nil
-}
-
-func (m *mockWorkflowRepository) GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error) {
-	return 0, "", nil
-}
-
-func (m *mockWorkflowRepository) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error) {
-	return nil, nil
-}
-
-func (m *mockWorkflowRepository) GetLabels(ctx context.Context, workflowID string) (map[string]string, error) {
-	return nil, nil
-}
-
-func (m *mockWorkflowRepository) UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error {
-	return nil
 }
 
 // =============================================================================

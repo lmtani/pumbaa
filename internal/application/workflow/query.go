@@ -9,12 +9,12 @@ import (
 
 // QueryUseCase handles workflow queries.
 type QueryUseCase struct {
-	repo ports.WorkflowRepository
+	queryer ports.WorkflowQueryer
 }
 
 // NewQueryUseCase creates a new query use case.
-func NewQueryUseCase(repo ports.WorkflowRepository) *QueryUseCase {
-	return &QueryUseCase{repo: repo}
+func NewQueryUseCase(queryer ports.WorkflowQueryer) *QueryUseCase {
+	return &QueryUseCase{queryer: queryer}
 }
 
 // QueryInput represents the input for workflow queries.
@@ -43,5 +43,5 @@ func (uc *QueryUseCase) Execute(ctx context.Context, input QueryInput) (*workflo
 		PageSize: input.PageSize,
 	}
 
-	return uc.repo.Query(ctx, filter)
+	return uc.queryer.Query(ctx, filter)
 }

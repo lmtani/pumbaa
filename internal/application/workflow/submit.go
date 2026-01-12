@@ -10,13 +10,13 @@ import (
 
 // SubmitUseCase handles workflow submission.
 type SubmitUseCase struct {
-	repo         ports.WorkflowRepository
+	submitter    ports.WorkflowSubmitter
 	fileProvider ports.FileProvider
 }
 
 // NewSubmitUseCase creates a new submit use case.
-func NewSubmitUseCase(repo ports.WorkflowRepository, fileProvider ports.FileProvider) *SubmitUseCase {
-	return &SubmitUseCase{repo: repo, fileProvider: fileProvider}
+func NewSubmitUseCase(submitter ports.WorkflowSubmitter, fileProvider ports.FileProvider) *SubmitUseCase {
+	return &SubmitUseCase{submitter: submitter, fileProvider: fileProvider}
 }
 
 // SubmitInput represents the input for workflow submission.
@@ -76,7 +76,7 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		WorkflowTypeVersion:  "1.0",
 	}
 
-	resp, err := uc.repo.Submit(ctx, req)
+	resp, err := uc.submitter.Submit(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to submit workflow: %w", err)
 	}

@@ -42,6 +42,31 @@ type MetadataParser interface {
 	ParseMetadata(data []byte) (*workflow.Workflow, error)
 }
 
+// WorkflowSubmitter handles workflow submission.
+// Used by application submit use case.
+type WorkflowSubmitter interface {
+	Submit(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error)
+}
+
+// WorkflowAborter handles workflow abort operations and status checks.
+// Used by application abort use case.
+type WorkflowAborter interface {
+	GetStatus(ctx context.Context, workflowID string) (workflow.Status, error)
+	Abort(ctx context.Context, workflowID string) error
+}
+
+// WorkflowQueryer handles workflow queries.
+// Used by application query use case.
+type WorkflowQueryer interface {
+	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
+}
+
+// WorkflowMetadataReader handles workflow metadata retrieval.
+// Used by application metadata use case.
+type WorkflowMetadataReader interface {
+	GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error)
+}
+
 // WorkflowRepository defines the interface for workflow management operations.
 // This is the primary port for all workflow-related operations including
 // execution management, metadata retrieval, and server health monitoring.
