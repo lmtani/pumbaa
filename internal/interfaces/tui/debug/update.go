@@ -175,36 +175,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.batchLogsError = ""
 		m.batchLogsLoading = false
 
-		// Format entries for display
-		var sb strings.Builder
+		// Format entries for raw content (without ANSI colors)
+		var rawSB strings.Builder
 		for _, entry := range msg.entries {
-			// Color by severity
-			var severityStyle string
-			switch entry.Severity {
-			case "ERROR", "CRITICAL":
-				severityStyle = fmt.Sprintf("\033[91m%s\033[0m", entry.Severity) // Red
-			case "WARNING":
-				severityStyle = fmt.Sprintf("\033[93m%s\033[0m", entry.Severity) // Yellow
-			case "DEBUG":
-				severityStyle = fmt.Sprintf("\033[90m%s\033[0m", entry.Severity) // Gray
-			default:
-				severityStyle = entry.Severity
-			}
-
-			sb.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
+			rawSB.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
 				entry.Timestamp.Format("2006-01-02 15:04:05"),
-				severityStyle,
+				entry.Severity,
 				entry.Message))
 		}
 
-		m.batchLogsRawContent = sb.String()
-		m.batchLogsContent = sb.String()
+		// Keep raw content for clipboard (no colors)
+		m.batchLogsRawContent = rawSB.String()
+
+		// Apply syntax highlighting to content for display
+		// The bioLogLexer will automatically color log levels (ERROR, WARNING, DEBUG, etc.)
+		m.batchLogsContent = common.Highlight(m.batchLogsRawContent, common.ProfileLog, 0)
+
 		m.showBatchLogsModal = true
 
 		// Initialize the modal viewport
 		viewportWidth := m.width - 14
 		m.batchLogsViewport = viewport.New(viewportWidth, m.height-10)
-		m.batchLogsViewport.SetContent(m.batchLogsContent)
+		// Truncate highlighted content to viewport width
+		truncatedContent := truncateLinesToWidth(m.batchLogsContent, viewportWidth)
+		m.batchLogsViewport.SetContent(truncatedContent)
 		return m, nil
 
 	case batchLogsErrorMsg:
@@ -644,7 +638,12 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 			m.loadingMessage = "Loading Google Batch logs..."
 			m.loadingStartTime = time.Now()
 			m.batchLogsLoading = true
-			return m, m.loadBatchLogs(node.CallData.JobID)
+			// Pass task VM execution times to filter logs by time window (±2h margin)
+			return m, m.loadBatchLogs(
+				node.CallData.JobID,
+				node.CallData.VMStartTime,
+				node.CallData.VMEndTime,
+			)
 		}
 		m.setStatusMessage("Google Batch logs not available")
 		return m, getClearStatusCmd()
