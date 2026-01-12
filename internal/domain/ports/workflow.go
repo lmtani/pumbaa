@@ -45,26 +45,22 @@ type MetadataParser interface {
 // WorkflowRepository defines the interface for workflow management operations.
 // This is the primary port for all workflow-related operations including
 // execution management, metadata retrieval, and server health monitoring.
+//
+// It composes smaller, focused interfaces following Interface Segregation Principle.
+// Consumers should depend on the smallest interface that meets their needs.
 type WorkflowRepository interface {
-	// Workflow execution operations
-	Submit(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error)
-	Abort(ctx context.Context, workflowID string) error
-	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
+	// Composed interfaces
+	WorkflowQuerier         // Query, Abort
+	WorkflowMetadataFetcher // GetRawMetadataWithOptions, GetWorkflowCost
+	HealthChecker           // GetHealthStatus
+	LabelManager            // GetLabels, UpdateLabels
 
-	// Metadata operations
+	// Workflow submission
+	Submit(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error)
+
+	// Additional metadata operations
 	GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error)
-	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
 	GetStatus(ctx context.Context, workflowID string) (workflow.Status, error)
 	GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error)
 	GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error)
-
-	// Cost analysis
-	GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error)
-
-	// Server health monitoring
-	GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, error)
-
-	// Workflow labels management
-	GetLabels(ctx context.Context, workflowID string) (map[string]string, error)
-	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
 }
