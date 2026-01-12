@@ -8,12 +8,36 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	adkmodel "google.golang.org/adk/model"
+	adksession "google.golang.org/adk/session"
+	"google.golang.org/adk/tool"
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
+
+// ChatDataSelection holds user selections for what data to include in chat context.
+type ChatDataSelection struct {
+	Metadata      bool
+	Stdout        bool
+	Stderr        bool
+	MonitoringLog bool
+	BatchLogs     bool
+}
+
+// DefaultChatDataSelection returns the default selection (metadata and stderr enabled).
+func DefaultChatDataSelection() ChatDataSelection {
+	return ChatDataSelection{
+		Metadata:      true,
+		Stdout:        false,
+		Stderr:        true,
+		MonitoringLog: false,
+		BatchLogs:     false,
+	}
+}
 
 // Model is the main model for the debug TUI.
 type Model struct {
@@ -83,12 +107,31 @@ type Model struct {
 	resourceError  string
 
 	// Batch logs modal state
-	showBatchLogsModal bool
-	batchLogsViewport viewport.Model
-	batchLogsContent  string // Highlighted content for display
+	showBatchLogsModal  bool
+	batchLogsViewport   viewport.Model
+	batchLogsContent    string // Highlighted content for display
 	batchLogsRawContent string // Raw content for clipboard
-	batchLogsError    string
-	batchLogsLoading  bool
+	batchLogsError      string
+	batchLogsLoading    bool
+
+	// Chat modal state
+	showChatSelectionModal bool              // Modal for selecting data to include
+	showChatModal          bool              // Chat modal overlay
+	chatModel              *chat.Model       // Embedded chat model
+	chatContextLoading     bool              // Loading while collecting context
+	chatContextProgress    string            // Progress message during collection
+	chatDataSelections     ChatDataSelection // User's data selections
+	chatSelectionCursor    int               // Cursor for selection modal
+	chatContextNode        *TreeNode         // Node being used for chat context
+	chatProgram            *tea.Program      // Program pointer for chat
+
+	// Chat dependencies (optional - nil if not configured)
+	llm        adkmodel.LLM
+	chatTools  []tool.Tool
+	sessionSvc adksession.Service
+
+	// Navigation state (for external handlers to check)
+	NavigateToChatSystemInstruction string
 
 	// Components
 	keys           KeyMap
@@ -109,9 +152,21 @@ type Model struct {
 	preemption *workflow.PreemptionSummary
 }
 
+// ChatDependencies holds optional dependencies for chat functionality.
+type ChatDependencies struct {
+	LLM        adkmodel.LLM
+	Tools      []tool.Tool
+	SessionSvc adksession.Service
+}
+
 // NewModel creates a model with all dependencies.
 // The workflow is parsed by the handler and passed in; tree building happens here.
 func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase) Model {
+	return NewModelWithChat(wf, fetcher, muc, fp, bluc, nil)
+}
+
+// NewModelWithChat creates a model with all dependencies including optional chat support.
+func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase, chatDeps *ChatDependencies) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
@@ -123,24 +178,34 @@ func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc 
 	// Calculate preemption summary (domain logic on aggregate)
 	preemption := wf.CalculatePreemptionSummary()
 
-	return Model{
-		metadata:       wf,
-		tree:           root,
-		nodes:          visible,
-		preemption:     preemption,
-		fetcher:        fetcher,
-		monitoringUC:   muc,
-		fileProvider:   fp,
-		batchLogsUC:    bluc,
-		cursor:         0,
-		focus:          FocusTree,
-		viewMode:       ViewModeTree,
-		nodeStates:     make(map[string]NodeViewState),
-		keys:           DefaultKeyMap(),
-		help:           help.New(),
-		detailViewport: viewport.New(80, 20),
-		loadingSpinner: s,
+	m := Model{
+		metadata:           wf,
+		tree:               root,
+		nodes:              visible,
+		preemption:         preemption,
+		fetcher:            fetcher,
+		monitoringUC:       muc,
+		fileProvider:       fp,
+		batchLogsUC:        bluc,
+		cursor:             0,
+		focus:              FocusTree,
+		viewMode:           ViewModeTree,
+		nodeStates:         make(map[string]NodeViewState),
+		keys:               DefaultKeyMap(),
+		help:               help.New(),
+		detailViewport:     viewport.New(80, 20),
+		loadingSpinner:     s,
+		chatDataSelections: DefaultChatDataSelection(),
 	}
+
+	// Add chat dependencies if provided
+	if chatDeps != nil {
+		m.llm = chatDeps.LLM
+		m.chatTools = chatDeps.Tools
+		m.sessionSvc = chatDeps.SessionSvc
+	}
+
+	return m
 }
 
 // Init initializes the model.

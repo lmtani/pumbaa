@@ -95,8 +95,8 @@ func New(cfg *config.Config, version string) *Container {
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService)
 	c.ConfigHandler = handler.NewConfigHandler()
 

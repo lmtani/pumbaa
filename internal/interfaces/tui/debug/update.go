@@ -220,6 +220,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setStatusMessage("Error loading batch logs: " + errorMsg)
 		return m, getClearStatusCmd()
 
+	case chatContextLoadedMsg:
+		return m.handleChatContextLoaded(msg)
+
+	case chatContextErrorMsg:
+		m.chatContextLoading = false
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.setStatusMessage(fmt.Sprintf("Failed to collect context: %v", msg.err))
+		return m, getClearStatusCmd()
+
+	case chatInitializedMsg:
+		return m.handleChatInitialized(msg)
+
+	case chatInitErrorMsg:
+		return m.handleChatInitError(msg)
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -248,6 +264,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle chat modal first (highest priority)
+	if m.showChatModal {
+		return m.handleChatModalUpdate(msg)
+	}
+
+	// Handle chat selection modal
+	if m.showChatSelectionModal {
+		return m.handleChatSelectionModalKeys(msg)
+	}
+
 	// Handle log modal first
 	if m.showLogModal {
 		return m.handleLogModalKeys(msg)
@@ -647,6 +673,8 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 		m.setStatusMessage("Google Batch logs not available")
 		return m, getClearStatusCmd()
+	case "7", "a": // Chat with AI
+		return m.openChatSelectionModal(node)
 	}
 
 	return m, nil

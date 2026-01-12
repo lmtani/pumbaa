@@ -489,6 +489,10 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			if a := formatAction("6", "batch logs", m.canShowBatchLogs(node)); a != "" {
 				actions = append(actions, a)
 			}
+			// Chat with AI - enabled if LLM is configured
+			if a := formatAction("7", "chat", m.llm != nil); a != "" {
+				actions = append(actions, a)
+			}
 		}
 	}
 

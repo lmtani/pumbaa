@@ -22,6 +22,7 @@ type KeyMap struct {
 	PageUp      key.Binding
 	PageDown    key.Binding
 	Copy        key.Binding
+	Chat        key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -99,6 +100,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("y"),
 			key.WithHelp("y", "copy to clipboard"),
 		),
+		Chat: key.NewBinding(
+			key.WithKeys("7", "a"),
+			key.WithHelp("7/a", "chat with AI"),
+		),
 	}
 }
 
@@ -114,6 +119,6 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.ExpandAll, k.CollapseAll},
 		{k.Home, k.End, k.PageUp, k.PageDown},
-		{k.Copy, k.Help, k.Quit},
+		{k.Copy, k.Chat, k.Help, k.Quit},
 	}
 }
