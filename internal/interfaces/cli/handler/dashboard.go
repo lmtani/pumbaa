@@ -9,7 +9,6 @@ import (
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
@@ -17,15 +16,24 @@ import (
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	repository ports.WorkflowRepository
-	telemetry  telemetry.Service
+	repository   ports.WorkflowRepository
+	telemetry    telemetry.Service
+	monitoringUC *workflowapp.MonitoringUseCase
+	fileProvider ports.FileProvider
 }
 
 // NewDashboardHandler creates a new dashboard handler.
-func NewDashboardHandler(client ports.WorkflowRepository, ts telemetry.Service) *DashboardHandler {
+func NewDashboardHandler(
+	client ports.WorkflowRepository,
+	ts telemetry.Service,
+	muc *workflowapp.MonitoringUseCase,
+	fp ports.FileProvider,
+) *DashboardHandler {
 	return &DashboardHandler{
-		repository: client,
-		telemetry:  ts,
+		repository:   client,
+		telemetry:    ts,
+		monitoringUC: muc,
+		fileProvider: fp,
 	}
 }
 
@@ -140,12 +148,8 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
-	// Initialize infrastructure and use cases
-	fp := storage.NewFileProvider()
-	muc := workflowapp.NewMonitoringUseCase(fp)
-
 	// Create and run the debug TUI (tree building happens inside NewModel)
-	model := debug.NewModel(wf, h.repository, muc, fp)
+	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

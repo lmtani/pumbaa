@@ -10,22 +10,30 @@ import (
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 )
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	repository ports.WorkflowRepository
-	telemetry  telemetry.Service
+	repository   ports.WorkflowRepository
+	telemetry    telemetry.Service
+	monitoringUC *workflowapp.MonitoringUseCase
+	fileProvider ports.FileProvider
 }
 
 // NewDebugHandler creates a new debug handler.
-func NewDebugHandler(client ports.WorkflowRepository, ts telemetry.Service) *DebugHandler {
+func NewDebugHandler(
+	client ports.WorkflowRepository,
+	ts telemetry.Service,
+	muc *workflowapp.MonitoringUseCase,
+	fp ports.FileProvider,
+) *DebugHandler {
 	return &DebugHandler{
-		repository: client,
-		telemetry:  ts,
+		repository:   client,
+		telemetry:    ts,
+		monitoringUC: muc,
+		fileProvider: fp,
 	}
 }
 
@@ -117,12 +125,8 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
-	// Initialize infrastructure and use cases
-	fp := storage.NewFileProvider()
-	muc := workflowapp.NewMonitoringUseCase(fp)
-
 	// Create and run the TUI (tree building happens inside NewModel)
-	model := debug.NewModel(wf, h.repository, muc, fp)
+	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
