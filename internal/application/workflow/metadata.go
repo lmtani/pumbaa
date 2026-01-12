@@ -2,8 +2,8 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
@@ -27,12 +27,12 @@ type MetadataInput struct {
 // Returns domain Workflow directly - no DTO transformation needed.
 func (uc *MetadataUseCase) Execute(ctx context.Context, input MetadataInput) (*workflow2.Workflow, error) {
 	if input.WorkflowID == "" {
-		return nil, workflow2.ErrInvalidWorkflowID
+		return nil, application.NewInputValidationError("workflowID", "is required")
 	}
 
 	wf, err := uc.reader.GetMetadata(ctx, input.WorkflowID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get workflow metadata: %w", err)
+		return nil, application.NewUseCaseError("metadata", "failed to get workflow metadata", err)
 	}
 
 	return wf, nil

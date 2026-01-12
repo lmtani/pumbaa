@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/bundle"
 	"github.com/lmtani/pumbaa/pkg/wdl"
 )
@@ -38,17 +39,21 @@ type Output struct {
 func (uc *BundleUseCase) Execute(ctx context.Context, input Input) (*Output, error) {
 	// Validate input
 	if input.MainWorkflowPath == "" {
-		return nil, bundle.ErrMainWorkflowNotFound
+		return nil, application.NewInputValidationError("mainWorkflowPath", "is required")
 	}
 
 	if input.OutputPath == "" {
-		return nil, fmt.Errorf("output path is required")
+		return nil, application.NewInputValidationError("outputPath", "is required")
 	}
 
 	// Use the wdl package to create the bundle
 	result, err := wdl.CreateBundle(input.MainWorkflowPath, input.OutputPath)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", bundle.ErrBundleCreationFailed, err)
+		return nil, application.NewUseCaseError(
+			"bundle",
+			"failed to create bundle",
+			fmt.Errorf("%w: %v", bundle.ErrBundleCreationFailed, err),
+		)
 	}
 
 	// Prepare output

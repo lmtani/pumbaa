@@ -2,8 +2,8 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
@@ -36,10 +36,14 @@ type SubmitOutput struct {
 
 // Execute submits a workflow to Cromwell.
 func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*SubmitOutput, error) {
+	if input.WorkflowFile == "" {
+		return nil, application.NewInputValidationError("workflowFile", "is required")
+	}
+
 	// Read workflow source
 	workflowSource, err := uc.fileProvider.ReadBytes(ctx, input.WorkflowFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read workflow file: %w", err)
+		return nil, application.NewUseCaseError("submit", "failed to read workflow file", err)
 	}
 
 	// Read optional files
@@ -48,21 +52,21 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 	if input.InputsFile != "" {
 		inputsData, err = uc.fileProvider.ReadBytes(ctx, input.InputsFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read inputs file: %w", err)
+			return nil, application.NewUseCaseError("submit", "failed to read inputs file", err)
 		}
 	}
 
 	if input.OptionsFile != "" {
 		optionsData, err = uc.fileProvider.ReadBytes(ctx, input.OptionsFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read options file: %w", err)
+			return nil, application.NewUseCaseError("submit", "failed to read options file", err)
 		}
 	}
 
 	if input.DependenciesFile != "" {
 		depsData, err = uc.fileProvider.ReadBytes(ctx, input.DependenciesFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read dependencies file: %w", err)
+			return nil, application.NewUseCaseError("submit", "failed to read dependencies file", err)
 		}
 	}
 
@@ -78,7 +82,7 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 
 	resp, err := uc.submitter.Submit(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to submit workflow: %w", err)
+		return nil, application.NewUseCaseError("submit", "failed to submit workflow", err)
 	}
 
 	return &SubmitOutput{

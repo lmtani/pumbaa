@@ -3,10 +3,10 @@ package workflow
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
 
@@ -59,7 +59,7 @@ func (uc *GetBatchLogsUseCase) Execute(ctx context.Context, input GetBatchLogsIn
 	// Validate job name format
 	jobID, err := parseJobName(input.JobName)
 	if err != nil {
-		return nil, fmt.Errorf("invalid job name format: %w", err)
+		return nil, application.NewInputValidationError("jobName", err.Error())
 	}
 
 	// Normalize severity
@@ -86,7 +86,7 @@ func (uc *GetBatchLogsUseCase) Execute(ctx context.Context, input GetBatchLogsIn
 	// Call the port to retrieve logs
 	entries, err := uc.logsRepo.GetLogs(ctx, input.JobName, filter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch batch logs: %w", err)
+		return nil, application.NewUseCaseError("batch-logs", "failed to fetch batch logs", err)
 	}
 
 	return &GetBatchLogsOutput{

@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
@@ -43,5 +44,10 @@ func (uc *QueryUseCase) Execute(ctx context.Context, input QueryInput) (*workflo
 		PageSize: input.PageSize,
 	}
 
-	return uc.queryer.Query(ctx, filter)
+	result, err := uc.queryer.Query(ctx, filter)
+	if err != nil {
+		return nil, application.NewUseCaseError("query", "failed to query workflows", err)
+	}
+
+	return result, nil
 }

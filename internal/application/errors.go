@@ -33,6 +33,11 @@ func (e UseCaseError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Operation, e.Message)
 }
 
+// Is allows UseCaseError to match ErrOperationFailed with errors.Is().
+func (e UseCaseError) Is(target error) bool {
+	return target == ErrOperationFailed
+}
+
 func (e UseCaseError) Unwrap() error {
 	return e.Cause
 }

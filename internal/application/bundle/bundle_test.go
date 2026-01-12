@@ -2,10 +2,12 @@ package bundle
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/bundle"
 )
 
@@ -14,30 +16,37 @@ func TestUseCase_Execute_Validation(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name    string
-		input   Input
-		wantErr error
+		name      string
+		input     Input
+		wantField string
 	}{
 		{
-			name:    "empty main workflow path",
-			input:   Input{MainWorkflowPath: "", OutputPath: "out"},
-			wantErr: bundle.ErrMainWorkflowNotFound,
+			name:      "empty main workflow path",
+			input:     Input{MainWorkflowPath: "", OutputPath: "out"},
+			wantField: "mainWorkflowPath",
 		},
 		{
-			name:    "empty output path",
-			input:   Input{MainWorkflowPath: "workflow.wdl", OutputPath: ""},
-			wantErr: nil, // Will fail with fmt.Errorf, checking later
+			name:      "empty output path",
+			input:     Input{MainWorkflowPath: "workflow.wdl", OutputPath: ""},
+			wantField: "outputPath",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := uc.Execute(ctx, tt.input)
-			if tt.wantErr != nil && err != tt.wantErr {
-				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
+			if err == nil {
+				t.Fatalf("Execute() expected error for %s", tt.name)
 			}
-			if tt.name == "empty output path" && err == nil {
-				t.Error("Execute() expected error for empty output path")
+			if !errors.Is(err, application.ErrInvalidInput) {
+				t.Errorf("expected ErrInvalidInput, got %v", err)
+			}
+			var inputErr *application.InputValidationError
+			if !errors.As(err, &inputErr) {
+				t.Fatalf("expected InputValidationError, got %T", err)
+			}
+			if inputErr.Field != tt.wantField {
+				t.Errorf("expected field %s, got %s", tt.wantField, inputErr.Field)
 			}
 		})
 	}
@@ -98,5 +107,18 @@ func TestUseCase_Execute_NotFound(t *testing.T) {
 	_, err := uc.Execute(ctx, input)
 	if err == nil {
 		t.Error("Execute() expected error for non-existent file")
+	}
+	if !errors.Is(err, application.ErrOperationFailed) {
+		t.Errorf("expected ErrOperationFailed, got %v", err)
+	}
+	if !errors.Is(err, bundle.ErrBundleCreationFailed) {
+		t.Errorf("expected ErrBundleCreationFailed, got %v", err)
+	}
+	var ucErr *application.UseCaseError
+	if !errors.As(err, &ucErr) {
+		t.Fatalf("expected UseCaseError, got %T", err)
+	}
+	if ucErr.Operation != "bundle" {
+		t.Errorf("expected operation bundle, got %s", ucErr.Operation)
 	}
 }

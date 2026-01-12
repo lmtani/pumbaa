@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
 
@@ -44,8 +45,15 @@ func TestGetBatchLogsUseCase_InvalidJobNameFormat(t *testing.T) {
 			if err == nil {
 				t.Error("expected error for invalid job name, got nil")
 			}
-			if !errors.Is(err, ports.ErrInvalidJobName) {
-				t.Errorf("expected ErrInvalidJobName, got %v", err)
+			if !errors.Is(err, application.ErrInvalidInput) {
+				t.Errorf("expected ErrInvalidInput, got %v", err)
+			}
+			var inputErr *application.InputValidationError
+			if !errors.As(err, &inputErr) {
+				t.Fatalf("expected InputValidationError, got %T", err)
+			}
+			if inputErr.Field != "jobName" {
+				t.Errorf("expected field jobName, got %s", inputErr.Field)
 			}
 		})
 	}
@@ -169,5 +177,15 @@ func TestGetBatchLogsUseCase_PortErrorPropagation(t *testing.T) {
 	// Check that the error message contains context
 	if !errors.Is(err, ports.ErrUnauthorized) {
 		t.Errorf("expected error to wrap ErrUnauthorized, got %v", err)
+	}
+	if !errors.Is(err, application.ErrOperationFailed) {
+		t.Errorf("expected ErrOperationFailed, got %v", err)
+	}
+	var ucErr *application.UseCaseError
+	if !errors.As(err, &ucErr) {
+		t.Fatalf("expected UseCaseError, got %T", err)
+	}
+	if ucErr.Operation != "batch-logs" {
+		t.Errorf("expected operation batch-logs, got %s", ucErr.Operation)
 	}
 }
