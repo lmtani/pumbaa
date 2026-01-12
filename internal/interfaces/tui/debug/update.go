@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
@@ -47,6 +48,15 @@ type resourceAnalysisLoadedMsg struct {
 }
 
 type resourceAnalysisErrorMsg struct {
+	err error
+}
+
+type batchLogsLoadedMsg struct {
+	entries []ports.BatchLogEntry
+	jobID   string
+}
+
+type batchLogsErrorMsg struct {
 	err error
 }
 
@@ -159,6 +169,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setStatusMessage("Error loading log: " + errorMsg)
 		return m, getClearStatusCmd()
 
+	case batchLogsLoadedMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.batchLogsError = ""
+		m.batchLogsLoading = false
+
+		// Format entries for display
+		var sb strings.Builder
+		for _, entry := range msg.entries {
+			// Color by severity
+			var severityStyle string
+			switch entry.Severity {
+			case "ERROR", "CRITICAL":
+				severityStyle = fmt.Sprintf("\033[91m%s\033[0m", entry.Severity) // Red
+			case "WARNING":
+				severityStyle = fmt.Sprintf("\033[93m%s\033[0m", entry.Severity) // Yellow
+			case "DEBUG":
+				severityStyle = fmt.Sprintf("\033[90m%s\033[0m", entry.Severity) // Gray
+			default:
+				severityStyle = entry.Severity
+			}
+
+			sb.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
+				entry.Timestamp.Format("2006-01-02 15:04:05"),
+				severityStyle,
+				entry.Message))
+		}
+
+		m.batchLogsRawContent = sb.String()
+		m.batchLogsContent = sb.String()
+		m.showBatchLogsModal = true
+
+		// Initialize the modal viewport
+		viewportWidth := m.width - 14
+		m.batchLogsViewport = viewport.New(viewportWidth, m.height-10)
+		m.batchLogsViewport.SetContent(m.batchLogsContent)
+		return m, nil
+
+	case batchLogsErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		errorMsg := msg.err.Error()
+
+		// Simplify common error messages
+		if strings.Contains(errorMsg, "invalid job name") {
+			errorMsg = "Invalid Google Batch job ID (must be full resource name)"
+		} else if strings.Contains(errorMsg, "no logs found") {
+			errorMsg = "No logs found for this job"
+		} else if strings.Contains(errorMsg, "unauthorized") {
+			errorMsg = "Access denied: check GCP permissions"
+		} else if len(errorMsg) > 80 {
+			errorMsg = errorMsg[:77] + "..."
+		}
+
+		m.setStatusMessage("Error loading batch logs: " + errorMsg)
+		return m, getClearStatusCmd()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -225,6 +292,11 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle global timeline modal
 	if m.showGlobalTimelineModal {
 		return m.handleGlobalTimelineModalKeys(msg)
+	}
+
+	// Handle batch logs modal
+	if m.showBatchLogsModal {
+		return m.handleBatchLogsModalKeys(msg)
 	}
 
 	if m.showHelp {
@@ -565,6 +637,16 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 			return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
 		}
 		m.setStatusMessage("No monitoring data available")
+		return m, getClearStatusCmd()
+	case "6": // Batch Logs
+		if m.canShowBatchLogs(node) {
+			m.isLoading = true
+			m.loadingMessage = "Loading Google Batch logs..."
+			m.loadingStartTime = time.Now()
+			m.batchLogsLoading = true
+			return m, m.loadBatchLogs(node.CallData.JobID)
+		}
+		m.setStatusMessage("Google Batch logs not available")
 		return m, getClearStatusCmd()
 	}
 

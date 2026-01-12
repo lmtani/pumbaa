@@ -82,6 +82,14 @@ type Model struct {
 	resourceReport *workflow.EfficiencyReport
 	resourceError  string
 
+	// Batch logs modal state
+	showBatchLogsModal bool
+	batchLogsViewport viewport.Model
+	batchLogsContent  string // Highlighted content for display
+	batchLogsRawContent string // Raw content for clipboard
+	batchLogsError    string
+	batchLogsLoading  bool
+
 	// Components
 	keys           KeyMap
 	help           help.Model
@@ -93,8 +101,9 @@ type Model struct {
 	statusCopyContext    string    // What was copied (for better feedback)
 
 	// Infrastructure
-	monitoringUC *workflowapp.MonitoringUseCase
-	fileProvider ports.FileProvider
+	monitoringUC    *workflowapp.MonitoringUseCase
+	fileProvider    ports.FileProvider
+	batchLogsUC     *workflowapp.GetBatchLogsUseCase
 
 	// Pre-computed preemption summary
 	preemption *workflow.PreemptionSummary
@@ -102,7 +111,7 @@ type Model struct {
 
 // NewModel creates a model with all dependencies.
 // The workflow is parsed by the handler and passed in; tree building happens here.
-func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider) Model {
+func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
@@ -122,6 +131,7 @@ func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc 
 		fetcher:        fetcher,
 		monitoringUC:   muc,
 		fileProvider:   fp,
+		batchLogsUC:    bluc,
 		cursor:         0,
 		focus:          FocusTree,
 		viewMode:       ViewModeTree,

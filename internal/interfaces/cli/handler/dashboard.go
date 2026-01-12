@@ -20,6 +20,7 @@ type DashboardHandler struct {
 	monitoringUC   *workflowapp.MonitoringUseCase
 	fileProvider   ports.FileProvider
 	metadataParser ports.MetadataParser
+	batchLogsUC    *workflowapp.GetBatchLogsUseCase
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -29,6 +30,7 @@ func NewDashboardHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	mp ports.MetadataParser,
+	bluc *workflowapp.GetBatchLogsUseCase,
 ) *DashboardHandler {
 	return &DashboardHandler{
 		repository:     client,
@@ -36,6 +38,7 @@ func NewDashboardHandler(
 		monitoringUC:   muc,
 		fileProvider:   fp,
 		metadataParser: mp,
+		batchLogsUC:    bluc,
 	}
 }
 
@@ -151,7 +154,7 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 	}
 
 	// Create and run the debug TUI (tree building happens inside NewModel)
-	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider)
+	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider, h.batchLogsUC)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

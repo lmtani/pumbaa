@@ -20,6 +20,7 @@ type DebugHandler struct {
 	monitoringUC   *workflowapp.MonitoringUseCase
 	fileProvider   ports.FileProvider
 	metadataParser ports.MetadataParser
+	batchLogsUC    *workflowapp.GetBatchLogsUseCase
 }
 
 // NewDebugHandler creates a new debug handler.
@@ -29,6 +30,7 @@ func NewDebugHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	mp ports.MetadataParser,
+	bluc *workflowapp.GetBatchLogsUseCase,
 ) *DebugHandler {
 	return &DebugHandler{
 		repository:     client,
@@ -36,6 +38,7 @@ func NewDebugHandler(
 		monitoringUC:   muc,
 		fileProvider:   fp,
 		metadataParser: mp,
+		batchLogsUC:    bluc,
 	}
 }
 
@@ -128,7 +131,7 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 	}
 
 	// Create and run the TUI (tree building happens inside NewModel)
-	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider)
+	model := debug.NewModel(wf, h.repository, h.monitoringUC, h.fileProvider, h.batchLogsUC)
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 

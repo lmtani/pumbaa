@@ -50,6 +50,9 @@ func (m Model) View() string {
 	if m.showCallCommandModal {
 		return m.renderCallCommandModal()
 	}
+	if m.showBatchLogsModal {
+		return m.renderBatchLogsModal()
+	}
 
 	// Main layout: tree + details
 	treePanel := m.renderTree()

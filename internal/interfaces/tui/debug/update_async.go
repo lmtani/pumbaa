@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 )
 
@@ -73,5 +74,29 @@ func (m Model) openWorkflowLog(path string) tea.Cmd {
 			return logErrorMsg{err: err}
 		}
 		return logLoadedMsg{content: content, title: title, path: path}
+	}
+}
+
+// loadBatchLogs returns a command to load Google Batch logs asynchronously
+func (m Model) loadBatchLogs(jobName string) tea.Cmd {
+	if m.batchLogsUC == nil {
+		return func() tea.Msg {
+			return batchLogsErrorMsg{err: fmt.Errorf("batch logs use case not initialized")}
+		}
+	}
+
+	return func() tea.Msg {
+		ctx := context.Background()
+		input := workflowapp.GetBatchLogsInput{
+			JobName: jobName,
+			Limit:   300,
+		}
+
+		output, err := m.batchLogsUC.Execute(ctx, input)
+		if err != nil {
+			return batchLogsErrorMsg{err: err}
+		}
+
+		return batchLogsLoadedMsg{entries: output.Entries, jobID: output.JobID}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/bundle"
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
+	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
@@ -20,16 +21,18 @@ type Container struct {
 	Presenter *presenter.Presenter
 
 	// Infrastructure
-	CromwellClient   *cromwell.Client
-	TelemetryService telemetry.Service
+	CromwellClient      *cromwell.Client
+	TelemetryService    telemetry.Service
+	CloudLoggingRepo    *cloudlogging.CloudLoggingRepository
 
 	// Use cases
-	SubmitUseCase     *workflow.SubmitUseCase
-	MetadataUseCase   *workflow.MetadataUseCase
-	AbortUseCase      *workflow.AbortUseCase
-	QueryUseCase      *workflow.QueryUseCase
-	MonitoringUseCase *workflow.MonitoringUseCase
-	BundleUseCase     *bundle.BundleUseCase
+	SubmitUseCase      *workflow.SubmitUseCase
+	MetadataUseCase    *workflow.MetadataUseCase
+	AbortUseCase       *workflow.AbortUseCase
+	QueryUseCase       *workflow.QueryUseCase
+	MonitoringUseCase  *workflow.MonitoringUseCase
+	BatchLogsUseCase   *workflow.GetBatchLogsUseCase
+	BundleUseCase      *bundle.BundleUseCase
 
 	// Handlers
 	SubmitHandler    *handler.SubmitHandler
@@ -74,12 +77,16 @@ func New(cfg *config.Config, version string) *Container {
 		c.TelemetryService = telemetry.NewNoOpService()
 	}
 
+	// Initialize infrastructure adapters
+	c.CloudLoggingRepo = cloudlogging.NewCloudLoggingRepository()
+
 	// Initialize use cases
 	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
 	c.MonitoringUseCase = workflow.NewMonitoringUseCase(fileProvider)
+	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
 
 	// Initialize handlers
@@ -88,8 +95,8 @@ func New(cfg *config.Config, version string) *Container {
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService)
 	c.ConfigHandler = handler.NewConfigHandler()
 
