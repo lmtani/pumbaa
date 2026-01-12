@@ -575,3 +575,9 @@ func (c *Client) UpdateLabels(ctx context.Context, workflowID string, labels map
 
 	return nil
 }
+
+// ParseMetadata implements ports.MetadataParser.
+// It parses raw JSON metadata bytes into a domain Workflow entity.
+func (c *Client) ParseMetadata(data []byte) (*workflow.Workflow, error) {
+	return ParseDetailedMetadata(data)
+}

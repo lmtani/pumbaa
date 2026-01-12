@@ -36,6 +36,12 @@ type LabelManager interface {
 	UpdateLabels(ctx context.Context, workflowID string, labels map[string]string) error
 }
 
+// MetadataParser handles parsing of raw workflow metadata.
+// Used by handlers to convert raw bytes into domain Workflow entities.
+type MetadataParser interface {
+	ParseMetadata(data []byte) (*workflow.Workflow, error)
+}
+
 // WorkflowRepository defines the interface for workflow management operations.
 // This is the primary port for all workflow-related operations including
 // execution management, metadata retrieval, and server health monitoring.

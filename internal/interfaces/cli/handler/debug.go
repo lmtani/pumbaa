@@ -9,17 +9,17 @@ import (
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 )
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	repository   ports.WorkflowRepository
-	telemetry    telemetry.Service
-	monitoringUC *workflowapp.MonitoringUseCase
-	fileProvider ports.FileProvider
+	repository     ports.WorkflowRepository
+	telemetry      telemetry.Service
+	monitoringUC   *workflowapp.MonitoringUseCase
+	fileProvider   ports.FileProvider
+	metadataParser ports.MetadataParser
 }
 
 // NewDebugHandler creates a new debug handler.
@@ -28,12 +28,14 @@ func NewDebugHandler(
 	ts telemetry.Service,
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
+	mp ports.MetadataParser,
 ) *DebugHandler {
 	return &DebugHandler{
-		repository:   client,
-		telemetry:    ts,
-		monitoringUC: muc,
-		fileProvider: fp,
+		repository:     client,
+		telemetry:      ts,
+		monitoringUC:   muc,
+		fileProvider:   fp,
+		metadataParser: mp,
 	}
 }
 
@@ -119,8 +121,8 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	// Parse metadata using infrastructure layer (handler can know infra)
-	wf, err := cromwell.ParseDetailedMetadata(metadataBytes)
+	// Parse metadata using injected parser
+	wf, err := h.metadataParser.ParseMetadata(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}

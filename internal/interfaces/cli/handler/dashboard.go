@@ -8,7 +8,6 @@ import (
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
@@ -16,10 +15,11 @@ import (
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	repository   ports.WorkflowRepository
-	telemetry    telemetry.Service
-	monitoringUC *workflowapp.MonitoringUseCase
-	fileProvider ports.FileProvider
+	repository     ports.WorkflowRepository
+	telemetry      telemetry.Service
+	monitoringUC   *workflowapp.MonitoringUseCase
+	fileProvider   ports.FileProvider
+	metadataParser ports.MetadataParser
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -28,12 +28,14 @@ func NewDashboardHandler(
 	ts telemetry.Service,
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
+	mp ports.MetadataParser,
 ) *DashboardHandler {
 	return &DashboardHandler{
-		repository:   client,
-		telemetry:    ts,
-		monitoringUC: muc,
-		fileProvider: fp,
+		repository:     client,
+		telemetry:      ts,
+		monitoringUC:   muc,
+		fileProvider:   fp,
+		metadataParser: mp,
 	}
 }
 
@@ -142,8 +144,8 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 }
 
 func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
-	// Parse metadata using infrastructure layer (handler can know infra)
-	wf, err := cromwell.ParseDetailedMetadata(metadataBytes)
+	// Parse metadata using injected parser
+	wf, err := h.metadataParser.ParseMetadata(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
