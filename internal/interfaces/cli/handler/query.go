@@ -61,28 +61,28 @@ func (h *QueryHandler) handle(c *cli.Context) error {
 		PageSize: c.Int("limit"),
 	}
 
-	output, err := h.useCase.Execute(ctx, input)
+	result, err := h.useCase.Execute(ctx, input)
 	if err != nil {
 		h.presenter.Error("Failed to query workflows: %v", err)
 		return err
 	}
 
-	if len(output.Workflows) == 0 {
+	if len(result.Workflows) == 0 {
 		h.presenter.Info("No workflows found matching the criteria")
 		return nil
 	}
 
 	h.presenter.Title("Workflows")
-	h.presenter.Info("Found %d workflow(s)", output.TotalCount)
+	h.presenter.Info("Found %d workflow(s)", result.TotalCount)
 	h.presenter.Newline()
 
 	table := h.presenter.NewTable([]string{"ID", "Name", "Status", "Submitted"})
 
-	for _, wf := range output.Workflows {
+	for _, wf := range result.Workflows {
 		table.Append([]string{
-			wf.ID, // Full UUID
+			wf.ID,
 			wf.Name,
-			h.presenter.StatusColor(wf.Status),
+			h.presenter.StatusColor(string(wf.Status)),
 			h.presenter.FormatTime(wf.SubmittedAt),
 		})
 	}

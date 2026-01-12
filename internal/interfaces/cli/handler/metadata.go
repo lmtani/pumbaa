@@ -4,10 +4,12 @@ package handler
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/lmtani/pumbaa/internal/application/workflow"
+	workflowdomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
 
@@ -67,50 +69,63 @@ func (h *MetadataHandler) handle(c *cli.Context) error {
 	return nil
 }
 
-func (h *MetadataHandler) displayMetadata(m *workflow.MetadataOutput, verbose bool) {
+func (h *MetadataHandler) displayMetadata(wf *workflowdomain.Workflow, verbose bool) {
 	// Workflow overview
 	h.presenter.Title("Workflow Details")
-	h.presenter.KeyValue("ID", m.ID)
-	h.presenter.KeyValue("Name", m.Name)
-	h.presenter.KeyValue("Status", h.presenter.StatusColor(m.Status))
-	h.presenter.KeyValue("Start", h.presenter.FormatTime(m.Start))
-	h.presenter.KeyValue("End", h.presenter.FormatTime(m.End))
-	h.presenter.KeyValue("Duration", h.presenter.FormatDuration(m.Duration))
+	h.presenter.KeyValue("ID", wf.ID)
+	h.presenter.KeyValue("Name", wf.Name)
+	h.presenter.KeyValue("Status", h.presenter.StatusColor(string(wf.Status)))
+	h.presenter.KeyValue("Start", h.presenter.FormatTime(wf.Start))
+	h.presenter.KeyValue("End", h.presenter.FormatTime(wf.End))
+	h.presenter.KeyValue("Duration", h.presenter.FormatDuration(wf.Duration()))
 
 	// Labels
-	if len(m.Labels) > 0 {
+	if len(wf.Labels) > 0 {
 		h.presenter.Newline()
 		h.presenter.Title("Labels")
-		for k, v := range m.Labels {
+		for k, v := range wf.Labels {
 			h.presenter.KeyValue(k, v)
 		}
 	}
 
 	// Calls summary
-	if len(m.Calls) > 0 {
+	if len(wf.Calls) > 0 {
 		h.presenter.Newline()
 		h.presenter.Title("Calls")
 
-		// Sort calls by start time
-		calls := m.Calls
-		sort.Slice(calls, func(i, j int) bool {
-			return calls[i].Start.Before(calls[j].Start)
+		// Flatten calls map into slice for sorting
+		type callEntry struct {
+			name string
+			call workflowdomain.Call
+		}
+		var entries []callEntry
+		for callName, calls := range wf.Calls {
+			for _, call := range calls {
+				entries = append(entries, callEntry{name: callName, call: call})
+			}
+		}
+
+		// Sort by start time
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].call.Start.Before(entries[j].call.Start)
 		})
 
 		table := h.presenter.NewTable([]string{"Task", "Status", "Duration", "Shard", "Attempt"})
 
-		for _, call := range calls {
+		for _, entry := range entries {
 			shard := "-"
-			if call.ShardIndex >= 0 {
-				shard = string(rune('0' + call.ShardIndex))
+			if entry.call.ShardIndex >= 0 {
+				shard = string(rune('0' + entry.call.ShardIndex))
 			}
 
+			duration := h.calculateCallDuration(entry.call)
+
 			table.Append([]string{
-				call.Name,
-				h.presenter.StatusColor(call.Status),
-				h.presenter.FormatDuration(call.Duration),
+				entry.name,
+				h.presenter.StatusColor(string(entry.call.Status)),
+				h.presenter.FormatDuration(duration),
 				shard,
-				string(rune('0' + call.Attempt)),
+				string(rune('0' + entry.call.Attempt)),
 			})
 		}
 
@@ -118,11 +133,29 @@ func (h *MetadataHandler) displayMetadata(m *workflow.MetadataOutput, verbose bo
 	}
 
 	// Failures
-	if len(m.Failures) > 0 {
+	if len(wf.Failures) > 0 {
 		h.presenter.Newline()
 		h.presenter.Title("Failures")
-		for _, failure := range m.Failures {
-			h.presenter.Error(failure)
+		for _, failure := range wf.Failures {
+			h.displayFailure(failure)
 		}
+	}
+}
+
+func (h *MetadataHandler) calculateCallDuration(call workflowdomain.Call) time.Duration {
+	if call.Start.IsZero() {
+		return 0
+	}
+	end := call.End
+	if end.IsZero() {
+		end = time.Now()
+	}
+	return end.Sub(call.Start)
+}
+
+func (h *MetadataHandler) displayFailure(failure workflowdomain.Failure) {
+	h.presenter.Error(failure.Message)
+	for _, cause := range failure.CausedBy {
+		h.displayFailure(cause)
 	}
 }
