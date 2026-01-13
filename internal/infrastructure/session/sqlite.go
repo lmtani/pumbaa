@@ -149,7 +149,7 @@ func (s *SQLiteService) initSchema() error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
-	
+
 	CREATE TABLE IF NOT EXISTS events (
 		id TEXT PRIMARY KEY,
 		session_id TEXT NOT NULL,
@@ -160,7 +160,7 @@ func (s *SQLiteService) initSchema() error {
 		timestamp DATETIME NOT NULL,
 		FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 	);
-	
+
 	CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 	CREATE INDEX IF NOT EXISTS idx_sessions_app_user ON sessions(app_name, user_id);
 	`
@@ -171,6 +171,9 @@ func (s *SQLiteService) initSchema() error {
 	// Migration: add token columns if they don't exist (for existing databases)
 	s.db.Exec(`ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0`)
 	s.db.Exec(`ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0`)
+
+	// Migration: add summary column if it doesn't exist (for existing databases)
+	s.db.Exec(`ALTER TABLE sessions ADD COLUMN summary TEXT DEFAULT ''`)
 
 	return nil
 }
@@ -440,4 +443,67 @@ func (s *SQLiteService) UpdateTokenUsage(ctx context.Context, sessionID string, 
 	}
 
 	return nil
+}
+
+// SessionInfo contains summary information for displaying sessions in lists.
+type SessionInfo struct {
+	ID           string
+	Summary      string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	InputTokens  int
+	OutputTokens int
+	EventCount   int
+}
+
+// UpdateSummary updates the summary for a session.
+func (s *SQLiteService) UpdateSummary(ctx context.Context, sessionID, summary string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE sessions SET summary = ?, updated_at = ? WHERE id = ?`,
+		summary, time.Now(), sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update session summary: %w", err)
+	}
+
+	return nil
+}
+
+// ListWithSummaries returns all sessions for a user with their summaries and metadata.
+func (s *SQLiteService) ListWithSummaries(ctx context.Context, appName, userID string) ([]SessionInfo, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, summary, created_at, updated_at, input_tokens, output_tokens FROM sessions WHERE app_name = ? AND user_id = ? ORDER BY updated_at DESC`,
+		appName, userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []SessionInfo
+	for rows.Next() {
+		var info SessionInfo
+		if err := rows.Scan(&info.ID, &info.Summary, &info.CreatedAt, &info.UpdatedAt, &info.InputTokens, &info.OutputTokens); err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		// Count events for this session
+		var eventCount int
+		s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM events WHERE session_id = ?`, info.ID).Scan(&eventCount)
+		info.EventCount = eventCount
+
+		sessions = append(sessions, info)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating sessions: %w", err)
+	}
+
+	return sessions, nil
 }

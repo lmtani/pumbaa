@@ -19,6 +19,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
+	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -29,6 +30,7 @@ const (
 	FocusInput FocusMode = iota
 	FocusMessages
 )
+
 
 // Interface to access the hidden definition method of functiontool
 type toolWithDefinition interface {
@@ -110,6 +112,13 @@ type Model struct {
 
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
+
+	// Modal state
+	activeModal      ModalKind
+	sessionsList     []infraSession.SessionInfo
+	sessionsCursor   int
+	sessionsLoading  bool
+	sessionsError    string
 }
 
 type ChatMessage struct {
@@ -143,6 +152,22 @@ type clipboardCopiedMsg struct {
 
 // clearStatusMsg is sent to clear the status message
 type clearStatusMsg struct{}
+
+// sessionListLoadedMsg is sent when session list is loaded
+type sessionListLoadedMsg struct {
+	sessions []infraSession.SessionInfo
+}
+
+// sessionListErrorMsg is sent when session loading fails
+type sessionListErrorMsg struct {
+	err error
+}
+
+// sessionSwitchedMsg is sent when a session is switched
+type sessionSwitchedMsg struct {
+	session session.Session
+	history []*genai.Content
+}
 
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
 func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
@@ -285,6 +310,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(m.width - 6)
 
 	case tea.KeyMsg:
+		// Check for active modal first
+		if model, cmd, handled := m.handleActiveModalKeys(msg); handled {
+			return model, cmd
+		}
+
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
@@ -354,11 +384,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 
 		case tea.KeyRunes:
-			// Handle 'y' for copy when in messages mode
-			if m.focusMode == FocusMessages && len(msg.Runes) > 0 && msg.Runes[0] == 'y' {
-				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
-					content := (*m.msgs)[m.selectedMsg].Content
-					return m, copyToClipboard(content)
+			if len(msg.Runes) > 0 {
+				// Handle 'y' for copy when in messages mode
+				if msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
+					if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+						content := (*m.msgs)[m.selectedMsg].Content
+						return m, copyToClipboard(content)
+					}
+				}
+				// Handle 's' for sessions modal when in input mode and not loading
+				if msg.Runes[0] == 's' && m.focusMode == FocusInput && !m.loading {
+					return m.openSessionsModal()
 				}
 			}
 		}
@@ -428,6 +464,39 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = ""
 		}
 		return m, nil
+
+	case sessionListLoadedMsg:
+		m.sessionsLoading = false
+		m.sessionsList = msg.sessions
+		return m, nil
+
+	case sessionListErrorMsg:
+		m.sessionsLoading = false
+		m.sessionsError = msg.err.Error()
+		return m, nil
+
+	case sessionSwitchedMsg:
+		m.activeModal = ModalNone
+		m.sessionsLoading = false
+		m.session = msg.session
+		m.history = &msg.history
+		// Rebuild msgs from history
+		msgs := make([]ChatMessage, 0)
+		for _, content := range msg.history {
+			role := content.Role
+			if role == "model" {
+				role = "agent"
+			}
+			text := extractText(content)
+			if text != "" {
+				msgs = append(msgs, ChatMessage{Role: role, Content: text})
+			}
+		}
+		m.msgs = &msgs
+		m.selectedMsg = -1
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
 	}
 
 	return m, tea.Batch(tiCmd, spCmd)
@@ -436,6 +505,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
+	}
+
+	// Check for active modal first
+	if modalView, ok := m.renderActiveModal(); ok {
+		return modalView
 	}
 
 	header := m.renderHeader()
@@ -569,9 +643,11 @@ func (m Model) renderFooter() string {
 		)
 	} else {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("send"),
+			common.KeyStyle.Render("s"),
+			common.DescStyle.Render("sessions"),
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),

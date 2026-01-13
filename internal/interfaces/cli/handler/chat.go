@@ -217,19 +217,31 @@ func (h *ChatHandler) ListSessions() error {
 	defer svc.Close()
 
 	ctx := context.Background()
-	resp, err := svc.List(ctx, &adksession.ListRequest{AppName: appName, UserID: defaultUserID})
+	sessions, err := svc.ListWithSummaries(ctx, appName, defaultUserID)
 	if err != nil {
 		return fmt.Errorf("failed to list sessions: %w", err)
 	}
 
-	if len(resp.Sessions) == 0 {
+	if len(sessions) == 0 {
 		fmt.Println("No sessions found.")
 		return nil
 	}
 
 	fmt.Println("Available sessions:")
-	for _, s := range resp.Sessions {
-		fmt.Printf("  - %s (last updated: %s)\n", s.ID(), s.LastUpdateTime().Format("2006-01-02 15:04:05"))
+	for _, s := range sessions {
+		summary := s.Summary
+		if summary == "" {
+			summary = "(no summary)"
+		}
+		// Truncate summary to 50 chars for display
+		if len(summary) > 50 {
+			summary = summary[:47] + "..."
+		}
+		fmt.Printf("  - %-20s │ %s │ %s\n",
+			s.ID[:20],
+			s.UpdatedAt.Format("2006-01-02 15:04"),
+			summary,
+		)
 	}
 	return nil
 }
