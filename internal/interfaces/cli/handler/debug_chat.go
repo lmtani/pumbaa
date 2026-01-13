@@ -14,7 +14,7 @@ import (
 const debugChatAppName = "pumbaa-debug"
 const debugChatUserID = "default"
 
-func runDebugChat(systemInstruction string, chatDeps *debug.ChatDependencies) error {
+func runDebugChat(systemInstruction, contextSummary string, chatDeps *debug.ChatDependencies) error {
 	if chatDeps == nil || chatDeps.LLM == nil {
 		return fmt.Errorf("chat dependencies not configured")
 	}
@@ -35,6 +35,9 @@ func runDebugChat(systemInstruction string, chatDeps *debug.ChatDependencies) er
 
 	model := chat.NewModel(chatDeps.LLM, chatDeps.Tools, systemInstruction, chatDeps.SessionSvc, sess)
 	model.SetContextLabel("Task Context")
+	if contextSummary != "" {
+		model.AddInfoMessage(contextSummary)
+	}
 	p := tea.NewProgram(&model, tea.WithAltScreen())
 	model.SetProgram(p)
 	if _, err := p.Run(); err != nil {

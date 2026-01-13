@@ -54,6 +54,12 @@ var (
 			PaddingLeft(2).
 			MarginBottom(1)
 
+	infoStyle = common.MutedStyle.Copy().
+			Bold(true)
+
+	infoMessageStyle = messageStyle.Copy().
+				Foreground(common.MutedColor)
+
 	inputStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(common.BorderColor).
@@ -224,6 +230,19 @@ func (m *Model) SetProgram(p *tea.Program) {
 // SetContextLabel sets the optional context label shown in the header.
 func (m *Model) SetContextLabel(label string) {
 	m.contextLabel = label
+}
+
+// AddInfoMessage adds a muted informational message to the message list.
+func (m *Model) AddInfoMessage(content string) {
+	if m.msgs == nil || strings.TrimSpace(content) == "" {
+		return
+	}
+	msg := ChatMessage{Role: "info", Content: content}
+	if len(*m.msgs) == 0 {
+		*m.msgs = append(*m.msgs, msg)
+		return
+	}
+	*m.msgs = append([]ChatMessage{msg}, (*m.msgs)...)
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -591,6 +610,7 @@ func (m Model) renderMessages() string {
 	for i, msg := range *m.msgs {
 		var roleStyle lipgloss.Style
 		var roleName string
+		contentStyle := messageStyle
 
 		switch msg.Role {
 		case "user":
@@ -599,6 +619,10 @@ func (m Model) renderMessages() string {
 		case "agent":
 			roleStyle = agentStyle
 			roleName = "Pumbaa"
+		case "info":
+			roleStyle = infoStyle
+			roleName = "Context"
+			contentStyle = infoMessageStyle
 		default:
 			roleStyle = errorStyle
 			roleName = "Error"
@@ -619,7 +643,7 @@ func (m Model) renderMessages() string {
 		if msg.Role == "agent" && msg.Rendered != "" {
 			content = msg.Rendered
 		} else {
-			content = messageStyle.Render(wrapText(msg.Content, maxWidth))
+			content = contentStyle.Render(wrapText(msg.Content, maxWidth))
 		}
 
 		if isSelected {

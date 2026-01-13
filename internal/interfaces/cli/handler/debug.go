@@ -160,7 +160,11 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 
 		if debugModel.NavigateToChatSystemInstruction != "" {
-			if err := runDebugChat(debugModel.NavigateToChatSystemInstruction, chatDeps); err != nil {
+			if err := runDebugChat(
+				debugModel.NavigateToChatSystemInstruction,
+				debugModel.NavigateToChatContextSummary,
+				chatDeps,
+			); err != nil {
 				return err
 			}
 			continue

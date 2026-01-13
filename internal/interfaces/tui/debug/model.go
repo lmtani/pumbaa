@@ -126,6 +126,7 @@ type Model struct {
 
 	// Navigation state (for external handlers to check)
 	NavigateToChatSystemInstruction string
+	NavigateToChatContextSummary    string
 
 	// Components
 	keys           KeyMap

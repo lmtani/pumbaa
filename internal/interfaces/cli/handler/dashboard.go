@@ -184,7 +184,11 @@ func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
 		}
 
 		if debugModel.NavigateToChatSystemInstruction != "" {
-			if err := runDebugChat(debugModel.NavigateToChatSystemInstruction, chatDeps); err != nil {
+			if err := runDebugChat(
+				debugModel.NavigateToChatSystemInstruction,
+				debugModel.NavigateToChatContextSummary,
+				chatDeps,
+			); err != nil {
 				return err
 			}
 			continue
