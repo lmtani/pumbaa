@@ -113,6 +113,9 @@ type Model struct {
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
 
+	// Session summary for header display
+	sessionSummary string
+
 	// Modal state
 	activeModal         ModalKind
 	sessionsList        []infraSession.SessionInfo
@@ -170,6 +173,12 @@ type sessionListErrorMsg struct {
 type sessionSwitchedMsg struct {
 	session session.Session
 	history []*genai.Content
+}
+
+// sessionSummaryUpdatedMsg is sent when the session summary is updated
+type sessionSummaryUpdatedMsg struct {
+	sessionID string
+	summary   string
 }
 
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
@@ -510,6 +519,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
 		return m, nil
+
+	case sessionSummaryUpdatedMsg:
+		// Only update if it's for the current session
+		if m.session != nil && m.session.ID() == msg.sessionID {
+			m.sessionSummary = msg.summary
+		}
+		return m, nil
 	}
 
 	return m, tea.Batch(tiCmd, spCmd)
@@ -582,7 +598,16 @@ func (m Model) renderHeader() string {
 	if tokenBadge != "" {
 		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", tokenBadge)
 	}
-	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
+	headerFirstLine := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
+
+	// Second line: full session summary if available
+	var headerContent string
+	if m.sessionSummary != "" {
+		summaryLine := common.MutedStyle.Render("💬 " + m.sessionSummary)
+		headerContent = lipgloss.JoinVertical(lipgloss.Left, headerFirstLine, summaryLine)
+	} else {
+		headerContent = headerFirstLine
+	}
 
 	return common.HeaderStyle.
 		Width(m.width - 2).

@@ -478,5 +478,9 @@ func (m *Model) generateAndSaveSummaryForSession(ctx context.Context, sessionID 
 		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
 			_ = svc.UpdateSummary(context.Background(), sessionID, summary)
 		}
+		// Notify UI to update header
+		if m.program != nil {
+			m.program.Send(sessionSummaryUpdatedMsg{sessionID: sessionID, summary: summary})
+		}
 	}
 }
