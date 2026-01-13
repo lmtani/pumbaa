@@ -70,7 +70,6 @@ type Model struct {
 	loadingStartTime time.Time // When loading started, for progress bar
 
 	// Log modal state
-	showLogModal          bool
 	logModalContent       string // Highlighted content for display
 	logModalRawContent    string // Raw content for clipboard
 	logModalTitle         string
@@ -81,32 +80,24 @@ type Model struct {
 	logCursor             int // 0 = stdout, 1 = stderr, 2 = monitoring, 3 = batch logs
 
 	// Inputs/Outputs modal state
-	showInputsModal      bool
-	showOutputsModal     bool
-	showOptionsModal     bool
 	inputsModalViewport  viewport.Model
 	outputsModalViewport viewport.Model
 	optionsModalViewport viewport.Model
 
 	// Call-level modal state
-	showCallInputsModal  bool
-	showCallOutputsModal bool
-	showCallCommandModal bool
 	callInputsViewport   viewport.Model
 	callOutputsViewport  viewport.Model
 	callCommandViewport  viewport.Model
 
 	// Global timeline modal state (shows all tasks with duration)
-	showGlobalTimelineModal bool
-	globalTimelineViewport  viewport.Model
-	globalTimelineTitle     string
+	globalTimelineViewport viewport.Model
+	globalTimelineTitle    string
 
 	// Resource analysis modal state
 	resourceReport *workflow.EfficiencyReport
 	resourceError  string
 
 	// Batch logs modal state
-	showBatchLogsModal      bool
 	batchLogsViewport       viewport.Model
 	batchLogsContent        string // Highlighted content for display
 	batchLogsRawContent     string // Raw content for clipboard
@@ -115,10 +106,9 @@ type Model struct {
 	batchLogsHScrollOffset  int // Horizontal scroll offset for batch logs modal
 
 	// Chat modal state
-	showChatSelectionModal bool              // Modal for selecting data to include
-	chatDataSelections     ChatDataSelection // User's data selections
-	chatSelectionCursor    int               // Cursor for selection modal
-	chatContextNode        *TreeNode         // Node being used for chat context
+	chatDataSelections  ChatDataSelection // User's data selections
+	chatSelectionCursor int               // Cursor for selection modal
+	chatContextNode     *TreeNode         // Node being used for chat context
 
 	// Chat dependencies (optional - nil if not configured)
 	llm        adkmodel.LLM

@@ -133,7 +133,7 @@ func (m Model) handleChatSelectionModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		// Cancel selection
-		m.showChatSelectionModal = false
+		m.activeModal = ModalNone
 		m.chatContextNode = nil
 		return m, nil
 
@@ -175,7 +175,7 @@ func (m Model) handleChatSelectionModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 
 	case key.Matches(msg, m.keys.Enter):
 		// Confirm selection and start collecting context
-		m.showChatSelectionModal = false
+		m.activeModal = ModalNone
 		m.isLoading = true
 		m.loadingMessage = "Collecting task context..."
 		return m, tea.Batch(m.loadingSpinner.Tick, m.collectChatContext())
@@ -199,7 +199,7 @@ func (m Model) openChatSelectionModal(node *TreeNode) (tea.Model, tea.Cmd) {
 	}
 
 	// Initialize selection modal
-	m.showChatSelectionModal = true
+	m.activeModal = ModalChatSelection
 	m.chatContextNode = node
 	m.chatSelectionCursor = 0
 	m.chatDataSelections = DefaultChatDataSelection()

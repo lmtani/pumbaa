@@ -141,7 +141,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logModalTitle = msg.title
 		m.logModalError = ""
 		m.logModalLoading = false
-		m.showLogModal = true
+		m.activeModal = ModalLog
 		m.logModalHScrollOffset = 0
 		// Initialize the modal viewport with truncated content
 		// Modal uses: width-6, minus border (2), minus padding (4) = width-12
@@ -192,7 +192,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The bioLogLexer will automatically color log levels (ERROR, WARNING, DEBUG, etc.)
 		m.batchLogsContent = common.Highlight(m.batchLogsRawContent, common.ProfileLog, 0)
 
-		m.showBatchLogsModal = true
+		m.activeModal = ModalBatchLogs
 
 		// Initialize the modal viewport
 		viewportWidth := m.width - 14
@@ -279,7 +279,11 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Help):
-		m.showHelp = !m.showHelp
+		if m.activeModal == ModalHelp {
+			m.activeModal = ModalNone
+		} else {
+			m.activeModal = ModalHelp
+		}
 
 	case key.Matches(msg, m.keys.Up):
 		if m.focus == FocusTree {
@@ -505,7 +509,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 	switch keyNum {
 	case "1": // Inputs
 		if len(meta.Inputs) > 0 {
-			m.showInputsModal = true
+			m.activeModal = ModalInputs
 			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
 		} else {
@@ -514,7 +518,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 		}
 	case "2": // Outputs
 		if len(meta.Outputs) > 0 {
-			m.showOutputsModal = true
+			m.activeModal = ModalOutputs
 			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
 		} else {
@@ -523,7 +527,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 		}
 	case "3": // Options
 		if meta.SubmittedOptions != "" {
-			m.showOptionsModal = true
+			m.activeModal = ModalOptions
 			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
 		} else {
@@ -531,7 +535,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 			return m, getClearStatusCmd()
 		}
 	case "4": // Timeline
-		m.showGlobalTimelineModal = true
+		m.activeModal = ModalGlobalTimeline
 		m.globalTimelineTitle = meta.Name
 		m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
 		m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(meta))
@@ -559,7 +563,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 	switch keyNum {
 	case "1": // Inputs
 		if len(node.CallData.Inputs) > 0 {
-			m.showCallInputsModal = true
+			m.activeModal = ModalCallInputs
 			m.callInputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
 		} else {
@@ -568,7 +572,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 	case "2": // Outputs
 		if len(node.CallData.Outputs) > 0 {
-			m.showCallOutputsModal = true
+			m.activeModal = ModalCallOutputs
 			m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
 		} else {
@@ -577,7 +581,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 	case "3": // Command
 		if node.CallData.CommandLine != "" {
-			m.showCallCommandModal = true
+			m.activeModal = ModalCallCommand
 			m.callCommandViewport = viewport.New(m.width-10, m.height-8)
 			m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
 		} else {

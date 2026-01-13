@@ -79,7 +79,7 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	viewportWidth := m.logModalViewport.Width
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showLogModal = false
+			m.activeModal = ModalNone
 			m.logModalContent = ""
 			m.logModalRawContent = ""
 			m.logModalError = ""
@@ -125,7 +125,7 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showInputsModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			return copyToClipboard(m.getRawInputsJSON(), "workflow inputs")
@@ -141,7 +141,7 @@ func (m Model) handleInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showOutputsModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			return copyToClipboard(m.getRawOutputsJSON(), "workflow outputs")
@@ -157,7 +157,7 @@ func (m Model) handleOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleOptionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showOptionsModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			return copyToClipboard(m.getRawOptionsJSON(), "workflow options")
@@ -173,7 +173,7 @@ func (m Model) handleOptionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCallInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showCallInputsModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			if m.cursor < len(m.nodes) {
@@ -195,7 +195,7 @@ func (m Model) handleCallInputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCallOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showCallOutputsModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			if m.cursor < len(m.nodes) {
@@ -217,7 +217,7 @@ func (m Model) handleCallOutputsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showCallCommandModal = false
+			m.activeModal = ModalNone
 		},
 		onCopy: func(m *Model) tea.Cmd {
 			if m.cursor < len(m.nodes) {
@@ -239,7 +239,7 @@ func (m Model) handleCallCommandModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleGlobalTimelineModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showGlobalTimelineModal = false
+			m.activeModal = ModalNone
 		},
 	}
 	cmd, handled := m.handleViewportModalKeys(msg, &m.globalTimelineViewport, actions)

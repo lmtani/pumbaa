@@ -37,7 +37,7 @@ func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	viewportWidth := m.batchLogsViewport.Width
 	actions := viewportModalActions{
 		onClose: func(m *Model) {
-			m.showBatchLogsModal = false
+			m.activeModal = ModalNone
 			m.batchLogsContent = ""
 			m.batchLogsRawContent = ""
 			m.batchLogsError = ""
