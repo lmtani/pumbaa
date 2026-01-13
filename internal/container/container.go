@@ -21,18 +21,18 @@ type Container struct {
 	Presenter *presenter.Presenter
 
 	// Infrastructure
-	CromwellClient      *cromwell.Client
-	TelemetryService    telemetry.Service
-	CloudLoggingRepo    *cloudlogging.CloudLoggingRepository
+	CromwellClient   *cromwell.Client
+	TelemetryService telemetry.Service
+	CloudLoggingRepo *cloudlogging.CloudLoggingRepository
 
 	// Use cases
-	SubmitUseCase      *workflow.SubmitUseCase
-	MetadataUseCase    *workflow.MetadataUseCase
-	AbortUseCase       *workflow.AbortUseCase
-	QueryUseCase       *workflow.QueryUseCase
-	MonitoringUseCase  *workflow.MonitoringUseCase
-	BatchLogsUseCase   *workflow.GetBatchLogsUseCase
-	BundleUseCase      *bundle.BundleUseCase
+	SubmitUseCase     *workflow.SubmitUseCase
+	MetadataUseCase   *workflow.MetadataUseCase
+	AbortUseCase      *workflow.AbortUseCase
+	QueryUseCase      *workflow.QueryUseCase
+	MonitoringUseCase *workflow.MonitoringUseCase
+	BatchLogsUseCase  *workflow.GetBatchLogsUseCase
+	BundleUseCase     *bundle.BundleUseCase
 
 	// Handlers
 	SubmitHandler    *handler.SubmitHandler
@@ -66,9 +66,9 @@ func New(cfg *config.Config, version string) *Container {
 
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
-		ts, err := telemetry.NewSentryService(cfg.ClientID, version)
-		if err != nil || ts == nil {
-			// Fallback to NoOp if failed or DSN not configured
+		ts := telemetry.NewCloudflareService(cfg.ClientID, version)
+		if ts == nil {
+			// Fallback to NoOp if failed or endpoint not configured
 			c.TelemetryService = telemetry.NewNoOpService()
 		} else {
 			c.TelemetryService = ts

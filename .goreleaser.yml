@@ -25,7 +25,8 @@ builds:
       - -X main.Version={{.Version}}
       - -X main.Commit={{.Commit}}
       - -X main.Date={{.Date}}
-      - -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.DSN={{ .Env.SENTRY_DSN }}
+      - -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.TelemetryEndpoint={{ .Env.TELEMETRY_ENDPOINT }}
+      - -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.TelemetryKey={{ .Env.TELEMETRY_KEY }}
 
 archives:
   - id: pumbaa

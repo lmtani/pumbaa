@@ -30,8 +30,10 @@ type FileConfig struct {
 	GeminiModel  string `yaml:"gemini_model,omitempty"`
 
 	// Telemetry
-	TelemetryEnabled *bool  `yaml:"telemetry_enabled,omitempty"`
-	ClientID         string `yaml:"client_id,omitempty"`
+	TelemetryEnabled  *bool  `yaml:"telemetry_enabled,omitempty"`
+	TelemetryEndpoint string `yaml:"telemetry_endpoint,omitempty"`
+	TelemetryKey      string `yaml:"telemetry_key,omitempty"`
+	ClientID          string `yaml:"client_id,omitempty"`
 
 	// WDL Context
 	WDLDirectory string `yaml:"wdl_directory,omitempty"`

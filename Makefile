@@ -6,7 +6,9 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 SENTRY_DSN ?= ""
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(BUILD_TIME) -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.DSN=$(SENTRY_DSN)"
+TELEMETRY_ENDPOINT ?= ""
+TELEMETRY_KEY ?= ""
+LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.Date=$(BUILD_TIME) -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.TelemetryEndpoint=$(TELEMETRY_ENDPOINT) -X github.com/lmtani/pumbaa/internal/infrastructure/telemetry.TelemetryKey=$(TELEMETRY_KEY)"
 
 # Go variables
 GOCMD := go

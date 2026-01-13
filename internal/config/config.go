@@ -32,8 +32,10 @@ type Config struct {
 	GeminiModel  string
 
 	// Telemetry
-	TelemetryEnabled bool   `yaml:"telemetry_enabled" env:"PUMBAA_TELEMETRY_ENABLED" default:"true"`
-	ClientID         string `yaml:"client_id" env:"PUMBAA_CLIENT_ID"`
+	TelemetryEnabled  bool   `yaml:"telemetry_enabled" env:"PUMBAA_TELEMETRY_ENABLED" default:"true"`
+	TelemetryEndpoint string `yaml:"telemetry_endpoint" env:"PUMBAA_TELEMETRY_ENDPOINT"`
+	TelemetryKey      string `yaml:"telemetry_key" env:"PUMBAA_TELEMETRY_KEY"`
+	ClientID          string `yaml:"client_id" env:"PUMBAA_CLIENT_ID"`
 
 	// WDL Context configuration
 	WDLDirectory string // Directory containing WDL workflows for chat context
@@ -168,22 +170,35 @@ func Load() *Config {
 		telemetryEnabled = (envTelemetry == "true")
 	}
 
+	// Telemetry endpoint config
+	telemetryEndpoint := os.Getenv("PUMBAA_TELEMETRY_ENDPOINT")
+	if telemetryEndpoint == "" && fileCfg.TelemetryEndpoint != "" {
+		telemetryEndpoint = fileCfg.TelemetryEndpoint
+	}
+
+	telemetryKey := os.Getenv("PUMBAA_TELEMETRY_KEY")
+	if telemetryKey == "" && fileCfg.TelemetryKey != "" {
+		telemetryKey = fileCfg.TelemetryKey
+	}
+
 	return &Config{
-		CromwellHost:     host,
-		CromwellTimeout:  30 * time.Second,
-		SessionDBPath:    sessionDBPath,
-		LLMProvider:      llmProvider,
-		OllamaHost:       ollamaHost,
-		OllamaModel:      ollamaModel,
-		VertexProject:    vertexProject,
-		VertexLocation:   vertexLocation,
-		VertexModel:      vertexModel,
-		GeminiAPIKey:     geminiAPIKey,
-		GeminiModel:      geminiModel,
-		WDLDirectory:     wdlDirectory,
-		WDLIndexPath:     wdlIndexPath,
-		TelemetryEnabled: telemetryEnabled,
-		ClientID:         clientID,
+		CromwellHost:      host,
+		CromwellTimeout:   30 * time.Second,
+		SessionDBPath:     sessionDBPath,
+		LLMProvider:       llmProvider,
+		OllamaHost:        ollamaHost,
+		OllamaModel:       ollamaModel,
+		VertexProject:     vertexProject,
+		VertexLocation:    vertexLocation,
+		VertexModel:       vertexModel,
+		GeminiAPIKey:      geminiAPIKey,
+		GeminiModel:       geminiModel,
+		WDLDirectory:      wdlDirectory,
+		WDLIndexPath:      wdlIndexPath,
+		TelemetryEnabled:  telemetryEnabled,
+		TelemetryEndpoint: telemetryEndpoint,
+		TelemetryKey:      telemetryKey,
+		ClientID:          clientID,
 	}
 }
 
