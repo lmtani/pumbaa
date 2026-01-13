@@ -57,7 +57,7 @@ type Model struct {
 	cursor       int
 	focus        PanelFocus
 	viewMode     ViewMode
-	showHelp     bool
+	activeModal  ModalKind
 	width        int
 	height       int
 	treeWidth    int
@@ -186,6 +186,7 @@ func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetch
 		cursor:             0,
 		focus:              FocusTree,
 		viewMode:           ViewModeTree,
+		activeModal:        ModalNone,
 		nodeStates:         make(map[string]NodeViewState),
 		keys:               DefaultKeyMap(),
 		help:               help.New(),
