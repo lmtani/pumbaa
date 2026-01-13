@@ -194,8 +194,6 @@ func (m Model) handleChatSelectionModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	case key.Matches(msg, m.keys.Enter):
 		// Confirm selection and start collecting context
 		m.showChatSelectionModal = false
-		m.chatContextLoading = true
-		m.chatContextProgress = "Collecting task context..."
 		m.isLoading = true
 		m.loadingMessage = "Collecting task context..."
 		return m, tea.Batch(m.loadingSpinner.Tick, m.collectChatContext())

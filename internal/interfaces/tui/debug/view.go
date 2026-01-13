@@ -22,10 +22,7 @@ func (m Model) View() string {
 		return m.renderLoading()
 	}
 
-	// Check for modal states first (chat modals have highest priority)
-	if m.showChatModal {
-		return m.renderChatModal()
-	}
+	// Check for modal states first (selection modal has highest priority)
 	if m.showChatSelectionModal {
 		return m.renderChatSelectionModal()
 	}

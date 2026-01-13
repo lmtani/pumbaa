@@ -15,7 +15,6 @@ import (
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
 
@@ -116,14 +115,9 @@ type Model struct {
 
 	// Chat modal state
 	showChatSelectionModal bool              // Modal for selecting data to include
-	showChatModal          bool              // Chat modal overlay
-	chatModel              *chat.Model       // Embedded chat model
-	chatContextLoading     bool              // Loading while collecting context
-	chatContextProgress    string            // Progress message during collection
 	chatDataSelections     ChatDataSelection // User's data selections
 	chatSelectionCursor    int               // Cursor for selection modal
 	chatContextNode        *TreeNode         // Node being used for chat context
-	chatProgram            *tea.Program      // Program pointer for chat
 
 	// Chat dependencies (optional - nil if not configured)
 	llm        adkmodel.LLM

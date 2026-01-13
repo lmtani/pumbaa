@@ -224,7 +224,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleChatContextLoaded(msg)
 
 	case chatContextErrorMsg:
-		m.chatContextLoading = false
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.setStatusMessage(fmt.Sprintf("Failed to collect context: %v", msg.err))
@@ -258,11 +257,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Handle chat modal first (highest priority)
-	if m.showChatModal {
-		return m.handleChatModalUpdate(msg)
-	}
-
 	// Handle chat selection modal
 	if m.showChatSelectionModal {
 		return m.handleChatSelectionModalKeys(msg)
