@@ -32,6 +32,7 @@ pumbaa dashboard
 | ++l++ | Filter by label |
 | ++r++ | Refresh |
 | ++ctrl+x++ | Clear filters |
+| ++shift+l++ | Manage labels |
 | ++q++ | Quit |
 
 

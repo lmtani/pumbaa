@@ -45,13 +45,15 @@ Inspect workflow execution tree and call-level details.
 | ++right++ / ++left++ | Expand / Collapse |
 | ++enter++ | Toggle expand |
 | ++tab++ | Switch panel focus |
-| ++e++ | Expand all nodes |
-| ++c++ | Collapse all nodes |
+| ++shift+e++ | Expand all nodes |
+| ++shift+c++ | Collapse all nodes |
+| ++y++ | Copy to clipboard |
+| ++a++ | Chat with AI |
 | ++q++ | Back / Quit |
 
 ## :material-lightning-bolt: Quick Actions
 
-Quick actions are context-sensitive and depend on the selected node type. Press number keys ++1++ to ++5++ to trigger actions.
+Quick actions are context-sensitive and depend on the selected node type. Press number keys ++1++ to ++6++ to trigger actions.
 
 ### Workflow / SubWorkflow Nodes
 
@@ -72,9 +74,38 @@ Quick actions are context-sensitive and depend on the selected node type. Press 
 | ++3++ | **Command** | View executed command |
 | ++4++ | **Logs** | Switch to logs view (stdout/stderr/monitoring) |
 | ++5++ | **Efficiency** | Analyze resource usage (requires monitoring script) |
+| ++6++ | **AI Chat** | Open chat with selected context data |
 
 !!! tip "Copy to Clipboard"
     In modals, press ++y++ to copy content to clipboard.
+
+## :material-robot: AI Chat Integration
+
+Press ++6++ or ++a++ on a **Task** or **Shard** node to open the AI chat with task context.
+
+### Context Selection
+
+Before starting the chat, you'll be prompted to select which data to include in the AI context:
+
+| Option | Description |
+|--------|-------------|
+| **Metadata** | Task info, status, timing, command |
+| **Stderr** | Standard error output (last 200 lines) |
+| **Stdout** | Standard output (last 200 lines) |
+| **Monitoring** | Resource efficiency analysis |
+| **Batch Logs** | Google Batch logs (requires Google Batch backend) |
+
+!!! tip "Debugging Failed Tasks"
+    When debugging a failed task, select **Metadata** + **Stderr** for the most relevant context. The AI can help interpret error messages and suggest fixes.
+
+### Selection Controls
+
+| Key | Action |
+|:---:|--------|
+| ++up++ / ++down++ | Navigate options |
+| ++space++ | Toggle selection |
+| ++enter++ | Confirm and start chat |
+| ++esc++ | Cancel |
 
 ## :material-timer-outline: Timeline Analysis
 
