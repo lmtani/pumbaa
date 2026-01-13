@@ -113,7 +113,7 @@ func (m Model) renderChatSelectionModal() string {
 	note := mutedStyle.Render("\nNote: Data collection may take a few seconds.")
 
 	// Footer
-	footer := mutedStyle.Render("↑↓ navigate • space toggle • enter confirm • esc cancel")
+	footer := m.modalFooterWithHints("↑↓ navigate", "space toggle", "enter confirm", "esc cancel")
 
 	content := strings.Join([]string{
 		subtitle,

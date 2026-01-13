@@ -27,11 +27,7 @@ func (m Model) renderLogModal() string {
 
 // logModalFooter generates the footer for log modals with horizontal scroll hint
 func (m Model) logModalFooter() string {
-	baseFooter := "↑↓ scroll • ←→ pan • y copy • esc close"
-	if m.statusMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
-	}
-	return mutedStyle.Render(baseFooter)
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "y copy", "esc close")
 }
 
 // truncateLinesToWidth truncates each line to the specified visible width while preserving ANSI codes

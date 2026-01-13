@@ -25,11 +25,7 @@ func (m Model) renderBatchLogsModal() string {
 
 // batchLogsModalFooter generates the footer for batch logs modal with scroll hint
 func (m Model) batchLogsModalFooter() string {
-	baseFooter := "↑↓ scroll • ←→ pan • y copy • esc close"
-	if m.statusMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
-	}
-	return mutedStyle.Render(baseFooter)
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "y copy", "esc close")
 }
 
 // handleBatchLogsModalKeys handles keyboard input in batch logs modal

@@ -29,7 +29,7 @@ func (m Model) renderGlobalTimelineModal() string {
 
 // timelineModalFooter generates the footer for the timeline modal
 func (m Model) timelineModalFooter() string {
-	return mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "PgUp/PgDn page", "esc close")
 }
 
 // buildGlobalTimelineContentForMetadata builds timeline content for a specific workflow/subworkflow

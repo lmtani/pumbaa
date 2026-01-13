@@ -5,14 +5,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// modalFooter generates the footer for modals, including copy feedback if present
+// modalFooter generates the footer for modals, including copy feedback if present.
 func (m Model) modalFooter() string {
-	baseFooter := "↑↓/PgUp/PgDn scroll • y copy • esc close"
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "y copy", "esc close")
+}
+
+func (m Model) modalFooterWithHints(hints ...string) string {
+	baseFooter := strings.Join(hints, " • ")
 	if m.statusMessage != "" {
 		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
 	}
