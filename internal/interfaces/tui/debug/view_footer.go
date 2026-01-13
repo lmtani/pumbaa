@@ -49,27 +49,56 @@ func (m Model) renderFooter() string {
 		parts = append(parts, " • ")
 	}
 
+	if searchStatus := m.renderSearchStatus(); searchStatus != "" {
+		parts = append(parts, searchStatus)
+		parts = append(parts, " • ")
+	}
+
 	// Help shortcuts with consistent styling
-	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
-		common.KeyStyle.Render("↑↓"),
-		common.DescStyle.Render("navigate"),
-		common.KeyStyle.Render("tab"),
-		common.DescStyle.Render("switch"),
-		common.KeyStyle.Render("d"),
-		common.DescStyle.Render("details"),
-		common.KeyStyle.Render("1-5"),
-		common.DescStyle.Render("actions"),
-		common.KeyStyle.Render("E/C"),
-		common.DescStyle.Render("expand/collapse"),
-		common.KeyStyle.Render("?"),
-		common.DescStyle.Render("help"),
-		common.KeyStyle.Render("q"),
-		common.DescStyle.Render("quit"),
-	)
-	parts = append(parts, help)
+	parts = append(parts, m.renderFooterHints())
 
 	return common.HelpBarStyle.
 		Width(m.width - 2).
 		Render(strings.Join(parts, ""))
+}
+
+func (m Model) renderSearchStatus() string {
+	if m.searchQuery == "" && !m.searchActive {
+		return ""
+	}
+
+	query := m.searchQuery
+	if query == "" {
+		query = "..."
+	}
+
+	matchInfo := ""
+	if m.searchQuery != "" {
+		matchInfo = fmt.Sprintf(" (%d matches)", len(m.searchMatches))
+	}
+
+	status := fmt.Sprintf("search %q%s", query, matchInfo)
+	return fmt.Sprintf("%s %s", common.KeyStyle.Render("/"), common.DescStyle.Render(status))
+}
+
+func (m Model) renderFooterHints() string {
+	hints := []string{
+		renderFooterHint("↑↓", "navigate"),
+		renderFooterHint("tab", "switch"),
+		renderFooterHint("d", "details"),
+		renderFooterHint("1-6", "actions"),
+		renderFooterHint("E/C", "expand/collapse"),
+		renderFooterHint("/", "search"),
+	}
+
+	if m.searchQuery != "" || m.searchActive {
+		hints = append(hints, renderFooterHint("ctrl+x", "clear"))
+	}
+
+	hints = append(hints, renderFooterHint("?", "help"), renderFooterHint("q", "quit"))
+	return strings.Join(hints, "  ")
+}
+
+func renderFooterHint(key, desc string) string {
+	return fmt.Sprintf("%s %s", common.KeyStyle.Render(key), common.DescStyle.Render(desc))
 }

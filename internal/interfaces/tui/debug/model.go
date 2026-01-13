@@ -63,6 +63,13 @@ type Model struct {
 	treeWidth    int
 	detailsWidth int
 
+	// Tree search/filter state
+	searchActive         bool
+	searchQuery          string
+	searchMatches        []int
+	searchMatchCursor    int
+	searchForcedExpanded map[*TreeNode]bool
+
 	// Loading state
 	isLoading        bool
 	loadingMessage   string

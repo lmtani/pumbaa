@@ -122,8 +122,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Rebuild children for this node
 			tree.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
 			node.Expanded = true
-			m.nodes = tree.GetVisibleNodes(m.tree)
-			m.updateDetailsContent()
+			m.updateSearchFilter()
 		}
 		return m, nil
 
@@ -254,6 +253,10 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	if m.searchActive {
+		return m.handleSearchKeys(msg)
+	}
+
 	return m.handleMainKeys(msg)
 }
 
@@ -267,6 +270,15 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.activeModal = ModalNone
 		} else {
 			m.activeModal = ModalHelp
+		}
+
+	case msg.String() == "/":
+		m.searchActive = true
+
+	case msg.Type == tea.KeyCtrlX:
+		if m.searchQuery != "" {
+			m.searchQuery = ""
+			m.updateSearchFilter()
 		}
 
 	case key.Matches(msg, m.keys.Up):
@@ -302,7 +314,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			node := m.nodes[m.cursor]
 			if node.Expanded && len(node.Children) > 0 {
 				node.Expanded = false
-				m.nodes = tree.GetVisibleNodes(m.tree)
+				m.updateSearchFilter()
 			} else if node.Parent != nil {
 				// Move to parent
 				for i, n := range m.nodes {
@@ -337,11 +349,11 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.ExpandAll):
 		m.expandAll(m.tree)
-		m.nodes = tree.GetVisibleNodes(m.tree)
+		m.updateSearchFilter()
 
 	case key.Matches(msg, m.keys.CollapseAll):
 		m.collapseAll(m.tree)
-		m.nodes = tree.GetVisibleNodes(m.tree)
+		m.updateSearchFilter()
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)
@@ -444,7 +456,8 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 			}
 		} else if len(node.Children) > 0 {
 			node.Expanded = !node.Expanded
-			m.nodes = tree.GetVisibleNodes(m.tree)
+			m.updateSearchFilter()
+			return m, nil
 		}
 		m.updateDetailsContent()
 	}
