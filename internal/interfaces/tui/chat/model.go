@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -30,7 +31,6 @@ const (
 	FocusInput FocusMode = iota
 	FocusMessages
 )
-
 
 // Interface to access the hidden definition method of functiontool
 type toolWithDefinition interface {
@@ -114,11 +114,14 @@ type Model struct {
 	msgs *[]ChatMessage
 
 	// Modal state
-	activeModal      ModalKind
-	sessionsList     []infraSession.SessionInfo
-	sessionsCursor   int
-	sessionsLoading  bool
-	sessionsError    string
+	activeModal         ModalKind
+	sessionsList        []infraSession.SessionInfo
+	sessionsCursor      int
+	sessionsLoading     bool
+	sessionsError       string
+	sessionsSearch      string
+	sessionsSearching   bool
+	sessionsSearchInput textinput.Model
 }
 
 type ChatMessage struct {
@@ -383,6 +386,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 
+		case tea.KeyCtrlS:
+			// Handle Ctrl+S for sessions modal when not loading
+			if !m.loading {
+				return m.openSessionsModal()
+			}
+
 		case tea.KeyRunes:
 			if len(msg.Runes) > 0 {
 				// Handle 'y' for copy when in messages mode
@@ -391,10 +400,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						content := (*m.msgs)[m.selectedMsg].Content
 						return m, copyToClipboard(content)
 					}
-				}
-				// Handle 's' for sessions modal when in input mode and not loading
-				if msg.Runes[0] == 's' && m.focusMode == FocusInput && !m.loading {
-					return m.openSessionsModal()
 				}
 			}
 		}
@@ -646,7 +651,7 @@ func (m Model) renderFooter() string {
 			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("send"),
-			common.KeyStyle.Render("s"),
+			common.KeyStyle.Render("ctrl+s"),
 			common.DescStyle.Render("sessions"),
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("scroll"),

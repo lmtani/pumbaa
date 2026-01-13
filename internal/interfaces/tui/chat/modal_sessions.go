@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"google.golang.org/adk/model"
@@ -25,12 +26,22 @@ Conversation:
 
 Summary:`
 
-// openSessionsModal initializes and opens the sessions modal (pointer receiver needed to modify state)
+// openSessionsModal initializes and opens the sessions modal
 func (m *Model) openSessionsModal() (tea.Model, tea.Cmd) {
 	m.activeModal = ModalSessions
 	m.sessionsCursor = 0
 	m.sessionsLoading = true
 	m.sessionsError = ""
+	m.sessionsSearch = ""
+	m.sessionsSearching = false
+
+	// Initialize search input
+	ti := textinput.New()
+	ti.Placeholder = "Type to filter..."
+	ti.CharLimit = 50
+	ti.Width = 40
+	m.sessionsSearchInput = ti
+
 	return m, m.loadSessionsList()
 }
 
@@ -54,10 +65,27 @@ func (m *Model) loadSessionsList() tea.Cmd {
 	}
 }
 
+// getFilteredSessions returns sessions filtered by search term
+func (m *Model) getFilteredSessions() []infraSession.SessionInfo {
+	if m.sessionsSearch == "" {
+		return m.sessionsList
+	}
+
+	search := strings.ToLower(m.sessionsSearch)
+	var filtered []infraSession.SessionInfo
+	for _, sess := range m.sessionsList {
+		if strings.Contains(strings.ToLower(sess.ID), search) ||
+			strings.Contains(strings.ToLower(sess.Summary), search) {
+			filtered = append(filtered, sess)
+		}
+	}
+	return filtered
+}
+
 // renderSessionsModal renders the sessions list modal
 func (m *Model) renderSessionsModal() string {
-	modalWidth := 70
-	modalHeight := 18
+	modalWidth := 75
+	modalHeight := 20
 
 	title := common.HeaderTitleStyle.Render("🔄 Chat Sessions")
 
@@ -73,28 +101,72 @@ func (m *Model) renderSessionsModal() string {
 		return m.renderCenteredSessionsModal(modalWidth, modalHeight, title, content, footer)
 	}
 
+	filteredSessions := m.getFilteredSessions()
+
 	if len(m.sessionsList) == 0 {
 		content := common.MutedStyle.Render("No sessions found. Press 'n' to create a new session.")
 		footer := common.MutedStyle.Render("n new • esc close")
 		return m.renderCenteredSessionsModal(modalWidth, modalHeight, title, content, footer)
 	}
 
+	// Search bar
+	searchBar := ""
+	if m.sessionsSearching {
+		searchBar = "🔍 " + m.sessionsSearchInput.View()
+	} else if m.sessionsSearch != "" {
+		searchBar = common.MutedStyle.Render(fmt.Sprintf("🔍 Filter: %s (/ to edit, esc to clear)", m.sessionsSearch))
+	} else {
+		searchBar = common.MutedStyle.Render("/ to search")
+	}
+
 	// Build session list content
 	var lines []string
-	for i, sess := range m.sessionsList {
+	for i, sess := range filteredSessions {
 		isSelected := i == m.sessionsCursor
-		line := m.formatSessionLine(sess, isSelected, modalWidth-4)
+		line := m.formatSessionLine(sess, isSelected)
 		lines = append(lines, line)
 	}
 
-	content := strings.Join(lines, "\n")
-	footer := common.MutedStyle.Render("↑↓ navigate • enter select • n new • esc close")
+	// Calculate visible area (modal height minus header, search bar, footer, borders)
+	visibleHeight := modalHeight - 8
+	if visibleHeight < 3 {
+		visibleHeight = 3
+	}
 
-	return m.renderCenteredSessionsModal(modalWidth, modalHeight, title, content, footer)
+	// Scroll window
+	startIdx := 0
+	if m.sessionsCursor >= visibleHeight {
+		startIdx = m.sessionsCursor - visibleHeight + 1
+	}
+	endIdx := startIdx + visibleHeight
+	if endIdx > len(lines) {
+		endIdx = len(lines)
+	}
+
+	visibleLines := lines[startIdx:endIdx]
+	content := strings.Join(visibleLines, "\n")
+
+	// Show scroll indicators
+	scrollInfo := ""
+	if len(filteredSessions) > visibleHeight {
+		scrollInfo = common.MutedStyle.Render(fmt.Sprintf(" [%d/%d]", m.sessionsCursor+1, len(filteredSessions)))
+	}
+
+	var footer string
+	if m.sessionsSearching {
+		footer = common.MutedStyle.Render("enter confirm • esc cancel search")
+	} else {
+		footer = common.MutedStyle.Render("↑↓ navigate • enter select • n new • / search • esc close") + scrollInfo
+	}
+
+	// Combine search bar with content
+	fullContent := searchBar + "\n\n" + content
+
+	return m.renderCenteredSessionsModal(modalWidth, modalHeight, title, fullContent, footer)
 }
 
 // formatSessionLine formats a single session entry for display
-func (m Model) formatSessionLine(sess infraSession.SessionInfo, selected bool, maxWidth int) string {
+func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) string {
 	// Truncate ID to 16 chars
 	idDisplay := sess.ID
 	if len(idDisplay) > 16 {
@@ -121,7 +193,7 @@ func (m Model) formatSessionLine(sess infraSession.SessionInfo, selected bool, m
 	}
 
 	// Build line
-	line := fmt.Sprintf("%-16s │ %-30s │ %s │ %s", idDisplay, summary, dateStr, tokenStr)
+	line := fmt.Sprintf("%-16s │ %-30s │ %s │ %5s", idDisplay, summary, dateStr, tokenStr)
 
 	if selected {
 		// Highlight selected line
@@ -134,7 +206,7 @@ func (m Model) formatSessionLine(sess infraSession.SessionInfo, selected bool, m
 }
 
 // renderCenteredSessionsModal renders a centered modal with the given dimensions
-func (m Model) renderCenteredSessionsModal(width, height int, title, content, footer string) string {
+func (m *Model) renderCenteredSessionsModal(width, height int, title, content, footer string) string {
 	// Ensure dimensions don't exceed terminal
 	if width > m.width-4 {
 		width = m.width - 4
@@ -168,26 +240,74 @@ func (m Model) renderCenteredSessionsModal(width, height int, title, content, fo
 
 // handleSessionsModalKeys handles keyboard input in the sessions modal
 func (m *Model) handleSessionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// If searching, handle search input
+	if m.sessionsSearching {
+		switch msg.String() {
+		case "esc":
+			m.sessionsSearching = false
+			m.sessionsSearch = ""
+			m.sessionsCursor = 0
+			return m, nil
+		case "enter":
+			m.sessionsSearching = false
+			m.sessionsSearch = m.sessionsSearchInput.Value()
+			m.sessionsCursor = 0
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.sessionsSearchInput, cmd = m.sessionsSearchInput.Update(msg)
+			return m, cmd
+		}
+	}
+
+	filteredSessions := m.getFilteredSessions()
+
 	switch msg.String() {
-	case "esc", "ctrl+c", "q":
+	case "esc":
+		if m.sessionsSearch != "" {
+			// Clear search first
+			m.sessionsSearch = ""
+			m.sessionsCursor = 0
+			return m, nil
+		}
 		m.activeModal = ModalNone
 		return m, nil
 
-	case "up":
+	case "ctrl+c", "q":
+		m.activeModal = ModalNone
+		return m, nil
+
+	case "up", "k":
 		if m.sessionsCursor > 0 {
 			m.sessionsCursor--
 		}
 		return m, nil
 
-	case "down":
-		if m.sessionsCursor < len(m.sessionsList)-1 {
+	case "down", "j":
+		if m.sessionsCursor < len(filteredSessions)-1 {
 			m.sessionsCursor++
 		}
 		return m, nil
 
+	case "home", "g":
+		m.sessionsCursor = 0
+		return m, nil
+
+	case "end", "G":
+		if len(filteredSessions) > 0 {
+			m.sessionsCursor = len(filteredSessions) - 1
+		}
+		return m, nil
+
+	case "/":
+		m.sessionsSearching = true
+		m.sessionsSearchInput.SetValue(m.sessionsSearch)
+		m.sessionsSearchInput.Focus()
+		return m, nil
+
 	case "enter":
-		if len(m.sessionsList) > 0 {
-			selected := m.sessionsList[m.sessionsCursor]
+		if len(filteredSessions) > 0 && m.sessionsCursor < len(filteredSessions) {
+			selected := filteredSessions[m.sessionsCursor]
 			return m.switchToSession(selected.ID)
 		}
 		return m, nil
@@ -202,12 +322,24 @@ func (m *Model) handleSessionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // switchToSession switches to a different session
 func (m *Model) switchToSession(sessionID string) (tea.Model, tea.Cmd) {
 	m.sessionsLoading = true
+
+	// Capture current session info BEFORE async operation
+	currentSessionID := ""
+	var currentMsgs []ChatMessage
+	if m.session != nil {
+		currentSessionID = m.session.ID()
+	}
+	if m.msgs != nil && len(*m.msgs) > 0 {
+		currentMsgs = make([]ChatMessage, len(*m.msgs))
+		copy(currentMsgs, *m.msgs)
+	}
+
 	return m, func() tea.Msg {
 		ctx := context.Background()
 
-		// Generate summary for current session before switching
-		if m.session != nil && m.msgs != nil && len(*m.msgs) > 0 {
-			m.generateAndSaveSummary(ctx)
+		// Generate summary for current session before switching (using captured values)
+		if currentSessionID != "" && len(currentMsgs) >= 2 {
+			m.generateAndSaveSummaryForSession(ctx, currentSessionID, currentMsgs)
 		}
 
 		// Load new session
@@ -246,12 +378,24 @@ func (m *Model) switchToSession(sessionID string) (tea.Model, tea.Cmd) {
 // createNewSession creates a new chat session
 func (m *Model) createNewSession() (tea.Model, tea.Cmd) {
 	m.sessionsLoading = true
+
+	// Capture current session info BEFORE async operation
+	currentSessionID := ""
+	var currentMsgs []ChatMessage
+	if m.session != nil {
+		currentSessionID = m.session.ID()
+	}
+	if m.msgs != nil && len(*m.msgs) > 0 {
+		currentMsgs = make([]ChatMessage, len(*m.msgs))
+		copy(currentMsgs, *m.msgs)
+	}
+
 	return m, func() tea.Msg {
 		ctx := context.Background()
 
-		// Generate summary for current session before creating new
-		if m.session != nil && m.msgs != nil && len(*m.msgs) > 0 {
-			m.generateAndSaveSummary(ctx)
+		// Generate summary for current session before creating new (using captured values)
+		if currentSessionID != "" && len(currentMsgs) >= 2 {
+			m.generateAndSaveSummaryForSession(ctx, currentSessionID, currentMsgs)
 		}
 
 		// Create new session
@@ -276,15 +420,15 @@ func (m *Model) createNewSession() (tea.Model, tea.Cmd) {
 	}
 }
 
-// generateAndSaveSummary generates a summary and saves it to the database
-func (m *Model) generateAndSaveSummary(ctx context.Context) {
-	if m.llm == nil || m.msgs == nil || m.session == nil || len(*m.msgs) < 2 {
+// generateAndSaveSummaryForSession generates a summary for a specific session and saves it
+func (m *Model) generateAndSaveSummaryForSession(ctx context.Context, sessionID string, msgs []ChatMessage) {
+	if m.llm == nil || len(msgs) < 2 {
 		return
 	}
 
 	// Build conversation text
 	var sb strings.Builder
-	for _, msg := range *m.msgs {
+	for _, msg := range msgs {
 		if msg.Role == "info" {
 			continue
 		}
@@ -292,7 +436,7 @@ func (m *Model) generateAndSaveSummary(ctx context.Context) {
 		if len(content) > 200 {
 			content = content[:197] + "..."
 		}
-		sb.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, content))
+		fmt.Fprintf(&sb, "%s: %s\n", msg.Role, content)
 	}
 
 	// Generate summary using LLM
@@ -329,8 +473,10 @@ func (m *Model) generateAndSaveSummary(ctx context.Context) {
 		}
 	}
 
-	// Save summary to database
-	if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-		go svc.UpdateSummary(context.Background(), m.session.ID(), summary)
+	// Save summary to database (synchronously, not in goroutine)
+	if summary != "" {
+		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
+			_ = svc.UpdateSummary(context.Background(), sessionID, summary)
+		}
 	}
 }
