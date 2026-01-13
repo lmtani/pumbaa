@@ -110,7 +110,7 @@ func (m *Model) resizeActiveModal() {
 }
 
 func (m Model) handleHelpKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
+	if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) {
 		m.activeModal = ModalNone
 	}
 	return m, nil

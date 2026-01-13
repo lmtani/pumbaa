@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
+	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -110,6 +112,19 @@ type Model struct {
 
 	// Display messages (pointer for persistence)
 	msgs *[]ChatMessage
+
+	// Session summary for header display
+	sessionSummary string
+
+	// Modal state
+	activeModal         ModalKind
+	sessionsList        []infraSession.SessionInfo
+	sessionsCursor      int
+	sessionsLoading     bool
+	sessionsError       string
+	sessionsSearch      string
+	sessionsSearching   bool
+	sessionsSearchInput textinput.Model
 }
 
 type ChatMessage struct {
@@ -143,6 +158,28 @@ type clipboardCopiedMsg struct {
 
 // clearStatusMsg is sent to clear the status message
 type clearStatusMsg struct{}
+
+// sessionListLoadedMsg is sent when session list is loaded
+type sessionListLoadedMsg struct {
+	sessions []infraSession.SessionInfo
+}
+
+// sessionListErrorMsg is sent when session loading fails
+type sessionListErrorMsg struct {
+	err error
+}
+
+// sessionSwitchedMsg is sent when a session is switched
+type sessionSwitchedMsg struct {
+	session session.Session
+	history []*genai.Content
+}
+
+// sessionSummaryUpdatedMsg is sent when the session summary is updated
+type sessionSummaryUpdatedMsg struct {
+	sessionID string
+	summary   string
+}
 
 // NewModel creates a new chat model with the given LLM, tools, system instruction, and session.
 func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc session.Service, sess session.Session) Model {
@@ -285,8 +322,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(m.width - 6)
 
 	case tea.KeyMsg:
+		// Check for active modal first
+		if model, cmd, handled := m.handleActiveModalKeys(msg); handled {
+			return model, cmd
+		}
+
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEsc:
 			return m, tea.Quit
 
 		case tea.KeyTab:
@@ -353,12 +395,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 
+		case tea.KeyCtrlS:
+			// Handle Ctrl+S for sessions modal when not loading
+			if !m.loading {
+				return m.openSessionsModal()
+			}
+
 		case tea.KeyRunes:
-			// Handle 'y' for copy when in messages mode
-			if m.focusMode == FocusMessages && len(msg.Runes) > 0 && msg.Runes[0] == 'y' {
-				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
-					content := (*m.msgs)[m.selectedMsg].Content
-					return m, copyToClipboard(content)
+			if len(msg.Runes) > 0 {
+				// Handle 'y' for copy when in messages mode
+				if msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
+					if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+						content := (*m.msgs)[m.selectedMsg].Content
+						return m, copyToClipboard(content)
+					}
 				}
 			}
 		}
@@ -383,6 +433,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}); ok {
 					go sqliteSvc.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
 				}
+			}
+
+			// Generate session summary after first few exchanges
+			if m.session != nil && m.msgs != nil && len(*m.msgs) >= 2 {
+				sessionID := m.session.ID()
+				msgsCopy := make([]ChatMessage, len(*m.msgs))
+				copy(msgsCopy, *m.msgs)
+				go m.generateAndSaveSummaryForSession(context.Background(), sessionID, msgsCopy)
 			}
 		}
 		m.viewport.SetContent(m.renderMessages())
@@ -428,6 +486,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = ""
 		}
 		return m, nil
+
+	case sessionListLoadedMsg:
+		m.sessionsLoading = false
+		m.sessionsList = msg.sessions
+		return m, nil
+
+	case sessionListErrorMsg:
+		m.sessionsLoading = false
+		m.sessionsError = msg.err.Error()
+		return m, nil
+
+	case sessionSwitchedMsg:
+		m.activeModal = ModalNone
+		m.sessionsLoading = false
+		m.session = msg.session
+		m.history = &msg.history
+		// Rebuild msgs from history
+		msgs := make([]ChatMessage, 0)
+		for _, content := range msg.history {
+			role := content.Role
+			if role == "model" {
+				role = "agent"
+			}
+			text := extractText(content)
+			if text != "" {
+				msgs = append(msgs, ChatMessage{Role: role, Content: text})
+			}
+		}
+		m.msgs = &msgs
+		m.selectedMsg = -1
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
+
+	case sessionSummaryUpdatedMsg:
+		// Only update if it's for the current session
+		if m.session != nil && m.session.ID() == msg.sessionID {
+			m.sessionSummary = msg.summary
+		}
+		return m, nil
 	}
 
 	return m, tea.Batch(tiCmd, spCmd)
@@ -436,6 +534,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
+	}
+
+	// Check for active modal first
+	if modalView, ok := m.renderActiveModal(); ok {
+		return modalView
 	}
 
 	header := m.renderHeader()
@@ -449,53 +552,63 @@ func (m *Model) View() string {
 func (m Model) renderHeader() string {
 	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
 
-	// LLM provider badge
-	llmBadge := ""
-	if m.llm != nil {
-		llmStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#87CEEB")).
-			Padding(0, 1)
-		llmBadge = llmStyle.Render("🤖 " + m.llm.Name())
-	}
+	// Build badges for the first line
+	var badges []string
 
 	// Context badge (e.g., Task Context)
-	contextBadge := ""
 	if m.contextLabel != "" {
 		contextStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).
 			Background(lipgloss.Color("#FFD966")).
 			Padding(0, 1)
-		contextBadge = contextStyle.Render(m.contextLabel)
+		badges = append(badges, contextStyle.Render(m.contextLabel))
+	}
+
+	// LLM provider badge
+	if m.llm != nil {
+		llmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#87CEEB")).
+			Padding(0, 1)
+		badges = append(badges, llmStyle.Render("🤖 "+m.llm.Name()))
 	}
 
 	// Token usage badge
-	tokenBadge := ""
 	if m.inputTokens > 0 || m.outputTokens > 0 {
 		tokenStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).
 			Background(lipgloss.Color("#98FB98")).
 			Padding(0, 1)
-		tokenBadge = tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens)))
+		badges = append(badges, tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
 	}
 
-	sessionInfo := ""
-	if m.session != nil {
-		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", m.session.ID()))
+	// Build first line: Title + Badges
+	firstLine := title
+	for _, badge := range badges {
+		firstLine = lipgloss.JoinHorizontal(lipgloss.Center, firstLine, " ", badge)
 	}
 
-	// Layout: Title | LLM Badge | Token Badge | Session
-	leftContent := title
-	if contextBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", contextBadge)
+	// Build content lines
+	var lines []string
+	lines = append(lines, firstLine)
+
+	// Second line: Session summary (if available) or Session ID
+	if m.sessionSummary != "" {
+		summaryStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#AAAAAA")).
+			Italic(true)
+		lines = append(lines, summaryStyle.Render("💬 "+m.sessionSummary))
+	} else if m.session != nil {
+		// Show truncated session ID when no summary
+		sessionID := m.session.ID()
+		if len(sessionID) > 12 {
+			sessionID = sessionID[:12] + "…"
+		}
+		sessionStyle := common.MutedStyle
+		lines = append(lines, sessionStyle.Render("Session: "+sessionID))
 	}
-	if llmBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", llmBadge)
-	}
-	if tokenBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", tokenBadge)
-	}
-	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
+
+	headerContent := lipgloss.JoinVertical(lipgloss.Left, lines...)
 
 	return common.HeaderStyle.
 		Width(m.width - 2).
@@ -569,9 +682,11 @@ func (m Model) renderFooter() string {
 		)
 	} else {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("send"),
+			common.KeyStyle.Render("ctrl+s"),
+			common.DescStyle.Render("sessions"),
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),

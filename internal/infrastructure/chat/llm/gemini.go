@@ -28,7 +28,7 @@ func NewGeminiModel(apiKey, modelName string) (*GeminiModel, error) {
 		return nil, fmt.Errorf("Gemini API key is required (set GEMINI_API_KEY or --gemini-api-key)")
 	}
 	if modelName == "" {
-		modelName = "gemini-2.0-flash"
+		modelName = "gemini-2.5-flash"
 	}
 
 	ctx := context.Background()

@@ -106,7 +106,7 @@ func Load() *Config {
 		vertexModel = fileCfg.VertexModel
 	}
 	if vertexModel == "" {
-		vertexModel = "gemini-2.0-flash"
+		vertexModel = "gemini-2.5-flash"
 	}
 
 	// WDL Context config: env > file
@@ -132,7 +132,7 @@ func Load() *Config {
 		geminiModel = fileCfg.GeminiModel
 	}
 	if geminiModel == "" {
-		geminiModel = "gemini-2.0-flash"
+		geminiModel = "gemini-2.5-flash"
 	}
 
 	// Telemetry config

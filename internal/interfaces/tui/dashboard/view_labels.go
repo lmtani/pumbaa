@@ -20,7 +20,7 @@ func (m Model) handleLabelsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "esc", "q":
+	case "esc":
 		m.showLabelsModal = false
 		m.labelsData = nil
 		m.labelsEditing = false

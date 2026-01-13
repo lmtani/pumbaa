@@ -29,7 +29,7 @@ const modalHorizontalStep = 10
 
 func (m *Model) handleViewportModalKeys(msg tea.KeyMsg, navigator viewportNavigator, actions viewportModalActions) (tea.Cmd, bool) {
 	switch {
-	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+	case key.Matches(msg, m.keys.Escape):
 		if actions.onClose != nil {
 			actions.onClose(m)
 		}
