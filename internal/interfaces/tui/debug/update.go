@@ -266,61 +266,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Handle chat selection modal
-	if m.showChatSelectionModal {
-		return m.handleChatSelectionModalKeys(msg)
-	}
-
-	// Handle log modal first
-	if m.showLogModal {
-		return m.handleLogModalKeys(msg)
-	}
-
-	// Handle inputs modal
-	if m.showInputsModal {
-		return m.handleInputsModalKeys(msg)
-	}
-
-	// Handle outputs modal
-	if m.showOutputsModal {
-		return m.handleOutputsModalKeys(msg)
-	}
-
-	// Handle options modal
-	if m.showOptionsModal {
-		return m.handleOptionsModalKeys(msg)
-	}
-
-	// Handle call-level inputs modal
-	if m.showCallInputsModal {
-		return m.handleCallInputsModalKeys(msg)
-	}
-
-	// Handle call-level outputs modal
-	if m.showCallOutputsModal {
-		return m.handleCallOutputsModalKeys(msg)
-	}
-
-	// Handle call-level command modal
-	if m.showCallCommandModal {
-		return m.handleCallCommandModalKeys(msg)
-	}
-
-	// Handle global timeline modal
-	if m.showGlobalTimelineModal {
-		return m.handleGlobalTimelineModalKeys(msg)
-	}
-
-	// Handle batch logs modal
-	if m.showBatchLogsModal {
-		return m.handleBatchLogsModalKeys(msg)
-	}
-
-	if m.showHelp {
-		if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
-			m.showHelp = false
-		}
-		return m, nil
+	if model, cmd, handled := m.handleActiveModalKeys(msg); handled {
+		return model, cmd
 	}
 
 	return m.handleMainKeys(msg)

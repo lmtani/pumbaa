@@ -22,39 +22,8 @@ func (m Model) View() string {
 		return m.renderLoading()
 	}
 
-	// Check for modal states first (selection modal has highest priority)
-	if m.showChatSelectionModal {
-		return m.renderChatSelectionModal()
-	}
-	if m.showHelp {
-		return m.renderHelpOverlay()
-	}
-	if m.showLogModal {
-		return m.renderLogModal()
-	}
-	if m.showInputsModal {
-		return m.renderInputsModal()
-	}
-	if m.showOutputsModal {
-		return m.renderOutputsModal()
-	}
-	if m.showOptionsModal {
-		return m.renderOptionsModal()
-	}
-	if m.showGlobalTimelineModal {
-		return m.renderGlobalTimelineModal()
-	}
-	if m.showCallInputsModal {
-		return m.renderCallInputsModal()
-	}
-	if m.showCallOutputsModal {
-		return m.renderCallOutputsModal()
-	}
-	if m.showCallCommandModal {
-		return m.renderCallCommandModal()
-	}
-	if m.showBatchLogsModal {
-		return m.renderBatchLogsModal()
+	if modal, ok := m.renderActiveModal(); ok {
+		return modal
 	}
 
 	// Main layout: tree + details
