@@ -61,7 +61,7 @@ func (m *Model) getChatSelectionOptions() []chatSelectionOption {
 
 // renderChatSelectionModal renders the modal for selecting data to include in chat.
 func (m Model) renderChatSelectionModal() string {
-	modalWidth := 50
+	modalWidth := 65
 	modalHeight := 18
 
 	// Title
@@ -115,32 +115,14 @@ func (m Model) renderChatSelectionModal() string {
 	// Footer
 	footer := mutedStyle.Render("↑↓ navigate • space toggle • enter confirm • esc cancel")
 
-	// Build modal content
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
+	content := strings.Join([]string{
 		subtitle,
 		"",
 		optionsContent,
 		note,
-		"",
-		footer,
-	)
+	}, "\n")
 
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	// Center the modal
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderCenteredModal(modalWidth, modalHeight, title, content, footer)
 }
 
 // handleChatSelectionModalKeys handles keyboard input in the chat selection modal.

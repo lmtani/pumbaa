@@ -19,6 +19,34 @@ func (m Model) modalFooter() string {
 	return mutedStyle.Render(baseFooter)
 }
 
+func (m Model) renderCenteredModal(modalWidth, modalHeight int, title, content, footer string) string {
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+func (m Model) renderStandardModal(title, content, footer string) string {
+	return m.renderCenteredModal(m.width-6, m.height-4, title, content, footer)
+}
+
 // formatValueForModal formats a value for display in modals with appropriate colors.
 func formatValueForModal(v interface{}, maxWidth int) string {
 	return formatValueWithStyles(v, maxWidth, modalValueStyle, modalPathStyle, mutedStyle)

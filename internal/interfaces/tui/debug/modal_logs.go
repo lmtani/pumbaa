@@ -3,15 +3,11 @@ package debug
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/ansi"
 )
 
 // renderLogModal renders the log modal.
 func (m Model) renderLogModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	// Modal title with scroll indicator
 	titleText := "📄 " + m.logModalTitle
 	if m.logModalHScrollOffset > 0 {
@@ -34,29 +30,7 @@ func (m Model) renderLogModal() string {
 	// Footer with instructions (including horizontal scroll)
 	footer := m.logModalFooter()
 
-	// Build modal box
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	// Center the modal
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // logModalFooter generates the footer for log modals with horizontal scroll hint
