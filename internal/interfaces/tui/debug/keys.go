@@ -101,8 +101,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("y", "copy to clipboard"),
 		),
 		Chat: key.NewBinding(
-			key.WithKeys("7", "a"),
-			key.WithHelp("7/a", "chat with AI"),
+			key.WithKeys("6", "a"),
+			key.WithHelp("6/a", "chat with AI"),
 		),
 	}
 }

@@ -174,6 +174,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingMessage = ""
 		m.batchLogsError = ""
 		m.batchLogsLoading = false
+		m.batchLogsHScrollOffset = 0
 
 		// Format entries for raw content (without ANSI colors)
 		var rawSB strings.Builder
@@ -196,8 +197,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Initialize the modal viewport
 		viewportWidth := m.width - 14
 		m.batchLogsViewport = viewport.New(viewportWidth, m.height-10)
-		// Truncate highlighted content to viewport width
-		truncatedContent := truncateLinesToWidth(m.batchLogsContent, viewportWidth)
+		scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+		truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
 		m.batchLogsViewport.SetContent(truncatedContent)
 		return m, nil
 
@@ -245,6 +246,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
 			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
 			m.logModalViewport.SetContent(truncatedContent)
+		}
+		if m.showBatchLogsModal {
+			viewportWidth := m.width - 14
+			m.batchLogsViewport.Width = viewportWidth
+			m.batchLogsViewport.Height = m.height - 10
+			scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+			m.batchLogsViewport.SetContent(truncatedContent)
 		}
 		m.updateDetailsContent()
 
@@ -345,7 +354,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.changeSelectedNode(m.cursor + 1)
 			}
 		} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
-			if m.logCursor < 2 { // 0 = stdout, 1 = stderr, 2 = monitoring
+			if m.logCursor < 3 { // 0 = stdout, 1 = stderr, 2 = monitoring, 3 = batch logs
 				m.logCursor++
 				m.updateDetailsContent()
 			}
@@ -439,7 +448,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	// Call-level quick actions (1-4)
+	// Call-level quick actions (1-6)
 	default:
 		return m.handleQuickActions(msg)
 	}
@@ -460,6 +469,20 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 				logPath = node.CallData.Stderr
 			case 2:
 				logPath = node.CallData.MonitoringLog
+			case 3:
+				if m.canShowBatchLogs(node) {
+					m.isLoading = true
+					m.loadingMessage = "Loading Google Batch logs..."
+					m.loadingStartTime = time.Now()
+					m.batchLogsLoading = true
+					return m, m.loadBatchLogs(
+						node.CallData.JobID,
+						node.CallData.VMStartTime,
+						node.CallData.VMEndTime,
+					)
+				}
+				m.setStatusMessage("Google Batch logs not available")
+				return m, getClearStatusCmd()
 			}
 			if logPath != "" {
 				m.isLoading = true
@@ -580,7 +603,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 }
 
 // handleTaskQuickAction handles quick actions for Task and Shard nodes.
-// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline]
+// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline], 6=Chat
 func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
 	if node.CallData == nil {
 		return m, nil
@@ -615,7 +638,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 			return m, getClearStatusCmd()
 		}
 	case "4": // Logs (inline)
-		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" {
+		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" || m.canShowBatchLogs(node) {
 			m.viewMode = ViewModeLogs
 			m.logCursor = 1 // Start at stderr
 			m.updateDetailsContent()
@@ -646,22 +669,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 		m.setStatusMessage("No monitoring data available")
 		return m, getClearStatusCmd()
-	case "6": // Batch Logs
-		if m.canShowBatchLogs(node) {
-			m.isLoading = true
-			m.loadingMessage = "Loading Google Batch logs..."
-			m.loadingStartTime = time.Now()
-			m.batchLogsLoading = true
-			// Pass task VM execution times to filter logs by time window (±2h margin)
-			return m, m.loadBatchLogs(
-				node.CallData.JobID,
-				node.CallData.VMStartTime,
-				node.CallData.VMEndTime,
-			)
-		}
-		m.setStatusMessage("Google Batch logs not available")
-		return m, getClearStatusCmd()
-	case "7", "a": // Chat with AI
+	case "6", "a": // Chat with AI
 		return m.openChatSelectionModal(node)
 	}
 

@@ -249,6 +249,7 @@ func (m Model) renderLogs(node *TreeNode) string {
 	stdoutPrefix := "  "
 	stderrPrefix := "  "
 	monitoringPrefix := "  "
+	batchPrefix := "  "
 	switch m.logCursor {
 	case 0:
 		stdoutPrefix = "▶ "
@@ -256,6 +257,8 @@ func (m Model) renderLogs(node *TreeNode) string {
 		stderrPrefix = "▶ "
 	case 2:
 		monitoringPrefix = "▶ "
+	case 3:
+		batchPrefix = "▶ "
 	}
 
 	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
@@ -275,6 +278,13 @@ func (m Model) renderLogs(node *TreeNode) string {
 	sb.WriteString(monitoringPrefix + labelStyle.Render("monitoring: ") + "\n")
 	if cd.MonitoringLog != "" {
 		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.MonitoringLog, m.detailsWidth-8)) + "\n\n")
+	} else {
+		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+	}
+
+	sb.WriteString(batchPrefix + labelStyle.Render("batch logs: ") + "\n")
+	if m.canShowBatchLogs(node) {
+		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.JobID, m.detailsWidth-8)) + "\n\n")
 	} else {
 		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
 	}
@@ -480,17 +490,14 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			if a := formatAction("3", "command", cd.CommandLine != ""); a != "" {
 				actions = append(actions, a)
 			}
-			if a := formatAction("4", "logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != ""); a != "" {
+			if a := formatAction("4", "logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" || m.canShowBatchLogs(node)); a != "" {
 				actions = append(actions, a)
 			}
 			if a := formatAction("5", "efficiency", cd.MonitoringLog != ""); a != "" {
 				actions = append(actions, a)
 			}
-			if a := formatAction("6", "batch logs", m.canShowBatchLogs(node)); a != "" {
-				actions = append(actions, a)
-			}
 			// Chat with AI - enabled if LLM is configured
-			if a := formatAction("7", "chat", m.llm != nil); a != "" {
+			if a := formatAction("6", "chat", m.llm != nil); a != "" {
 				actions = append(actions, a)
 			}
 		}

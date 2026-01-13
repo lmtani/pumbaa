@@ -16,6 +16,9 @@ func (m Model) renderBatchLogsModal() string {
 
 	// Modal title
 	titleText := "📊 Google Batch Logs"
+	if m.batchLogsHScrollOffset > 0 {
+		titleText += " ◀"
+	}
 	title := titleStyle.Render(titleText)
 
 	// Modal content
@@ -69,12 +72,15 @@ func (m Model) batchLogsModalFooter() string {
 
 // handleBatchLogsModalKeys handles keyboard input in batch logs modal
 func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	viewportWidth := m.batchLogsViewport.Width
+
 	switch {
 	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
 		m.showBatchLogsModal = false
 		m.batchLogsContent = ""
 		m.batchLogsRawContent = ""
 		m.batchLogsError = ""
+		m.batchLogsHScrollOffset = 0
 
 	case key.Matches(msg, m.keys.Copy):
 		if m.batchLogsRawContent != "" {
@@ -87,6 +93,23 @@ func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Down):
 		m.batchLogsViewport.ScrollDown(1)
 
+	case key.Matches(msg, m.keys.Left):
+		if m.batchLogsHScrollOffset > 0 {
+			m.batchLogsHScrollOffset -= 10
+			if m.batchLogsHScrollOffset < 0 {
+				m.batchLogsHScrollOffset = 0
+			}
+			scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+			m.batchLogsViewport.SetContent(truncatedContent)
+		}
+
+	case key.Matches(msg, m.keys.Right):
+		m.batchLogsHScrollOffset += 10
+		scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+		truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+		m.batchLogsViewport.SetContent(truncatedContent)
+
 	case key.Matches(msg, m.keys.PageUp):
 		m.batchLogsViewport.PageUp()
 
@@ -95,6 +118,9 @@ func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Home):
 		m.batchLogsViewport.GotoTop()
+		m.batchLogsHScrollOffset = 0
+		truncatedContent := truncateLinesToWidth(m.batchLogsContent, viewportWidth)
+		m.batchLogsViewport.SetContent(truncatedContent)
 
 	case key.Matches(msg, m.keys.End):
 		m.batchLogsViewport.GotoBottom()

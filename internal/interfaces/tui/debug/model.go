@@ -78,7 +78,7 @@ type Model struct {
 	logModalLoading       bool
 	logModalViewport      viewport.Model
 	logModalHScrollOffset int // Horizontal scroll offset for long lines
-	logCursor             int // 0 = stdout, 1 = stderr, 2 = monitoring
+	logCursor             int // 0 = stdout, 1 = stderr, 2 = monitoring, 3 = batch logs
 
 	// Inputs/Outputs modal state
 	showInputsModal      bool
@@ -106,12 +106,13 @@ type Model struct {
 	resourceError  string
 
 	// Batch logs modal state
-	showBatchLogsModal  bool
-	batchLogsViewport   viewport.Model
-	batchLogsContent    string // Highlighted content for display
-	batchLogsRawContent string // Raw content for clipboard
-	batchLogsError      string
-	batchLogsLoading    bool
+	showBatchLogsModal      bool
+	batchLogsViewport       viewport.Model
+	batchLogsContent        string // Highlighted content for display
+	batchLogsRawContent     string // Raw content for clipboard
+	batchLogsError          string
+	batchLogsLoading        bool
+	batchLogsHScrollOffset  int // Horizontal scroll offset for batch logs modal
 
 	// Chat modal state
 	showChatSelectionModal bool              // Modal for selecting data to include
