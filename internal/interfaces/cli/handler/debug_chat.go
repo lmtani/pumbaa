@@ -34,6 +34,7 @@ func runDebugChat(systemInstruction string, chatDeps *debug.ChatDependencies) er
 	}
 
 	model := chat.NewModel(chatDeps.LLM, chatDeps.Tools, systemInstruction, chatDeps.SessionSvc, sess)
+	model.SetContextLabel("Task Context")
 	p := tea.NewProgram(&model, tea.WithAltScreen())
 	model.SetProgram(p)
 	if _, err := p.Run(); err != nil {

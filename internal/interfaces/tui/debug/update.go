@@ -230,12 +230,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setStatusMessage(fmt.Sprintf("Failed to collect context: %v", msg.err))
 		return m, getClearStatusCmd()
 
-	case chatInitializedMsg:
-		return m.handleChatInitialized(msg)
-
-	case chatInitErrorMsg:
-		return m.handleChatInitError(msg)
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
