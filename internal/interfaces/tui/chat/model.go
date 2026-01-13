@@ -425,6 +425,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					go sqliteSvc.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
 				}
 			}
+
+			// Generate session summary after first few exchanges
+			if m.session != nil && m.msgs != nil && len(*m.msgs) >= 2 {
+				sessionID := m.session.ID()
+				msgsCopy := make([]ChatMessage, len(*m.msgs))
+				copy(msgsCopy, *m.msgs)
+				go m.generateAndSaveSummaryForSession(context.Background(), sessionID, msgsCopy)
+			}
 		}
 		m.viewport.SetContent(m.renderMessages())
 		m.viewport.GotoBottom()
