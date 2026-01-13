@@ -552,62 +552,63 @@ func (m *Model) View() string {
 func (m Model) renderHeader() string {
 	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
 
-	// LLM provider badge
-	llmBadge := ""
-	if m.llm != nil {
-		llmStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#87CEEB")).
-			Padding(0, 1)
-		llmBadge = llmStyle.Render("🤖 " + m.llm.Name())
-	}
+	// Build badges for the first line
+	var badges []string
 
 	// Context badge (e.g., Task Context)
-	contextBadge := ""
 	if m.contextLabel != "" {
 		contextStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).
 			Background(lipgloss.Color("#FFD966")).
 			Padding(0, 1)
-		contextBadge = contextStyle.Render(m.contextLabel)
+		badges = append(badges, contextStyle.Render(m.contextLabel))
+	}
+
+	// LLM provider badge
+	if m.llm != nil {
+		llmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#87CEEB")).
+			Padding(0, 1)
+		badges = append(badges, llmStyle.Render("🤖 "+m.llm.Name()))
 	}
 
 	// Token usage badge
-	tokenBadge := ""
 	if m.inputTokens > 0 || m.outputTokens > 0 {
 		tokenStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#000000")).
 			Background(lipgloss.Color("#98FB98")).
 			Padding(0, 1)
-		tokenBadge = tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens)))
+		badges = append(badges, tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
 	}
 
-	sessionInfo := ""
-	if m.session != nil {
-		sessionInfo = common.MutedStyle.Render(fmt.Sprintf("Session: %s", m.session.ID()))
+	// Build first line: Title + Badges
+	firstLine := title
+	for _, badge := range badges {
+		firstLine = lipgloss.JoinHorizontal(lipgloss.Center, firstLine, " ", badge)
 	}
 
-	// Layout: Title | LLM Badge | Token Badge | Session
-	leftContent := title
-	if contextBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", contextBadge)
-	}
-	if llmBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", llmBadge)
-	}
-	if tokenBadge != "" {
-		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", tokenBadge)
-	}
-	headerFirstLine := lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", sessionInfo)
+	// Build content lines
+	var lines []string
+	lines = append(lines, firstLine)
 
-	// Second line: full session summary if available
-	var headerContent string
+	// Second line: Session summary (if available) or Session ID
 	if m.sessionSummary != "" {
-		summaryLine := common.MutedStyle.Render("💬 " + m.sessionSummary)
-		headerContent = lipgloss.JoinVertical(lipgloss.Left, headerFirstLine, summaryLine)
-	} else {
-		headerContent = headerFirstLine
+		summaryStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#AAAAAA")).
+			Italic(true)
+		lines = append(lines, summaryStyle.Render("💬 "+m.sessionSummary))
+	} else if m.session != nil {
+		// Show truncated session ID when no summary
+		sessionID := m.session.ID()
+		if len(sessionID) > 12 {
+			sessionID = sessionID[:12] + "…"
+		}
+		sessionStyle := common.MutedStyle
+		lines = append(lines, sessionStyle.Render("Session: "+sessionID))
 	}
+
+	headerContent := lipgloss.JoinVertical(lipgloss.Left, lines...)
 
 	return common.HeaderStyle.
 		Width(m.width - 2).
