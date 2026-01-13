@@ -62,6 +62,29 @@ func renderModalViewportContent(viewportContent string, viewportWidth int, loadi
 	return truncateLinesToWidth(viewportContent, viewportWidth)
 }
 
+func (m *Model) resizeStandardModalViewport(vp *viewport.Model) {
+	vp.Width = m.width - 10
+	vp.Height = m.height - 8
+}
+
+func (m *Model) resizeLogModalViewport() {
+	viewportWidth := m.width - 14
+	m.logModalViewport.Width = viewportWidth
+	m.logModalViewport.Height = m.height - 10
+	scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
+	truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+	m.logModalViewport.SetContent(truncatedContent)
+}
+
+func (m *Model) resizeBatchLogsModalViewport() {
+	viewportWidth := m.width - 14
+	m.batchLogsViewport.Width = viewportWidth
+	m.batchLogsViewport.Height = m.height - 10
+	scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+	truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+	m.batchLogsViewport.SetContent(truncatedContent)
+}
+
 // formatValueForModal formats a value for display in modals with appropriate colors.
 func formatValueForModal(v interface{}, maxWidth int) string {
 	return formatValueWithStyles(v, maxWidth, modalValueStyle, modalPathStyle, mutedStyle)

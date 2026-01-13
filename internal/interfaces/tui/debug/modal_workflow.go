@@ -12,7 +12,12 @@ import (
 func (m Model) renderInputsModal() string {
 	title := titleStyle.Render(common.IconInputs + " Workflow Inputs: " + m.metadata.Name)
 
-	content := m.inputsModalViewport.View()
+	content := renderModalViewportContent(
+		m.inputsModalViewport.View(),
+		m.inputsModalViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
@@ -23,7 +28,12 @@ func (m Model) renderInputsModal() string {
 func (m Model) renderOutputsModal() string {
 	title := titleStyle.Render(common.IconOutputs + " Workflow Outputs: " + m.metadata.Name)
 
-	content := m.outputsModalViewport.View()
+	content := renderModalViewportContent(
+		m.outputsModalViewport.View(),
+		m.outputsModalViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
@@ -34,7 +44,12 @@ func (m Model) renderOutputsModal() string {
 func (m Model) renderOptionsModal() string {
 	title := titleStyle.Render(common.IconOptions + " Workflow Options: " + m.metadata.Name)
 
-	content := m.optionsModalViewport.View()
+	content := renderModalViewportContent(
+		m.optionsModalViewport.View(),
+		m.optionsModalViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 

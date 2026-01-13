@@ -20,7 +20,12 @@ type taskTimelineEntry struct {
 func (m Model) renderGlobalTimelineModal() string {
 	title := titleStyle.Render("⏱  Tasks by Duration (longest first): " + m.globalTimelineTitle)
 
-	content := m.globalTimelineViewport.View()
+	content := renderModalViewportContent(
+		m.globalTimelineViewport.View(),
+		m.globalTimelineViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.timelineModalFooter()
 

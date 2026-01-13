@@ -17,7 +17,12 @@ func (m Model) renderCallInputsModal() string {
 
 	title := titleStyle.Render(common.IconInputs + " Inputs: " + nodeName)
 
-	content := m.callInputsViewport.View()
+	content := renderModalViewportContent(
+		m.callInputsViewport.View(),
+		m.callInputsViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
@@ -34,7 +39,12 @@ func (m Model) renderCallOutputsModal() string {
 
 	title := titleStyle.Render(common.IconOutputs + " Outputs: " + nodeName)
 
-	content := m.callOutputsViewport.View()
+	content := renderModalViewportContent(
+		m.callOutputsViewport.View(),
+		m.callOutputsViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
@@ -51,7 +61,12 @@ func (m Model) renderCallCommandModal() string {
 
 	title := titleStyle.Render(common.IconOptions + " Command: " + nodeName)
 
-	content := m.callCommandViewport.View()
+	content := renderModalViewportContent(
+		m.callCommandViewport.View(),
+		m.callCommandViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
