@@ -57,7 +57,7 @@ func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		},
 		onLeft: func(m *Model) {
 			if m.batchLogsHScrollOffset > 0 {
-				m.batchLogsHScrollOffset -= 10
+				m.batchLogsHScrollOffset -= modalHorizontalStep
 				if m.batchLogsHScrollOffset < 0 {
 					m.batchLogsHScrollOffset = 0
 				}
@@ -67,7 +67,7 @@ func (m Model) handleBatchLogsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		},
 		onRight: func(m *Model) {
-			m.batchLogsHScrollOffset += 10
+			m.batchLogsHScrollOffset += modalHorizontalStep
 			scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
 			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
 			m.batchLogsViewport.SetContent(truncatedContent)

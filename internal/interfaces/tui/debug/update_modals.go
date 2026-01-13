@@ -8,6 +8,8 @@ import (
 type viewportNavigator interface {
 	ScrollUp(int) []string
 	ScrollDown(int) []string
+	ScrollLeft(int)
+	ScrollRight(int)
 	PageUp() []string
 	PageDown() []string
 	GotoTop() []string
@@ -22,6 +24,8 @@ type viewportModalActions struct {
 	onLeft  func(*Model)
 	onRight func(*Model)
 }
+
+const modalHorizontalStep = 10
 
 func (m *Model) handleViewportModalKeys(msg tea.KeyMsg, navigator viewportNavigator, actions viewportModalActions) (tea.Cmd, bool) {
 	switch {
@@ -66,11 +70,15 @@ func (m *Model) handleViewportModalKeys(msg tea.KeyMsg, navigator viewportNaviga
 			actions.onLeft(m)
 			return nil, true
 		}
+		navigator.ScrollLeft(modalHorizontalStep)
+		return nil, true
 	case key.Matches(msg, m.keys.Right):
 		if actions.onRight != nil {
 			actions.onRight(m)
 			return nil, true
 		}
+		navigator.ScrollRight(modalHorizontalStep)
+		return nil, true
 	}
 	return nil, false
 }
@@ -99,7 +107,7 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		},
 		onLeft: func(m *Model) {
 			if m.logModalHScrollOffset > 0 {
-				m.logModalHScrollOffset -= 10
+				m.logModalHScrollOffset -= modalHorizontalStep
 				if m.logModalHScrollOffset < 0 {
 					m.logModalHScrollOffset = 0
 				}
@@ -109,7 +117,7 @@ func (m Model) handleLogModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		},
 		onRight: func(m *Model) {
-			m.logModalHScrollOffset += 10
+			m.logModalHScrollOffset += modalHorizontalStep
 			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
 			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
 			m.logModalViewport.SetContent(truncatedContent)
