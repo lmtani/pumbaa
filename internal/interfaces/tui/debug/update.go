@@ -238,23 +238,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = m.width
 		m.detailViewport.Width = m.detailsWidth - 4
 		m.detailViewport.Height = m.height - 14 // Leave room for header, footer, and panel borders
-		if m.showLogModal {
-			viewportWidth := m.width - 14
-			m.logModalViewport.Width = viewportWidth
-			m.logModalViewport.Height = m.height - 10
-			// Reapply content with new width
-			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
-			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
-			m.logModalViewport.SetContent(truncatedContent)
-		}
-		if m.showBatchLogsModal {
-			viewportWidth := m.width - 14
-			m.batchLogsViewport.Width = viewportWidth
-			m.batchLogsViewport.Height = m.height - 10
-			scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
-			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
-			m.batchLogsViewport.SetContent(truncatedContent)
-		}
+		m.resizeActiveModal()
 		m.updateDetailsContent()
 
 	case tea.KeyMsg:
