@@ -26,7 +26,7 @@ func NewVertexModel(project, location, modelName string) (*VertexModel, error) {
 		location = "us-central1"
 	}
 	if modelName == "" {
-		modelName = "gemini-2.0-flash"
+		modelName = "gemini-2.5-flash"
 	}
 
 	ctx := context.Background()

@@ -69,11 +69,11 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.VertexLocation != "us-central1" {
 		t.Errorf("expected default VertexLocation=us-central1, got %s", cfg.VertexLocation)
 	}
-	if cfg.VertexModel != "gemini-2.0-flash" {
-		t.Errorf("expected default VertexModel=gemini-2.0-flash, got %s", cfg.VertexModel)
+	if cfg.VertexModel != "gemini-2.5-flash" {
+		t.Errorf("expected default VertexModel=gemini-2.5-flash, got %s", cfg.VertexModel)
 	}
-	if cfg.GeminiModel != "gemini-2.0-flash" {
-		t.Errorf("expected default GeminiModel=gemini-2.0-flash, got %s", cfg.GeminiModel)
+	if cfg.GeminiModel != "gemini-2.5-flash" {
+		t.Errorf("expected default GeminiModel=gemini-2.5-flash, got %s", cfg.GeminiModel)
 	}
 }
 

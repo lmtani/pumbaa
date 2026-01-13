@@ -130,7 +130,7 @@ func configureGemini(cfg *config.FileConfig) error {
 	apiKey := cfg.GeminiAPIKey
 	model := cfg.GeminiModel
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = DefaultGeminiModel()
 	}
 
 	form := huh.NewForm(
@@ -142,12 +142,7 @@ func configureGemini(cfg *config.FileConfig) error {
 				EchoMode(huh.EchoModePassword),
 			huh.NewSelect[string]().
 				Title("Gemini Model").
-				Options(
-					huh.NewOption("gemini-2.5-flash (Recommended)", "gemini-2.5-flash"),
-					huh.NewOption("gemini-2.0-flash", "gemini-2.0-flash"),
-					huh.NewOption("gemini-1.5-pro", "gemini-1.5-pro"),
-					huh.NewOption("gemini-1.5-flash", "gemini-1.5-flash"),
-				).
+				Options(GetGeminiModelOptions()...).
 				Value(&model),
 		),
 	).WithTheme(huh.ThemeDracula())
@@ -169,7 +164,7 @@ func configureVertex(cfg *config.FileConfig) error {
 	}
 	model := cfg.VertexModel
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = DefaultGeminiModel()
 	}
 
 	form := huh.NewForm(
@@ -184,12 +179,7 @@ func configureVertex(cfg *config.FileConfig) error {
 				Value(&location),
 			huh.NewSelect[string]().
 				Title("Vertex AI Model").
-				Options(
-					huh.NewOption("gemini-2.5-flash (Recommended)", "gemini-2.5-flash"),
-					huh.NewOption("gemini-2.0-flash", "gemini-2.0-flash"),
-					huh.NewOption("gemini-1.5-pro", "gemini-1.5-pro"),
-					huh.NewOption("gemini-1.5-flash", "gemini-1.5-flash"),
-				).
+				Options(GetGeminiModelOptions()...).
 				Value(&model),
 		),
 	).WithTheme(huh.ThemeDracula())
