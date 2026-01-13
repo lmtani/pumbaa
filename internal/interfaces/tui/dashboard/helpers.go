@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // truncateID truncates a workflow ID to 8 characters for display.
@@ -17,17 +18,19 @@ func truncateID(id string) string {
 	return id[:8]
 }
 
+// minInt returns the minimum of two integers.
+func minInt(a, b int) int {
+	return common.MinInt(a, b)
+}
+
+// maxInt returns the maximum of two integers.
+func maxInt(a, b int) int {
+	return common.MaxInt(a, b)
+}
+
 // formatDuration formats a duration into a human-readable string (seconds, minutes, or hours).
 func formatDuration(d time.Duration) string {
-	if d < time.Minute {
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	}
-	if d < time.Hour {
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	}
-	h := int(d.Hours())
-	m := int(d.Minutes()) % 60
-	return fmt.Sprintf("%dh%dm", h, m)
+	return common.FormatDurationShort(d)
 }
 
 // containsStatus checks if a status slice contains a specific status.
@@ -38,22 +41,6 @@ func containsStatus(statuses []workflow.Status, status workflow.Status) bool {
 		}
 	}
 	return false
-}
-
-// minInt returns the minimum of two integers.
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// maxInt returns the maximum of two integers.
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // formatLabelsPlain formats workflow labels as plain text (no styling).

@@ -75,10 +75,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case clipboardCopiedMsg:
-		if msg.success {
-			m.setStatusMessage(fmt.Sprintf("✓ Copied %s!", msg.context))
+		if msg.Success {
+			m.setStatusMessage(fmt.Sprintf("✓ Copied %s!", msg.Context))
 		} else {
-			m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.err))
+			m.setStatusMessage(fmt.Sprintf("✗ Copy failed: %v", msg.Err))
 		}
 		return m, getClearStatusCmd()
 

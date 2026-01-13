@@ -1,20 +1,18 @@
 package debug
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
 
-// Colors
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
+)
+
+// Colors - use common colors where possible, define debug-specific ones here
 var (
-	// Status colors
-	statusSucceeded = lipgloss.Color("#00ff00")
-	statusFailed    = lipgloss.Color("#ff0000")
-	statusRunning   = lipgloss.Color("#ffff00")
-	statusPending   = lipgloss.Color("#888888")
-
-	// UI colors
-	primaryColor = lipgloss.Color("#7D56F4")
-	borderColor  = lipgloss.Color("#444444")
-	textColor    = lipgloss.Color("#FAFAFA")
-	mutedColor   = lipgloss.Color("#888888")
+	// Alias common colors for internal use
+	primaryColor = common.PrimaryColor
+	borderColor  = common.BorderColor
+	textColor    = common.TextColor
+	mutedColor   = common.MutedColor
 )
 
 // Styles
@@ -69,16 +67,16 @@ var (
 
 	// Status styles
 	statusDoneStyle = lipgloss.NewStyle().
-			Foreground(statusSucceeded)
+			Foreground(common.StatusSucceeded)
 
 	statusFailedStyle = lipgloss.NewStyle().
-				Foreground(statusFailed)
+				Foreground(common.StatusFailed)
 
 	statusRunningStyle = lipgloss.NewStyle().
-				Foreground(statusRunning)
+				Foreground(common.StatusRunning)
 
 	statusPendingStyle = lipgloss.NewStyle().
-				Foreground(statusPending)
+				Foreground(common.StatusPending)
 
 	// Label styles
 	labelStyle = lipgloss.NewStyle().
@@ -106,7 +104,7 @@ var (
 
 	// Error style
 	errorStyle = lipgloss.NewStyle().
-			Foreground(statusFailed).
+			Foreground(common.StatusFailed).
 			Bold(true)
 
 	// Modal style
