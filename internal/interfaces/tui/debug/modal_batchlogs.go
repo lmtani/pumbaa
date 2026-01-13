@@ -14,16 +14,8 @@ func (m Model) renderBatchLogsModal() string {
 	title := titleStyle.Render(titleText)
 
 	// Modal content
-	var content string
-	if m.batchLogsError != "" {
-		content = errorStyle.Render("Error: " + m.batchLogsError)
-	} else if m.batchLogsLoading {
-		content = mutedStyle.Render("Loading...")
-	} else {
-		// Get viewport content and truncate lines to prevent wrap
-		viewportContent := m.batchLogsViewport.View()
-		content = truncateLinesToWidth(viewportContent, m.batchLogsViewport.Width)
-	}
+	viewportContent := m.batchLogsViewport.View()
+	content := renderModalViewportContent(viewportContent, m.batchLogsViewport.Width, m.batchLogsLoading, m.batchLogsError)
 
 	// Footer with instructions
 	footer := m.batchLogsModalFooter()

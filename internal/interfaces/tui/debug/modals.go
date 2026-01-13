@@ -47,6 +47,16 @@ func (m Model) renderStandardModal(title, content, footer string) string {
 	return m.renderCenteredModal(m.width-6, m.height-4, title, content, footer)
 }
 
+func renderModalViewportContent(viewportContent string, viewportWidth int, loading bool, errMsg string) string {
+	if errMsg != "" {
+		return errorStyle.Render("Error: " + errMsg)
+	}
+	if loading {
+		return mutedStyle.Render("Loading...")
+	}
+	return truncateLinesToWidth(viewportContent, viewportWidth)
+}
+
 // formatValueForModal formats a value for display in modals with appropriate colors.
 func formatValueForModal(v interface{}, maxWidth int) string {
 	return formatValueWithStyles(v, maxWidth, modalValueStyle, modalPathStyle, mutedStyle)

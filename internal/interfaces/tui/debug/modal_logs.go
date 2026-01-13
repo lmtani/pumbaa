@@ -16,16 +16,8 @@ func (m Model) renderLogModal() string {
 	title := titleStyle.Render(titleText)
 
 	// Modal content - truncate each line to viewport width to prevent lipgloss wrap
-	var content string
-	if m.logModalError != "" {
-		content = errorStyle.Render("Error: " + m.logModalError)
-	} else if m.logModalLoading {
-		content = mutedStyle.Render("Loading...")
-	} else {
-		// Get viewport content and truncate lines to prevent wrap
-		viewportContent := m.logModalViewport.View()
-		content = truncateLinesToWidth(viewportContent, m.logModalViewport.Width)
-	}
+	viewportContent := m.logModalViewport.View()
+	content := renderModalViewportContent(viewportContent, m.logModalViewport.Width, m.logModalLoading, m.logModalError)
 
 	// Footer with instructions (including horizontal scroll)
 	footer := m.logModalFooter()
