@@ -5,18 +5,84 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// modalFooter generates the footer for modals, including copy feedback if present
+// modalFooter generates the footer for modals, including copy feedback if present.
 func (m Model) modalFooter() string {
-	baseFooter := "↑↓/PgUp/PgDn scroll • y copy • esc close"
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "y copy", "esc close")
+}
+
+func (m Model) modalFooterWithHints(hints ...string) string {
+	baseFooter := strings.Join(hints, " • ")
 	if m.statusMessage != "" {
 		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
 	}
 	return mutedStyle.Render(baseFooter)
+}
+
+func (m Model) renderCenteredModal(modalWidth, modalHeight int, title, content, footer string) string {
+	modalContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		"",
+		content,
+		"",
+		footer,
+	)
+
+	modal := modalStyle.
+		Width(modalWidth).
+		Height(modalHeight).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+	)
+}
+
+func (m Model) renderStandardModal(title, content, footer string) string {
+	return m.renderCenteredModal(m.width-6, m.height-4, title, content, footer)
+}
+
+func renderModalViewportContent(viewportContent string, viewportWidth int, loading bool, errMsg string) string {
+	if errMsg != "" {
+		return errorStyle.Render("Error: " + errMsg)
+	}
+	if loading {
+		return mutedStyle.Render("Loading...")
+	}
+	return truncateLinesToWidth(viewportContent, viewportWidth)
+}
+
+func (m *Model) resizeStandardModalViewport(vp *viewport.Model) {
+	vp.Width = m.width - 10
+	vp.Height = m.height - 8
+}
+
+func (m *Model) resizeLogModalViewport() {
+	viewportWidth := m.width - 14
+	m.logModalViewport.Width = viewportWidth
+	m.logModalViewport.Height = m.height - 10
+	scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
+	truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+	m.logModalViewport.SetContent(truncatedContent)
+}
+
+func (m *Model) resizeBatchLogsModalViewport() {
+	viewportWidth := m.width - 14
+	m.batchLogsViewport.Width = viewportWidth
+	m.batchLogsViewport.Height = m.height - 10
+	scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+	truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+	m.batchLogsViewport.SetContent(truncatedContent)
 }
 
 // formatValueForModal formats a value for display in modals with appropriate colors.

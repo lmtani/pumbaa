@@ -54,6 +54,12 @@ var (
 			PaddingLeft(2).
 			MarginBottom(1)
 
+	infoStyle = common.MutedStyle.Copy().
+			Bold(true)
+
+	infoMessageStyle = messageStyle.Copy().
+				Foreground(common.MutedColor)
+
 	inputStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(common.BorderColor).
@@ -70,6 +76,7 @@ type Model struct {
 	llm               model.LLM
 	tools             []tool.Tool
 	systemInstruction string
+	contextLabel      string // Optional context label shown in header
 
 	// Session management
 	sessionService session.Service
@@ -218,6 +225,24 @@ func extractText(content *genai.Content) string {
 // SetProgram sets the tea.Program pointer to enable real-time updates from goroutines
 func (m *Model) SetProgram(p *tea.Program) {
 	m.program = p
+}
+
+// SetContextLabel sets the optional context label shown in the header.
+func (m *Model) SetContextLabel(label string) {
+	m.contextLabel = label
+}
+
+// AddInfoMessage adds a muted informational message to the message list.
+func (m *Model) AddInfoMessage(content string) {
+	if m.msgs == nil || strings.TrimSpace(content) == "" {
+		return
+	}
+	msg := ChatMessage{Role: "info", Content: content}
+	if len(*m.msgs) == 0 {
+		*m.msgs = append(*m.msgs, msg)
+		return
+	}
+	*m.msgs = append([]ChatMessage{msg}, (*m.msgs)...)
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -434,6 +459,16 @@ func (m Model) renderHeader() string {
 		llmBadge = llmStyle.Render("🤖 " + m.llm.Name())
 	}
 
+	// Context badge (e.g., Task Context)
+	contextBadge := ""
+	if m.contextLabel != "" {
+		contextStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#FFD966")).
+			Padding(0, 1)
+		contextBadge = contextStyle.Render(m.contextLabel)
+	}
+
 	// Token usage badge
 	tokenBadge := ""
 	if m.inputTokens > 0 || m.outputTokens > 0 {
@@ -450,7 +485,13 @@ func (m Model) renderHeader() string {
 	}
 
 	// Layout: Title | LLM Badge | Token Badge | Session
-	leftContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", llmBadge)
+	leftContent := title
+	if contextBadge != "" {
+		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", contextBadge)
+	}
+	if llmBadge != "" {
+		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", llmBadge)
+	}
 	if tokenBadge != "" {
 		leftContent = lipgloss.JoinHorizontal(lipgloss.Center, leftContent, "  ", tokenBadge)
 	}
@@ -569,6 +610,7 @@ func (m Model) renderMessages() string {
 	for i, msg := range *m.msgs {
 		var roleStyle lipgloss.Style
 		var roleName string
+		contentStyle := messageStyle
 
 		switch msg.Role {
 		case "user":
@@ -577,6 +619,10 @@ func (m Model) renderMessages() string {
 		case "agent":
 			roleStyle = agentStyle
 			roleName = "Pumbaa"
+		case "info":
+			roleStyle = infoStyle
+			roleName = "Context"
+			contentStyle = infoMessageStyle
 		default:
 			roleStyle = errorStyle
 			roleName = "Error"
@@ -597,7 +643,7 @@ func (m Model) renderMessages() string {
 		if msg.Role == "agent" && msg.Rendered != "" {
 			content = msg.Rendered
 		} else {
-			content = messageStyle.Render(wrapText(msg.Content, maxWidth))
+			content = contentStyle.Render(wrapText(msg.Content, maxWidth))
 		}
 
 		if isSelected {

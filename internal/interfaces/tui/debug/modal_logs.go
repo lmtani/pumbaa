@@ -3,15 +3,11 @@ package debug
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/ansi"
 )
 
 // renderLogModal renders the log modal.
 func (m Model) renderLogModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	// Modal title with scroll indicator
 	titleText := "📄 " + m.logModalTitle
 	if m.logModalHScrollOffset > 0 {
@@ -20,52 +16,18 @@ func (m Model) renderLogModal() string {
 	title := titleStyle.Render(titleText)
 
 	// Modal content - truncate each line to viewport width to prevent lipgloss wrap
-	var content string
-	if m.logModalError != "" {
-		content = errorStyle.Render("Error: " + m.logModalError)
-	} else if m.logModalLoading {
-		content = mutedStyle.Render("Loading...")
-	} else {
-		// Get viewport content and truncate lines to prevent wrap
-		viewportContent := m.logModalViewport.View()
-		content = truncateLinesToWidth(viewportContent, m.logModalViewport.Width)
-	}
+	viewportContent := m.logModalViewport.View()
+	content := renderModalViewportContent(viewportContent, m.logModalViewport.Width, m.logModalLoading, m.logModalError)
 
 	// Footer with instructions (including horizontal scroll)
 	footer := m.logModalFooter()
 
-	// Build modal box
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	// Center the modal
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // logModalFooter generates the footer for log modals with horizontal scroll hint
 func (m Model) logModalFooter() string {
-	baseFooter := "↑↓ scroll • ←→ pan • y copy • esc close"
-	if m.statusMessage != "" {
-		return mutedStyle.Render(baseFooter) + "  " + temporaryStatusStyle.Render(m.statusMessage)
-	}
-	return mutedStyle.Render(baseFooter)
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "y copy", "esc close")
 }
 
 // truncateLinesToWidth truncates each line to the specified visible width while preserving ANSI codes

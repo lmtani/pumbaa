@@ -59,6 +59,18 @@ func (m Model) renderHeader() string {
 		costBadge = costBadgeStyle.Render(fmt.Sprintf("💰 $%.4f", totalCost))
 	}
 
+	// Search badge (active or filtered)
+	searchBadge := ""
+	if m.searchActive || m.searchQuery != "" {
+		label := "SEARCH"
+		if m.searchActive && m.searchQuery == "" {
+			label = "SEARCH..."
+		} else if m.searchQuery != "" {
+			label = "SEARCH: " + truncate(m.searchQuery, 24)
+		}
+		searchBadge = searchBadgeStyle.Render(label)
+	}
+
 	// Workflow name and ID
 	workflowName := headerTitleStyle.Render(m.metadata.Name)
 	workflowID := mutedStyle.Render(" " + m.metadata.ID)
@@ -72,6 +84,7 @@ func (m Model) renderHeader() string {
 		workflowID,
 		durationBadge,
 		costBadge,
+		searchBadge,
 	)
 
 	return headerStyle.Width(m.width - 2).Render(header)

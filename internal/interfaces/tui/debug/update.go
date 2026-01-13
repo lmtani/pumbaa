@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
@@ -47,6 +48,15 @@ type resourceAnalysisLoadedMsg struct {
 }
 
 type resourceAnalysisErrorMsg struct {
+	err error
+}
+
+type batchLogsLoadedMsg struct {
+	entries []ports.BatchLogEntry
+	jobID   string
+}
+
+type batchLogsErrorMsg struct {
 	err error
 }
 
@@ -112,8 +122,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Rebuild children for this node
 			tree.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
 			node.Expanded = true
-			m.nodes = tree.GetVisibleNodes(m.tree)
-			m.updateDetailsContent()
+			m.updateSearchFilter()
 		}
 		return m, nil
 
@@ -131,7 +140,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.logModalTitle = msg.title
 		m.logModalError = ""
 		m.logModalLoading = false
-		m.showLogModal = true
+		m.activeModal = ModalLog
 		m.logModalHScrollOffset = 0
 		// Initialize the modal viewport with truncated content
 		// Modal uses: width-6, minus border (2), minus padding (4) = width-12
@@ -159,6 +168,67 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setStatusMessage("Error loading log: " + errorMsg)
 		return m, getClearStatusCmd()
 
+	case batchLogsLoadedMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.batchLogsError = ""
+		m.batchLogsLoading = false
+		m.batchLogsHScrollOffset = 0
+
+		// Format entries for raw content (without ANSI colors)
+		var rawSB strings.Builder
+		for _, entry := range msg.entries {
+			rawSB.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
+				entry.Timestamp.Format("2006-01-02 15:04:05"),
+				entry.Severity,
+				entry.Message))
+		}
+
+		// Keep raw content for clipboard (no colors)
+		m.batchLogsRawContent = rawSB.String()
+
+		// Apply syntax highlighting to content for display
+		// The bioLogLexer will automatically color log levels (ERROR, WARNING, DEBUG, etc.)
+		m.batchLogsContent = common.Highlight(m.batchLogsRawContent, common.ProfileLog, 0)
+
+		m.activeModal = ModalBatchLogs
+
+		// Initialize the modal viewport
+		viewportWidth := m.width - 14
+		m.batchLogsViewport = viewport.New(viewportWidth, m.height-10)
+		scrolledContent := applyHorizontalScroll(m.batchLogsContent, m.batchLogsHScrollOffset, viewportWidth)
+		truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
+		m.batchLogsViewport.SetContent(truncatedContent)
+		return m, nil
+
+	case batchLogsErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		errorMsg := msg.err.Error()
+
+		// Simplify common error messages
+		if strings.Contains(errorMsg, "invalid job name") {
+			errorMsg = "Invalid Google Batch job ID (must be full resource name)"
+		} else if strings.Contains(errorMsg, "no logs found") {
+			errorMsg = "No logs found for this job"
+		} else if strings.Contains(errorMsg, "unauthorized") {
+			errorMsg = "Access denied: check GCP permissions"
+		} else if len(errorMsg) > 80 {
+			errorMsg = errorMsg[:77] + "..."
+		}
+
+		m.setStatusMessage("Error loading batch logs: " + errorMsg)
+		return m, getClearStatusCmd()
+
+	case chatContextLoadedMsg:
+		return m.handleChatContextLoaded(msg)
+
+	case chatContextErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.setStatusMessage(fmt.Sprintf("Failed to collect context: %v", msg.err))
+		return m, getClearStatusCmd()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -167,15 +237,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.Width = m.width
 		m.detailViewport.Width = m.detailsWidth - 4
 		m.detailViewport.Height = m.height - 14 // Leave room for header, footer, and panel borders
-		if m.showLogModal {
-			viewportWidth := m.width - 14
-			m.logModalViewport.Width = viewportWidth
-			m.logModalViewport.Height = m.height - 10
-			// Reapply content with new width
-			scrolledContent := applyHorizontalScroll(m.logModalContent, m.logModalHScrollOffset, viewportWidth)
-			truncatedContent := truncateLinesToWidth(scrolledContent, viewportWidth)
-			m.logModalViewport.SetContent(truncatedContent)
-		}
+		m.resizeActiveModal()
 		m.updateDetailsContent()
 
 	case tea.KeyMsg:
@@ -187,51 +249,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyMsg handles keyboard input.
 func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Handle log modal first
-	if m.showLogModal {
-		return m.handleLogModalKeys(msg)
+	if model, cmd, handled := m.handleActiveModalKeys(msg); handled {
+		return model, cmd
 	}
 
-	// Handle inputs modal
-	if m.showInputsModal {
-		return m.handleInputsModalKeys(msg)
-	}
-
-	// Handle outputs modal
-	if m.showOutputsModal {
-		return m.handleOutputsModalKeys(msg)
-	}
-
-	// Handle options modal
-	if m.showOptionsModal {
-		return m.handleOptionsModalKeys(msg)
-	}
-
-	// Handle call-level inputs modal
-	if m.showCallInputsModal {
-		return m.handleCallInputsModalKeys(msg)
-	}
-
-	// Handle call-level outputs modal
-	if m.showCallOutputsModal {
-		return m.handleCallOutputsModalKeys(msg)
-	}
-
-	// Handle call-level command modal
-	if m.showCallCommandModal {
-		return m.handleCallCommandModalKeys(msg)
-	}
-
-	// Handle global timeline modal
-	if m.showGlobalTimelineModal {
-		return m.handleGlobalTimelineModalKeys(msg)
-	}
-
-	if m.showHelp {
-		if key.Matches(msg, m.keys.Help) || key.Matches(msg, m.keys.Escape) || key.Matches(msg, m.keys.Quit) {
-			m.showHelp = false
-		}
-		return m, nil
+	if m.searchActive {
+		return m.handleSearchKeys(msg)
 	}
 
 	return m.handleMainKeys(msg)
@@ -243,7 +266,20 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Help):
-		m.showHelp = !m.showHelp
+		if m.activeModal == ModalHelp {
+			m.activeModal = ModalNone
+		} else {
+			m.activeModal = ModalHelp
+		}
+
+	case msg.String() == "/":
+		m.searchActive = true
+
+	case msg.Type == tea.KeyCtrlX:
+		if m.searchQuery != "" {
+			m.searchQuery = ""
+			m.updateSearchFilter()
+		}
 
 	case key.Matches(msg, m.keys.Up):
 		if m.focus == FocusTree {
@@ -265,7 +301,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.changeSelectedNode(m.cursor + 1)
 			}
 		} else if m.viewMode == ViewModeLogs && m.focus == FocusDetails {
-			if m.logCursor < 2 { // 0 = stdout, 1 = stderr, 2 = monitoring
+			if m.logCursor < 3 { // 0 = stdout, 1 = stderr, 2 = monitoring, 3 = batch logs
 				m.logCursor++
 				m.updateDetailsContent()
 			}
@@ -278,7 +314,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			node := m.nodes[m.cursor]
 			if node.Expanded && len(node.Children) > 0 {
 				node.Expanded = false
-				m.nodes = tree.GetVisibleNodes(m.tree)
+				m.updateSearchFilter()
 			} else if node.Parent != nil {
 				// Move to parent
 				for i, n := range m.nodes {
@@ -313,11 +349,11 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.ExpandAll):
 		m.expandAll(m.tree)
-		m.nodes = tree.GetVisibleNodes(m.tree)
+		m.updateSearchFilter()
 
 	case key.Matches(msg, m.keys.CollapseAll):
 		m.collapseAll(m.tree)
-		m.nodes = tree.GetVisibleNodes(m.tree)
+		m.updateSearchFilter()
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)
@@ -359,7 +395,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	// Call-level quick actions (1-4)
+	// Call-level quick actions (1-6)
 	default:
 		return m.handleQuickActions(msg)
 	}
@@ -380,6 +416,20 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 				logPath = node.CallData.Stderr
 			case 2:
 				logPath = node.CallData.MonitoringLog
+			case 3:
+				if m.canShowBatchLogs(node) {
+					m.isLoading = true
+					m.loadingMessage = "Loading Google Batch logs..."
+					m.loadingStartTime = time.Now()
+					m.batchLogsLoading = true
+					return m, m.loadBatchLogs(
+						node.CallData.JobID,
+						node.CallData.VMStartTime,
+						node.CallData.VMEndTime,
+					)
+				}
+				m.setStatusMessage("Google Batch logs not available")
+				return m, getClearStatusCmd()
 			}
 			if logPath != "" {
 				m.isLoading = true
@@ -406,7 +456,8 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 			}
 		} else if len(node.Children) > 0 {
 			node.Expanded = !node.Expanded
-			m.nodes = tree.GetVisibleNodes(m.tree)
+			m.updateSearchFilter()
+			return m, nil
 		}
 		m.updateDetailsContent()
 	}
@@ -455,7 +506,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 	switch keyNum {
 	case "1": // Inputs
 		if len(meta.Inputs) > 0 {
-			m.showInputsModal = true
+			m.activeModal = ModalInputs
 			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
 		} else {
@@ -464,7 +515,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 		}
 	case "2": // Outputs
 		if len(meta.Outputs) > 0 {
-			m.showOutputsModal = true
+			m.activeModal = ModalOutputs
 			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
 		} else {
@@ -473,7 +524,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 		}
 	case "3": // Options
 		if meta.SubmittedOptions != "" {
-			m.showOptionsModal = true
+			m.activeModal = ModalOptions
 			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
 		} else {
@@ -481,7 +532,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 			return m, getClearStatusCmd()
 		}
 	case "4": // Timeline
-		m.showGlobalTimelineModal = true
+		m.activeModal = ModalGlobalTimeline
 		m.globalTimelineTitle = meta.Name
 		m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
 		m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(meta))
@@ -500,7 +551,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 }
 
 // handleTaskQuickAction handles quick actions for Task and Shard nodes.
-// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline]
+// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline], 6=Chat
 func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
 	if node.CallData == nil {
 		return m, nil
@@ -509,7 +560,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 	switch keyNum {
 	case "1": // Inputs
 		if len(node.CallData.Inputs) > 0 {
-			m.showCallInputsModal = true
+			m.activeModal = ModalCallInputs
 			m.callInputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
 		} else {
@@ -518,7 +569,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 	case "2": // Outputs
 		if len(node.CallData.Outputs) > 0 {
-			m.showCallOutputsModal = true
+			m.activeModal = ModalCallOutputs
 			m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
 			m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
 		} else {
@@ -527,7 +578,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 	case "3": // Command
 		if node.CallData.CommandLine != "" {
-			m.showCallCommandModal = true
+			m.activeModal = ModalCallCommand
 			m.callCommandViewport = viewport.New(m.width-10, m.height-8)
 			m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
 		} else {
@@ -535,7 +586,7 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 			return m, getClearStatusCmd()
 		}
 	case "4": // Logs (inline)
-		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" {
+		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" || m.canShowBatchLogs(node) {
 			m.viewMode = ViewModeLogs
 			m.logCursor = 1 // Start at stderr
 			m.updateDetailsContent()
@@ -566,6 +617,8 @@ func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, 
 		}
 		m.setStatusMessage("No monitoring data available")
 		return m, getClearStatusCmd()
+	case "6", "a": // Chat with AI
+		return m.openChatSelectionModal(node)
 	}
 
 	return m, nil

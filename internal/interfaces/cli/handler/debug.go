@@ -8,24 +8,45 @@ import (
 	"github.com/urfave/cli/v2"
 
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
-	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm"
+	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
 )
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	repository ports.WorkflowRepository
-	telemetry  telemetry.Service
+	repository     ports.WorkflowRepository
+	telemetry      telemetry.Service
+	monitoringUC   *workflowapp.MonitoringUseCase
+	fileProvider   ports.FileProvider
+	metadataParser ports.MetadataParser
+	batchLogsUC    *workflowapp.GetBatchLogsUseCase
+	config         *config.Config
 }
 
 // NewDebugHandler creates a new debug handler.
-func NewDebugHandler(client ports.WorkflowRepository, ts telemetry.Service) *DebugHandler {
+func NewDebugHandler(
+	client ports.WorkflowRepository,
+	ts telemetry.Service,
+	muc *workflowapp.MonitoringUseCase,
+	fp ports.FileProvider,
+	mp ports.MetadataParser,
+	bluc *workflowapp.GetBatchLogsUseCase,
+	cfg *config.Config,
+) *DebugHandler {
 	return &DebugHandler{
-		repository: client,
-		telemetry:  ts,
+		repository:     client,
+		telemetry:      ts,
+		monitoringUC:   muc,
+		fileProvider:   fp,
+		metadataParser: mp,
+		batchLogsUC:    bluc,
+		config:         cfg,
 	}
 }
 
@@ -111,24 +132,78 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	// Parse metadata using infrastructure layer (handler can know infra)
-	wf, err := cromwell.ParseDetailedMetadata(metadataBytes)
+	// Parse metadata using injected parser
+	wf, err := h.metadataParser.ParseMetadata(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
-	// Initialize infrastructure and use cases
-	fp := storage.NewFileProvider()
-	muc := workflowapp.NewMonitoringUseCase(fp)
-
-	// Create and run the TUI (tree building happens inside NewModel)
-	model := debug.NewModel(wf, h.repository, muc, fp)
-
-	p := tea.NewProgram(model, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		return fmt.Errorf("error running TUI: %w", err)
+	// Initialize chat dependencies if LLM is configured
+	var chatDeps *debug.ChatDependencies
+	if h.config != nil && h.config.LLMProvider != "" {
+		chatDeps = h.initializeChatDependencies()
 	}
 
-	return nil
+	for {
+		// Create and run the TUI (tree building happens inside NewModel)
+		model := debug.NewModelWithChat(wf, h.repository, h.monitoringUC, h.fileProvider, h.batchLogsUC, chatDeps)
+		p := tea.NewProgram(model, tea.WithAltScreen())
+
+		finalModel, err := p.Run()
+		if err != nil {
+			return fmt.Errorf("error running TUI: %w", err)
+		}
+
+		debugModel, ok := finalModel.(debug.Model)
+		if !ok {
+			return nil
+		}
+
+		if debugModel.NavigateToChatSystemInstruction != "" {
+			if err := runDebugChat(
+				debugModel.NavigateToChatSystemInstruction,
+				debugModel.NavigateToChatContextSummary,
+				chatDeps,
+			); err != nil {
+				return err
+			}
+			continue
+		}
+
+		return nil
+	}
+}
+
+// initializeChatDependencies creates the chat dependencies for the debug TUI.
+func (h *DebugHandler) initializeChatDependencies() *debug.ChatDependencies {
+	// Try to initialize LLM
+	llmModel, err := llm.NewLLM(h.config)
+	if err != nil {
+		// Log the error so user knows why chat is disabled
+		fmt.Fprintf(os.Stderr, "Warning: Chat disabled - LLM initialization failed: %v\n", err)
+		return nil
+	}
+
+	// Initialize session service
+	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
+	if err != nil {
+		// Log the error so user knows why chat is disabled
+		fmt.Fprintf(os.Stderr, "Warning: Chat disabled - Session service failed: %v\n", err)
+		return nil
+	}
+
+	// Create Cromwell client for tools
+	cromwellClient := cromwellclient.NewClient(cromwellclient.Config{
+		Host:    h.config.CromwellHost,
+		Timeout: h.config.CromwellTimeout,
+	})
+
+	// Initialize tools (without WDL for now)
+	agentTools := tools.GetAllTools(cromwellClient, nil)
+
+	return &debug.ChatDependencies{
+		LLM:        llmModel,
+		Tools:      agentTools,
+		SessionSvc: svc,
+	}
 }

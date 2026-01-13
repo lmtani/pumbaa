@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // taskTimelineEntry represents a task with its timing information for the timeline
@@ -20,41 +18,23 @@ type taskTimelineEntry struct {
 
 // renderGlobalTimelineModal renders the global timeline modal showing all tasks sorted by duration
 func (m Model) renderGlobalTimelineModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	title := titleStyle.Render("⏱  Tasks by Duration (longest first): " + m.globalTimelineTitle)
 
-	content := m.globalTimelineViewport.View()
+	content := renderModalViewportContent(
+		m.globalTimelineViewport.View(),
+		m.globalTimelineViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.timelineModalFooter()
 
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // timelineModalFooter generates the footer for the timeline modal
 func (m Model) timelineModalFooter() string {
-	return mutedStyle.Render("↑↓/PgUp/PgDn scroll • esc close")
+	return m.modalFooterWithHints("↑↓ scroll", "←→ pan", "PgUp/PgDn page", "esc close")
 }
 
 // buildGlobalTimelineContentForMetadata builds timeline content for a specific workflow/subworkflow

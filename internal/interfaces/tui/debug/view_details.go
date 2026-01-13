@@ -175,6 +175,18 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			sb.WriteString(titleStyle.Render("💰 Cost") + "\n")
 			sb.WriteString(labelStyle.Render("VM Cost/Hour: ") + valueStyle.Render(fmt.Sprintf("$%.4f", cd.VMCostPerHour)) + "\n")
 		}
+
+		// Google Batch (if applicable)
+		if cd.Backend != "" || cd.JobID != "" {
+			sb.WriteString("\n")
+			sb.WriteString(titleStyle.Render("☁ Execution Backend") + "\n")
+			if cd.Backend != "" {
+				sb.WriteString(labelStyle.Render("Backend: ") + valueStyle.Render(cd.Backend) + "\n")
+			}
+			if cd.JobID != "" {
+				sb.WriteString(labelStyle.Render("Job ID: ") + mutedStyle.Render(cd.JobID) + "\n")
+			}
+		}
 	} else {
 		// For workflow/subworkflow nodes without CallData
 		// Show workflow root and log paths
@@ -233,38 +245,29 @@ func (m Model) renderLogs(node *TreeNode) string {
 	var sb strings.Builder
 	cd := node.CallData
 
-	// Show selection indicator (always show when in log view mode)
-	stdoutPrefix := "  "
-	stderrPrefix := "  "
-	monitoringPrefix := "  "
-	switch m.logCursor {
-	case 0:
-		stdoutPrefix = "▶ "
-	case 1:
-		stderrPrefix = "▶ "
-	case 2:
-		monitoringPrefix = "▶ "
+	logItems := []struct {
+		label     string
+		value     string
+		available bool
+	}{
+		{label: "stdout", value: cd.Stdout, available: cd.Stdout != ""},
+		{label: "stderr", value: cd.Stderr, available: cd.Stderr != ""},
+		{label: "monitoring", value: cd.MonitoringLog, available: cd.MonitoringLog != ""},
+		{label: "batch logs", value: cd.JobID, available: m.canShowBatchLogs(node)},
 	}
 
-	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
-	if cd.Stdout != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stdout, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
-	}
+	for i, item := range logItems {
+		prefix := "  "
+		if m.logCursor == i {
+			prefix = "▶ "
+		}
 
-	sb.WriteString(stderrPrefix + labelStyle.Render("stderr: ") + "\n")
-	if cd.Stderr != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stderr, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
-	}
-
-	sb.WriteString(monitoringPrefix + labelStyle.Render("monitoring: ") + "\n")
-	if cd.MonitoringLog != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.MonitoringLog, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+		sb.WriteString(prefix + labelStyle.Render(item.label+": ") + "\n")
+		if item.available {
+			sb.WriteString("  " + pathStyle.Render(truncatePath(item.value, m.detailsWidth-8)) + "\n\n")
+		} else {
+			sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+		}
 	}
 
 	if m.focus == FocusDetails {
@@ -468,10 +471,14 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			if a := formatAction("3", "command", cd.CommandLine != ""); a != "" {
 				actions = append(actions, a)
 			}
-			if a := formatAction("4", "logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != ""); a != "" {
+			if a := formatAction("4", "logs", cd.Stdout != "" || cd.Stderr != "" || cd.MonitoringLog != "" || m.canShowBatchLogs(node)); a != "" {
 				actions = append(actions, a)
 			}
 			if a := formatAction("5", "efficiency", cd.MonitoringLog != ""); a != "" {
+				actions = append(actions, a)
+			}
+			// Chat with AI - enabled if LLM is configured
+			if a := formatAction("6", "chat", m.llm != nil); a != "" {
 				actions = append(actions, a)
 			}
 		}
@@ -637,4 +644,25 @@ func sectionSeparator(width int) string {
 		width = 37
 	}
 	return sectionSeparatorStyle.Render(strings.Repeat("─", width))
+}
+
+// canShowBatchLogs checks if batch logs action should be enabled for a node.
+// Conditions:
+//   - node has CallData
+//   - CallData.JobID is not empty
+//   - CallData.Backend is "GoogleBatch"
+//   - JobID starts with "projects/" (full resource name)
+func (m Model) canShowBatchLogs(node *TreeNode) bool {
+	if node.CallData == nil {
+		return false
+	}
+	cd := node.CallData
+	if cd.JobID == "" {
+		return false
+	}
+	if cd.Backend != "GoogleBatch" {
+		return false
+	}
+	// Check if it's a full resource name
+	return strings.HasPrefix(cd.JobID, "projects/")
 }

@@ -22,33 +22,8 @@ func (m Model) View() string {
 		return m.renderLoading()
 	}
 
-	// Check for modal states first
-	if m.showHelp {
-		return m.renderHelpOverlay()
-	}
-	if m.showLogModal {
-		return m.renderLogModal()
-	}
-	if m.showInputsModal {
-		return m.renderInputsModal()
-	}
-	if m.showOutputsModal {
-		return m.renderOutputsModal()
-	}
-	if m.showOptionsModal {
-		return m.renderOptionsModal()
-	}
-	if m.showGlobalTimelineModal {
-		return m.renderGlobalTimelineModal()
-	}
-	if m.showCallInputsModal {
-		return m.renderCallInputsModal()
-	}
-	if m.showCallOutputsModal {
-		return m.renderCallOutputsModal()
-	}
-	if m.showCallCommandModal {
-		return m.renderCallCommandModal()
+	if modal, ok := m.renderActiveModal(); ok {
+		return modal
 	}
 
 	// Main layout: tree + details

@@ -33,13 +33,15 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpSectionTitle("Actions") + "\n")
 	content.WriteString(helpLine("E / C", "Expand / Collapse all"))
 	content.WriteString(helpLine("d", "Return to details view"))
+	content.WriteString(helpLine("/", "Filter tree (name/status)"))
+	content.WriteString(helpLine("Ctrl+X", "Clear search"))
 	content.WriteString(helpLine("y", "Copy to clipboard"))
 	content.WriteString(helpLine("Esc", "Close modal / back"))
 	content.WriteString(helpLine("q", "Quit"))
 	content.WriteString("\n")
 
 	// Quick actions section header
-	content.WriteString(helpSectionTitle("Quick Actions (1-5)") + "\n")
+	content.WriteString(helpSectionTitle("Quick Actions (1-6)") + "\n")
 	content.WriteString(common.MutedStyle.Render("Actions depend on node type") + "\n\n")
 
 	// Workflow actions
@@ -60,6 +62,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpLine("3", "Command"))
 	content.WriteString(helpLine("4", "Logs (inline)"))
 	content.WriteString(helpLine("5", "Efficiency (inline)"))
+	content.WriteString(helpLine("6", "Chat (AI)"))
 	content.WriteString("\n")
 
 	// In Modals section

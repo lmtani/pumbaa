@@ -55,6 +55,12 @@ var (
 			Padding(0, 1).
 			MarginLeft(1)
 
+	searchBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#FFA500")).
+				Padding(0, 1).
+				MarginLeft(1)
+
 	// Title styles
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).

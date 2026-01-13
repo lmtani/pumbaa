@@ -11,6 +11,14 @@ import (
 
 func (m Model) renderTree() string {
 	var sb strings.Builder
+	if len(m.nodes) == 0 && m.searchQuery != "" {
+		sb.WriteString(mutedStyle.Render(fmt.Sprintf("No matches for %q", m.searchQuery)))
+		style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
+		if m.focus == FocusTree {
+			style = style.BorderForeground(lipgloss.Color("#7D56F4"))
+		}
+		return style.Render(sb.String())
+	}
 
 	startIdx := 0
 	maxVisible := m.height - 10 // Leave room for header and footer
@@ -60,7 +68,11 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 	// Expand/collapse indicator
 	expandIndicator := " "
 	if len(node.Children) > 0 || (node.Type == NodeTypeSubWorkflow && node.SubWorkflowID != "") {
-		if node.Expanded {
+		expanded := node.Expanded
+		if m.searchQuery != "" && m.searchForcedExpanded != nil {
+			expanded = m.searchForcedExpanded[node]
+		}
+		if expanded {
 			expandIndicator = common.IconExpanded
 		} else {
 			expandIndicator = common.IconCollapsed

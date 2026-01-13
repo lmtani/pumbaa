@@ -4,16 +4,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // renderCallInputsModal renders the call inputs modal.
 func (m Model) renderCallInputsModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	// Get current node for title
 	nodeName := "Unknown"
 	if m.cursor < len(m.nodes) {
@@ -22,38 +17,20 @@ func (m Model) renderCallInputsModal() string {
 
 	title := titleStyle.Render(common.IconInputs + " Inputs: " + nodeName)
 
-	content := m.callInputsViewport.View()
+	content := renderModalViewportContent(
+		m.callInputsViewport.View(),
+		m.callInputsViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // renderCallOutputsModal renders the call outputs modal.
 func (m Model) renderCallOutputsModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	// Get current node for title
 	nodeName := "Unknown"
 	if m.cursor < len(m.nodes) {
@@ -62,38 +39,20 @@ func (m Model) renderCallOutputsModal() string {
 
 	title := titleStyle.Render(common.IconOutputs + " Outputs: " + nodeName)
 
-	content := m.callOutputsViewport.View()
+	content := renderModalViewportContent(
+		m.callOutputsViewport.View(),
+		m.callOutputsViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // renderCallCommandModal renders the call command modal.
 func (m Model) renderCallCommandModal() string {
-	modalWidth := m.width - 6
-	modalHeight := m.height - 4
-
 	// Get current node for title
 	nodeName := "Unknown"
 	if m.cursor < len(m.nodes) {
@@ -102,31 +61,16 @@ func (m Model) renderCallCommandModal() string {
 
 	title := titleStyle.Render(common.IconOptions + " Command: " + nodeName)
 
-	content := m.callCommandViewport.View()
+	content := renderModalViewportContent(
+		m.callCommandViewport.View(),
+		m.callCommandViewport.Width,
+		false,
+		"",
+	)
 
 	footer := m.modalFooter()
 
-	modalContent := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		"",
-		content,
-		"",
-		footer,
-	)
-
-	modal := modalStyle.
-		Width(modalWidth).
-		Height(modalHeight).
-		Render(modalContent)
-
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		modal,
-	)
+	return m.renderStandardModal(title, content, footer)
 }
 
 // formatCallInputsForModal formats call inputs for display in the modal.
