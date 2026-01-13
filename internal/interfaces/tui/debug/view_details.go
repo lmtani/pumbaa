@@ -245,48 +245,29 @@ func (m Model) renderLogs(node *TreeNode) string {
 	var sb strings.Builder
 	cd := node.CallData
 
-	// Show selection indicator (always show when in log view mode)
-	stdoutPrefix := "  "
-	stderrPrefix := "  "
-	monitoringPrefix := "  "
-	batchPrefix := "  "
-	switch m.logCursor {
-	case 0:
-		stdoutPrefix = "▶ "
-	case 1:
-		stderrPrefix = "▶ "
-	case 2:
-		monitoringPrefix = "▶ "
-	case 3:
-		batchPrefix = "▶ "
+	logItems := []struct {
+		label     string
+		value     string
+		available bool
+	}{
+		{label: "stdout", value: cd.Stdout, available: cd.Stdout != ""},
+		{label: "stderr", value: cd.Stderr, available: cd.Stderr != ""},
+		{label: "monitoring", value: cd.MonitoringLog, available: cd.MonitoringLog != ""},
+		{label: "batch logs", value: cd.JobID, available: m.canShowBatchLogs(node)},
 	}
 
-	sb.WriteString(stdoutPrefix + labelStyle.Render("stdout: ") + "\n")
-	if cd.Stdout != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stdout, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
-	}
+	for i, item := range logItems {
+		prefix := "  "
+		if m.logCursor == i {
+			prefix = "▶ "
+		}
 
-	sb.WriteString(stderrPrefix + labelStyle.Render("stderr: ") + "\n")
-	if cd.Stderr != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.Stderr, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
-	}
-
-	sb.WriteString(monitoringPrefix + labelStyle.Render("monitoring: ") + "\n")
-	if cd.MonitoringLog != "" {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.MonitoringLog, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
-	}
-
-	sb.WriteString(batchPrefix + labelStyle.Render("batch logs: ") + "\n")
-	if m.canShowBatchLogs(node) {
-		sb.WriteString("  " + pathStyle.Render(truncatePath(cd.JobID, m.detailsWidth-8)) + "\n\n")
-	} else {
-		sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+		sb.WriteString(prefix + labelStyle.Render(item.label+": ") + "\n")
+		if item.available {
+			sb.WriteString("  " + pathStyle.Render(truncatePath(item.value, m.detailsWidth-8)) + "\n\n")
+		} else {
+			sb.WriteString("  " + mutedStyle.Render("(not available)") + "\n\n")
+		}
 	}
 
 	if m.focus == FocusDetails {
