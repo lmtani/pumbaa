@@ -131,7 +131,7 @@ func (m Model) handleChatSelectionModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	maxCursor := len(options) - 1
 
 	switch {
-	case key.Matches(msg, m.keys.Escape), key.Matches(msg, m.keys.Quit):
+	case key.Matches(msg, m.keys.Escape):
 		// Cancel selection
 		m.activeModal = ModalNone
 		m.chatContextNode = nil

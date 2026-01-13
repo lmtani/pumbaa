@@ -273,10 +273,6 @@ func (m *Model) handleSessionsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.activeModal = ModalNone
 		return m, nil
 
-	case "ctrl+c", "q":
-		m.activeModal = ModalNone
-		return m, nil
-
 	case "up", "k":
 		if m.sessionsCursor > 0 {
 			m.sessionsCursor--
