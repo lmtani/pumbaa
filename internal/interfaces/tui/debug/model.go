@@ -122,9 +122,11 @@ type Model struct {
 	chatTools  []tool.Tool
 	sessionSvc adksession.Service
 
-	// Navigation state (for external handlers to check)
-	NavigateToChatSystemInstruction string
-	NavigateToChatContextSummary    string
+	// Navigation state
+	NavigateToChatSystemInstruction string  // Deprecated: use pendingNavigation
+	NavigateToChatContextSummary    string  // Deprecated: use pendingNavigation
+	pendingNavigation               tea.Cmd // Pending navigation command for parent
+	wantsToGoBack                   bool    // True when user wants to go back to previous screen
 
 	// Components
 	keys           KeyMap
@@ -208,4 +210,40 @@ func (m Model) Init() tea.Cmd {
 		m.loadingSpinner.Tick,
 		m.fetchTotalCost(),
 	)
+}
+
+// NavigateToChatMsg is sent when user wants to navigate to chat screen.
+type NavigateToChatMsg struct {
+	SystemInstruction string
+	ContextSummary    string
+}
+
+// GetNavigationCmd returns a pending navigation command, if any.
+func (m *Model) GetNavigationCmd() tea.Cmd {
+	return m.pendingNavigation
+}
+
+// ClearNavigation clears the pending navigation state.
+func (m *Model) ClearNavigation() {
+	m.pendingNavigation = nil
+	m.NavigateToChatSystemInstruction = ""
+	m.NavigateToChatContextSummary = ""
+	m.wantsToGoBack = false
+}
+
+// ShouldGoBack returns true if the user wants to navigate back.
+func (m *Model) ShouldGoBack() bool {
+	return m.wantsToGoBack
+}
+
+// SetPendingChatNavigation sets a navigation command to open chat.
+func (m *Model) SetPendingChatNavigation(systemInstruction, contextSummary string) {
+	m.NavigateToChatSystemInstruction = systemInstruction
+	m.NavigateToChatContextSummary = contextSummary
+	m.pendingNavigation = func() tea.Msg {
+		return NavigateToChatMsg{
+			SystemInstruction: systemInstruction,
+			ContextSummary:    contextSummary,
+		}
+	}
 }

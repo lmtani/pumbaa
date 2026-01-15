@@ -101,6 +101,22 @@ var (
 			Background(lipgloss.Color("#98FB98")).
 			Padding(0, 1).
 			MarginLeft(1)
+
+	// Breadcrumb styles
+	BreadcrumbActiveStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Bold(true)
+
+	BreadcrumbInactiveStyle = lipgloss.NewStyle().
+				Foreground(MutedColor)
+
+	BreadcrumbSeparatorStyle = lipgloss.NewStyle().
+					Foreground(MutedColor)
+
+	// Navigation hint style
+	NavHintStyle = lipgloss.NewStyle().
+			Foreground(MutedColor).
+			Italic(true)
 )
 
 // StatusStyle returns the appropriate style for a status.
@@ -129,4 +145,45 @@ func StatusIcon(status string) string {
 	default:
 		return "○"
 	}
+}
+
+// Screen represents a screen in the navigation hierarchy.
+type Screen struct {
+	Name   string
+	Active bool
+}
+
+// RenderBreadcrumbs renders a breadcrumb navigation bar.
+// Example: "Dashboard › Debug › Chat"
+func RenderBreadcrumbs(screens []Screen) string {
+	var parts []string
+	separator := BreadcrumbSeparatorStyle.Render(" › ")
+
+	for i, screen := range screens {
+		var rendered string
+		if screen.Active {
+			rendered = BreadcrumbActiveStyle.Render(screen.Name)
+		} else {
+			rendered = BreadcrumbInactiveStyle.Render(screen.Name)
+		}
+		parts = append(parts, rendered)
+
+		if i < len(screens)-1 {
+			parts = append(parts, separator)
+		}
+	}
+
+	result := ""
+	for _, part := range parts {
+		result += part
+	}
+	return result
+}
+
+// RenderNavHints renders navigation hints for the current screen.
+func RenderNavHints(canGoBack bool) string {
+	if canGoBack {
+		return NavHintStyle.Render("[ESC] back  [q] quit")
+	}
+	return NavHintStyle.Render("[q] quit")
 }

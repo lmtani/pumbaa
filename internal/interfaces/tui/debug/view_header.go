@@ -4,9 +4,19 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 func (m Model) renderHeader() string {
+	// Breadcrumbs - Debug is after Dashboard
+	breadcrumbs := common.RenderBreadcrumbs([]common.Screen{
+		{Name: "Dashboard", Active: false},
+		{Name: "Debug", Active: true},
+	})
+
+	// Navigation hints
+	navHints := common.RenderNavHints(true) // Can go back to dashboard
 	// Get just the icon without styling
 	statusIcon := StatusIcon(string(m.metadata.Status))
 
@@ -75,8 +85,16 @@ func (m Model) renderHeader() string {
 	workflowName := headerTitleStyle.Render(m.metadata.Name)
 	workflowID := mutedStyle.Render(" " + m.metadata.ID)
 
-	// Combine all parts
-	header := lipgloss.JoinHorizontal(
+	// First line: breadcrumbs and nav hints
+	headerLine1 := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		breadcrumbs,
+		"  ",
+		navHints,
+	)
+
+	// Second line: status, workflow name, badges
+	headerLine2 := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		statusBadge,
 		"  ",
@@ -87,5 +105,7 @@ func (m Model) renderHeader() string {
 		searchBadge,
 	)
 
-	return headerStyle.Width(m.width - 2).Render(header)
+	headerContent := lipgloss.JoinVertical(lipgloss.Left, headerLine1, headerLine2)
+
+	return headerStyle.Width(m.width - 2).Render(headerContent)
 }

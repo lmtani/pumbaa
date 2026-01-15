@@ -125,6 +125,10 @@ type Model struct {
 	sessionsSearch      string
 	sessionsSearching   bool
 	sessionsSearchInput textinput.Model
+
+	// Navigation state
+	wantsToGoBack bool
+	wantsToQuit   bool
 }
 
 type ChatMessage struct {
@@ -282,6 +286,22 @@ func (m *Model) AddInfoMessage(content string) {
 	*m.msgs = append([]ChatMessage{msg}, (*m.msgs)...)
 }
 
+// ShouldGoBack returns true if the user wants to navigate back.
+func (m *Model) ShouldGoBack() bool {
+	return m.wantsToGoBack
+}
+
+// ClearNavigation clears the navigation state.
+func (m *Model) ClearNavigation() {
+	m.wantsToGoBack = false
+	m.wantsToQuit = false
+}
+
+// ShouldQuit returns true if the user wants to quit the program.
+func (m *Model) ShouldQuit() bool {
+	return m.wantsToQuit
+}
+
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, tea.EnterAltScreen)
 }
@@ -329,7 +349,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEsc:
-			return m, tea.Quit
+			m.wantsToGoBack = true
+			return m, nil
+
+		case tea.KeyRunes:
+			// Handle 'q' to quit when not in text input mode
+			if len(msg.Runes) > 0 && msg.Runes[0] == 'q' && m.focusMode == FocusMessages {
+				m.wantsToQuit = true
+				return m, nil
+			}
+			// Handle 'y' for copy when in messages mode
+			if len(msg.Runes) > 0 && msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
+				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+					content := (*m.msgs)[m.selectedMsg].Content
+					return m, copyToClipboard(content)
+				}
+			}
 
 		case tea.KeyTab:
 			// Toggle focus mode
@@ -399,17 +434,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Handle Ctrl+S for sessions modal when not loading
 			if !m.loading {
 				return m.openSessionsModal()
-			}
-
-		case tea.KeyRunes:
-			if len(msg.Runes) > 0 {
-				// Handle 'y' for copy when in messages mode
-				if msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
-					if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
-						content := (*m.msgs)[m.selectedMsg].Content
-						return m, copyToClipboard(content)
-					}
-				}
 			}
 		}
 
@@ -550,6 +574,16 @@ func (m *Model) View() string {
 }
 
 func (m Model) renderHeader() string {
+	// Breadcrumbs - Chat is after Dashboard and Debug
+	breadcrumbs := common.RenderBreadcrumbs([]common.Screen{
+		{Name: "Dashboard", Active: false},
+		{Name: "Debug", Active: false},
+		{Name: "Chat", Active: true},
+	})
+
+	// Navigation hints
+	navHints := common.RenderNavHints(true) // Can go back to debug
+
 	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
 
 	// Build badges for the first line
@@ -582,17 +616,26 @@ func (m Model) renderHeader() string {
 		badges = append(badges, tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
 	}
 
-	// Build first line: Title + Badges
-	firstLine := title
+	// First line: breadcrumbs and nav hints
+	headerLine1 := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		breadcrumbs,
+		"  ",
+		navHints,
+	)
+
+	// Second line: Title + Badges
+	titleLine := title
 	for _, badge := range badges {
-		firstLine = lipgloss.JoinHorizontal(lipgloss.Center, firstLine, " ", badge)
+		titleLine = lipgloss.JoinHorizontal(lipgloss.Center, titleLine, " ", badge)
 	}
 
 	// Build content lines
 	var lines []string
-	lines = append(lines, firstLine)
+	lines = append(lines, headerLine1)
+	lines = append(lines, titleLine)
 
-	// Second line: Session summary (if available) or Session ID
+	// Third line: Session summary (if available) or Session ID
 	if m.sessionSummary != "" {
 		summaryStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#AAAAAA")).
@@ -670,7 +713,7 @@ func (m Model) renderFooter() string {
 	var help string
 	if m.focusMode == FocusMessages {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("navigate"),
 			common.KeyStyle.Render("y"),
@@ -678,11 +721,13 @@ func (m Model) renderFooter() string {
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("type"),
 			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("exit"),
+			common.DescStyle.Render("back"),
+			common.KeyStyle.Render("q"),
+			common.DescStyle.Render("quit"),
 		)
 	} else {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("send"),
 			common.KeyStyle.Render("ctrl+s"),
@@ -692,7 +737,9 @@ func (m Model) renderFooter() string {
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("navigate msgs"),
 			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("exit"),
+			common.DescStyle.Render("back"),
+			common.KeyStyle.Render("q"),
+			common.DescStyle.Render("quit"),
 		)
 	}
 

@@ -30,11 +30,6 @@ type debugMetadataErrorMsg struct {
 	err error
 }
 
-// NavigateToDebugMsg is sent when user wants to open debug view
-type NavigateToDebugMsg struct {
-	WorkflowID string
-}
-
 // Health status messages
 type healthStatusLoadedMsg struct {
 	status *workflow.HealthStatus

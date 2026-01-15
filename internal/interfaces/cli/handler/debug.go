@@ -15,7 +15,7 @@ import (
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
 // DebugHandler handles workflow debug TUI commands.
@@ -138,44 +138,43 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
 
-	// Initialize chat dependencies if LLM is configured
-	var chatDeps *debug.ChatDependencies
-	if h.config != nil && h.config.LLMProvider != "" {
-		chatDeps = h.initializeChatDependencies()
+	// Create shared dependencies
+	deps := h.createDependencies()
+
+	// Create the unified app model starting at debug screen with workflow
+	model := tui.NewAppModelWithWorkflow(deps, wf)
+
+	// Create and run the program
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	_, err = p.Run()
+	if err != nil {
+		h.telemetry.CaptureError("debug.tui", err)
+		return fmt.Errorf("error running debug TUI: %w", err)
 	}
 
-	for {
-		// Create and run the TUI (tree building happens inside NewModel)
-		model := debug.NewModelWithChat(wf, h.repository, h.monitoringUC, h.fileProvider, h.batchLogsUC, chatDeps)
-		p := tea.NewProgram(model, tea.WithAltScreen())
-
-		finalModel, err := p.Run()
-		if err != nil {
-			return fmt.Errorf("error running TUI: %w", err)
-		}
-
-		debugModel, ok := finalModel.(debug.Model)
-		if !ok {
-			return nil
-		}
-
-		if debugModel.NavigateToChatSystemInstruction != "" {
-			if err := runDebugChat(
-				debugModel.NavigateToChatSystemInstruction,
-				debugModel.NavigateToChatContextSummary,
-				chatDeps,
-			); err != nil {
-				return err
-			}
-			continue
-		}
-
-		return nil
-	}
+	return nil
 }
 
-// initializeChatDependencies creates the chat dependencies for the debug TUI.
-func (h *DebugHandler) initializeChatDependencies() *debug.ChatDependencies {
+// createDependencies creates the shared dependencies for the TUI.
+func (h *DebugHandler) createDependencies() *tui.Dependencies {
+	deps := &tui.Dependencies{
+		Repository:     h.repository,
+		FileProvider:   h.fileProvider,
+		MetadataParser: h.metadataParser,
+		MonitoringUC:   h.monitoringUC,
+		BatchLogsUC:    h.batchLogsUC,
+	}
+
+	// Initialize chat dependencies if LLM is configured
+	if h.config != nil && h.config.LLMProvider != "" {
+		deps.ChatDeps = h.initializeChatDependencies()
+	}
+
+	return deps
+}
+
+// initializeChatDependencies creates the chat dependencies for the TUI.
+func (h *DebugHandler) initializeChatDependencies() *tui.ChatDependencies {
 	// Try to initialize LLM
 	llmModel, err := llm.NewLLM(h.config)
 	if err != nil {
@@ -201,7 +200,7 @@ func (h *DebugHandler) initializeChatDependencies() *debug.ChatDependencies {
 	// Initialize tools (without WDL for now)
 	agentTools := tools.GetAllTools(cromwellClient, nil)
 
-	return &debug.ChatDependencies{
+	return &tui.ChatDependencies{
 		LLM:        llmModel,
 		Tools:      agentTools,
 		SessionSvc: svc,

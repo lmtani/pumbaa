@@ -15,8 +15,7 @@ import (
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/dashboard"
-	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
 // DashboardHandler handles the dashboard TUI command.
@@ -89,117 +88,44 @@ KEY BINDINGS:
 func (h *DashboardHandler) handle(c *cli.Context) error {
 	h.telemetry.AddBreadcrumb("navigation", "entering dashboard")
 
-	for {
-		// Create dashboard model with TUI client
-		model := dashboard.NewModelWithFetcher(h.repository)
-		model.SetMetadataFetcher(h.repository)
-		model.SetHealthChecker(h.repository)
-		model.SetLabelManager(h.repository)
+	// Create shared dependencies
+	deps := h.createDependencies()
 
-		// Create and run the program
-		p := tea.NewProgram(model, tea.WithAltScreen())
-		finalModel, err := p.Run()
-		if err != nil {
-			return fmt.Errorf("error running dashboard: %w", err)
-		}
+	// Create the unified app model starting at dashboard
+	model := tui.NewAppModel(deps, tui.ScreenDashboard)
 
-		// Check the final state
-		dashModel, ok := finalModel.(dashboard.Model)
-		if !ok {
-			// Should not happen, but handle gracefully
-			return nil
-		}
-
-		// Capture any TUI errors for telemetry before exiting
-		if dashModel.LastError != nil {
-			h.telemetry.CaptureError("dashboard.tui", dashModel.LastError)
-		}
-
-		// Check if user wants to quit
-		if dashModel.ShouldQuit {
-			h.telemetry.AddBreadcrumb("navigation", "exiting dashboard")
-			return nil
-		}
-
-		// Check if we need to navigate to debug view
-		if dashModel.NavigateToDebugID != "" {
-			var metadataBytes []byte
-
-			// Use pre-fetched metadata if available
-			if dashModel.DebugMetadataReady != nil {
-				metadataBytes = dashModel.DebugMetadataReady
-			} else {
-				// Fallback: fetch metadata (shouldn't happen with new flow)
-				var err error
-				metadataBytes, err = h.repository.GetRawMetadataWithOptions(c.Context, dashModel.NavigateToDebugID, false)
-				if err != nil {
-					fmt.Printf("Error fetching metadata: %v\n", err)
-					h.telemetry.CaptureError("dashboard.fetchMetadata", err)
-					continue
-				}
-			}
-			h.telemetry.AddBreadcrumb("navigation", fmt.Sprintf("opening debug view for %s", dashModel.NavigateToDebugID[:8]))
-			err := h.runDebugWithMetadata(metadataBytes)
-			if err != nil {
-				// Log error and send to telemetry
-				fmt.Printf("Error opening debug view: %v\n", err)
-				h.telemetry.CaptureError("dashboard.runDebugWithMetadata", err)
-			}
-			// After debug closes, loop back to restart dashboard
-			h.telemetry.AddBreadcrumb("navigation", "returning to dashboard from debug")
-			continue
-		}
-
-		// Normal exit
-		return nil
+	// Create and run the program
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		h.telemetry.CaptureError("dashboard.tui", err)
+		return fmt.Errorf("error running dashboard: %w", err)
 	}
+
+	h.telemetry.AddBreadcrumb("navigation", "exiting dashboard")
+	return nil
 }
 
-func (h *DashboardHandler) runDebugWithMetadata(metadataBytes []byte) error {
-	// Parse metadata using injected parser
-	wf, err := h.metadataParser.ParseMetadata(metadataBytes)
-	if err != nil {
-		return fmt.Errorf("failed to parse metadata: %w", err)
+// createDependencies creates the shared dependencies for the TUI.
+func (h *DashboardHandler) createDependencies() *tui.Dependencies {
+	deps := &tui.Dependencies{
+		Repository:     h.repository,
+		FileProvider:   h.fileProvider,
+		MetadataParser: h.metadataParser,
+		MonitoringUC:   h.monitoringUC,
+		BatchLogsUC:    h.batchLogsUC,
 	}
 
 	// Initialize chat dependencies if LLM is configured
-	var chatDeps *debug.ChatDependencies
 	if h.config != nil && h.config.LLMProvider != "" {
-		chatDeps = h.initializeChatDependencies()
+		deps.ChatDeps = h.initializeChatDependencies()
 	}
 
-	for {
-		// Create and run the debug TUI (tree building happens inside NewModel)
-		model := debug.NewModelWithChat(wf, h.repository, h.monitoringUC, h.fileProvider, h.batchLogsUC, chatDeps)
-		p := tea.NewProgram(model, tea.WithAltScreen())
-
-		finalModel, err := p.Run()
-		if err != nil {
-			return fmt.Errorf("error running debug TUI: %w", err)
-		}
-
-		debugModel, ok := finalModel.(debug.Model)
-		if !ok {
-			return nil
-		}
-
-		if debugModel.NavigateToChatSystemInstruction != "" {
-			if err := runDebugChat(
-				debugModel.NavigateToChatSystemInstruction,
-				debugModel.NavigateToChatContextSummary,
-				chatDeps,
-			); err != nil {
-				return err
-			}
-			continue
-		}
-
-		return nil
-	}
+	return deps
 }
 
-// initializeChatDependencies creates the chat dependencies for the debug TUI.
-func (h *DashboardHandler) initializeChatDependencies() *debug.ChatDependencies {
+// initializeChatDependencies creates the chat dependencies for the TUI.
+func (h *DashboardHandler) initializeChatDependencies() *tui.ChatDependencies {
 	// Try to initialize LLM
 	llmModel, err := llm.NewLLM(h.config)
 	if err != nil {
@@ -225,7 +151,7 @@ func (h *DashboardHandler) initializeChatDependencies() *debug.ChatDependencies 
 	// Initialize tools (without WDL for now)
 	agentTools := tools.GetAllTools(cromwellClient, nil)
 
-	return &debug.ChatDependencies{
+	return &tui.ChatDependencies{
 		LLM:        llmModel,
 		Tools:      agentTools,
 		SessionSvc: svc,

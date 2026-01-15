@@ -344,6 +344,12 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateDetailsContent()
 
 	case key.Matches(msg, m.keys.Escape):
+		// If already in tree view, go back to previous screen
+		if m.viewMode == ViewModeTree {
+			m.wantsToGoBack = true
+			return m, nil
+		}
+		// Otherwise, return to tree view
 		m.viewMode = ViewModeTree
 		m.updateDetailsContent()
 

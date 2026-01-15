@@ -13,9 +13,9 @@ func (m Model) handleChatContextLoaded(msg chatContextLoadedMsg) (tea.Model, tea
 	m.loadingMessage = ""
 
 	systemInstruction := fmt.Sprintf("%s\n\n---\n\n%s", taskDebugSystemInstruction, msg.context)
-	m.NavigateToChatSystemInstruction = systemInstruction
-	m.NavigateToChatContextSummary = m.buildChatContextSummary(msg.errors)
-	return m, tea.Quit
+	contextSummary := m.buildChatContextSummary(msg.errors)
+	m.SetPendingChatNavigation(systemInstruction, contextSummary)
+	return m, nil
 }
 
 func (m Model) buildChatContextSummary(errors []string) string {

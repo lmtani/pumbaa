@@ -11,6 +11,14 @@ import (
 
 // renderHeader renders the dashboard header with status badges and information.
 func (m Model) renderHeader() string {
+	// Breadcrumbs - Dashboard is the root, so just show it as active
+	breadcrumbs := common.RenderBreadcrumbs([]common.Screen{
+		{Name: "Dashboard", Active: true},
+	})
+
+	// Navigation hints
+	navHints := common.RenderNavHints(false) // Dashboard is root, can't go back
+
 	// Title
 	title := common.HeaderTitleStyle.Render("Cromwell Dashboard")
 
@@ -68,7 +76,18 @@ func (m Model) renderHeader() string {
 		badges = append(badges, refreshBadge)
 	}
 
-	headerContent := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", strings.Join(badges, " "))
+	// First line: breadcrumbs and nav hints
+	headerLine1 := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		breadcrumbs,
+		"  ",
+		navHints,
+	)
+
+	// Second line: title and badges
+	headerLine2 := lipgloss.JoinHorizontal(lipgloss.Center, title, "  ", strings.Join(badges, " "))
+
+	headerContent := lipgloss.JoinVertical(lipgloss.Left, headerLine1, headerLine2)
 
 	return common.HeaderStyle.
 		Width(m.width - 2).

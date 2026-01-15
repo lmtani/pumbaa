@@ -15,6 +15,12 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
+// NavigateToDebugMsg is sent when user wants to navigate to debug screen.
+// This message is handled by the parent AppModel.
+type NavigateToDebugMsg struct {
+	Workflow *workflow.Workflow
+}
+
 // Model represents the dashboard screen state.
 type Model struct {
 	width       int
@@ -47,7 +53,8 @@ type Model struct {
 	loadingDebug       bool
 	loadingDebugID     string
 	metadataFetcher    ports.WorkflowMetadataFetcher
-	DebugMetadataReady []byte // Metadata ready for debug view
+	metadataParser     ports.MetadataParser
+	DebugMetadataReady []byte // Deprecated: metadata ready for debug view
 
 	// Health status
 	healthChecker ports.HealthChecker
@@ -68,10 +75,12 @@ type Model struct {
 	labelsInput        textinput.Model
 	labelsMessage      string // In-modal feedback message
 
-	// Navigation state (for external handlers to check)
-	NavigateToDebugID string
+	// Navigation state
+	NavigateToDebugID string            // Deprecated: use pendingNavigation
 	ShouldQuit        bool
-	LastError         error // Last error for telemetry capture
+	LastError         error             // Last error for telemetry capture
+	pendingNavigation tea.Cmd           // Pending navigation command for parent
+	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
 }
 
 // FilterState holds the current filter configuration
@@ -120,6 +129,11 @@ func (m *Model) SetHealthChecker(checker ports.HealthChecker) {
 // SetLabelManager sets the label manager for workflow labels
 func (m *Model) SetLabelManager(manager ports.LabelManager) {
 	m.labelManager = manager
+}
+
+// SetMetadataParser sets the metadata parser for debug transitions
+func (m *Model) SetMetadataParser(parser ports.MetadataParser) {
+	m.metadataParser = parser
 }
 
 // Init implements tea.Model.
@@ -187,9 +201,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case debugMetadataLoadedMsg:
 		m.loadingDebug = false
-		m.DebugMetadataReady = msg.metadata
-		m.NavigateToDebugID = msg.workflowID
-		return m, tea.Quit
+		m.loadingDebugID = ""
+		// Parse metadata and set up navigation
+		if m.metadataParser != nil {
+			wf, err := m.metadataParser.ParseMetadata(msg.metadata)
+			if err != nil {
+				m.statusMsg = fmt.Sprintf("✗ Failed to parse metadata: %v", err)
+				m.LastError = err
+				return m, nil
+			}
+			m.SetPendingNavigation(wf)
+		} else {
+			// Fallback for backward compatibility
+			m.DebugMetadataReady = msg.metadata
+			m.NavigateToDebugID = msg.workflowID
+		}
+		return m, nil
 
 	case debugMetadataErrorMsg:
 		m.loadingDebug = false
@@ -266,3 +293,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // - view_table.go: renderTable(), renderWorkflowRow(), getColumnWidths()
 // - view_footer.go: renderFooter()
 // Helper functions are in helpers.go
+
+// GetNavigationCmd returns a pending navigation command, if any.
+// This is used by the parent AppModel to check if the dashboard wants to navigate.
+func (m *Model) GetNavigationCmd() tea.Cmd {
+	return m.pendingNavigation
+}
+
+// ClearNavigation clears the pending navigation state.
+func (m *Model) ClearNavigation() {
+	m.pendingNavigation = nil
+	m.pendingWorkflow = nil
+}
+
+// SetPendingNavigation sets a navigation command to be executed by the parent.
+func (m *Model) SetPendingNavigation(wf *workflow.Workflow) {
+	m.pendingWorkflow = wf
+	m.pendingNavigation = func() tea.Msg {
+		return NavigateToDebugMsg{Workflow: wf}
+	}
+}

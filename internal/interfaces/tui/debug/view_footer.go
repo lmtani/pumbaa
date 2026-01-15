@@ -95,7 +95,7 @@ func (m Model) renderFooterHints() string {
 		hints = append(hints, renderFooterHint("ctrl+x", "clear"))
 	}
 
-	hints = append(hints, renderFooterHint("?", "help"), renderFooterHint("q", "quit"))
+	hints = append(hints, renderFooterHint("?", "help"), renderFooterHint("esc", "back"), renderFooterHint("q", "quit"))
 	return strings.Join(hints, "  ")
 }
 
