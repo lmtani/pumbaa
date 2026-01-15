@@ -29,8 +29,9 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 			if req.Labels["team"] != "bio" {
 				t.Errorf("unexpected labels: %v", req.Labels)
 			}
-			if req.WorkflowType != "WDL" || req.WorkflowTypeVersion != "1.0" {
-				t.Errorf("unexpected workflow type/version: %s/%s", req.WorkflowType, req.WorkflowTypeVersion)
+			// WorkflowType and WorkflowTypeVersion should be empty to let Cromwell auto-detect
+			if req.WorkflowType != "" || req.WorkflowTypeVersion != "" {
+				t.Errorf("expected empty workflow type/version, got: %s/%s", req.WorkflowType, req.WorkflowTypeVersion)
 			}
 			return &workflow.SubmitResponse{ID: "test-id", Status: workflow.StatusSubmitted}, nil
 		},

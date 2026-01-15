@@ -76,8 +76,6 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		WorkflowOptions:      optionsData,
 		WorkflowDependencies: depsData,
 		Labels:               input.Labels,
-		WorkflowType:         "WDL",
-		WorkflowTypeVersion:  "1.0",
 	}
 
 	resp, err := uc.submitter.Submit(ctx, req)
