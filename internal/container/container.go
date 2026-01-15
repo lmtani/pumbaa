@@ -30,6 +30,8 @@ type Container struct {
 	MetadataUseCase   *workflow.MetadataUseCase
 	AbortUseCase      *workflow.AbortUseCase
 	QueryUseCase      *workflow.QueryUseCase
+	OutputsUseCase    *workflow.OutputsUseCase
+	InputsUseCase     *workflow.InputsUseCase
 	MonitoringUseCase *workflow.MonitoringUseCase
 	BatchLogsUseCase  *workflow.GetBatchLogsUseCase
 	BundleUseCase     *bundle.BundleUseCase
@@ -39,6 +41,8 @@ type Container struct {
 	MetadataHandler  *handler.MetadataHandler
 	AbortHandler     *handler.AbortHandler
 	QueryHandler     *handler.QueryHandler
+	OutputsHandler   *handler.OutputsHandler
+	InputsHandler    *handler.InputsHandler
 	BundleHandler    *handler.BundleHandler
 	DebugHandler     *handler.DebugHandler
 	DashboardHandler *handler.DashboardHandler
@@ -85,6 +89,8 @@ func New(cfg *config.Config, version string) *Container {
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
+	c.OutputsUseCase = workflow.NewOutputsUseCase(c.CromwellClient)
+	c.InputsUseCase = workflow.NewInputsUseCase(c.CromwellClient)
 	c.MonitoringUseCase = workflow.NewMonitoringUseCase(fileProvider)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
@@ -94,6 +100,8 @@ func New(cfg *config.Config, version string) *Container {
 	c.MetadataHandler = handler.NewMetadataHandler(c.MetadataUseCase, c.Presenter)
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
+	c.OutputsHandler = handler.NewOutputsHandler(c.OutputsUseCase, c.Presenter)
+	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
 	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)

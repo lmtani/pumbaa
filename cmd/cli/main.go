@@ -80,6 +80,8 @@ func main() {
 				cont.MetadataHandler.Command(),
 				cont.AbortHandler.Command(),
 				cont.QueryHandler.Command(),
+				cont.OutputsHandler.Command(),
+				cont.InputsHandler.Command(),
 				cont.DebugHandler.Command(),
 			},
 		},
