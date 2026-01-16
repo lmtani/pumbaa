@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Analysis Report</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,{{.FaviconBase64}}">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --md-sys-color-primary: #a0c4ff;
+            --md-sys-color-on-primary: #003258;
+            --md-sys-color-background: #111318;
+            --md-sys-color-on-background: #e2e2e6;
+            --md-sys-color-surface: #111318;
+            --md-sys-color-surface-variant: #43474e;
+            --md-sys-color-on-surface: #e2e2e6;
+            --md-sys-color-on-surface-variant: #c3c6cf;
+            --md-sys-color-outline: #8d9199;
+            --md-sys-color-outline-variant: #43474e;
+            --md-sys-color-surface-container-low: #191c20;
+            --md-sys-color-surface-container: #1d2024;
+            --md-sys-color-surface-container-high: #282a2f;
+            --md-sys-color-surface-container-highest: #32353a;
+            --md-sys-color-success: #a8d5a2;
+            --md-sys-color-warning: #ffd599;
+            --md-sys-color-critical: #ffb4ab;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 24px 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .header-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+        }
+
+        .header-content h1 {
+            font-size: 1.75rem;
+            font-weight: 400;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 4px;
+        }
+
+        .header-content .subtitle {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 0.875rem;
+        }
+
+        .disclaimer {
+            background: var(--md-sys-color-surface-container-low);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-on-surface-variant);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .disclaimer-icon {
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+
+        .filter-bar {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            background: var(--md-sys-color-surface-container-high);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--md-sys-color-on-surface);
+            font-size: 0.875rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .search-input::placeholder {
+            color: var(--md-sys-color-outline);
+        }
+
+        .filter-chip {
+            background: transparent;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 0.8125rem;
+            cursor: pointer;
+        }
+
+        .filter-chip:hover {
+            background: var(--md-sys-color-surface-container-high);
+        }
+
+        .filter-chip.active {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .table-container {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--md-sys-color-surface-container-high);
+        }
+
+        th {
+            text-align: left;
+            padding: 14px 16px;
+            font-weight: 500;
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            font-size: 0.875rem;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        tbody tr:hover {
+            background: var(--md-sys-color-surface-container-high);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            width: fit-content;
+        }
+
+        .status-good {
+            background: rgba(168, 213, 162, 0.12);
+            color: var(--md-sys-color-success);
+        }
+
+        .status-warning {
+            background: rgba(255, 213, 153, 0.12);
+            color: var(--md-sys-color-warning);
+        }
+
+        .status-critical {
+            background: rgba(255, 180, 171, 0.12);
+            color: var(--md-sys-color-critical);
+        }
+
+        .status-reason {
+            font-size: 0.6875rem;
+            color: var(--md-sys-color-outline);
+            max-width: 180px;
+        }
+
+        .mono {
+            font-family: monospace;
+            font-size: 0.8125rem;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+        }
+
+        .modal {
+            background: var(--md-sys-color-surface-container-high);
+            border-radius: 28px;
+            max-width: 1100px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .modal-header h2 {
+            font-weight: 500;
+            font-size: 1.375rem;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .close-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            border: none;
+            background: transparent;
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .close-btn:hover {
+            background: var(--md-sys-color-surface-container-highest);
+        }
+
+        .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            max-height: calc(90vh - 77px);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .chart-card h3 {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 12px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 200px;
+        }
+
+        .methodology {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .methodology code {
+            background: var(--md-sys-color-surface-container-highest);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        .shards-section {
+            margin-top: 8px;
+        }
+
+        .shards-section h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .shards-table-container {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .shards-table {
+            width: 100%;
+            font-size: 0.8125rem;
+        }
+
+        .shards-table th {
+            padding: 10px 12px;
+            font-size: 0.6875rem;
+        }
+
+        .shards-table td {
+            padding: 10px 12px;
+            font-size: 0.8125rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+    </style>
+</head>
+
+<body x-data="resourceApp()">
+    <div class="container">
+        <header class="header">
+            <img class="header-icon" src="data:image/png;base64,{{.FaviconBase64}}" alt="Pumbaa">
+            <div class="header-content">
+                <h1>Resource Analysis Report</h1>
+                <p class="subtitle">Consolidated monitoring data from <span x-text="workflows.length"></span>
+                    workflow(s) &bull; <span x-text="tasks.length"></span> task types analyzed</p>
+            </div>
+        </header>
+
+        <div class="disclaimer">
+            <svg class="disclaimer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>
+                <strong>Note:</strong> Values shown are approximate. Depending on the cloud provider, VMs may be
+                provisioned with
+                more resources than specified in the WDL runtime. For example, a task requesting 1 CPU and 7 GB RAM
+                might run
+                on a VM with 2 CPUs. Efficiency calculations are based on WDL-specified values.
+            </span>
+        </div>
+
+        <div class="filter-bar">
+            <input type="text" class="search-input" placeholder="Search tasks..." x-model="searchQuery">
+            <button class="filter-chip" :class="{ active: statusFilter === 'all' }"
+                @click="statusFilter = 'all'">All</button>
+            <button class="filter-chip" :class="{ active: statusFilter === 'critical' }"
+                @click="statusFilter = 'critical'">Needs Attention</button>
+            <button class="filter-chip" :class="{ active: statusFilter === 'good' }"
+                @click="statusFilter = 'good'">Optimized</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Task Name</th>
+                        <th>Shards</th>
+                        <th>CPU Mean</th>
+                        <th>Memory Peak</th>
+                        <th>Disk Peak</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="task in filteredTasks" :key="task.name">
+                        <tr @click="openModal(task)">
+                            <td><strong x-text="task.name"></strong></td>
+                            <td class="mono" x-text="task.shardCount"></td>
+                            <td class="mono" x-text="task.cpuMean.toFixed(1) + '%'"></td>
+                            <td class="mono" x-text="formatBytes(task.memoryPeakMB * 1024 * 1024)"></td>
+                            <td class="mono" x-text="task.diskPeakGB.toFixed(2) + ' GB'"></td>
+                            <td class="status-cell">
+                                <span class="status-badge" :class="'status-' + task.efficiency">
+                                    <span x-text="task.efficiencyLabel"></span>
+                                </span>
+                                <span class="status-reason" x-text="task.efficiencyReason"></span>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <template x-if="filteredTasks.length === 0">
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p>No tasks match your filter</p>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <template x-if="selectedTask">
+        <div class="modal-backdrop" @click.self="closeModal()" @keydown.escape.window="closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 x-text="selectedTask.name"></h2>
+                    <button class="close-btn" @click="closeModal()">&#x2715;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="methodology">
+                        <strong>Methodology:</strong> CPU shows mean usage during execution. Memory and Disk show peak
+                        usage.
+                        Percentages are calculated as <code>peak / requested × 100</code>.
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-card">
+                            <h3>CPU Usage vs Input Size</h3>
+                            <div class="chart-wrapper"><canvas x-ref="cpuChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Memory Usage % vs Input Size</h3>
+                            <div class="chart-wrapper"><canvas x-ref="memoryChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Disk Usage % vs Input Size</h3>
+                            <div class="chart-wrapper"><canvas x-ref="diskChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="shards-section">
+                        <h3>Shard Details (<span x-text="selectedTask.shards.length"></span> shards)</h3>
+                        <div class="shards-table-container">
+                            <table class="shards-table">
+                                <thead>
+                                    <tr>
+                                        <th>Shard</th>
+                                        <th>Input Size</th>
+                                        <th>CPU Mean</th>
+                                        <th>Mem Peak</th>
+                                        <th>Disk Peak</th>
+                                        <th>Mem Req</th>
+                                        <th>Disk Req</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(shard, idx) in selectedTask.shards" :key="idx">
+                                        <tr>
+                                            <td class="mono" x-text="shard.shardIndex === -1 ? '-' : shard.shardIndex">
+                                            </td>
+                                            <td class="mono" x-text="formatBytes(shard.totalInputBytes)"></td>
+                                            <td class="mono" x-text="shard.cpuMean.toFixed(1) + '%'"></td>
+                                            <td class="mono" x-text="shard.memoryPeakMB.toFixed(0) + ' MB'"></td>
+                                            <td class="mono" x-text="shard.diskPeakGB.toFixed(2) + ' GB'"></td>
+                                            <td class="mono" x-text="formatBytes(shard.memoryRequestBytes)"></td>
+                                            <td class="mono" x-text="formatBytes(shard.diskSizeRequestBytes)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        var REPORT_DATA = {{.DataJSON }};
+        var REPORT_WORKFLOWS = {{.WorkflowsJSON }};
+
+        function resourceApp() {
+            return {
+                searchQuery: '',
+                statusFilter: 'all',
+                selectedTask: null,
+                charts: [],
+                rawData: REPORT_DATA,
+                workflows: REPORT_WORKFLOWS,
+
+                get tasks() {
+                    return this.aggregateTasks(this.rawData);
+                },
+
+                get filteredTasks() {
+                    var self = this;
+                    return this.tasks.filter(function (task) {
+                        var matchesSearch = task.name.toLowerCase().includes(self.searchQuery.toLowerCase());
+                        var matchesStatus = self.statusFilter === 'all' ||
+                            (self.statusFilter === 'critical' && task.efficiency !== 'good') ||
+                            (self.statusFilter === 'good' && task.efficiency === 'good');
+                        return matchesSearch && matchesStatus;
+                    });
+                },
+
+                aggregateTasks: function (data) {
+                    var self = this;
+                    var taskMap = {};
+
+                    data.forEach(function (row) {
+                        if (!taskMap[row.taskName]) {
+                            taskMap[row.taskName] = {
+                                name: row.taskName,
+                                shards: [],
+                                cpuSum: 0,
+                                memoryMax: 0,
+                                diskMax: 0,
+                                memoryRequestMax: 0,
+                                diskRequestMax: 0
+                            };
+                        }
+                        var task = taskMap[row.taskName];
+                        task.shards.push(row);
+                        task.cpuSum += row.cpuMean;
+                        task.memoryMax = Math.max(task.memoryMax, row.memoryPeakMB);
+                        task.diskMax = Math.max(task.diskMax, row.diskPeakGB);
+                        task.memoryRequestMax = Math.max(task.memoryRequestMax, row.memoryRequestBytes);
+                        task.diskRequestMax = Math.max(task.diskRequestMax, row.diskSizeRequestBytes);
+                    });
+
+                    var result = [];
+                    for (var name in taskMap) {
+                        var task = taskMap[name];
+                        var effResult = self.calculateEfficiency(task);
+                        task.shards.sort(function (a, b) { return a.shardIndex - b.shardIndex; });
+                        result.push({
+                            name: task.name,
+                            shardCount: task.shards.length,
+                            cpuMean: task.cpuSum / task.shards.length,
+                            memoryPeakMB: task.memoryMax,
+                            diskPeakGB: task.diskMax,
+                            shards: task.shards,
+                            efficiency: effResult.status,
+                            efficiencyLabel: effResult.label,
+                            efficiencyReason: effResult.reason
+                        });
+                    }
+                    result.sort(function (a, b) { return a.name.localeCompare(b.name); });
+                    return result;
+                },
+
+                calculateEfficiency: function (task) {
+                    var memEfficiency = task.memoryRequestMax > 0
+                        ? (task.memoryMax * 1024 * 1024) / task.memoryRequestMax
+                        : 1;
+                    var diskEfficiency = task.diskRequestMax > 0
+                        ? (task.diskMax * 1024 * 1024 * 1024) / task.diskRequestMax
+                        : 1;
+
+                    var memPct = Math.round(memEfficiency * 100);
+                    var diskPct = Math.round(diskEfficiency * 100);
+
+                    var reasons = [];
+                    if (memEfficiency < 0.5) reasons.push('Memory: ' + memPct + '% used');
+                    if (diskEfficiency < 0.5) reasons.push('Disk: ' + diskPct + '% used');
+
+                    if (memEfficiency < 0.3 || diskEfficiency < 0.3) {
+                        return { status: 'critical', label: 'Critical', reason: reasons.join(', ') || 'Low resource usage' };
+                    }
+                    if (memEfficiency < 0.5 || diskEfficiency < 0.5) {
+                        return { status: 'warning', label: 'Warning', reason: reasons.join(', ') || 'Moderate efficiency' };
+                    }
+                    return { status: 'good', label: 'Good', reason: 'Resources well utilized' };
+                },
+
+                formatBytes: function (bytes) {
+                    if (!bytes || bytes === 0) return '0 B';
+                    var k = 1024;
+                    var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    var i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                },
+
+                openModal: function (task) {
+                    var self = this;
+                    this.selectedTask = task;
+                    this.$nextTick(function () { self.renderCharts(); });
+                },
+
+                closeModal: function () {
+                    this.destroyCharts();
+                    this.selectedTask = null;
+                },
+
+                destroyCharts: function () {
+                    this.charts.forEach(function (chart) { chart.destroy(); });
+                    this.charts = [];
+                },
+
+                renderCharts: function () {
+                    var self = this;
+                    this.destroyCharts();
+                    if (!this.selectedTask || !this.selectedTask.shards) return;
+
+                    var shards = this.selectedTask.shards;
+                    var commonOptions = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199', font: { size: 10 } } },
+                            y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199', font: { size: 10 } } }
+                        }
+                    };
+
+                    if (this.$refs.cpuChart) {
+                        this.charts.push(new Chart(this.$refs.cpuChart, {
+                            type: 'scatter',
+                            data: { datasets: [{ data: shards.map(function (s) { return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: s.cpuMean }; }), backgroundColor: '#a0c4ff', pointRadius: 6, pointHoverRadius: 8 }] },
+                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'CPU %', color: '#8d9199' } } } })
+                        }));
+                    }
+                    if (this.$refs.memoryChart) {
+                        this.charts.push(new Chart(this.$refs.memoryChart, {
+                            type: 'scatter',
+                            data: {
+                                datasets: [{
+                                    data: shards.map(function (s) {
+                                        var memPct = s.memoryRequestBytes > 0 ? (s.memoryPeakMB * 1024 * 1024) / s.memoryRequestBytes * 100 : 0;
+                                        return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: memPct };
+                                    }), backgroundColor: '#ddbce0', pointRadius: 6, pointHoverRadius: 8
+                                }]
+                            },
+                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Memory Usage %', color: '#8d9199' } } } })
+                        }));
+                    }
+                    if (this.$refs.diskChart) {
+                        this.charts.push(new Chart(this.$refs.diskChart, {
+                            type: 'scatter',
+                            data: {
+                                datasets: [{
+                                    data: shards.map(function (s) {
+                                        var diskPct = s.diskSizeRequestBytes > 0 ? (s.diskPeakGB * 1024 * 1024 * 1024) / s.diskSizeRequestBytes * 100 : 0;
+                                        return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: diskPct };
+                                    }), backgroundColor: '#a8d5a2', pointRadius: 6, pointHoverRadius: 8
+                                }]
+                            },
+                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Disk Usage %', color: '#8d9199' } } } })
+                        }));
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

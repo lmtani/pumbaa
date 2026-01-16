@@ -51,5 +51,14 @@ func (l *LocalBackend) ReadBytes(_ context.Context, path string) ([]byte, error)
 	return os.ReadFile(path)
 }
 
+// GetSize returns the size of a local file without reading its content.
+func (l *LocalBackend) GetSize(_ context.Context, path string) (int64, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, fmt.Errorf("failed to stat file: %w", err)
+	}
+	return info.Size(), nil
+}
+
 // Ensure LocalBackend implements StorageBackend at compile time.
 var _ ports.StorageBackend = (*LocalBackend)(nil)

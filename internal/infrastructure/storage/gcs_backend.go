@@ -85,6 +85,28 @@ func (g *GCSBackend) ReadBytes(ctx context.Context, path string) ([]byte, error)
 	return io.ReadAll(rc)
 }
 
+// GetSize returns the size of a GCS object without reading its content.
+// Uses the Attrs API to fetch metadata only, avoiding data transfer costs.
+func (g *GCSBackend) GetSize(ctx context.Context, path string) (int64, error) {
+	bucket, object, err := g.parsePath(path)
+	if err != nil {
+		return 0, err
+	}
+
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create GCS client: %w", err)
+	}
+	defer client.Close()
+
+	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get object attributes: %w", err)
+	}
+
+	return attrs.Size, nil
+}
+
 // parsePath extracts bucket and object from a gs:// path.
 func (g *GCSBackend) parsePath(path string) (bucket, object string, err error) {
 	cleanPath := strings.TrimPrefix(path, "gs://")

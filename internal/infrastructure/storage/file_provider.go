@@ -51,5 +51,15 @@ func (f *FileProvider) ReadBytes(ctx context.Context, path string) ([]byte, erro
 	return nil, fmt.Errorf("no storage backend found for path: %s", path)
 }
 
+// GetSize returns the size of a file by delegating to the appropriate backend.
+func (f *FileProvider) GetSize(ctx context.Context, path string) (int64, error) {
+	for _, backend := range f.backends {
+		if backend.CanHandle(path) {
+			return backend.GetSize(ctx, path)
+		}
+	}
+	return 0, fmt.Errorf("no storage backend found for path: %s", path)
+}
+
 // Ensure FileProvider implements the domain interface at compile time.
 var _ ports.FileProvider = (*FileProvider)(nil)

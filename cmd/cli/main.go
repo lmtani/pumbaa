@@ -87,6 +87,7 @@ func main() {
 				cont.QueryHandler.Command(),
 				cont.OutputsHandler.Command(),
 				cont.InputsHandler.Command(),
+				cont.ResourceReportHandler.Command(),
 				cont.DebugHandler.Command(),
 			},
 		},
@@ -94,6 +95,7 @@ func main() {
 		cont.DashboardHandler.Command(),
 		cont.ChatHandler.Command(),
 		cont.ConfigHandler.Command(),
+		cont.AnalyzeHandler.Command(),
 	}
 
 	// Run the app and track telemetry at the end

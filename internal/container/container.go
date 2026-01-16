@@ -26,28 +26,32 @@ type Container struct {
 	CloudLoggingRepo *cloudlogging.CloudLoggingRepository
 
 	// Use cases
-	SubmitUseCase     *workflow.SubmitUseCase
-	MetadataUseCase   *workflow.MetadataUseCase
-	AbortUseCase      *workflow.AbortUseCase
-	QueryUseCase      *workflow.QueryUseCase
-	OutputsUseCase    *workflow.OutputsUseCase
-	InputsUseCase     *workflow.InputsUseCase
-	MonitoringUseCase *workflow.MonitoringUseCase
-	BatchLogsUseCase  *workflow.GetBatchLogsUseCase
-	BundleUseCase     *bundle.BundleUseCase
+	SubmitUseCase                *workflow.SubmitUseCase
+	MetadataUseCase              *workflow.MetadataUseCase
+	AbortUseCase                 *workflow.AbortUseCase
+	QueryUseCase                 *workflow.QueryUseCase
+	OutputsUseCase               *workflow.OutputsUseCase
+	InputsUseCase                *workflow.InputsUseCase
+	MonitoringUseCase            *workflow.MonitoringUseCase
+	ResourceReportUseCase        *workflow.ResourceReportUseCase
+	BatchLogsUseCase             *workflow.GetBatchLogsUseCase
+	BundleUseCase                *bundle.BundleUseCase
+	ResourceVisualizationUseCase *workflow.ResourceVisualizationUseCase
 
 	// Handlers
-	SubmitHandler    *handler.SubmitHandler
-	MetadataHandler  *handler.MetadataHandler
-	AbortHandler     *handler.AbortHandler
-	QueryHandler     *handler.QueryHandler
-	OutputsHandler   *handler.OutputsHandler
-	InputsHandler    *handler.InputsHandler
-	BundleHandler    *handler.BundleHandler
-	DebugHandler     *handler.DebugHandler
-	DashboardHandler *handler.DashboardHandler
-	ChatHandler      *handler.ChatHandler
-	ConfigHandler    *handler.ConfigHandler
+	SubmitHandler         *handler.SubmitHandler
+	MetadataHandler       *handler.MetadataHandler
+	AbortHandler          *handler.AbortHandler
+	QueryHandler          *handler.QueryHandler
+	OutputsHandler        *handler.OutputsHandler
+	InputsHandler         *handler.InputsHandler
+	ResourceReportHandler *handler.ResourceReportHandler
+	BundleHandler         *handler.BundleHandler
+	DebugHandler          *handler.DebugHandler
+	DashboardHandler      *handler.DashboardHandler
+	ChatHandler           *handler.ChatHandler
+	ConfigHandler         *handler.ConfigHandler
+	AnalyzeHandler        *handler.AnalyzeHandler
 }
 
 // New creates a new dependency injection container.
@@ -92,8 +96,10 @@ func New(cfg *config.Config, version string) *Container {
 	c.OutputsUseCase = workflow.NewOutputsUseCase(c.CromwellClient)
 	c.InputsUseCase = workflow.NewInputsUseCase(c.CromwellClient)
 	c.MonitoringUseCase = workflow.NewMonitoringUseCase(fileProvider)
+	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase()
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
@@ -102,11 +108,13 @@ func New(cfg *config.Config, version string) *Container {
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.OutputsHandler = handler.NewOutputsHandler(c.OutputsUseCase, c.Presenter)
 	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
+	c.ResourceReportHandler = handler.NewResourceReportHandler(c.ResourceReportUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
 	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config, version)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService)
 	c.ConfigHandler = handler.NewConfigHandler()
+	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)
 
 	return c
 }
