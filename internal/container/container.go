@@ -26,16 +26,17 @@ type Container struct {
 	CloudLoggingRepo *cloudlogging.CloudLoggingRepository
 
 	// Use cases
-	SubmitUseCase         *workflow.SubmitUseCase
-	MetadataUseCase       *workflow.MetadataUseCase
-	AbortUseCase          *workflow.AbortUseCase
-	QueryUseCase          *workflow.QueryUseCase
-	OutputsUseCase        *workflow.OutputsUseCase
-	InputsUseCase         *workflow.InputsUseCase
-	MonitoringUseCase     *workflow.MonitoringUseCase
-	ResourceReportUseCase *workflow.ResourceReportUseCase
-	BatchLogsUseCase      *workflow.GetBatchLogsUseCase
-	BundleUseCase         *bundle.BundleUseCase
+	SubmitUseCase                *workflow.SubmitUseCase
+	MetadataUseCase              *workflow.MetadataUseCase
+	AbortUseCase                 *workflow.AbortUseCase
+	QueryUseCase                 *workflow.QueryUseCase
+	OutputsUseCase               *workflow.OutputsUseCase
+	InputsUseCase                *workflow.InputsUseCase
+	MonitoringUseCase            *workflow.MonitoringUseCase
+	ResourceReportUseCase        *workflow.ResourceReportUseCase
+	BatchLogsUseCase             *workflow.GetBatchLogsUseCase
+	BundleUseCase                *bundle.BundleUseCase
+	ResourceVisualizationUseCase *workflow.ResourceVisualizationUseCase
 
 	// Handlers
 	SubmitHandler         *handler.SubmitHandler
@@ -50,6 +51,7 @@ type Container struct {
 	DashboardHandler      *handler.DashboardHandler
 	ChatHandler           *handler.ChatHandler
 	ConfigHandler         *handler.ConfigHandler
+	AnalyzeHandler        *handler.AnalyzeHandler
 }
 
 // New creates a new dependency injection container.
@@ -97,6 +99,7 @@ func New(cfg *config.Config, version string) *Container {
 	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase()
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
@@ -111,6 +114,7 @@ func New(cfg *config.Config, version string) *Container {
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.CromwellClient, c.BatchLogsUseCase, c.Config)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService)
 	c.ConfigHandler = handler.NewConfigHandler()
+	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)
 
 	return c
 }

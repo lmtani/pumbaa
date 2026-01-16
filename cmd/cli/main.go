@@ -90,6 +90,7 @@ func main() {
 		cont.DashboardHandler.Command(),
 		cont.ChatHandler.Command(),
 		cont.ConfigHandler.Command(),
+		cont.AnalyzeHandler.Command(),
 	}
 
 	// Run the app and track telemetry at the end
