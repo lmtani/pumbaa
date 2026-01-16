@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -36,11 +38,12 @@ type ResourceReportInput struct {
 
 // TaskResourceReport contains resource metrics for a single task.
 type TaskResourceReport struct {
-	TaskName      string
-	ShardIndex    int    // -1 if not sharded
-	CPURequest    string // Configured CPU (from runtime attributes)
-	MemoryRequest string // Configured memory (from runtime attributes)
-	DiskRequest   string // Configured disk (from runtime attributes)
+	TaskName            string
+	ShardIndex          int    // -1 if not sharded
+	CPURequest          string // Configured CPU (from runtime attributes)
+	MemoryRequestBytes  int64  // Configured memory in bytes (parsed from runtime attributes)
+	DiskSizeRequestBytes int64  // Configured disk size in bytes (parsed from runtime attributes)
+	DiskType            string // Disk type (HDD, SSD, etc.)
 
 	TotalInputBytes int64
 	CPUMean         float64
@@ -188,14 +191,19 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	// Calculate total input bytes from actual file sizes
 	totalInputBytes := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
 
+	// Parse memory and disk configurations to bytes
+	memoryBytes := parseMemoryToBytes(call.Memory)
+	diskSizeBytes, diskType := parseDiskConfig(call.Disk)
+
 	// Base report with task identification and configuration
 	baseReport := TaskResourceReport{
-		TaskName:        taskName,
-		ShardIndex:      call.ShardIndex,
-		CPURequest:      call.CPU,
-		MemoryRequest:   call.Memory,
-		DiskRequest:     call.Disk,
-		TotalInputBytes: totalInputBytes,
+		TaskName:             taskName,
+		ShardIndex:           call.ShardIndex,
+		CPURequest:           call.CPU,
+		MemoryRequestBytes:   memoryBytes,
+		DiskSizeRequestBytes: diskSizeBytes,
+		DiskType:             diskType,
+		TotalInputBytes:      totalInputBytes,
 	}
 
 	// Read and parse monitoring log
@@ -318,19 +326,20 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	defer file.Close()
 
 	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request\tdisk_request\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
+	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
 	if err != nil {
 		return err
 	}
 
 	// Write data rows
 	for _, task := range tasks {
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%s\t%s\t%d\t%.2f\t%.2f\t%.2f\t%s\n",
+		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
 			task.CPURequest,
-			task.MemoryRequest,
-			task.DiskRequest,
+			task.MemoryRequestBytes,
+			task.DiskSizeRequestBytes,
+			task.DiskType,
 			task.TotalInputBytes,
 			task.CPUMean,
 			task.MemoryPeakMB,
@@ -343,4 +352,66 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	}
 
 	return nil
+}
+
+// parseMemoryToBytes parses memory strings like "1 GB", "6 GB", "512 MB" to bytes.
+func parseMemoryToBytes(memory string) int64 {
+	if memory == "" {
+		return 0
+	}
+
+	// Regex to match patterns like "1 GB", "512 MB", "1GB", "2.5 GB"
+	re := regexp.MustCompile(`(?i)^(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|GiB|MiB|KiB|TiB|G|M|K|T)?$`)
+	matches := re.FindStringSubmatch(strings.TrimSpace(memory))
+	if matches == nil {
+		return 0
+	}
+
+	value, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return 0
+	}
+
+	unit := strings.ToUpper(matches[2])
+	var multiplier float64 = 1
+
+	switch unit {
+	case "TB", "TIB", "T":
+		multiplier = 1024 * 1024 * 1024 * 1024
+	case "GB", "GIB", "G", "":
+		multiplier = 1024 * 1024 * 1024
+	case "MB", "MIB", "M":
+		multiplier = 1024 * 1024
+	case "KB", "KIB", "K":
+		multiplier = 1024
+	}
+
+	return int64(value * multiplier)
+}
+
+// parseDiskConfig parses disk configuration strings like "local-disk 31 HDD" or "local-disk 13 SSD".
+// Returns the size in bytes and the disk type.
+func parseDiskConfig(disk string) (int64, string) {
+	if disk == "" {
+		return 0, ""
+	}
+
+	// Regex to match patterns like "local-disk 31 HDD", "local-disk 13 SSD"
+	re := regexp.MustCompile(`(?i)local-disk\s+(\d+)\s+(\w+)`)
+	matches := re.FindStringSubmatch(strings.TrimSpace(disk))
+	if matches == nil {
+		return 0, ""
+	}
+
+	sizeGB, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return 0, ""
+	}
+
+	diskType := strings.ToUpper(matches[2])
+
+	// Convert GB to bytes
+	sizeBytes := sizeGB * 1024 * 1024 * 1024
+
+	return sizeBytes, diskType
 }

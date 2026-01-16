@@ -98,7 +98,7 @@ func (h *ResourceReportHandler) displayResults(output *workflow.ResourceReportOu
 	}
 
 	// Display summary table
-	table := h.presenter.NewTable([]string{"Task", "Shard", "CPU Req", "Mem Req", "Disk Req", "Input", "CPU Mean", "Mem Peak", "Disk Peak", "Status"})
+	table := h.presenter.NewTable([]string{"Task", "Shard", "CPU", "Mem Req", "Disk Req", "Type", "Input", "CPU Mean", "Mem Peak", "Disk Peak", "Status"})
 
 	var errorCount int
 	for _, task := range output.Tasks {
@@ -117,8 +117,9 @@ func (h *ResourceReportHandler) displayResults(output *workflow.ResourceReportOu
 			task.TaskName,
 			shardStr,
 			task.CPURequest,
-			task.MemoryRequest,
-			task.DiskRequest,
+			formatBytes(task.MemoryRequestBytes),
+			formatBytes(task.DiskSizeRequestBytes),
+			task.DiskType,
 			formatBytes(task.TotalInputBytes),
 			fmt.Sprintf("%.1f%%", task.CPUMean),
 			fmt.Sprintf("%.0f MB", task.MemoryPeakMB),

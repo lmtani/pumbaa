@@ -136,7 +136,7 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 							MonitoringLog: "gs://bucket/task1/monitoring.log",
 							CPU:           "4",
 							Memory:        "8 GB",
-							Disk:          "100 GB",
+							Disk:          "local-disk 100 SSD",
 							Inputs: map[string]interface{}{
 								"input_file": "gs://bucket/input.txt",
 							},
@@ -177,11 +177,18 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 	if task.CPURequest != "4" {
 		t.Errorf("expected CPU request '4', got '%s'", task.CPURequest)
 	}
-	if task.MemoryRequest != "8 GB" {
-		t.Errorf("expected memory request '8 GB', got '%s'", task.MemoryRequest)
+	// 8 GB = 8 * 1024 * 1024 * 1024 = 8589934592 bytes
+	expectedMemoryBytes := int64(8 * 1024 * 1024 * 1024)
+	if task.MemoryRequestBytes != expectedMemoryBytes {
+		t.Errorf("expected memory request bytes %d, got %d", expectedMemoryBytes, task.MemoryRequestBytes)
 	}
-	if task.DiskRequest != "100 GB" {
-		t.Errorf("expected disk request '100 GB', got '%s'", task.DiskRequest)
+	// 100 GB = 100 * 1024 * 1024 * 1024 = 107374182400 bytes
+	expectedDiskBytes := int64(100 * 1024 * 1024 * 1024)
+	if task.DiskSizeRequestBytes != expectedDiskBytes {
+		t.Errorf("expected disk size request bytes %d, got %d", expectedDiskBytes, task.DiskSizeRequestBytes)
+	}
+	if task.DiskType != "SSD" {
+		t.Errorf("expected disk type 'SSD', got '%s'", task.DiskType)
 	}
 	if task.Error != "" {
 		t.Errorf("expected no error, got '%s'", task.Error)
@@ -620,7 +627,7 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 							MonitoringLog: "gs://bucket/task1/monitoring.log",
 							CPU:           "4",
 							Memory:        "8 GB",
-							Disk:          "100 GB",
+							Disk:          "local-disk 100 HDD",
 							Inputs: map[string]interface{}{
 								"input": "gs://bucket/input.bam",
 							},
@@ -658,15 +665,15 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	}
 
 	// Check header
-	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request\tdisk_request\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
+	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
 	if lines[0] != expectedHeader {
 		t.Errorf("expected header:\n%s\ngot:\n%s", expectedHeader, lines[0])
 	}
 
 	// Check data row has correct number of columns
 	dataColumns := strings.Split(lines[1], "\t")
-	if len(dataColumns) != 10 {
-		t.Errorf("expected 10 columns in data row, got %d", len(dataColumns))
+	if len(dataColumns) != 11 {
+		t.Errorf("expected 11 columns in data row, got %d", len(dataColumns))
 	}
 
 	// Verify some column values
@@ -679,13 +686,85 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	if dataColumns[2] != "4" {
 		t.Errorf("expected cpu_request '4', got '%s'", dataColumns[2])
 	}
+	// Check memory_request_bytes is 8 GB in bytes
+	expectedMemoryBytes := "8589934592" // 8 * 1024 * 1024 * 1024
+	if dataColumns[3] != expectedMemoryBytes {
+		t.Errorf("expected memory_request_bytes '%s', got '%s'", expectedMemoryBytes, dataColumns[3])
+	}
+	// Check disk_size_request_bytes is 100 GB in bytes
+	expectedDiskBytes := "107374182400" // 100 * 1024 * 1024 * 1024
+	if dataColumns[4] != expectedDiskBytes {
+		t.Errorf("expected disk_size_request_bytes '%s', got '%s'", expectedDiskBytes, dataColumns[4])
+	}
+	// Check disk_type
+	if dataColumns[5] != "HDD" {
+		t.Errorf("expected disk_type 'HDD', got '%s'", dataColumns[5])
+	}
 	// Check total_bytes_input is 2048 (from mock GetSize)
-	if dataColumns[5] != "2048" {
-		t.Errorf("expected total_bytes_input '2048', got '%s'", dataColumns[5])
+	if dataColumns[6] != "2048" {
+		t.Errorf("expected total_bytes_input '2048', got '%s'", dataColumns[6])
 	}
 
 	// Cleanup
 	os.Remove(output.OutputFile)
+}
+
+func TestParseMemoryToBytes(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"1 GB", 1 * 1024 * 1024 * 1024},
+		{"8 GB", 8 * 1024 * 1024 * 1024},
+		{"14 GB", 14 * 1024 * 1024 * 1024},
+		{"512 MB", 512 * 1024 * 1024},
+		{"1024 MB", 1024 * 1024 * 1024},
+		{"1 TB", 1 * 1024 * 1024 * 1024 * 1024},
+		{"2GB", 2 * 1024 * 1024 * 1024},   // No space
+		{"4gb", 4 * 1024 * 1024 * 1024},   // Lowercase
+		{"1 GiB", 1 * 1024 * 1024 * 1024}, // GiB variant
+		{"", 0},                            // Empty string
+		{"invalid", 0},                     // Invalid format
+		{"GB", 0},                          // No number
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := parseMemoryToBytes(tt.input)
+			if result != tt.expected {
+				t.Errorf("parseMemoryToBytes(%q) = %d, expected %d", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseDiskConfig(t *testing.T) {
+	tests := []struct {
+		input            string
+		expectedBytes    int64
+		expectedDiskType string
+	}{
+		{"local-disk 100 HDD", 100 * 1024 * 1024 * 1024, "HDD"},
+		{"local-disk 13 SSD", 13 * 1024 * 1024 * 1024, "SSD"},
+		{"local-disk 31 HDD", 31 * 1024 * 1024 * 1024, "HDD"},
+		{"local-disk 2 SSD", 2 * 1024 * 1024 * 1024, "SSD"},
+		{"LOCAL-DISK 50 ssd", 50 * 1024 * 1024 * 1024, "SSD"}, // Case insensitive
+		{"", 0, ""},                                            // Empty string
+		{"100 GB", 0, ""},                                      // Invalid format (no local-disk prefix)
+		{"local-disk HDD", 0, ""},                              // Missing size
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			bytes, diskType := parseDiskConfig(tt.input)
+			if bytes != tt.expectedBytes {
+				t.Errorf("parseDiskConfig(%q) bytes = %d, expected %d", tt.input, bytes, tt.expectedBytes)
+			}
+			if diskType != tt.expectedDiskType {
+				t.Errorf("parseDiskConfig(%q) diskType = %q, expected %q", tt.input, diskType, tt.expectedDiskType)
+			}
+		})
+	}
 }
 
 func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
