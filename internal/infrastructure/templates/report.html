@@ -578,8 +578,58 @@
                 </div>
                 <template x-for="rec in recommendations" :key="rec.taskName">
                     <div class="recommendation-card">
-                        <h3 x-text="rec.taskName"></h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 x-text="rec.taskName"></h3>
+                        </div>
                         <div class="sample-count" x-text="'Based on ' + rec.sampleCount + ' samples'"></div>
+                        <template x-if="rec.cpuCost > 0 || rec.memoryCost > 0 || rec.diskCost > 0">
+                            <div
+                                style="margin: 12px 0; padding: 10px; background: rgba(30, 33, 38, 0.6); border-radius: 6px;">
+                                <div style="font-size: 0.75rem; color: #8d9199; margin-bottom: 8px;">Resource Usage
+                                    (hours × units)</div>
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <div style="flex: 1; min-width: 80px;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #a0c4ff;">
+                                            <span>CPU</span>
+                                            <span x-text="rec.cpuCost.toFixed(1)"></span>
+                                        </div>
+                                        <div
+                                            style="height: 6px; background: rgba(160, 196, 255, 0.2); border-radius: 3px; margin-top: 4px;">
+                                            <div
+                                                :style="'height: 100%; background: #a0c4ff; border-radius: 3px; width: ' + Math.min(100, (rec.cpuCost / Math.max(rec.cpuCost, rec.memoryCost, rec.diskCost, 1)) * 100) + '%'">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 80px;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #ddbce0;">
+                                            <span>Memory</span>
+                                            <span x-text="rec.memoryCost.toFixed(1)"></span>
+                                        </div>
+                                        <div
+                                            style="height: 6px; background: rgba(221, 188, 224, 0.2); border-radius: 3px; margin-top: 4px;">
+                                            <div
+                                                :style="'height: 100%; background: #ddbce0; border-radius: 3px; width: ' + Math.min(100, (rec.memoryCost / Math.max(rec.cpuCost, rec.memoryCost, rec.diskCost, 1)) * 100) + '%'">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="flex: 1; min-width: 80px;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #a8d5a2;">
+                                            <span>Disk</span>
+                                            <span x-text="rec.diskCost.toFixed(1)"></span>
+                                        </div>
+                                        <div
+                                            style="height: 6px; background: rgba(168, 213, 162, 0.2); border-radius: 3px; margin-top: 4px;">
+                                            <div
+                                                :style="'height: 100%; background: #a8d5a2; border-radius: 3px; width: ' + Math.min(100, (rec.diskCost / Math.max(rec.cpuCost, rec.memoryCost, rec.diskCost, 1)) * 100) + '%'">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                         <template x-if="rec.diskFormula">
                             <div class="formula-box">
                                 <code x-text="rec.diskFormula"></code>

@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -48,6 +49,7 @@ type TaskData struct {
 	DiskType             string           `json:"diskType"`
 	TotalInputBytes      int64            `json:"totalInputBytes"`
 	Inputs               map[string]int64 `json:"inputs"`
+	DurationSeconds      float64          `json:"durationSeconds"`
 	CPUMean              float64          `json:"cpuMean"`
 	MemoryPeakMB         float64          `json:"memoryPeakMB"`
 	DiskPeakGB           float64          `json:"diskPeakGB"`
@@ -59,6 +61,10 @@ type TaskData struct {
 type TaskRecommendation struct {
 	TaskName        string   `json:"taskName"`
 	SampleCount     int      `json:"sampleCount"`
+	ResourceCost    float64  `json:"resourceCost"` // Total dimensionless cost for prioritization
+	CPUCost         float64  `json:"cpuCost"`      // CPU contribution (CPU × Hours)
+	MemoryCost      float64  `json:"memoryCost"`   // Memory contribution (GB × Hours)
+	DiskCost        float64  `json:"diskCost"`     // Disk contribution (GB × Hours)
 	DiskFormula     string   `json:"diskFormula,omitempty"`
 	DiskR2          float64  `json:"diskR2,omitempty"`
 	MemoryFormula   string   `json:"memoryFormula,omitempty"`
@@ -122,11 +128,15 @@ func linearRegression(xs, ys []float64) regressionResult {
 
 // generateRecommendations analyzes task data and generates optimization recommendations.
 func generateRecommendations(allData []TaskData) []TaskRecommendation {
-	// Group valid data by task name
+	// Group valid data by task name, filtering out noisy tasks
 	taskGroups := make(map[string][]TaskData)
 	for _, task := range allData {
 		if task.Error != "" {
 			continue // Skip tasks with errors
+		}
+		// Filter noisy tasks: CPU=0% AND duration < 60s indicates unreliable metrics
+		if task.CPUMean == 0 && task.DurationSeconds < 60 {
+			continue
 		}
 		taskGroups[task.TaskName] = append(taskGroups[task.TaskName], task)
 	}
@@ -136,9 +146,35 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 	const minR2 = 0.7
 
 	for taskName, tasks := range taskGroups {
+		// Calculate stratified resource costs for this task group
+		var totalCPUCost, totalMemoryCost, totalDiskCost float64
+		for _, t := range tasks {
+			cpuVal := 1.0
+			if t.CPURequest != "" {
+				if parsed, err := strconv.ParseFloat(t.CPURequest, 64); err == nil && parsed > 0 {
+					cpuVal = parsed
+				}
+			}
+			memGB := float64(t.MemoryRequestBytes) / (1024 * 1024 * 1024)
+			diskGB := float64(t.DiskSizeRequestBytes) / (1024 * 1024 * 1024)
+			durationHours := t.DurationSeconds / 3600
+			if durationHours > 0 {
+				totalCPUCost += cpuVal * durationHours
+				totalMemoryCost += memGB * durationHours
+				totalDiskCost += diskGB * durationHours
+			}
+		}
+
+		// Total resource cost combines all components
+		totalResourceCost := totalCPUCost * totalMemoryCost * totalDiskCost / float64(len(tasks)*len(tasks))
+
 		rec := TaskRecommendation{
-			TaskName:    taskName,
-			SampleCount: len(tasks),
+			TaskName:     taskName,
+			SampleCount:  len(tasks),
+			ResourceCost: math.Round(totalResourceCost*100) / 100,
+			CPUCost:      math.Round(totalCPUCost*100) / 100,
+			MemoryCost:   math.Round(totalMemoryCost*100) / 100,
+			DiskCost:     math.Round(totalDiskCost*100) / 100,
 		}
 
 		// Need at least minSamples for meaningful regression
@@ -204,23 +240,39 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 			avgDiskPeak /= float64(len(tasks))
 
 			// 3. Helper to find best regression
+			// We prefer larger inputs when R² values are similar - this gives more intuitive slopes
 			type bestFit struct {
 				Key       string // "total" or input name
 				R2        float64
 				Slope     float64
 				Intercept float64
+				AvgSizeGB float64 // Average size of this input (to prefer larger inputs)
 			}
 
 			findBestFit := func(ys []float64) bestFit {
 				// Start with TotalInputBytes as baseline
 				var baselineXs []float64
+				var totalAvgSize float64
 				for _, t := range tasks {
-					baselineXs = append(baselineXs, float64(t.TotalInputBytes)/(1024*1024*1024))
+					sizeGB := float64(t.TotalInputBytes) / (1024 * 1024 * 1024)
+					baselineXs = append(baselineXs, sizeGB)
+					totalAvgSize += sizeGB
 				}
+				totalAvgSize /= float64(len(tasks))
 				reg := linearRegression(baselineXs, ys)
-				best := bestFit{Key: "total", R2: reg.R2, Slope: reg.Slope, Intercept: reg.Intercept}
+				best := bestFit{Key: "total", R2: reg.R2, Slope: reg.Slope, Intercept: reg.Intercept, AvgSizeGB: totalAvgSize}
 
-				// Check each individual input - PREFER specific inputs over total
+				// Collect all candidates with R² >= minR2
+				type candidate struct {
+					key       string
+					r2        float64
+					slope     float64
+					intercept float64
+					avgSizeGB float64
+				}
+				var candidates []candidate
+
+				// Check each individual input
 				for key := range inputKeys {
 					// Skip if this key is effectively constant (variance ~ 0)
 					if v, ok := inputConstSizes[key]; ok && v != -1 {
@@ -228,16 +280,36 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 					}
 
 					var connectedXs []float64
+					var avgSize float64
 					for _, t := range tasks {
 						val := t.Inputs[key]
-						connectedXs = append(connectedXs, float64(val)/(1024*1024*1024))
+						sizeGB := float64(val) / (1024 * 1024 * 1024)
+						connectedXs = append(connectedXs, sizeGB)
+						avgSize += sizeGB
 					}
+					avgSize /= float64(len(tasks))
 
 					r := linearRegression(connectedXs, ys)
-					// Prefer specific input over total if R² is >= (equal or better)
-					// This ensures we use specific names like "ubam_input" instead of generic "inputs"
-					if r.R2 >= best.R2 || (best.Key == "total" && r.R2 >= minR2) {
-						best = bestFit{Key: key, R2: r.R2, Slope: r.Slope, Intercept: r.Intercept}
+					if r.R2 >= minR2 {
+						candidates = append(candidates, candidate{
+							key:       key,
+							r2:        r.R2,
+							slope:     r.Slope,
+							intercept: r.Intercept,
+							avgSizeGB: avgSize,
+						})
+					}
+				}
+
+				// Among candidates with similar R² (within 0.05), prefer the one with largest average size
+				// This gives more intuitive slopes (smaller multipliers)
+				for _, c := range candidates {
+					// If R² is similar or better AND this input is larger, prefer it
+					if c.r2 >= best.R2-0.05 && c.avgSizeGB > best.AvgSizeGB {
+						best = bestFit{Key: c.key, R2: c.r2, Slope: c.slope, Intercept: c.intercept, AvgSizeGB: c.avgSizeGB}
+					} else if c.r2 > best.R2 {
+						// Always prefer if R² is strictly better
+						best = bestFit{Key: c.key, R2: c.r2, Slope: c.slope, Intercept: c.intercept, AvgSizeGB: c.avgSizeGB}
 					}
 				}
 				return best
@@ -352,6 +424,11 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 			recommendations = append(recommendations, rec)
 		}
 	}
+
+	// Sort recommendations by resource cost (highest first) for prioritization
+	sort.Slice(recommendations, func(i, j int) bool {
+		return recommendations[i].ResourceCost > recommendations[j].ResourceCost
+	})
 
 	return recommendations
 }
@@ -503,6 +580,8 @@ func (uc *ResourceVisualizationUseCase) parseTSV(filename string, workflowID str
 				task.TotalInputBytes, _ = strconv.ParseInt(value, 10, 64)
 			case "inputs_json":
 				_ = json.Unmarshal([]byte(value), &task.Inputs)
+			case "duration_seconds":
+				task.DurationSeconds, _ = strconv.ParseFloat(value, 64)
 			case "cpu_mean":
 				task.CPUMean, _ = strconv.ParseFloat(value, 64)
 			case "memory_peak_mb":

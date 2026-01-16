@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -48,6 +49,7 @@ type TaskResourceReport struct {
 
 	TotalInputBytes int64
 	Inputs          map[string]int64 // Map of input name to total size in bytes
+	DurationSeconds float64          // Task execution duration in seconds
 	CPUMean         float64
 	MemoryPeakMB    float64
 	DiskPeakGB      float64
@@ -65,7 +67,7 @@ type ResourceReportOutput struct {
 // ProgressCallback is called to report progress during execution.
 type ProgressCallback func(completed, total int, currentTask string)
 
-// fileSizeCache provides thread-safe caching of file sizes.
+// fileSizeCache provides thread-safe caching of file sizes with persistent storage.
 type fileSizeCache struct {
 	mu    sync.RWMutex
 	sizes map[string]int64
@@ -88,6 +90,55 @@ func (c *fileSizeCache) set(path string, size int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.sizes[path] = size
+}
+
+// getCacheFilePath returns the path to the persistent cache file.
+func getCacheFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".pumbaa", "input_sizes.json")
+}
+
+// loadFromDisk loads the cache from the persistent file.
+func (c *fileSizeCache) loadFromDisk() {
+	path := getCacheFilePath()
+	if path == "" {
+		return
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return // File doesn't exist or can't be read - start fresh
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_ = json.Unmarshal(data, &c.sizes)
+}
+
+// saveToDisk persists the cache to the filesystem.
+func (c *fileSizeCache) saveToDisk() {
+	path := getCacheFilePath()
+	if path == "" {
+		return
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+
+	c.mu.RLock()
+	data, err := json.Marshal(c.sizes)
+	c.mu.RUnlock()
+	if err != nil {
+		return
+	}
+
+	_ = os.WriteFile(path, data, 0644)
 }
 
 // ExecuteWithProgress generates a resource report for all tasks in a workflow with progress reporting.
@@ -129,6 +180,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	// Create a cache for file sizes to avoid redundant GCS queries
 	sizeCache := newFileSizeCache()
+	sizeCache.loadFromDisk() // Load previously cached sizes
 
 	// Process calls concurrently
 	results := make([]TaskResourceReport, len(callsToProcess))
@@ -158,6 +210,9 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	}
 
 	wg.Wait()
+
+	// Save cache to disk for future use
+	sizeCache.saveToDisk()
 
 	// Sort results by task name, then by shard index for consistent output
 	sort.Slice(results, func(i, j int) bool {
@@ -197,6 +252,12 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	memoryBytes := parseMemoryToBytes(call.Memory)
 	diskSizeBytes, diskType := parseDiskConfig(call.Disk)
 
+	// Calculate duration from call timing
+	var durationSeconds float64
+	if !call.Start.IsZero() && !call.End.IsZero() {
+		durationSeconds = call.End.Sub(call.Start).Seconds()
+	}
+
 	// Base report with task identification and configuration
 	baseReport := TaskResourceReport{
 		TaskName:             taskName,
@@ -207,6 +268,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 		DiskType:             diskType,
 		TotalInputBytes:      totalInputBytes,
 		Inputs:               inputs,
+		DurationSeconds:      durationSeconds,
 	}
 
 	// Read and parse monitoring log
@@ -337,7 +399,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	defer file.Close()
 
 	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
+	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
 	if err != nil {
 		return err
 	}
@@ -350,7 +412,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			inputsJSON = []byte("{}")
 		}
 
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%s\n",
+		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
 			task.CPURequest,
@@ -359,6 +421,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			task.DiskType,
 			task.TotalInputBytes,
 			string(inputsJSON),
+			task.DurationSeconds,
 			task.CPUMean,
 			task.MemoryPeakMB,
 			task.DiskPeakGB,

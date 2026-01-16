@@ -665,15 +665,15 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	}
 
 	// Check header
-	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
+	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
 	if lines[0] != expectedHeader {
 		t.Errorf("expected header:\n%s\ngot:\n%s", expectedHeader, lines[0])
 	}
 
 	// Check data row has correct number of columns
 	dataColumns := strings.Split(lines[1], "\t")
-	if len(dataColumns) != 12 {
-		t.Errorf("expected 12 columns in data row, got %d", len(dataColumns))
+	if len(dataColumns) != 13 {
+		t.Errorf("expected 13 columns in data row, got %d", len(dataColumns))
 	}
 
 	// Verify some column values
