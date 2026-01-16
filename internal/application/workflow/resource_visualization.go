@@ -5,7 +5,9 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"html/template"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -50,6 +52,176 @@ type TaskData struct {
 	DiskPeakGB           float64 `json:"diskPeakGB"`
 	Error                string  `json:"error"`
 	WorkflowID           string  `json:"workflowId"`
+}
+
+// TaskRecommendation contains optimization recommendations for a task.
+type TaskRecommendation struct {
+	TaskName        string   `json:"taskName"`
+	SampleCount     int      `json:"sampleCount"`
+	DiskFormula     string   `json:"diskFormula,omitempty"`
+	DiskR2          float64  `json:"diskR2,omitempty"`
+	MemoryFormula   string   `json:"memoryFormula,omitempty"`
+	MemoryR2        float64  `json:"memoryR2,omitempty"`
+	Recommendations []string `json:"recommendations"`
+}
+
+// regressionResult holds the result of a linear regression.
+type regressionResult struct {
+	Slope     float64
+	Intercept float64
+	R2        float64
+}
+
+// linearRegression calculates simple linear regression for (x, y) points.
+// Returns slope, intercept, and R² (coefficient of determination).
+func linearRegression(xs, ys []float64) regressionResult {
+	n := float64(len(xs))
+	if n < 2 {
+		return regressionResult{}
+	}
+
+	// Calculate means
+	var sumX, sumY float64
+	for i := range xs {
+		sumX += xs[i]
+		sumY += ys[i]
+	}
+	meanX := sumX / n
+	meanY := sumY / n
+
+	// Calculate slope and intercept
+	var numerator, denominator float64
+	for i := range xs {
+		numerator += (xs[i] - meanX) * (ys[i] - meanY)
+		denominator += (xs[i] - meanX) * (xs[i] - meanX)
+	}
+
+	if denominator == 0 {
+		return regressionResult{Intercept: meanY}
+	}
+
+	slope := numerator / denominator
+	intercept := meanY - slope*meanX
+
+	// Calculate R²
+	var ssRes, ssTot float64
+	for i := range xs {
+		predicted := slope*xs[i] + intercept
+		ssRes += (ys[i] - predicted) * (ys[i] - predicted)
+		ssTot += (ys[i] - meanY) * (ys[i] - meanY)
+	}
+
+	var r2 float64
+	if ssTot > 0 {
+		r2 = 1 - ssRes/ssTot
+	}
+
+	return regressionResult{Slope: slope, Intercept: intercept, R2: r2}
+}
+
+// generateRecommendations analyzes task data and generates optimization recommendations.
+func generateRecommendations(allData []TaskData) []TaskRecommendation {
+	// Group valid data by task name
+	taskGroups := make(map[string][]TaskData)
+	for _, task := range allData {
+		if task.Error != "" {
+			continue // Skip tasks with errors
+		}
+		taskGroups[task.TaskName] = append(taskGroups[task.TaskName], task)
+	}
+
+	var recommendations []TaskRecommendation
+	const minSamples = 3
+	const minR2 = 0.7
+
+	for taskName, tasks := range taskGroups {
+		rec := TaskRecommendation{
+			TaskName:    taskName,
+			SampleCount: len(tasks),
+		}
+
+		// Need at least minSamples for meaningful regression
+		if len(tasks) >= minSamples {
+			// Prepare data points
+			var inputSizesGB, diskPeaksGB, memPeaksMB []float64
+			var totalCPUMean float64
+			var totalMemReq, totalDiskReq int64
+
+			for _, t := range tasks {
+				inputGB := float64(t.TotalInputBytes) / (1024 * 1024 * 1024)
+				inputSizesGB = append(inputSizesGB, inputGB)
+				diskPeaksGB = append(diskPeaksGB, t.DiskPeakGB)
+				memPeaksMB = append(memPeaksMB, t.MemoryPeakMB)
+				totalCPUMean += t.CPUMean
+				totalMemReq += t.MemoryRequestBytes
+				totalDiskReq += t.DiskSizeRequestBytes
+			}
+
+			avgCPUMean := totalCPUMean / float64(len(tasks))
+			avgMemReqMB := float64(totalMemReq) / float64(len(tasks)) / (1024 * 1024)
+			avgDiskReqGB := float64(totalDiskReq) / float64(len(tasks)) / (1024 * 1024 * 1024)
+
+			// Calculate average peaks for efficiency
+			var avgMemPeak, avgDiskPeak float64
+			for _, t := range tasks {
+				avgMemPeak += t.MemoryPeakMB
+				avgDiskPeak += t.DiskPeakGB
+			}
+			avgMemPeak /= float64(len(tasks))
+			avgDiskPeak /= float64(len(tasks))
+
+			// Disk regression
+			diskReg := linearRegression(inputSizesGB, diskPeaksGB)
+			if diskReg.R2 >= minR2 {
+				rec.DiskR2 = math.Round(diskReg.R2*100) / 100
+				slope := math.Ceil(diskReg.Slope*10) / 10
+				intercept := math.Ceil(diskReg.Intercept)
+				if intercept > 0 {
+					rec.DiskFormula = fmt.Sprintf("Int disk_gb = ceil(%.1f * size(inputs, \"GB\") + %.0f)", slope, intercept)
+				} else {
+					rec.DiskFormula = fmt.Sprintf("Int disk_gb = ceil(%.1f * size(inputs, \"GB\"))", slope)
+				}
+			}
+
+			// Memory regression (convert MB to GB for formula)
+			memReg := linearRegression(inputSizesGB, memPeaksMB)
+			if memReg.R2 >= minR2 {
+				rec.MemoryR2 = math.Round(memReg.R2*100) / 100
+				slopeGB := math.Ceil(memReg.Slope/1024*10) / 10
+				interceptGB := math.Ceil(memReg.Intercept / 1024)
+				if interceptGB > 0 {
+					rec.MemoryFormula = fmt.Sprintf("Int memory_gb = ceil(%.1f * size(inputs, \"GB\") + %.0f)", slopeGB, interceptGB)
+				} else {
+					rec.MemoryFormula = fmt.Sprintf("Int memory_gb = ceil(%.1f * size(inputs, \"GB\"))", slopeGB)
+				}
+			}
+
+			// Generic recommendations
+			if avgCPUMean < 30 {
+				rec.Recommendations = append(rec.Recommendations,
+					fmt.Sprintf("CPU utilization is low (%.0f%%). Consider reducing CPU request.", avgCPUMean))
+			}
+
+			memEfficiency := (avgMemPeak / avgMemReqMB) * 100
+			if memEfficiency < 50 {
+				rec.Recommendations = append(rec.Recommendations,
+					fmt.Sprintf("Memory utilization is low (%.0f%%). Consider reducing memory request.", memEfficiency))
+			}
+
+			diskEfficiency := (avgDiskPeak / avgDiskReqGB) * 100
+			if diskEfficiency < 30 {
+				rec.Recommendations = append(rec.Recommendations,
+					fmt.Sprintf("Disk utilization is low (%.0f%%). Consider reducing disk request.", diskEfficiency))
+			}
+		}
+
+		// Only add if there are any recommendations or formulas
+		if len(rec.Recommendations) > 0 || rec.DiskFormula != "" || rec.MemoryFormula != "" {
+			recommendations = append(recommendations, rec)
+		}
+	}
+
+	return recommendations
 }
 
 // Execute generates the HTML visualization report.
@@ -105,10 +277,18 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode workflows as JSON", err)
 	}
 
+	// Generate recommendations
+	recommendations := generateRecommendations(allData)
+	recommendationsJSON, err := json.Marshal(recommendations)
+	if err != nil {
+		return nil, application.NewUseCaseError("resource_visualization", "failed to encode recommendations as JSON", err)
+	}
+
 	// Render HTML template
 	html, err := templates.RenderReport(templates.ReportData{
-		DataJSON:      template.JS(dataJSON),
-		WorkflowsJSON: template.JS(workflowsJSON),
+		DataJSON:            template.JS(dataJSON),
+		WorkflowsJSON:       template.JS(workflowsJSON),
+		RecommendationsJSON: template.JS(recommendationsJSON),
 	})
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to render HTML template", err)

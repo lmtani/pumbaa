@@ -384,6 +384,92 @@
             margin-bottom: 12px;
             opacity: 0.4;
         }
+
+        .recommendations-section {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .recommendations-section h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recommendation-card {
+            background: var(--md-sys-color-surface-container-high);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .recommendation-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .recommendation-card h3 {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .recommendation-card .sample-count {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 12px;
+        }
+
+        .formula-box {
+            background: var(--md-sys-color-surface-container-highest);
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .formula-box .r2 {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .recommendation-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .recommendation-list li {
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-warning);
+            padding: 4px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .recommendation-list li::before {
+            content: '⚠';
+            flex-shrink: 0;
+        }
+
+        .no-recommendations {
+            text-align: center;
+            padding: 24px;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 0.875rem;
+        }
     </style>
 </head>
 
@@ -423,6 +509,44 @@
             <button class="filter-chip" :class="{ active: statusFilter === 'good' }"
                 @click="statusFilter = 'good'">Optimized</button>
         </div>
+
+        <template x-if="recommendations.length > 0">
+            <div class="recommendations-section">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    Optimization Recommendations
+                </h2>
+                <template x-for="rec in recommendations" :key="rec.taskName">
+                    <div class="recommendation-card">
+                        <h3 x-text="rec.taskName"></h3>
+                        <div class="sample-count" x-text="'Based on ' + rec.sampleCount + ' samples'"></div>
+                        <template x-if="rec.diskFormula">
+                            <div class="formula-box">
+                                <code x-text="rec.diskFormula"></code>
+                                <span class="r2" x-text="'R² = ' + rec.diskR2"></span>
+                            </div>
+                        </template>
+                        <template x-if="rec.memoryFormula">
+                            <div class="formula-box">
+                                <code x-text="rec.memoryFormula"></code>
+                                <span class="r2" x-text="'R² = ' + rec.memoryR2"></span>
+                            </div>
+                        </template>
+                        <template x-if="rec.recommendations && rec.recommendations.length > 0">
+                            <ul class="recommendation-list">
+                                <template x-for="(msg, idx) in rec.recommendations" :key="idx">
+                                    <li x-text="msg"></li>
+                                </template>
+                            </ul>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
 
         <div class="table-container">
             <table>
@@ -533,6 +657,7 @@
     <script>
         var REPORT_DATA = {{.DataJSON }};
         var REPORT_WORKFLOWS = {{.WorkflowsJSON }};
+        var REPORT_RECOMMENDATIONS = {{.RecommendationsJSON }};
 
         function resourceApp() {
             return {
@@ -542,6 +667,7 @@
                 charts: [],
                 rawData: REPORT_DATA,
                 workflows: REPORT_WORKFLOWS,
+                recommendations: REPORT_RECOMMENDATIONS || [],
 
                 get tasks() {
                     return this.aggregateTasks(this.rawData);
