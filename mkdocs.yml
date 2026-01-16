@@ -54,6 +54,7 @@ nav:
     - Chat Agent: features/chat.md
   - Advanced:
     - Resource Monitoring: features/resource-monitoring.md
+    - Resource Analysis: features/resource-analysis.md
   - Contributing: contributing.md
 
 markdown_extensions:
