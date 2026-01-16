@@ -64,6 +64,7 @@ func (m *mockWorkflowRepository) GetStatus(ctx context.Context, workflowID strin
 type mockFileProvider struct {
 	readFunc      func(ctx context.Context, path string) (string, error)
 	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
+	getSizeFunc   func(ctx context.Context, path string) (int64, error)
 }
 
 func (m *mockFileProvider) Read(ctx context.Context, path string) (string, error) {
@@ -78,4 +79,11 @@ func (m *mockFileProvider) ReadBytes(ctx context.Context, path string) ([]byte, 
 		return m.readBytesFunc(ctx, path)
 	}
 	return nil, nil
+}
+
+func (m *mockFileProvider) GetSize(ctx context.Context, path string) (int64, error) {
+	if m.getSizeFunc != nil {
+		return m.getSizeFunc(ctx, path)
+	}
+	return 0, nil
 }

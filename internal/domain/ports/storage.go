@@ -12,6 +12,10 @@ type FileProvider interface {
 	// ReadBytes reads the content of a file from the specified path as raw bytes.
 	// Useful for binary files like ZIP dependencies.
 	ReadBytes(ctx context.Context, path string) ([]byte, error)
+
+	// GetSize returns the size in bytes of a file without reading its content.
+	// This is useful for calculating input sizes efficiently.
+	GetSize(ctx context.Context, path string) (int64, error)
 }
 
 // StorageBackend defines the interface for individual storage backends.
@@ -28,4 +32,8 @@ type StorageBackend interface {
 
 	// ReadBytes reads the content of a file as raw bytes without size limits.
 	ReadBytes(ctx context.Context, path string) ([]byte, error)
+
+	// GetSize returns the size in bytes of a file without reading its content.
+	// Uses metadata API for cloud storage to avoid data transfer costs.
+	GetSize(ctx context.Context, path string) (int64, error)
 }

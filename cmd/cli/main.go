@@ -82,6 +82,7 @@ func main() {
 				cont.QueryHandler.Command(),
 				cont.OutputsHandler.Command(),
 				cont.InputsHandler.Command(),
+				cont.ResourceReportHandler.Command(),
 				cont.DebugHandler.Command(),
 			},
 		},

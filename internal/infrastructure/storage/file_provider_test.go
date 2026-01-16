@@ -121,6 +121,7 @@ type mockStorageBackend struct {
 	canHandleFunc func(path string) bool
 	readFunc      func(ctx context.Context, path string) (string, error)
 	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
+	getSizeFunc   func(ctx context.Context, path string) (int64, error)
 }
 
 func (m *mockStorageBackend) CanHandle(path string) bool {
@@ -142,6 +143,13 @@ func (m *mockStorageBackend) ReadBytes(ctx context.Context, path string) ([]byte
 		return m.readBytesFunc(ctx, path)
 	}
 	return nil, nil
+}
+
+func (m *mockStorageBackend) GetSize(ctx context.Context, path string) (int64, error) {
+	if m.getSizeFunc != nil {
+		return m.getSizeFunc(ctx, path)
+	}
+	return 0, nil
 }
 
 var _ ports.StorageBackend = (*mockStorageBackend)(nil)
