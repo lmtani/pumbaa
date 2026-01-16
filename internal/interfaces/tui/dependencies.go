@@ -18,6 +18,9 @@ type Dependencies struct {
 	FileProvider   ports.FileProvider
 	MetadataParser ports.MetadataParser
 
+	// App info
+	CurrentVersion string
+
 	// Use cases
 	MonitoringUC *workflowapp.MonitoringUseCase
 	BatchLogsUC  *workflowapp.GetBatchLogsUseCase

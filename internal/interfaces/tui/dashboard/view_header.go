@@ -52,6 +52,15 @@ func (m Model) renderHeader() string {
 		}
 	}
 
+	// Update available badge
+	if m.updateInfo != nil && m.updateInfo.UpdateAvailable {
+		updateBadge := common.BadgeStyle.
+			Foreground(lipgloss.Color("#000000")).
+			Background(lipgloss.Color("#FF6B6B")).
+			Render(fmt.Sprintf("⬆ Update: %s", m.updateInfo.Latest))
+		badges = append(badges, updateBadge)
+	}
+
 	// Workflow count
 	countBadge := common.BadgeStyle.
 		Foreground(lipgloss.Color("#000000")).

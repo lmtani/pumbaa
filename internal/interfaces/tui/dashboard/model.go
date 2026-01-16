@@ -12,6 +12,7 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -19,6 +20,11 @@ import (
 // This message is handled by the parent AppModel.
 type NavigateToDebugMsg struct {
 	Workflow *workflow.Workflow
+}
+
+// VersionCheckMsg is sent when version check completes.
+type VersionCheckMsg struct {
+	Info *version.VersionInfo
 }
 
 // Model represents the dashboard screen state.
@@ -37,6 +43,10 @@ type Model struct {
 	error       string
 	statusMsg   string
 	lastRefresh time.Time
+
+	// Version check
+	updateInfo     *version.VersionInfo
+	currentVersion string
 
 	// Filtering
 	filterInput   textinput.Model
@@ -76,10 +86,10 @@ type Model struct {
 	labelsMessage      string // In-modal feedback message
 
 	// Navigation state
-	NavigateToDebugID string            // Deprecated: use pendingNavigation
+	NavigateToDebugID string // Deprecated: use pendingNavigation
 	ShouldQuit        bool
-	LastError         error             // Last error for telemetry capture
-	pendingNavigation tea.Cmd           // Pending navigation command for parent
+	LastError         error              // Last error for telemetry capture
+	pendingNavigation tea.Cmd            // Pending navigation command for parent
 	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
 }
 
@@ -136,6 +146,11 @@ func (m *Model) SetMetadataParser(parser ports.MetadataParser) {
 	m.metadataParser = parser
 }
 
+// SetCurrentVersion sets the current version for version checking
+func (m *Model) SetCurrentVersion(v string) {
+	m.currentVersion = v
+}
+
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
@@ -147,6 +162,11 @@ func (m Model) Init() tea.Cmd {
 	// Start health check if configured
 	if m.healthChecker != nil {
 		cmds = append(cmds, m.fetchHealthStatus(), tickHealthCheck())
+	}
+
+	// Start async version check
+	if m.currentVersion != "" && m.currentVersion != "dev" {
+		cmds = append(cmds, m.checkVersion())
 	}
 
 	if len(cmds) > 0 {
@@ -230,6 +250,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case healthStatusErrorMsg:
 		// Silent fail - just don't update health status
 		m.healthStatus = nil
+
+	case VersionCheckMsg:
+		// Store version info if update is available
+		if msg.Info != nil && msg.Info.UpdateAvailable {
+			m.updateInfo = msg.Info
+		}
 
 	case tickMsg:
 		// Periodic health check
