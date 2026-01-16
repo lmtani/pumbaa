@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/container"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
+	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 )
 
 var (
@@ -23,6 +24,10 @@ var (
 )
 
 func main() {
+	// Start async version check immediately (non-blocking)
+	versionCh := version.NewGitHubChecker("lmtani/pumbaa").Check(Version)
+	defer printUpdateNotice(versionCh)
+
 	// Initialize configuration
 	cfg := config.Load()
 
@@ -106,5 +111,19 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+}
+
+// printUpdateNotice prints a notice if a newer version is available.
+// Waits up to 500ms for the check result to accommodate fast commands like --version.
+func printUpdateNotice(ch <-chan *version.VersionInfo) {
+	select {
+	case info := <-ch:
+		if info != nil && info.UpdateAvailable {
+			fmt.Fprintf(os.Stderr, "\n💡 Update available: %s → %s\n", info.Current, info.Latest)
+			fmt.Fprintf(os.Stderr, "   Run: curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash\n\n")
+		}
+	case <-time.After(500 * time.Millisecond):
+		// Timeout - don't keep user waiting too long
 	}
 }

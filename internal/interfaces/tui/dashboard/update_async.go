@@ -10,7 +10,20 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 )
+
+// checkVersion starts an async version check.
+func (m Model) checkVersion() tea.Cmd {
+	return func() tea.Msg {
+		checker := version.NewGitHubChecker("lmtani/pumbaa")
+		ch := checker.Check(m.currentVersion)
+
+		// Wait for result (with timeout already in checker)
+		info := <-ch
+		return VersionCheckMsg{Info: info}
+	}
+}
 
 // fetchWorkflows fetches workflows with applied filters and returns a message.
 func (m Model) fetchWorkflows() tea.Cmd {

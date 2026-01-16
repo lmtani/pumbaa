@@ -27,6 +27,7 @@ type DashboardHandler struct {
 	metadataParser ports.MetadataParser
 	batchLogsUC    *workflowapp.GetBatchLogsUseCase
 	config         *config.Config
+	version        string
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -38,6 +39,7 @@ func NewDashboardHandler(
 	mp ports.MetadataParser,
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cfg *config.Config,
+	version string,
 ) *DashboardHandler {
 	return &DashboardHandler{
 		repository:     client,
@@ -47,6 +49,7 @@ func NewDashboardHandler(
 		metadataParser: mp,
 		batchLogsUC:    bluc,
 		config:         cfg,
+		version:        version,
 	}
 }
 
@@ -114,6 +117,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		MetadataParser: h.metadataParser,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
+		CurrentVersion: h.version,
 	}
 
 	// Initialize chat dependencies if LLM is configured
