@@ -323,6 +323,23 @@
             height: 200px;
         }
 
+        .methodology {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .methodology code {
+            background: var(--md-sys-color-surface-container-highest);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
         .shards-section {
             margin-top: 8px;
         }
@@ -457,17 +474,22 @@
                     <button class="close-btn" @click="closeModal()">&#x2715;</button>
                 </div>
                 <div class="modal-body">
+                    <div class="methodology">
+                        <strong>Methodology:</strong> CPU shows mean usage during execution. Memory and Disk show peak
+                        usage.
+                        Percentages are calculated as <code>peak / requested × 100</code>.
+                    </div>
                     <div class="charts-grid">
                         <div class="chart-card">
                             <h3>CPU Usage vs Input Size</h3>
                             <div class="chart-wrapper"><canvas x-ref="cpuChart"></canvas></div>
                         </div>
                         <div class="chart-card">
-                            <h3>Memory Usage vs Input Size</h3>
+                            <h3>Memory Usage % vs Input Size</h3>
                             <div class="chart-wrapper"><canvas x-ref="memoryChart"></canvas></div>
                         </div>
                         <div class="chart-card">
-                            <h3>Disk Efficiency</h3>
+                            <h3>Disk Usage % vs Input Size</h3>
                             <div class="chart-wrapper"><canvas x-ref="diskChart"></canvas></div>
                         </div>
                     </div>
@@ -656,15 +678,29 @@
                     if (this.$refs.memoryChart) {
                         this.charts.push(new Chart(this.$refs.memoryChart, {
                             type: 'scatter',
-                            data: { datasets: [{ data: shards.map(function (s) { return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: s.memoryPeakMB }; }), backgroundColor: '#ddbce0', pointRadius: 6, pointHoverRadius: 8 }] },
-                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Memory (MB)', color: '#8d9199' } } } })
+                            data: {
+                                datasets: [{
+                                    data: shards.map(function (s) {
+                                        var memPct = s.memoryRequestBytes > 0 ? (s.memoryPeakMB * 1024 * 1024) / s.memoryRequestBytes * 100 : 0;
+                                        return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: memPct };
+                                    }), backgroundColor: '#ddbce0', pointRadius: 6, pointHoverRadius: 8
+                                }]
+                            },
+                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Memory Usage %', color: '#8d9199' } } } })
                         }));
                     }
                     if (this.$refs.diskChart) {
                         this.charts.push(new Chart(this.$refs.diskChart, {
                             type: 'scatter',
-                            data: { datasets: [{ data: shards.map(function (s) { return { x: s.diskSizeRequestBytes / (1024 * 1024 * 1024), y: s.diskPeakGB }; }), backgroundColor: '#a8d5a2', pointRadius: 6, pointHoverRadius: 8 }] },
-                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Requested (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Used (GB)', color: '#8d9199' } } } })
+                            data: {
+                                datasets: [{
+                                    data: shards.map(function (s) {
+                                        var diskPct = s.diskSizeRequestBytes > 0 ? (s.diskPeakGB * 1024 * 1024 * 1024) / s.diskSizeRequestBytes * 100 : 0;
+                                        return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: diskPct };
+                                    }), backgroundColor: '#a8d5a2', pointRadius: 6, pointHoverRadius: 8
+                                }]
+                            },
+                            options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Disk Usage %', color: '#8d9199' } } } })
                         }));
                     }
                 }
