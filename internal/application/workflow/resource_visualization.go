@@ -266,8 +266,16 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		return nil, application.NewUseCaseError("resource_visualization", "no valid data found in TSV files", nil)
 	}
 
+	// Filter out data with errors for visualization
+	var validData []TaskData
+	for _, d := range allData {
+		if d.Error == "" {
+			validData = append(validData, d)
+		}
+	}
+
 	// Generate JSON for template
-	dataJSON, err := json.Marshal(allData)
+	dataJSON, err := json.Marshal(validData)
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode data as JSON", err)
 	}
