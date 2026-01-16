@@ -80,6 +80,7 @@ func NewAppModel(deps *Dependencies, startScreen Screen) AppModel {
 	m.dashboard.SetHealthChecker(deps.Repository)
 	m.dashboard.SetLabelManager(deps.Repository)
 	m.dashboard.SetMetadataParser(deps.MetadataParser)
+	m.dashboard.SetCurrentVersion(deps.CurrentVersion)
 
 	return m
 }
