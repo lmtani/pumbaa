@@ -510,43 +510,6 @@
                 @click="statusFilter = 'good'">Optimized</button>
         </div>
 
-        <template x-if="recommendations.length > 0">
-            <div class="recommendations-section">
-                <h2>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                        <path d="M2 17l10 5 10-5"></path>
-                        <path d="M2 12l10 5 10-5"></path>
-                    </svg>
-                    Optimization Recommendations
-                </h2>
-                <template x-for="rec in recommendations" :key="rec.taskName">
-                    <div class="recommendation-card">
-                        <h3 x-text="rec.taskName"></h3>
-                        <div class="sample-count" x-text="'Based on ' + rec.sampleCount + ' samples'"></div>
-                        <template x-if="rec.diskFormula">
-                            <div class="formula-box">
-                                <code x-text="rec.diskFormula"></code>
-                                <span class="r2" x-text="'R² = ' + rec.diskR2"></span>
-                            </div>
-                        </template>
-                        <template x-if="rec.memoryFormula">
-                            <div class="formula-box">
-                                <code x-text="rec.memoryFormula"></code>
-                                <span class="r2" x-text="'R² = ' + rec.memoryR2"></span>
-                            </div>
-                        </template>
-                        <template x-if="rec.recommendations && rec.recommendations.length > 0">
-                            <ul class="recommendation-list">
-                                <template x-for="(msg, idx) in rec.recommendations" :key="idx">
-                                    <li x-text="msg"></li>
-                                </template>
-                            </ul>
-                        </template>
-                    </div>
-                </template>
-            </div>
-        </template>
 
         <div class="table-container">
             <table>
@@ -588,6 +551,58 @@
                 </div>
             </template>
         </div>
+
+        <template x-if="recommendations.length > 0">
+            <div class="recommendations-section" style="margin-top: 24px;">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    Optimization Recommendations
+                </h2>
+                <div class="disclaimer" style="margin-bottom: 16px;">
+                    <svg class="disclaimer-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z">
+                        </path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>
+                        <strong>Caution:</strong> These suggestions are based on statistical analysis and do not account
+                        for task complexity, optional inputs, or conditional logic. Use with extreme caution and
+                        validate thoroughly before applying to production workflows.
+                    </span>
+                </div>
+                <template x-for="rec in recommendations" :key="rec.taskName">
+                    <div class="recommendation-card">
+                        <h3 x-text="rec.taskName"></h3>
+                        <div class="sample-count" x-text="'Based on ' + rec.sampleCount + ' samples'"></div>
+                        <template x-if="rec.diskFormula">
+                            <div class="formula-box">
+                                <code x-text="rec.diskFormula"></code>
+                                <span class="r2" x-text="'R² = ' + rec.diskR2"></span>
+                            </div>
+                        </template>
+                        <template x-if="rec.memoryFormula">
+                            <div class="formula-box">
+                                <code x-text="rec.memoryFormula"></code>
+                                <span class="r2" x-text="'R² = ' + rec.memoryR2"></span>
+                            </div>
+                        </template>
+                        <template x-if="rec.recommendations && rec.recommendations.length > 0">
+                            <ul class="recommendation-list">
+                                <template x-for="(msg, idx) in rec.recommendations" :key="idx">
+                                    <li x-text="msg"></li>
+                                </template>
+                            </ul>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
     </div>
 
     <template x-if="selectedTask">

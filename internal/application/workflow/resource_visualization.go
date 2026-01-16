@@ -40,18 +40,19 @@ type ResourceVisualizationOutput struct {
 
 // TaskData represents a single task row from TSV for JSON serialization.
 type TaskData struct {
-	TaskName             string  `json:"taskName"`
-	ShardIndex           int     `json:"shardIndex"`
-	CPURequest           string  `json:"cpuRequest"`
-	MemoryRequestBytes   int64   `json:"memoryRequestBytes"`
-	DiskSizeRequestBytes int64   `json:"diskSizeRequestBytes"`
-	DiskType             string  `json:"diskType"`
-	TotalInputBytes      int64   `json:"totalInputBytes"`
-	CPUMean              float64 `json:"cpuMean"`
-	MemoryPeakMB         float64 `json:"memoryPeakMB"`
-	DiskPeakGB           float64 `json:"diskPeakGB"`
-	Error                string  `json:"error"`
-	WorkflowID           string  `json:"workflowId"`
+	TaskName             string           `json:"taskName"`
+	ShardIndex           int              `json:"shardIndex"`
+	CPURequest           string           `json:"cpuRequest"`
+	MemoryRequestBytes   int64            `json:"memoryRequestBytes"`
+	DiskSizeRequestBytes int64            `json:"diskSizeRequestBytes"`
+	DiskType             string           `json:"diskType"`
+	TotalInputBytes      int64            `json:"totalInputBytes"`
+	Inputs               map[string]int64 `json:"inputs"`
+	CPUMean              float64          `json:"cpuMean"`
+	MemoryPeakMB         float64          `json:"memoryPeakMB"`
+	DiskPeakGB           float64          `json:"diskPeakGB"`
+	Error                string           `json:"error"`
+	WorkflowID           string           `json:"workflowId"`
 }
 
 // TaskRecommendation contains optimization recommendations for a task.
@@ -142,26 +143,58 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 
 		// Need at least minSamples for meaningful regression
 		if len(tasks) >= minSamples {
-			// Prepare data points
-			var inputSizesGB, diskPeaksGB, memPeaksMB []float64
+			// 1. Collect Data Arrays
+			var diskPeaksGB, memPeaksMB []float64
 			var totalCPUMean float64
 			var totalMemReq, totalDiskReq int64
 
+			// Collect all unique input keys and their values per task
+			inputKeys := make(map[string]bool)
+			// Map to check for constant input sizes: key -> size (if constant), -1 if variable
+			inputConstSizes := make(map[string]int64)
+
+			// Initialize inputConstSizes with the first task's inputs
+			for k, v := range tasks[0].Inputs {
+				inputConstSizes[k] = v
+			}
+
 			for _, t := range tasks {
-				inputGB := float64(t.TotalInputBytes) / (1024 * 1024 * 1024)
-				inputSizesGB = append(inputSizesGB, inputGB)
 				diskPeaksGB = append(diskPeaksGB, t.DiskPeakGB)
 				memPeaksMB = append(memPeaksMB, t.MemoryPeakMB)
 				totalCPUMean += t.CPUMean
 				totalMemReq += t.MemoryRequestBytes
 				totalDiskReq += t.DiskSizeRequestBytes
+
+				for k := range t.Inputs {
+					inputKeys[k] = true
+				}
+
+				// Check for constants
+				for k, v := range inputConstSizes {
+					if v != -1 {
+						if currentVal, ok := t.Inputs[k]; !ok || currentVal != v {
+							inputConstSizes[k] = -1 // Not constant or missing
+						}
+					}
+				}
+				// Keys present in current task but not in initialization (unlikely if same WDL, but possible)
+				// are ignored for "constant" candidate status as they weren't in the first one.
+				// To be strictly correct we should ensure it exists in ALL. The logic above handles mis-match by checking existence.
 			}
 
+			// Identify large constant inputs (> 100MB) to use in formula explanations
+			var constantInputs []string
+			for k, v := range inputConstSizes {
+				if v > 100*1024*1024 { // 100MB threshold
+					constantInputs = append(constantInputs, k)
+				}
+			}
+
+			// 2. Generic Consumption Stats
 			avgCPUMean := totalCPUMean / float64(len(tasks))
 			avgMemReqMB := float64(totalMemReq) / float64(len(tasks)) / (1024 * 1024)
 			avgDiskReqGB := float64(totalDiskReq) / float64(len(tasks)) / (1024 * 1024 * 1024)
 
-			// Calculate average peaks for efficiency
 			var avgMemPeak, avgDiskPeak float64
 			for _, t := range tasks {
 				avgMemPeak += t.MemoryPeakMB
@@ -170,33 +203,132 @@ func generateRecommendations(allData []TaskData) []TaskRecommendation {
 			avgMemPeak /= float64(len(tasks))
 			avgDiskPeak /= float64(len(tasks))
 
-			// Disk regression
-			diskReg := linearRegression(inputSizesGB, diskPeaksGB)
-			if diskReg.R2 >= minR2 {
-				rec.DiskR2 = math.Round(diskReg.R2*100) / 100
-				slope := math.Ceil(diskReg.Slope*10) / 10
-				intercept := math.Ceil(diskReg.Intercept)
+			// 3. Helper to find best regression
+			type bestFit struct {
+				Key       string // "total" or input name
+				R2        float64
+				Slope     float64
+				Intercept float64
+			}
+
+			findBestFit := func(ys []float64) bestFit {
+				// Start with TotalInputBytes as baseline
+				var baselineXs []float64
+				for _, t := range tasks {
+					baselineXs = append(baselineXs, float64(t.TotalInputBytes)/(1024*1024*1024))
+				}
+				reg := linearRegression(baselineXs, ys)
+				best := bestFit{Key: "total", R2: reg.R2, Slope: reg.Slope, Intercept: reg.Intercept}
+
+				// Check each individual input - PREFER specific inputs over total
+				for key := range inputKeys {
+					// Skip if this key is effectively constant (variance ~ 0)
+					if v, ok := inputConstSizes[key]; ok && v != -1 {
+						continue
+					}
+
+					var connectedXs []float64
+					for _, t := range tasks {
+						val := t.Inputs[key]
+						connectedXs = append(connectedXs, float64(val)/(1024*1024*1024))
+					}
+
+					r := linearRegression(connectedXs, ys)
+					// Prefer specific input over total if R² is >= (equal or better)
+					// This ensures we use specific names like "ubam_input" instead of generic "inputs"
+					if r.R2 >= best.R2 || (best.Key == "total" && r.R2 >= minR2) {
+						best = bestFit{Key: key, R2: r.R2, Slope: r.Slope, Intercept: r.Intercept}
+					}
+				}
+				return best
+			}
+
+			// 4. Generate Formula String Helper
+			generateFormula := func(fit bestFit, target string) string {
+				slope := math.Ceil(fit.Slope*10) / 10
+				intercept := fit.Intercept
+
+				// Clamp negative intercepts to 0 (they make no practical sense)
+				if intercept < 0 {
+					intercept = 0
+				}
+
+				// Try to explain intercept with constants
+				var explainedParts []string
+
+				// Only try to decompose if we have a positive intercept
 				if intercept > 0 {
-					rec.DiskFormula = fmt.Sprintf("Int disk_gb = ceil(%.1f * size(inputs, \"GB\") + %.0f)", slope, intercept)
-				} else {
-					rec.DiskFormula = fmt.Sprintf("Int disk_gb = ceil(%.1f * size(inputs, \"GB\"))", slope)
+					for _, k := range constantInputs {
+						// Don't use the variable itself as a constant (boundary case)
+						if k == fit.Key {
+							continue
+						}
+
+						sizeGB := float64(inputConstSizes[k]) / (1024 * 1024 * 1024)
+						// If constant size fits within the intercept (with some buffer 0.1GB), subtract it
+						if intercept >= sizeGB-0.1 {
+							intercept -= sizeGB
+							explainedParts = append(explainedParts, fmt.Sprintf(`size(%s, "GB")`, k))
+						}
+					}
 				}
+
+				intercept = math.Ceil(intercept)
+				// Clamp again after ceiling in case we went negative from subtraction
+				if intercept < 0 {
+					intercept = 0
+				}
+
+				var variablePart string
+				if fit.Key == "total" {
+					variablePart = fmt.Sprintf("%.1f * size(inputs, \"GB\")", slope)
+				} else {
+					variablePart = fmt.Sprintf("%.1f * size(%s, \"GB\")", slope, fit.Key)
+				}
+
+				// Construct final formula
+				var formulaBuilder strings.Builder
+				formulaBuilder.WriteString(fmt.Sprintf("%s = ceil(", target))
+				formulaBuilder.WriteString(variablePart)
+
+				if intercept > 0 {
+					formulaBuilder.WriteString(fmt.Sprintf(" + %.0f", intercept))
+				}
+				formulaBuilder.WriteString(")")
+
+				for _, part := range explainedParts {
+					formulaBuilder.WriteString(" + ")
+					formulaBuilder.WriteString(part)
+				}
+
+				return formulaBuilder.String()
 			}
 
-			// Memory regression (convert MB to GB for formula)
-			memReg := linearRegression(inputSizesGB, memPeaksMB)
-			if memReg.R2 >= minR2 {
-				rec.MemoryR2 = math.Round(memReg.R2*100) / 100
-				slopeGB := math.Ceil(memReg.Slope/1024*10) / 10
-				interceptGB := math.Ceil(memReg.Intercept / 1024)
-				if interceptGB > 0 {
-					rec.MemoryFormula = fmt.Sprintf("Int memory_gb = ceil(%.1f * size(inputs, \"GB\") + %.0f)", slopeGB, interceptGB)
-				} else {
-					rec.MemoryFormula = fmt.Sprintf("Int memory_gb = ceil(%.1f * size(inputs, \"GB\"))", slopeGB)
-				}
+			// 5. Run Analysis for Disk
+			diskFit := findBestFit(diskPeaksGB)
+			if diskFit.R2 >= minR2 {
+				rec.DiskR2 = math.Round(diskFit.R2*100) / 100
+				rec.DiskFormula = generateFormula(diskFit, "Int disk_gb")
 			}
 
-			// Generic recommendations
+			// 6. Run Analysis for Memory
+			memFit := findBestFit(memPeaksMB)
+			if memFit.R2 >= minR2 {
+				rec.MemoryR2 = math.Round(memFit.R2*100) / 100
+				// Adjust slope/intercept to GB for memory formula if needed,
+				// but usually memory is just MB. User asked for "Int memory_gb", so assuming GB.
+				// The regression was run on MB (Y). We need to convert results to GB.
+
+				memFitGB := bestFit{
+					Key:       memFit.Key,
+					R2:        memFit.R2,
+					Slope:     memFit.Slope / 1024,
+					Intercept: memFit.Intercept / 1024,
+				}
+				rec.MemoryFormula = generateFormula(memFitGB, "Int memory_gb")
+			}
+
+			// 7. Generic recommendations
 			if avgCPUMean < 30 {
 				rec.Recommendations = append(rec.Recommendations,
 					fmt.Sprintf("CPU utilization is low (%.0f%%). Consider reducing CPU request.", avgCPUMean))
@@ -369,6 +501,8 @@ func (uc *ResourceVisualizationUseCase) parseTSV(filename string, workflowID str
 				task.DiskType = value
 			case "total_bytes_input":
 				task.TotalInputBytes, _ = strconv.ParseInt(value, 10, 64)
+			case "inputs_json":
+				_ = json.Unmarshal([]byte(value), &task.Inputs)
 			case "cpu_mean":
 				task.CPUMean, _ = strconv.ParseFloat(value, 64)
 			case "memory_peak_mb":

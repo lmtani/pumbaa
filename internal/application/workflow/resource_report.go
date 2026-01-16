@@ -3,6 +3,7 @@ package workflow
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -38,14 +39,15 @@ type ResourceReportInput struct {
 
 // TaskResourceReport contains resource metrics for a single task.
 type TaskResourceReport struct {
-	TaskName            string
-	ShardIndex          int    // -1 if not sharded
-	CPURequest          string // Configured CPU (from runtime attributes)
-	MemoryRequestBytes  int64  // Configured memory in bytes (parsed from runtime attributes)
+	TaskName             string
+	ShardIndex           int    // -1 if not sharded
+	CPURequest           string // Configured CPU (from runtime attributes)
+	MemoryRequestBytes   int64  // Configured memory in bytes (parsed from runtime attributes)
 	DiskSizeRequestBytes int64  // Configured disk size in bytes (parsed from runtime attributes)
-	DiskType            string // Disk type (HDD, SSD, etc.)
+	DiskType             string // Disk type (HDD, SSD, etc.)
 
 	TotalInputBytes int64
+	Inputs          map[string]int64 // Map of input name to total size in bytes
 	CPUMean         float64
 	MemoryPeakMB    float64
 	DiskPeakGB      float64
@@ -188,8 +190,8 @@ func (uc *ResourceReportUseCase) Execute(ctx context.Context, input ResourceRepo
 func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowDomain.Call, sizeCache *fileSizeCache) TaskResourceReport {
 	taskName := extractTaskName(call.Name)
 
-	// Calculate total input bytes from actual file sizes
-	totalInputBytes := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
+	// Calculate total input bytes and per-input sizes
+	totalInputBytes, inputs := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
 
 	// Parse memory and disk configurations to bytes
 	memoryBytes := parseMemoryToBytes(call.Memory)
@@ -204,6 +206,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 		DiskSizeRequestBytes: diskSizeBytes,
 		DiskType:             diskType,
 		TotalInputBytes:      totalInputBytes,
+		Inputs:               inputs,
 	}
 
 	// Read and parse monitoring log
@@ -228,40 +231,48 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	return baseReport
 }
 
-// calculateInputFileSizes calculates the total size of input files.
+// calculateInputFileSizes calculates the total size of input files and per-input sizes.
 // It extracts GCS paths from the inputs and queries their sizes.
-func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache *fileSizeCache) int64 {
+func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache *fileSizeCache) (int64, map[string]int64) {
 	if inputs == nil {
-		return 0
+		return 0, nil
 	}
 
-	// Extract all file paths from inputs
-	paths := extractFilePaths(inputs)
-	if len(paths) == 0 {
-		return 0
-	}
+	total := int64(0)
+	inputSizes := make(map[string]int64)
 
-	var total int64
-	for _, path := range paths {
-		// Check cache first
-		if size, ok := cache.get(path); ok {
-			total += size
+	for key, value := range inputs {
+		// Clean the input key (remove workflow name prefix if likely present)
+		inputName := extractTaskName(key) // Reuse extractTaskName as it does what we want (removes prefix before last dot)
+
+		paths := extractFilePaths(value)
+		if len(paths) == 0 {
 			continue
 		}
 
-		// Query file size
-		size, err := uc.fileProvider.GetSize(ctx, path)
-		if err != nil {
-			// Skip files that can't be accessed (might be deleted or inaccessible)
-			continue
-		}
+		var keySize int64
+		for _, path := range paths {
+			// Check cache first
+			if size, ok := cache.get(path); ok {
+				keySize += size
+				continue
+			}
 
-		// Cache the result
-		cache.set(path, size)
-		total += size
+			// Query file size
+			size, err := uc.fileProvider.GetSize(ctx, path)
+			if err != nil {
+				continue
+			}
+
+			// Cache the result
+			cache.set(path, size)
+			keySize += size
+		}
+		inputSizes[inputName] = keySize
+		total += keySize
 	}
 
-	return total
+	return total, inputSizes
 }
 
 // extractFilePaths recursively extracts all file paths (gs:// or local) from a value.
@@ -326,14 +337,20 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	defer file.Close()
 
 	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
+	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
 	if err != nil {
 		return err
 	}
 
 	// Write data rows
 	for _, task := range tasks {
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%.2f\t%s\n",
+		inputsJSON, _ := json.Marshal(task.Inputs)
+		// Clean up errors in inputsJSON marshalling by using empty object if needed, though map shouldn't fail
+		if inputsJSON == nil {
+			inputsJSON = []byte("{}")
+		}
+
+		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
 			task.CPURequest,
@@ -341,6 +358,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			task.DiskSizeRequestBytes,
 			task.DiskType,
 			task.TotalInputBytes,
+			string(inputsJSON),
 			task.CPUMean,
 			task.MemoryPeakMB,
 			task.DiskPeakGB,

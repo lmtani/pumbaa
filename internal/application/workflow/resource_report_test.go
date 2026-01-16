@@ -665,15 +665,15 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	}
 
 	// Check header
-	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
+	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
 	if lines[0] != expectedHeader {
 		t.Errorf("expected header:\n%s\ngot:\n%s", expectedHeader, lines[0])
 	}
 
 	// Check data row has correct number of columns
 	dataColumns := strings.Split(lines[1], "\t")
-	if len(dataColumns) != 11 {
-		t.Errorf("expected 11 columns in data row, got %d", len(dataColumns))
+	if len(dataColumns) != 12 {
+		t.Errorf("expected 12 columns in data row, got %d", len(dataColumns))
 	}
 
 	// Verify some column values
@@ -723,9 +723,9 @@ func TestParseMemoryToBytes(t *testing.T) {
 		{"2GB", 2 * 1024 * 1024 * 1024},   // No space
 		{"4gb", 4 * 1024 * 1024 * 1024},   // Lowercase
 		{"1 GiB", 1 * 1024 * 1024 * 1024}, // GiB variant
-		{"", 0},                            // Empty string
-		{"invalid", 0},                     // Invalid format
-		{"GB", 0},                          // No number
+		{"", 0},                           // Empty string
+		{"invalid", 0},                    // Invalid format
+		{"GB", 0},                         // No number
 	}
 
 	for _, tt := range tests {
@@ -749,9 +749,9 @@ func TestParseDiskConfig(t *testing.T) {
 		{"local-disk 31 HDD", 31 * 1024 * 1024 * 1024, "HDD"},
 		{"local-disk 2 SSD", 2 * 1024 * 1024 * 1024, "SSD"},
 		{"LOCAL-DISK 50 ssd", 50 * 1024 * 1024 * 1024, "SSD"}, // Case insensitive
-		{"", 0, ""},                                            // Empty string
-		{"100 GB", 0, ""},                                      // Invalid format (no local-disk prefix)
-		{"local-disk HDD", 0, ""},                              // Missing size
+		{"", 0, ""},               // Empty string
+		{"100 GB", 0, ""},         // Invalid format (no local-disk prefix)
+		{"local-disk HDD", 0, ""}, // Missing size
 	}
 
 	for _, tt := range tests {
