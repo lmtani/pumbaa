@@ -54,12 +54,18 @@ type TaskRecommendation struct {
 	Recommendations []RecommendationItem   `json:"recommendations"` // Changed from []string
 }
 
+// RecommendationResult contains the complete output from the recommendation generator.
+type RecommendationResult struct {
+	Summary         string               `json:"summary"`         // LLM-generated summary (max 200 words)
+	Recommendations []TaskRecommendation `json:"recommendations"` // Per-task recommendations
+}
+
 // RecommendationGenerator generates resource optimization recommendations for tasks.
 // Implementations may use statistical analysis, LLM, or other methods.
 type RecommendationGenerator interface {
 	// GenerateRecommendations analyzes task data and returns optimization suggestions.
 	// The implementation may use tools to look up WDL definitions for context.
-	GenerateRecommendations(ctx context.Context, tasks []TaskAnalysisData) ([]TaskRecommendation, error)
+	GenerateRecommendations(ctx context.Context, tasks []TaskAnalysisData) (*RecommendationResult, error)
 
 	// IsAvailable returns true if the generator is properly configured and ready to use.
 	// If false, the caller should proceed without recommendations.

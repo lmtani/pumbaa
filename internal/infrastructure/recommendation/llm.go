@@ -60,13 +60,13 @@ func (g *LLMGenerator) IsAvailable() bool {
 }
 
 // GenerateRecommendations uses the LLM to analyze task data and generate recommendations.
-func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []ports.TaskAnalysisData) ([]ports.TaskRecommendation, error) {
+func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []ports.TaskAnalysisData) (*ports.RecommendationResult, error) {
 	if !g.IsAvailable() {
 		return nil, fmt.Errorf("LLM generator not available")
 	}
 
 	if len(tasks) == 0 {
-		return []ports.TaskRecommendation{}, nil
+		return &ports.RecommendationResult{}, nil
 	}
 
 	// Build prompt with task data
@@ -145,6 +145,7 @@ For each task, you will receive:
 ## Output Format
 Your output MUST be valid JSON in this exact format:
 {
+  "summary": "Brief executive summary (max 200 words). Include: tasks ignored due to insufficient data, main cost drivers, and key optimization opportunities. This summary will be shown to users.",
   "recommendations": [
     {
       "taskName": "TaskName",
@@ -159,6 +160,13 @@ Your output MUST be valid JSON in this exact format:
     }
   ]
 }
+
+## Summary Guidelines
+The summary field should:
+- Start by mentioning any tasks that were ignored or have unreliable data (short duration, insufficient samples)
+- Highlight the top 1-2 tasks by cost contribution
+- Summarize the overall optimization potential
+- Keep it under 200 words, be concise
 
 ## Status Assignment Rules
 - overallStatus: "good" = ALL recommendations are good (no action needed)
@@ -256,6 +264,7 @@ type llmRecommendationItem struct {
 
 // llmResponse represents the expected JSON structure from the LLM
 type llmResponse struct {
+	Summary         string `json:"summary,omitempty"`
 	Recommendations []struct {
 		TaskName        string                  `json:"taskName"`
 		OverallStatus   string                  `json:"overallStatus,omitempty"` // good, warning, critical
@@ -265,16 +274,16 @@ type llmResponse struct {
 	} `json:"recommendations"`
 }
 
-func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]ports.TaskRecommendation, error) {
+func parseRecommendations(response string, tasks []ports.TaskAnalysisData) (*ports.RecommendationResult, error) {
 	// Find JSON in response (may be wrapped in markdown code blocks)
 	jsonStr := extractJSON(response)
 	if jsonStr == "" {
-		return []ports.TaskRecommendation{}, nil
+		return &ports.RecommendationResult{}, nil
 	}
 
 	var llmResp llmResponse
 	if err := json.Unmarshal([]byte(jsonStr), &llmResp); err != nil {
-		return []ports.TaskRecommendation{}, nil
+		return &ports.RecommendationResult{}, nil
 	}
 
 	// Build task lookup map
@@ -284,7 +293,7 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]po
 	}
 
 	// Convert to TaskRecommendation
-	var result []ports.TaskRecommendation
+	var recommendations []ports.TaskRecommendation
 	for _, rec := range llmResp.Recommendations {
 		task, ok := taskMap[rec.TaskName]
 		if !ok {
@@ -316,7 +325,7 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]po
 			overallStatus = ports.SeverityCritical
 		}
 
-		result = append(result, ports.TaskRecommendation{
+		recommendations = append(recommendations, ports.TaskRecommendation{
 			TaskName:        rec.TaskName,
 			SampleCount:     task.SampleCount,
 			OverallStatus:   overallStatus,
@@ -327,7 +336,10 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]po
 		})
 	}
 
-	return result, nil
+	return &ports.RecommendationResult{
+		Summary:         llmResp.Summary,
+		Recommendations: recommendations,
+	}, nil
 }
 
 func extractJSON(s string) string {

@@ -501,22 +501,23 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 	}
 
 	// Generate recommendations using LLM if available, otherwise skip
-	var recommendations []ports.TaskRecommendation
+	var recommendationResult *ports.RecommendationResult
 	if uc.recommendationGenerator != nil && uc.recommendationGenerator.IsAvailable() {
 		// Convert TaskData to TaskAnalysisData for the generator
 		analysisData := uc.convertToAnalysisData(validData)
 		if len(analysisData) > 0 {
 			var err error
-			recommendations, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData)
+			recommendationResult, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData)
 			if err != nil {
 				// Log error but don't fail - just skip recommendations
-				recommendations = []ports.TaskRecommendation{}
+				recommendationResult = &ports.RecommendationResult{}
 			}
 		}
 	}
-	// Note: If generator not available, recommendations will be empty
+	// Note: If generator not available, recommendationResult will be nil
 
-	recommendationsJSON, err := json.Marshal(recommendations)
+	// Serialize recommendation result (includes summary and recommendations)
+	recommendationsJSON, err := json.Marshal(recommendationResult)
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode recommendations as JSON", err)
 	}
