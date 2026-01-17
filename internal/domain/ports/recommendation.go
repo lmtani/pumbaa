@@ -23,19 +23,34 @@ type TaskAnalysisData struct {
 	ResourceCost float64 `json:"resourceCost"` // Computed resource cost for prioritization
 }
 
+// RecommendationSeverity indicates the urgency of a recommendation.
+type RecommendationSeverity string
+
+const (
+	SeverityGood     RecommendationSeverity = "good"     // Green - resource is well-utilized
+	SeverityWarning  RecommendationSeverity = "warning"  // Yellow - needs attention
+	SeverityCritical RecommendationSeverity = "critical" // Red - critical issue
+)
+
+// RecommendationItem represents a single recommendation with severity.
+type RecommendationItem struct {
+	Message  string                 `json:"message"`
+	Severity RecommendationSeverity `json:"severity"` // good, warning, critical
+}
+
 // TaskRecommendation contains optimization recommendations for a task.
 type TaskRecommendation struct {
-	TaskName        string   `json:"taskName"`
-	SampleCount     int      `json:"sampleCount"`
-	ResourceCost    float64  `json:"resourceCost"` // Total dimensionless cost for prioritization
-	CPUCost         float64  `json:"cpuCost"`      // CPU contribution
-	MemoryCost      float64  `json:"memoryCost"`   // Memory contribution
-	DiskCost        float64  `json:"diskCost"`     // Disk contribution
-	DiskFormula     string   `json:"diskFormula,omitempty"`
-	DiskR2          float64  `json:"diskR2,omitempty"`
-	MemoryFormula   string   `json:"memoryFormula,omitempty"`
-	MemoryR2        float64  `json:"memoryR2,omitempty"`
-	Recommendations []string `json:"recommendations"`
+	TaskName        string               `json:"taskName"`
+	SampleCount     int                  `json:"sampleCount"`
+	ResourceCost    float64              `json:"resourceCost"` // Total dimensionless cost for prioritization
+	CPUCost         float64              `json:"cpuCost"`      // CPU contribution
+	MemoryCost      float64              `json:"memoryCost"`   // Memory contribution
+	DiskCost        float64              `json:"diskCost"`     // Disk contribution
+	DiskFormula     string               `json:"diskFormula,omitempty"`
+	DiskR2          float64              `json:"diskR2,omitempty"`
+	MemoryFormula   string               `json:"memoryFormula,omitempty"`
+	MemoryR2        float64              `json:"memoryR2,omitempty"`
+	Recommendations []RecommendationItem `json:"recommendations"` // Changed from []string
 }
 
 // RecommendationGenerator generates resource optimization recommendations for tasks.

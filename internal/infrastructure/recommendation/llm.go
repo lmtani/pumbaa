@@ -145,10 +145,19 @@ Your output MUST be valid JSON in this exact format:
       "taskName": "TaskName",
       "diskFormula": "Int disk_gb = ceil(2 * size(input_bam, \"GB\") + 5)",
       "memoryFormula": "Int memory_gb = ceil(0.5 * size(input_bam, \"GB\") + 4)",
-      "recommendations": ["Consider reducing CPU allocation", "Memory is underutilized"]
+      "recommendations": [
+        {"message": "CPU is well-utilized at 80%, maintain current allocation", "severity": "good"},
+        {"message": "Memory peaks are high, consider increasing by 20%", "severity": "warning"},
+        {"message": "Disk request is 3x more than needed, reduce immediately", "severity": "critical"}
+      ]
     }
   ]
 }
+
+Severity levels:
+- "good": Resource is well-utilized (green) - no action needed
+- "warning": Needs attention (yellow) - optimization opportunity
+- "critical": Critical issue (red) - significant waste or risk
 
 Guidelines for formulas:
 1. Use the LARGEST variable input for the formula (gives smaller, more intuitive multipliers)
@@ -184,17 +193,23 @@ func buildPrompt(tasks []ports.TaskAnalysisData) string {
 		sb.WriteString("\n---\n\n")
 	}
 
-	sb.WriteString("Output JSON recommendations only.")
+	sb.WriteString("Output JSON recommendations only. Include severity for each recommendation.")
 	return sb.String()
+}
+
+// llmRecommendationItem represents a recommendation with severity from LLM
+type llmRecommendationItem struct {
+	Message  string `json:"message"`
+	Severity string `json:"severity"` // good, warning, critical
 }
 
 // llmResponse represents the expected JSON structure from the LLM
 type llmResponse struct {
 	Recommendations []struct {
-		TaskName        string   `json:"taskName"`
-		DiskFormula     string   `json:"diskFormula,omitempty"`
-		MemoryFormula   string   `json:"memoryFormula,omitempty"`
-		Recommendations []string `json:"recommendations,omitempty"`
+		TaskName        string                  `json:"taskName"`
+		DiskFormula     string                  `json:"diskFormula,omitempty"`
+		MemoryFormula   string                  `json:"memoryFormula,omitempty"`
+		Recommendations []llmRecommendationItem `json:"recommendations,omitempty"`
 	} `json:"recommendations"`
 }
 
@@ -224,13 +239,29 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]po
 			continue
 		}
 
+		// Convert recommendations with severity
+		var items []ports.RecommendationItem
+		for _, r := range rec.Recommendations {
+			severity := ports.SeverityWarning // default
+			switch r.Severity {
+			case "good":
+				severity = ports.SeverityGood
+			case "critical":
+				severity = ports.SeverityCritical
+			}
+			items = append(items, ports.RecommendationItem{
+				Message:  r.Message,
+				Severity: severity,
+			})
+		}
+
 		result = append(result, ports.TaskRecommendation{
 			TaskName:        rec.TaskName,
 			SampleCount:     task.SampleCount,
 			ResourceCost:    task.ResourceCost,
 			DiskFormula:     rec.DiskFormula,
 			MemoryFormula:   rec.MemoryFormula,
-			Recommendations: rec.Recommendations,
+			Recommendations: items,
 		})
 	}
 

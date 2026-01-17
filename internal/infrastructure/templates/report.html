@@ -643,9 +643,28 @@
                             </div>
                         </template>
                         <template x-if="rec.recommendations && rec.recommendations.length > 0">
-                            <ul class="recommendation-list">
-                                <template x-for="(msg, idx) in rec.recommendations" :key="idx">
-                                    <li x-text="msg"></li>
+                            <ul class="recommendation-list" style="margin-top: 12px;">
+                                <template x-for="(item, idx) in rec.recommendations" :key="idx">
+                                    <li :style="{
+                                        color: item.severity === 'good' ? '#4ade80' : 
+                                               item.severity === 'critical' ? '#f87171' : '#fbbf24',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '8px',
+                                        marginBottom: '6px'
+                                    }">
+                                        <span :style="{
+                                            display: 'inline-block',
+                                            width: '6px',
+                                            height: '6px',
+                                            borderRadius: '50%',
+                                            marginTop: '6px',
+                                            flexShrink: 0,
+                                            backgroundColor: item.severity === 'good' ? '#4ade80' : 
+                                                            item.severity === 'critical' ? '#f87171' : '#fbbf24'
+                                        }"></span>
+                                        <span x-text="item.message"></span>
+                                    </li>
                                 </template>
                             </ul>
                         </template>
