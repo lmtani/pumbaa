@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -248,9 +246,9 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	// Calculate total input bytes and per-input sizes
 	totalInputBytes, inputs := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
 
-	// Parse memory and disk configurations to bytes
-	memoryBytes := parseMemoryToBytes(call.Memory)
-	diskSizeBytes, diskType := parseDiskConfig(call.Disk)
+	// Parse memory and disk configurations using domain Value Objects
+	memory := workflowDomain.Memory(call.Memory)
+	disk := workflowDomain.NewDiskConfig(call.Disk)
 
 	// Calculate duration from call timing
 	var durationSeconds float64
@@ -263,9 +261,9 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 		TaskName:             taskName,
 		ShardIndex:           call.ShardIndex,
 		CPURequest:           call.CPU,
-		MemoryRequestBytes:   memoryBytes,
-		DiskSizeRequestBytes: diskSizeBytes,
-		DiskType:             diskType,
+		MemoryRequestBytes:   memory.ToBytes(),
+		DiskSizeRequestBytes: disk.SizeBytes(),
+		DiskType:             disk.Type(),
 		TotalInputBytes:      totalInputBytes,
 		Inputs:               inputs,
 		DurationSeconds:      durationSeconds,
@@ -294,7 +292,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 }
 
 // calculateInputFileSizes calculates the total size of input files and per-input sizes.
-// It extracts GCS paths from the inputs and queries their sizes.
+// It extracts file paths from the inputs and queries their sizes.
 func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache *fileSizeCache) (int64, map[string]int64) {
 	if inputs == nil {
 		return 0, nil
@@ -305,29 +303,31 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 
 	for key, value := range inputs {
 		// Clean the input key (remove workflow name prefix if likely present)
-		inputName := extractTaskName(key) // Reuse extractTaskName as it does what we want (removes prefix before last dot)
+		inputName := extractTaskName(key)
 
-		paths := extractFilePaths(value)
+		// Use domain Value Object to extract file paths
+		paths := workflowDomain.ExtractFilePaths(value)
 		if len(paths) == 0 {
 			continue
 		}
 
 		var keySize int64
 		for _, path := range paths {
+			pathStr := path.String()
 			// Check cache first
-			if size, ok := cache.get(path); ok {
+			if size, ok := cache.get(pathStr); ok {
 				keySize += size
 				continue
 			}
 
 			// Query file size
-			size, err := uc.fileProvider.GetSize(ctx, path)
+			size, err := uc.fileProvider.GetSize(ctx, pathStr)
 			if err != nil {
 				continue
 			}
 
 			// Cache the result
-			cache.set(path, size)
+			cache.set(pathStr, size)
 			keySize += size
 		}
 		inputSizes[inputName] = keySize
@@ -335,50 +335,6 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 	}
 
 	return total, inputSizes
-}
-
-// extractFilePaths recursively extracts all file paths (gs:// or local) from a value.
-func extractFilePaths(value interface{}) []string {
-	var paths []string
-	extractFilePathsRecursive(value, &paths)
-	return paths
-}
-
-// extractFilePathsRecursive is the recursive helper for extractFilePaths.
-func extractFilePathsRecursive(value interface{}, paths *[]string) {
-	switch v := value.(type) {
-	case string:
-		// Check if it's a GCS path or a local file path
-		if isFilePath(v) {
-			*paths = append(*paths, v)
-		}
-	case []interface{}:
-		for _, item := range v {
-			extractFilePathsRecursive(item, paths)
-		}
-	case map[string]interface{}:
-		for _, val := range v {
-			extractFilePathsRecursive(val, paths)
-		}
-	}
-}
-
-// isFilePath checks if a string looks like a file path.
-// Returns true for GCS paths (gs://) and paths that look like file paths.
-func isFilePath(s string) bool {
-	// GCS paths
-	if strings.HasPrefix(s, "gs://") {
-		return true
-	}
-	// Local absolute paths (Unix)
-	if strings.HasPrefix(s, "/") && strings.Contains(s, ".") {
-		return true
-	}
-	// S3 paths (for future support)
-	if strings.HasPrefix(s, "s3://") {
-		return true
-	}
-	return false
 }
 
 // extractTaskName removes the workflow prefix from task name.
@@ -433,66 +389,4 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	}
 
 	return nil
-}
-
-// parseMemoryToBytes parses memory strings like "1 GB", "6 GB", "512 MB" to bytes.
-func parseMemoryToBytes(memory string) int64 {
-	if memory == "" {
-		return 0
-	}
-
-	// Regex to match patterns like "1 GB", "512 MB", "1GB", "2.5 GB"
-	re := regexp.MustCompile(`(?i)^(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|GiB|MiB|KiB|TiB|G|M|K|T)?$`)
-	matches := re.FindStringSubmatch(strings.TrimSpace(memory))
-	if matches == nil {
-		return 0
-	}
-
-	value, err := strconv.ParseFloat(matches[1], 64)
-	if err != nil {
-		return 0
-	}
-
-	unit := strings.ToUpper(matches[2])
-	var multiplier float64 = 1
-
-	switch unit {
-	case "TB", "TIB", "T":
-		multiplier = 1024 * 1024 * 1024 * 1024
-	case "GB", "GIB", "G", "":
-		multiplier = 1024 * 1024 * 1024
-	case "MB", "MIB", "M":
-		multiplier = 1024 * 1024
-	case "KB", "KIB", "K":
-		multiplier = 1024
-	}
-
-	return int64(value * multiplier)
-}
-
-// parseDiskConfig parses disk configuration strings like "local-disk 31 HDD" or "local-disk 13 SSD".
-// Returns the size in bytes and the disk type.
-func parseDiskConfig(disk string) (int64, string) {
-	if disk == "" {
-		return 0, ""
-	}
-
-	// Regex to match patterns like "local-disk 31 HDD", "local-disk 13 SSD"
-	re := regexp.MustCompile(`(?i)local-disk\s+(\d+)\s+(\w+)`)
-	matches := re.FindStringSubmatch(strings.TrimSpace(disk))
-	if matches == nil {
-		return 0, ""
-	}
-
-	sizeGB, err := strconv.ParseInt(matches[1], 10, 64)
-	if err != nil {
-		return 0, ""
-	}
-
-	diskType := strings.ToUpper(matches[2])
-
-	// Convert GB to bytes
-	sizeBytes := sizeGB * 1024 * 1024 * 1024
-
-	return sizeBytes, diskType
 }
