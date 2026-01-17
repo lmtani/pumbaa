@@ -60,7 +60,7 @@ func (g *LLMGenerator) IsAvailable() bool {
 }
 
 // GenerateRecommendations uses the LLM to analyze task data and generate recommendations.
-func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []ports.TaskAnalysisData) (*ports.RecommendationResult, error) {
+func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []ports.TaskAnalysisData, batchSize int) (*ports.RecommendationResult, error) {
 	if !g.IsAvailable() {
 		return nil, fmt.Errorf("LLM generator not available")
 	}
@@ -69,50 +69,41 @@ func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []port
 		return &ports.RecommendationResult{}, nil
 	}
 
-	// Build prompt with task data
-	prompt := buildPrompt(tasks)
-
-	// Create request
-	history := []*genai.Content{
-		{
-			Role: "user",
-			Parts: []*genai.Part{
-				genai.NewPartFromText(prompt),
-			},
-		},
+	if batchSize <= 0 {
+		batchSize = 25 // Default batch size
 	}
 
-	req := &model.LLMRequest{
-		Contents: history,
-		Config: &genai.GenerateContentConfig{
-			Tools: convertToolsToGenAI(g.tools),
-			SystemInstruction: &genai.Content{
-				Parts: []*genai.Part{
-					genai.NewPartFromText(systemInstruction),
-				},
-			},
-		},
-	}
+	var allRecommendations []ports.TaskRecommendation
 
-	// Generate response (single turn, no tool calling for simplicity)
-	respSeq := g.llm.GenerateContent(ctx, req, false)
+	// 1. Process in batches
+	for i := 0; i < len(tasks); i += batchSize {
+		end := i + batchSize
+		if end > len(tasks) {
+			end = len(tasks)
+		}
+		batchCalls := tasks[i:end]
 
-	var responseText strings.Builder
-	for resp, err := range respSeq {
+		batchRecs, err := g.processBatch(ctx, batchCalls)
 		if err != nil {
-			return nil, fmt.Errorf("LLM generation failed: %w", err)
+			// Log error but continue with what we have?
+			// For now, let's propagate the error as it might be an API issue
+			return nil, fmt.Errorf("batch processing failed at index %d: %w", i, err)
 		}
-		if resp.Content != nil {
-			for _, part := range resp.Content.Parts {
-				if part.Text != "" {
-					responseText.WriteString(part.Text)
-				}
-			}
-		}
+		allRecommendations = append(allRecommendations, batchRecs...)
 	}
 
-	// Parse the response into recommendations
-	return parseRecommendations(responseText.String(), tasks)
+	// 2. Generate Global Summary
+	// We use the aggregated results to create a high-level summary
+	summary, err := g.generateGlobalSummary(ctx, tasks, allRecommendations)
+	if err != nil {
+		// If summary generation fails, we still return the recommendations with a generic message
+		summary = "Executive summary generation failed, but detailed recommendations are available below."
+	}
+
+	return &ports.RecommendationResult{
+		Summary:         summary,
+		Recommendations: allRecommendations,
+	}, nil
 }
 
 // convertToolsToGenAI converts ADK tools to genai format
@@ -129,6 +120,11 @@ func convertToolsToGenAI(adkTools []tool.Tool) []*genai.Tool {
 	}
 	return genaiTools
 }
+
+const summarySystemInstruction = `You are an expert in WDL resource optimization.
+Your task is to write a concise Executive Summary based on the provided aggregate statistics and top tasks.
+Focus on high-level insights, cost drivers, and overall health.
+Output format: JSON {"summary": "your summary text"}`
 
 const systemInstruction = `You are an expert in WDL (Workflow Description Language) resource optimization.
 Your task is to analyze resource usage data from workflow executions and generate optimization recommendations.
@@ -175,9 +171,14 @@ The summary field should:
 If ANY recommendation is critical, overallStatus MUST be "critical".
 
 ## Severity Levels
-- "good": Well-utilized, no action needed
-- "warning": Optimization opportunity exists
-- "critical": Significant waste or misconfiguration
+- "good": Well-utilized, no action needed. (e.g. usage is > 75% of request)
+- "warning": Optimization opportunity exists. (e.g. usage is < 60% of request)
+- "critical": Significant waste or misconfiguration. (e.g. usage is < 20% of request)
+
+## Tolerance Guidelines
+1. BUFFER/SAFETY MARGIN: It is normal to have some buffer. If a task requests 12 GB and uses 10 GB (83%), this is GOOD. Do NOT flag it as a warning.
+2. 20% THRESHOLD: Only suggest reducing resources if usage is consistently below 80% of the request.
+3. PEAKS: Always respect the peak usage. If peak is 10 GB, request should probably be at least 11-12 GB.
 
 ## Cloud Provider Constraints
 1. MINIMUM DISK SIZE: Cloud providers typically have a minimum disk of 10 GB. Do NOT recommend reducing disk below 10 GB.
@@ -361,4 +362,132 @@ func extractJSON(s string) string {
 		}
 	}
 	return ""
+}
+
+func (g *LLMGenerator) processBatch(ctx context.Context, tasks []ports.TaskAnalysisData) ([]ports.TaskRecommendation, error) {
+	prompt := buildPrompt(tasks)
+	responseText, err := g.callLLM(ctx, prompt, systemInstruction)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := parseRecommendations(responseText, tasks)
+	if err != nil {
+		return nil, err
+	}
+	return result.Recommendations, nil
+}
+
+func (g *LLMGenerator) callLLM(ctx context.Context, prompt string, sysInst string) (string, error) {
+	history := []*genai.Content{
+		{
+			Role: "user",
+			Parts: []*genai.Part{
+				genai.NewPartFromText(prompt),
+			},
+		},
+	}
+
+	req := &model.LLMRequest{
+		Contents: history,
+		Config: &genai.GenerateContentConfig{
+			Tools: convertToolsToGenAI(g.tools),
+			SystemInstruction: &genai.Content{
+				Parts: []*genai.Part{
+					genai.NewPartFromText(sysInst),
+				},
+			},
+		},
+	}
+
+	respSeq := g.llm.GenerateContent(ctx, req, false)
+
+	var responseText strings.Builder
+	for resp, err := range respSeq {
+		if err != nil {
+			return "", fmt.Errorf("LLM generation failed: %w", err)
+		}
+		if resp.Content != nil {
+			for _, part := range resp.Content.Parts {
+				if part.Text != "" {
+					responseText.WriteString(part.Text)
+				}
+			}
+		}
+	}
+	return responseText.String(), nil
+}
+
+func (g *LLMGenerator) generateGlobalSummary(ctx context.Context, tasks []ports.TaskAnalysisData, recommendations []ports.TaskRecommendation) (string, error) {
+	prompt := buildSummaryPrompt(tasks, recommendations)
+	responseText, err := g.callLLM(ctx, prompt, summarySystemInstruction)
+	if err != nil {
+		return "", err
+	}
+
+	jsonStr := extractJSON(responseText)
+	if jsonStr == "" {
+		return "", fmt.Errorf("no JSON found in summary response")
+	}
+
+	var resp struct {
+		Summary string `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
+		return "", err
+	}
+	return resp.Summary, nil
+}
+
+func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.TaskRecommendation) string {
+	var sb strings.Builder
+
+	// Calculate global stats
+	var totalCost float64
+	var criticalCount, warningCount, goodCount int
+
+	for _, t := range tasks {
+		totalCost += t.ResourceCost
+	}
+	for _, r := range recommendations {
+		switch r.OverallStatus {
+		case ports.SeverityCritical:
+			criticalCount++
+		case ports.SeverityWarning:
+			warningCount++
+		case ports.SeverityGood:
+			goodCount++
+		}
+	}
+
+	sb.WriteString("Generate an Executive Summary for the workflow resource analysis based on the following aggregate data.\n\n")
+	sb.WriteString(fmt.Sprintf("**Global Stats**:\n"))
+	sb.WriteString(fmt.Sprintf("- Total Tasks Analyzed: %d\n", len(tasks)))
+	sb.WriteString(fmt.Sprintf("- Optimization Status: %d Critical, %d Warnings, %d Good\n", criticalCount, warningCount, goodCount))
+	sb.WriteString("\n**Top 10 Tasks by Resource Cost**:\n")
+
+	// Sort tasks by cost (they should be already sorted, but let's be safe or just take top 10 if input is sorted)
+	// Input tasks are supposed to be sorted.
+	limit := 10
+	if len(tasks) < limit {
+		limit = len(tasks)
+	}
+
+	for i := 0; i < limit; i++ {
+		t := tasks[i]
+		costPct := 0.0
+		if totalCost > 0 {
+			costPct = (t.ResourceCost / totalCost) * 100
+		}
+		sb.WriteString(fmt.Sprintf("%d. %s (%.1f%% of cost)\n", i+1, t.TaskName, costPct))
+	}
+
+	sb.WriteString("\n**Instructions**:\n")
+	sb.WriteString("Write a concise executive summary (max 200 words) focusing on:")
+	sb.WriteString("1. The overall health of the workflow (efficient vs wasteful).")
+	sb.WriteString("2. The main cost drivers (top tasks).")
+	sb.WriteString("3. Key actions to take.\n")
+	sb.WriteString("Output ONLY a JSON object: {\"summary\": \"...\"}")
+
+	return sb.String()
 }

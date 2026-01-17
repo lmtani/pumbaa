@@ -32,9 +32,10 @@ func NewResourceVisualizationUseCase(generator ports.RecommendationGenerator) *R
 
 // ResourceVisualizationInput represents the input for resource visualization.
 type ResourceVisualizationInput struct {
-	Directory  string // Directory containing TSV files
-	OutputFile string // Output HTML file (default: "resource_report.html")
-	SkipLLM    bool   // Skip LLM-based recommendations
+	Directory    string // Directory containing TSV files
+	OutputFile   string // Output HTML file (default: "resource_report.html")
+	SkipLLM      bool   // Skip LLM-based recommendations
+	LLMBatchSize int    // Number of tasks per LLM request (Batching)
 }
 
 // ResourceVisualizationOutput contains the result of visualization generation.
@@ -131,7 +132,7 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		// Use LLM to generate recommendations
 		if len(analysisData) > 0 {
 			var err error
-			recommendationResult, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData)
+			recommendationResult, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData, input.LLMBatchSize)
 			if err != nil {
 				// Log error but don't fail - fall back to basic stats
 				recommendationResult = uc.generateBasicStats(analysisData)

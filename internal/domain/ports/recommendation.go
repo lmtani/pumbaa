@@ -65,7 +65,7 @@ type RecommendationResult struct {
 type RecommendationGenerator interface {
 	// GenerateRecommendations analyzes task data and returns optimization suggestions.
 	// The implementation may use tools to look up WDL definitions for context.
-	GenerateRecommendations(ctx context.Context, tasks []TaskAnalysisData) (*RecommendationResult, error)
+	GenerateRecommendations(ctx context.Context, tasks []TaskAnalysisData, batchSize int) (*RecommendationResult, error)
 
 	// IsAvailable returns true if the generator is properly configured and ready to use.
 	// If false, the caller should proceed without recommendations.

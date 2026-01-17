@@ -46,6 +46,12 @@ func (h *AnalyzeHandler) Command() *cli.Command {
 						Name:  "no-llm",
 						Usage: "Skip LLM-based recommendations (faster)",
 					},
+					&cli.IntFlag{
+						Name:    "llm-batch-size",
+						Usage:   "Number of tasks per LLM request",
+						Value:   25,
+						Aliases: []string{"b"},
+					},
 				},
 				Action: h.handleResources,
 			},
@@ -64,9 +70,10 @@ func (h *AnalyzeHandler) handleResources(c *cli.Context) error {
 	outputFile := c.String("output")
 
 	input := workflow.ResourceVisualizationInput{
-		Directory:  directory,
-		OutputFile: outputFile,
-		SkipLLM:    c.Bool("no-llm"),
+		Directory:    directory,
+		OutputFile:   outputFile,
+		SkipLLM:      c.Bool("no-llm"),
+		LLMBatchSize: c.Int("llm-batch-size"),
 	}
 
 	h.presenter.Info("Scanning TSV files in %s...", directory)
