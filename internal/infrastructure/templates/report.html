@@ -533,7 +533,7 @@
                     Validate thoroughly before applying to production workflows.
                 </span>
             </div>
-            <template x-if="filteredRecommendations.length === 0 && (searchQuery !== '' || statusFilter !== 'all')">
+            <template x-if="recommendations.length > 0 && filteredRecommendations.length === 0">
                 <div class="empty-state">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -708,7 +708,7 @@
                         });
                     },
 
-                    filteredRecommendations: function () {
+                    get filteredRecommendations() {
                         var self = this;
                         return this.recommendations.filter(function (rec) {
                             var matchesSearch = rec.taskName.toLowerCase().includes(self.searchQuery.toLowerCase());
