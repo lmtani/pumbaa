@@ -125,19 +125,23 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 
 	// Generate recommendations using LLM if available and not skipped
 	var recommendationResult *ports.RecommendationResult
+	analysisData := uc.convertToAnalysisData(validData)
+
 	if !input.SkipLLM && uc.recommendationGenerator != nil && uc.recommendationGenerator.IsAvailable() {
-		// Convert TaskData to TaskAnalysisData for the generator
-		analysisData := uc.convertToAnalysisData(validData)
+		// Use LLM to generate recommendations
 		if len(analysisData) > 0 {
 			var err error
 			recommendationResult, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData)
 			if err != nil {
-				// Log error but don't fail - just skip recommendations
-				recommendationResult = &ports.RecommendationResult{}
+				// Log error but don't fail - fall back to basic stats
+				recommendationResult = uc.generateBasicStats(analysisData)
 			}
 		}
+	} else if len(analysisData) > 0 {
+		// LLM not available or skipped - generate basic statistics cards
+		recommendationResult = uc.generateBasicStats(analysisData)
 	}
-	// Note: If generator not available, recommendationResult will be nil
+	// Note: If no analysis data, recommendationResult will be nil
 
 	// Serialize recommendation result (includes summary and recommendations)
 	recommendationsJSON, err := json.Marshal(recommendationResult)
@@ -171,6 +175,60 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		WorkflowCount: len(workflows),
 		TaskCount:     len(taskNames),
 	}, nil
+}
+
+// generateBasicStats creates recommendation cards with basic resource efficiency statistics.
+// This is used when LLM is disabled or unavailable.
+func (uc *ResourceVisualizationUseCase) generateBasicStats(tasks []ports.TaskAnalysisData) *ports.RecommendationResult {
+	var recommendations []ports.TaskRecommendation
+
+	for _, task := range tasks {
+		// Calculate average metrics
+		var avgCPU, avgMemPeak, avgDiskPeak float64
+		for i := range task.CPUMeans {
+			avgCPU += task.CPUMeans[i]
+			avgMemPeak += task.MemoryPeaksMB[i]
+			avgDiskPeak += task.DiskPeaksGB[i]
+		}
+		n := float64(len(task.CPUMeans))
+		if n > 0 {
+			avgCPU /= n
+			avgMemPeak /= n
+			avgDiskPeak /= n
+		}
+
+		// Calculate efficiency percentages
+		memEfficiency := 0.0
+		if task.MemoryReqGB > 0 {
+			memEfficiency = (avgMemPeak / 1024) / task.MemoryReqGB * 100 // Convert MB to GB
+		}
+		diskEfficiency := 0.0
+		if task.DiskReqGB > 0 {
+			diskEfficiency = avgDiskPeak / task.DiskReqGB * 100
+		}
+
+		// Determine overall status based on efficiency
+		overallStatus := ports.SeverityGood
+		if avgCPU < 30 || memEfficiency < 30 || diskEfficiency < 30 {
+			overallStatus = ports.SeverityCritical
+		} else if avgCPU < 50 || memEfficiency < 50 || diskEfficiency < 50 {
+			overallStatus = ports.SeverityWarning
+		}
+
+		rec := ports.TaskRecommendation{
+			TaskName:      task.TaskName,
+			SampleCount:   task.SampleCount,
+			OverallStatus: overallStatus,
+			ResourceCost:  task.ResourceCost,
+		}
+
+		recommendations = append(recommendations, rec)
+	}
+
+	return &ports.RecommendationResult{
+		Summary:         "Basic resource usage metrics. Enable the LLM to receive detailed recommendations.",
+		Recommendations: recommendations,
+	}
 }
 
 // convertToAnalysisData groups TaskData by task name and converts to TaskAnalysisData for the LLM.
