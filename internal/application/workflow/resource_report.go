@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -156,16 +157,8 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		return nil, application.NewUseCaseError("resource_report", "failed to get workflow metadata", err)
 	}
 
-	// Collect all calls that have monitoring logs
-	var callsToProcess []workflowDomain.Call
-	for _, calls := range wf.Calls {
-		for _, call := range calls {
-			// Only process calls that have monitoring logs and are not cache hits
-			if call.MonitoringLog != "" && !call.CacheHit {
-				callsToProcess = append(callsToProcess, call)
-			}
-		}
-	}
+	// Collect all calls recursively (including from subworkflows)
+	callsToProcess := uc.collectCallsRecursively(ctx, wf)
 
 	if len(callsToProcess) == 0 {
 		return &ResourceReportOutput{
@@ -239,6 +232,32 @@ func (uc *ResourceReportUseCase) Execute(ctx context.Context, input ResourceRepo
 	return uc.ExecuteWithProgress(ctx, input, nil)
 }
 
+// collectCallsRecursively collects all calls with monitoring logs from a workflow,
+// including calls from subworkflows (recursively).
+func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf *workflowDomain.Workflow) []workflowDomain.Call {
+	var calls []workflowDomain.Call
+
+	for _, callList := range wf.Calls {
+		for _, call := range callList {
+			// If this is a subworkflow, fetch its metadata and process recursively
+			if call.SubWorkflowID != "" {
+				subWf, err := uc.metadataReader.GetMetadata(ctx, call.SubWorkflowID)
+				if err != nil {
+					// Log error but continue with other calls
+					continue
+				}
+				subCalls := uc.collectCallsRecursively(ctx, subWf)
+				calls = append(calls, subCalls...)
+			} else if call.MonitoringLog != "" && !call.CacheHit {
+				// Regular task with monitoring log
+				calls = append(calls, call)
+			}
+		}
+	}
+
+	return calls
+}
+
 // processCall processes a single call and returns its resource report.
 func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowDomain.Call, sizeCache *fileSizeCache) TaskResourceReport {
 	taskName := extractTaskName(call.Name)
@@ -273,6 +292,11 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	content, err := uc.fileProvider.Read(ctx, call.MonitoringLog)
 	if err != nil {
 		baseReport.Error = fmt.Sprintf("failed to read monitoring log: %v", err)
+		return baseReport
+	}
+
+	if content == "" {
+		baseReport.Error = fmt.Sprintf("%s exists but no content", call.MonitoringLog)
 		return baseReport
 	}
 
@@ -316,6 +340,7 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 			pathStr := path.String()
 			// Check cache first
 			if size, ok := cache.get(pathStr); ok {
+				log.Printf("Cache hit for file size: %s (%d bytes)", pathStr, size)
 				keySize += size
 				continue
 			}
@@ -368,6 +393,11 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			inputsJSON = []byte("{}")
 		}
 
+		// Sanitize error message to prevent newlines breaking TSV format
+		errorMsg := strings.ReplaceAll(task.Error, "\n", " ")
+		errorMsg = strings.ReplaceAll(errorMsg, "\r", "")
+		errorMsg = strings.ReplaceAll(errorMsg, "\t", " ")
+
 		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
@@ -381,8 +411,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			task.CPUMean,
 			task.MemoryPeakMB,
 			task.DiskPeakGB,
-			task.Error,
-		)
+			errorMsg)
 		if err != nil {
 			return err
 		}

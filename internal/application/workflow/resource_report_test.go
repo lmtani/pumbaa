@@ -653,3 +653,141 @@ func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
 	// Cleanup
 	os.Remove(output.OutputFile)
 }
+
+func TestResourceReportUseCase_CollectCallsRecursively(t *testing.T) {
+	// Create a mock that returns different workflows based on workflowID
+	repo := &mockWorkflowRepository{
+		getMetadataFunc: func(ctx context.Context, workflowID string) (*workflow.Workflow, error) {
+			switch workflowID {
+			case "main-workflow":
+				return &workflow.Workflow{
+					ID:   "main-workflow",
+					Name: "MainWorkflow",
+					Calls: map[string][]workflow.Call{
+						"MainWorkflow.task1": {
+							{
+								Name:          "MainWorkflow.task1",
+								ShardIndex:    -1,
+								MonitoringLog: "gs://bucket/task1/monitoring.log",
+							},
+						},
+						"MainWorkflow.subworkflow_call": {
+							{
+								Name:          "MainWorkflow.subworkflow_call",
+								ShardIndex:    -1,
+								SubWorkflowID: "sub-workflow-id", // This is a subworkflow
+							},
+						},
+					},
+				}, nil
+			case "sub-workflow-id":
+				return &workflow.Workflow{
+					ID:   "sub-workflow-id",
+					Name: "SubWorkflow",
+					Calls: map[string][]workflow.Call{
+						"SubWorkflow.subtask1": {
+							{
+								Name:          "SubWorkflow.subtask1",
+								ShardIndex:    0,
+								MonitoringLog: "gs://bucket/subtask1/monitoring.log",
+							},
+							{
+								Name:          "SubWorkflow.subtask1",
+								ShardIndex:    1,
+								MonitoringLog: "gs://bucket/subtask2/monitoring.log",
+							},
+						},
+					},
+				}, nil
+			default:
+				return nil, errors.New("workflow not found")
+			}
+		},
+	}
+
+	fp := &mockFileProvider{
+		readFunc: func(ctx context.Context, path string) (string, error) {
+			return validMonitoringTSV, nil
+		},
+	}
+	uc := NewResourceReportUseCase(repo, fp)
+
+	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "main-workflow"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should have 3 tasks: 1 from main workflow + 2 from subworkflow
+	if len(output.Tasks) != 3 {
+		t.Errorf("expected 3 tasks (1 main + 2 from subworkflow), got %d", len(output.Tasks))
+	}
+
+	// Verify task names are present
+	taskNames := make(map[string]int)
+	for _, task := range output.Tasks {
+		taskNames[task.TaskName]++
+	}
+
+	if taskNames["task1"] != 1 {
+		t.Errorf("expected 1 task1, got %d", taskNames["task1"])
+	}
+	if taskNames["subtask1"] != 2 {
+		t.Errorf("expected 2 subtask1 (shards), got %d", taskNames["subtask1"])
+	}
+
+	// Cleanup
+	os.Remove(output.OutputFile)
+}
+
+func TestResourceReportUseCase_CollectCallsRecursively_SubworkflowError(t *testing.T) {
+	// Test that errors fetching subworkflow metadata are handled gracefully
+	repo := &mockWorkflowRepository{
+		getMetadataFunc: func(ctx context.Context, workflowID string) (*workflow.Workflow, error) {
+			switch workflowID {
+			case "main-workflow":
+				return &workflow.Workflow{
+					ID:   "main-workflow",
+					Name: "MainWorkflow",
+					Calls: map[string][]workflow.Call{
+						"MainWorkflow.task1": {
+							{
+								Name:          "MainWorkflow.task1",
+								ShardIndex:    -1,
+								MonitoringLog: "gs://bucket/task1/monitoring.log",
+							},
+						},
+						"MainWorkflow.broken_subworkflow": {
+							{
+								Name:          "MainWorkflow.broken_subworkflow",
+								ShardIndex:    -1,
+								SubWorkflowID: "non-existent-subworkflow",
+							},
+						},
+					},
+				}, nil
+			default:
+				return nil, errors.New("workflow not found")
+			}
+		},
+	}
+
+	fp := &mockFileProvider{
+		readFunc: func(ctx context.Context, path string) (string, error) {
+			return validMonitoringTSV, nil
+		},
+	}
+	uc := NewResourceReportUseCase(repo, fp)
+
+	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "main-workflow"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should still have 1 task from main workflow (subworkflow error is skipped)
+	if len(output.Tasks) != 1 {
+		t.Errorf("expected 1 task (subworkflow error should be skipped), got %d", len(output.Tasks))
+	}
+
+	// Cleanup
+	os.Remove(output.OutputFile)
+}
