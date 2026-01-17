@@ -135,14 +135,16 @@ Your task is to analyze resource usage data from workflow executions and generat
 
 For each task, you will receive:
 - Task name (the WDL task name)
+- Resource REQUESTS (configured in WDL runtime: CPU, Memory, Disk)
+- Actual USAGE (what was actually used: CPU mean %, Memory peak, Disk peak)
 - Input file sizes (per sample, in bytes)
-- Disk, Memory, and CPU usage metrics
 
 Your output MUST be valid JSON in this exact format:
 {
   "recommendations": [
     {
       "taskName": "TaskName",
+      "overallStatus": "warning",
       "diskFormula": "Int disk_gb = ceil(2 * size(input_bam, \"GB\") + 5)",
       "memoryFormula": "Int memory_gb = ceil(0.5 * size(input_bam, \"GB\") + 4)",
       "recommendations": [
@@ -154,7 +156,13 @@ Your output MUST be valid JSON in this exact format:
   ]
 }
 
-Severity levels:
+IMPORTANT - overallStatus assignment:
+- "good": All resources are well-utilized, no significant waste (ALL recommendations are good)
+- "warning": Some optimization opportunity exists (at least one warning recommendation)
+- "critical": Significant waste detected (at least one critical recommendation)
+If there are ANY critical recommendations, overallStatus MUST be "critical".
+
+Severity levels for individual recommendations:
 - "good": Resource is well-utilized (green) - no action needed
 - "warning": Needs attention (yellow) - optimization opportunity
 - "critical": Critical issue (red) - significant waste or risk
@@ -207,6 +215,7 @@ type llmRecommendationItem struct {
 type llmResponse struct {
 	Recommendations []struct {
 		TaskName        string                  `json:"taskName"`
+		OverallStatus   string                  `json:"overallStatus,omitempty"` // good, warning, critical
 		DiskFormula     string                  `json:"diskFormula,omitempty"`
 		MemoryFormula   string                  `json:"memoryFormula,omitempty"`
 		Recommendations []llmRecommendationItem `json:"recommendations,omitempty"`
@@ -255,9 +264,19 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) ([]po
 			})
 		}
 
+		// Parse overall status from LLM
+		overallStatus := ports.SeverityWarning // default
+		switch rec.OverallStatus {
+		case "good":
+			overallStatus = ports.SeverityGood
+		case "critical":
+			overallStatus = ports.SeverityCritical
+		}
+
 		result = append(result, ports.TaskRecommendation{
 			TaskName:        rec.TaskName,
 			SampleCount:     task.SampleCount,
+			OverallStatus:   overallStatus,
 			ResourceCost:    task.ResourceCost,
 			DiskFormula:     rec.DiskFormula,
 			MemoryFormula:   rec.MemoryFormula,

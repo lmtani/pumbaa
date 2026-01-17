@@ -40,17 +40,18 @@ type RecommendationItem struct {
 
 // TaskRecommendation contains optimization recommendations for a task.
 type TaskRecommendation struct {
-	TaskName        string               `json:"taskName"`
-	SampleCount     int                  `json:"sampleCount"`
-	ResourceCost    float64              `json:"resourceCost"` // Total dimensionless cost for prioritization
-	CPUCost         float64              `json:"cpuCost"`      // CPU contribution
-	MemoryCost      float64              `json:"memoryCost"`   // Memory contribution
-	DiskCost        float64              `json:"diskCost"`     // Disk contribution
-	DiskFormula     string               `json:"diskFormula,omitempty"`
-	DiskR2          float64              `json:"diskR2,omitempty"`
-	MemoryFormula   string               `json:"memoryFormula,omitempty"`
-	MemoryR2        float64              `json:"memoryR2,omitempty"`
-	Recommendations []RecommendationItem `json:"recommendations"` // Changed from []string
+	TaskName        string                 `json:"taskName"`
+	SampleCount     int                    `json:"sampleCount"`
+	OverallStatus   RecommendationSeverity `json:"overallStatus"` // LLM-determined: good, warning, critical
+	ResourceCost    float64                `json:"resourceCost"`  // Total dimensionless cost for prioritization
+	CPUCost         float64                `json:"cpuCost"`       // CPU contribution
+	MemoryCost      float64                `json:"memoryCost"`    // Memory contribution
+	DiskCost        float64                `json:"diskCost"`      // Disk contribution
+	DiskFormula     string                 `json:"diskFormula,omitempty"`
+	DiskR2          float64                `json:"diskR2,omitempty"`
+	MemoryFormula   string                 `json:"memoryFormula,omitempty"`
+	MemoryR2        float64                `json:"memoryR2,omitempty"`
+	Recommendations []RecommendationItem   `json:"recommendations"` // Changed from []string
 }
 
 // RecommendationGenerator generates resource optimization recommendations for tasks.
