@@ -9,8 +9,10 @@ import (
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
+	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 )
@@ -99,7 +101,17 @@ func New(cfg *config.Config, version string) *Container {
 	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
-	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase()
+
+	// Initialize LLM-based recommendation generator if LLM is configured
+	var recommendationGenerator = recommendation.NewLLMGenerator(cfg, nil)
+	if cfg.WDLDirectory != "" {
+		// Try to initialize WDL indexer for better recommendations
+		indexer, err := wdlindexer.NewIndexer(cfg.WDLDirectory, cfg.WDLIndexPath, false)
+		if err == nil {
+			recommendationGenerator = recommendation.NewLLMGenerator(cfg, indexer)
+		}
+	}
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(recommendationGenerator)
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)

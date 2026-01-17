@@ -15,15 +15,21 @@ import (
 	"strings"
 
 	"github.com/lmtani/pumbaa/internal/application"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 )
 
 // ResourceVisualizationUseCase handles resource visualization report generation.
-type ResourceVisualizationUseCase struct{}
+type ResourceVisualizationUseCase struct {
+	recommendationGenerator ports.RecommendationGenerator
+}
 
 // NewResourceVisualizationUseCase creates a new resource visualization use case.
-func NewResourceVisualizationUseCase() *ResourceVisualizationUseCase {
-	return &ResourceVisualizationUseCase{}
+// generator can be nil if LLM is not configured - recommendations will be skipped.
+func NewResourceVisualizationUseCase(generator ports.RecommendationGenerator) *ResourceVisualizationUseCase {
+	return &ResourceVisualizationUseCase{
+		recommendationGenerator: generator,
+	}
 }
 
 // ResourceVisualizationInput represents the input for resource visualization.
@@ -494,8 +500,22 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode workflows as JSON", err)
 	}
 
-	// Generate recommendations
-	recommendations := generateRecommendations(allData)
+	// Generate recommendations using LLM if available, otherwise skip
+	var recommendations []ports.TaskRecommendation
+	if uc.recommendationGenerator != nil && uc.recommendationGenerator.IsAvailable() {
+		// Convert TaskData to TaskAnalysisData for the generator
+		analysisData := uc.convertToAnalysisData(validData)
+		if len(analysisData) > 0 {
+			var err error
+			recommendations, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData)
+			if err != nil {
+				// Log error but don't fail - just skip recommendations
+				recommendations = []ports.TaskRecommendation{}
+			}
+		}
+	}
+	// Note: If generator not available, recommendations will be empty
+
 	recommendationsJSON, err := json.Marshal(recommendations)
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode recommendations as JSON", err)
@@ -527,6 +547,74 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		WorkflowCount: len(workflows),
 		TaskCount:     len(taskNames),
 	}, nil
+}
+
+// convertToAnalysisData groups TaskData by task name and converts to TaskAnalysisData for the LLM.
+func (uc *ResourceVisualizationUseCase) convertToAnalysisData(validData []TaskData) []ports.TaskAnalysisData {
+	// Group by task name
+	taskGroups := make(map[string][]TaskData)
+	for _, task := range validData {
+		if task.Error == "" {
+			taskGroups[task.TaskName] = append(taskGroups[task.TaskName], task)
+		}
+	}
+
+	var result []ports.TaskAnalysisData
+	for taskName, tasks := range taskGroups {
+		if len(tasks) < 3 {
+			continue // Need at least 3 samples for meaningful analysis
+		}
+
+		analysisData := ports.TaskAnalysisData{
+			TaskName:    taskName,
+			SampleCount: len(tasks),
+			InputSizes:  make(map[string][]int64),
+		}
+
+		// Collect metrics per sample
+		for _, t := range tasks {
+			analysisData.DiskPeaksGB = append(analysisData.DiskPeaksGB, t.DiskPeakGB)
+			analysisData.MemoryPeaksMB = append(analysisData.MemoryPeaksMB, t.MemoryPeakMB)
+			analysisData.CPUMeans = append(analysisData.CPUMeans, t.CPUMean)
+			analysisData.DurationSeconds = append(analysisData.DurationSeconds, t.DurationSeconds)
+
+			// Collect input sizes
+			for name, size := range t.Inputs {
+				analysisData.InputSizes[name] = append(analysisData.InputSizes[name], size)
+			}
+		}
+
+		// Use first sample for resource requests (should be consistent across shards)
+		first := tasks[0]
+		analysisData.CPURequest = first.CPURequest
+		analysisData.MemoryReqGB = float64(first.MemoryRequestBytes) / (1024 * 1024 * 1024)
+		analysisData.DiskReqGB = float64(first.DiskSizeRequestBytes) / (1024 * 1024 * 1024)
+
+		// Calculate resource cost
+		var totalCost float64
+		for _, t := range tasks {
+			cpuVal := 1.0
+			if parsed, err := strconv.ParseFloat(t.CPURequest, 64); err == nil && parsed > 0 {
+				cpuVal = parsed
+			}
+			memGB := float64(t.MemoryRequestBytes) / (1024 * 1024 * 1024)
+			diskGB := float64(t.DiskSizeRequestBytes) / (1024 * 1024 * 1024)
+			durationHours := t.DurationSeconds / 3600
+			if durationHours > 0 {
+				totalCost += cpuVal * memGB * diskGB * durationHours
+			}
+		}
+		analysisData.ResourceCost = totalCost
+
+		result = append(result, analysisData)
+	}
+
+	// Sort by resource cost (highest first)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ResourceCost > result[j].ResourceCost
+	})
+
+	return result
 }
 
 // parseTSV parses a TSV file and returns task data.
