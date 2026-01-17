@@ -42,6 +42,10 @@ func (h *AnalyzeHandler) Command() *cli.Command {
 						Usage:   "Output HTML file path",
 						Value:   "resource_report.html",
 					},
+					&cli.BoolFlag{
+						Name:  "no-llm",
+						Usage: "Skip LLM-based recommendations (faster)",
+					},
 				},
 				Action: h.handleResources,
 			},
@@ -62,6 +66,7 @@ func (h *AnalyzeHandler) handleResources(c *cli.Context) error {
 	input := workflow.ResourceVisualizationInput{
 		Directory:  directory,
 		OutputFile: outputFile,
+		SkipLLM:    c.Bool("no-llm"),
 	}
 
 	h.presenter.Info("Scanning TSV files in %s...", directory)

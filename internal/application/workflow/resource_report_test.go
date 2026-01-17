@@ -768,6 +768,12 @@ func TestParseDiskConfig(t *testing.T) {
 }
 
 func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
+	// Clear persistent cache to ensure test starts fresh
+	cacheFile := getCacheFilePath()
+	if cacheFile != "" {
+		os.Remove(cacheFile)
+	}
+
 	// Track GetSize calls to verify caching
 	var getSizeCalls int64
 
