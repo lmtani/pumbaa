@@ -133,12 +133,16 @@ func convertToolsToGenAI(adkTools []tool.Tool) []*genai.Tool {
 const systemInstruction = `You are an expert in WDL (Workflow Description Language) resource optimization.
 Your task is to analyze resource usage data from workflow executions and generate optimization recommendations.
 
+## Input Data
 For each task, you will receive:
 - Task name (the WDL task name)
 - Resource REQUESTS (configured in WDL runtime: CPU, Memory, Disk)
 - Actual USAGE (what was actually used: CPU mean %, Memory peak, Disk peak)
+- Cost Contribution (% of total workflow cost) - USE THIS TO PRIORITIZE RECOMMENDATIONS
+- Average execution duration and sample count
 - Input file sizes (per sample, in bytes)
 
+## Output Format
 Your output MUST be valid JSON in this exact format:
 {
   "recommendations": [
@@ -156,52 +160,91 @@ Your output MUST be valid JSON in this exact format:
   ]
 }
 
-IMPORTANT - overallStatus assignment:
-- "good": All resources are well-utilized, no significant waste (ALL recommendations are good)
-- "warning": Some optimization opportunity exists (at least one warning recommendation)
-- "critical": Significant waste detected (at least one critical recommendation)
-If there are ANY critical recommendations, overallStatus MUST be "critical".
+## Status Assignment Rules
+- overallStatus: "good" = ALL recommendations are good (no action needed)
+- overallStatus: "warning" = At least one warning (optimization opportunity)
+- overallStatus: "critical" = At least one critical issue (significant waste)
+If ANY recommendation is critical, overallStatus MUST be "critical".
 
-Severity levels for individual recommendations:
-- "good": Resource is well-utilized (green) - no action needed
-- "warning": Needs attention (yellow) - optimization opportunity
-- "critical": Critical issue (red) - significant waste or risk
+## Severity Levels
+- "good": Well-utilized, no action needed
+- "warning": Optimization opportunity exists
+- "critical": Significant waste or misconfiguration
 
-Guidelines for formulas:
+## Cloud Provider Constraints
+1. MINIMUM DISK SIZE: Cloud providers typically have a minimum disk of 10 GB. Do NOT recommend reducing disk below 10 GB.
+2. PREEMPTIBLE VMs: Tasks may run on preemptible VMs which are cheaper but can be interrupted.
+
+## Data Quality Notes
+1. SHORT TASKS: Tasks with duration < 60 seconds may show 0% CPU or inaccurate memory metrics due to sampling frequency. Be cautious when making recommendations for very short tasks.
+2. COST PRIORITY: Focus your most detailed recommendations on tasks with HIGHEST cost contribution. A task with 50% of total cost deserves more optimization attention than one with 2%.
+
+## Formula Guidelines
 1. Use the LARGEST variable input for the formula (gives smaller, more intuitive multipliers)
 2. Round up intercepts to whole numbers for safety margin
-3. Include constant inputs with size(name, "GB") syntax
+3. Always ensure minimum 10 GB for disk formulas (e.g., ceil(...) + 10, or max(10, ...))
 4. Use ceil() to ensure sufficient resources
 5. Keep formulas simple and readable`
 
 func buildPrompt(tasks []ports.TaskAnalysisData) string {
 	var sb strings.Builder
-	sb.WriteString("Analyze the following task resource usage data and generate optimization recommendations.\n\n")
+
+	// Calculate total cost for percentage
+	var totalCost float64
+	for _, task := range tasks {
+		totalCost += task.ResourceCost
+	}
+
+	sb.WriteString("Analyze the following task resource usage data and generate optimization recommendations.\n")
+	sb.WriteString("Tasks are sorted by cost contribution (highest first). Prioritize recommendations for high-cost tasks.\n\n")
 
 	for _, task := range tasks {
-		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
-		sb.WriteString(fmt.Sprintf("- Samples: %d\n", task.SampleCount))
-		sb.WriteString(fmt.Sprintf("- CPU Request: %s\n", task.CPURequest))
-		sb.WriteString(fmt.Sprintf("- Memory Request: %.1f GB\n", task.MemoryReqGB))
-		sb.WriteString(fmt.Sprintf("- Disk Request: %.1f GB\n", task.DiskReqGB))
-		sb.WriteString(fmt.Sprintf("- Resource Cost: %.1f\n\n", task.ResourceCost))
-
-		// Input sizes
-		sb.WriteString("### Input Sizes (bytes per sample):\n")
-		for name, sizes := range task.InputSizes {
-			sb.WriteString(fmt.Sprintf("- %s: %v\n", name, sizes))
+		costPct := 0.0
+		if totalCost > 0 {
+			costPct = (task.ResourceCost / totalCost) * 100
 		}
 
-		// Metrics
-		sb.WriteString("\n### Metrics:\n")
-		sb.WriteString(fmt.Sprintf("- Disk peaks (GB): %v\n", task.DiskPeaksGB))
-		sb.WriteString(fmt.Sprintf("- Memory peaks (MB): %v\n", task.MemoryPeaksMB))
+		// Calculate mean duration
+		var meanDuration float64
+		if len(task.DurationSeconds) > 0 {
+			for _, d := range task.DurationSeconds {
+				meanDuration += d
+			}
+			meanDuration /= float64(len(task.DurationSeconds))
+		}
+
+		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
+		sb.WriteString(fmt.Sprintf("**Cost Contribution: %.1f%%** (prioritize if high)\n", costPct))
+		sb.WriteString(fmt.Sprintf("- Samples: %d | Avg Duration: %.0f seconds\n", task.SampleCount, meanDuration))
+
+		// Resource requests
+		sb.WriteString(fmt.Sprintf("- CPU Request: %s cores\n", task.CPURequest))
+		sb.WriteString(fmt.Sprintf("- Memory Request: %.1f GB\n", task.MemoryReqGB))
+		sb.WriteString(fmt.Sprintf("- Disk Request: %.1f GB\n\n", task.DiskReqGB))
+
+		// Actual usage
+		sb.WriteString("### Actual Usage:\n")
 		sb.WriteString(fmt.Sprintf("- CPU means (%%): %v\n", task.CPUMeans))
-		sb.WriteString(fmt.Sprintf("- Durations (s): %v\n", task.DurationSeconds))
+		sb.WriteString(fmt.Sprintf("- Memory peaks (MB): %v\n", task.MemoryPeaksMB))
+		sb.WriteString(fmt.Sprintf("- Disk peaks (GB): %v\n", task.DiskPeaksGB))
+
+		// Short task warning
+		if meanDuration < 60 {
+			sb.WriteString("⚠️ **SHORT TASK** - Metrics may be inaccurate due to short execution time.\n")
+		}
+
+		// Input sizes
+		if len(task.InputSizes) > 0 {
+			sb.WriteString("\n### Input Sizes (bytes per sample):\n")
+			for name, sizes := range task.InputSizes {
+				sb.WriteString(fmt.Sprintf("- %s: %v\n", name, sizes))
+			}
+		}
+
 		sb.WriteString("\n---\n\n")
 	}
 
-	sb.WriteString("Output JSON recommendations only. Include severity for each recommendation.")
+	sb.WriteString("Output JSON recommendations only. Include severity for each recommendation. Remember: min disk is 10 GB.")
 	return sb.String()
 }
 
