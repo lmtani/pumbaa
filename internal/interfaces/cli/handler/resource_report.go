@@ -123,7 +123,7 @@ func (h *ResourceReportHandler) displayResults(output *workflow.ResourceReportOu
 			formatBytes(task.TotalInputBytes),
 			fmt.Sprintf("%.1f%%", task.CPUMean),
 			fmt.Sprintf("%.0f MB", task.MemoryPeakMB),
-			fmt.Sprintf("%.1f GB", task.DiskPeakGB),
+			formatBytes(task.DiskPeakBytes),
 			status,
 		})
 	}

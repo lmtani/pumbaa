@@ -202,8 +202,10 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 		t.Errorf("expected memory peak 2048.0, got %f", task.MemoryPeakMB)
 	}
 	// Disk peak should be 15
-	if task.DiskPeakGB != 15.0 {
-		t.Errorf("expected disk peak 15.0, got %f", task.DiskPeakGB)
+	// Disk peak should be 15 GB = 16106127360 bytes
+	expectedDiskPeak := int64(15 * 1024 * 1024 * 1024)
+	if task.DiskPeakBytes != expectedDiskPeak {
+		t.Errorf("expected disk peak %d, got %d", expectedDiskPeak, task.DiskPeakBytes)
 	}
 	// Total input bytes should be 1024 (from mock)
 	if task.TotalInputBytes != 1024 {
@@ -536,7 +538,7 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	}
 
 	// Check header
-	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror"
+	expectedHeader := "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_bytes\terror"
 	if lines[0] != expectedHeader {
 		t.Errorf("expected header:\n%s\ngot:\n%s", expectedHeader, lines[0])
 	}

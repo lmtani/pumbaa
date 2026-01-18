@@ -70,4 +70,8 @@ type RecommendationGenerator interface {
 	// IsAvailable returns true if the generator is properly configured and ready to use.
 	// If false, the caller should proceed without recommendations.
 	IsAvailable() bool
+
+	// ModelInfo returns information about the model being used (e.g., "vertex/gemini-2.5-flash").
+	// Returns empty string if no model is configured.
+	ModelInfo() string
 }

@@ -24,6 +24,7 @@ type LLMGenerator struct {
 	llm       model.LLM
 	tools     []tool.Tool
 	available bool
+	modelInfo string // e.g., "vertex/gemini-2.5-flash"
 }
 
 // NewLLMGenerator creates a new LLM-based recommendation generator.
@@ -39,6 +40,19 @@ func NewLLMGenerator(cfg *config.Config, wdlRepo wdl.Repository) *LLMGenerator {
 		return &LLMGenerator{available: false}
 	}
 
+	// Build model info string
+	var modelInfo string
+	switch cfg.LLMProvider {
+	case "vertex":
+		modelInfo = fmt.Sprintf("vertex/%s", cfg.VertexModel)
+	case "gemini":
+		modelInfo = fmt.Sprintf("gemini/%s", cfg.GeminiModel)
+	case "ollama":
+		modelInfo = fmt.Sprintf("ollama/%s", cfg.OllamaModel)
+	default:
+		modelInfo = cfg.LLMProvider
+	}
+
 	// Create tools registry with WDL tools only
 	registry := tools.NewRegistry()
 	if wdlRepo != nil {
@@ -51,12 +65,18 @@ func NewLLMGenerator(cfg *config.Config, wdlRepo wdl.Repository) *LLMGenerator {
 		llm:       llmModel,
 		tools:     []tool.Tool{tools.GetPumbaaTool(registry)},
 		available: true,
+		modelInfo: modelInfo,
 	}
 }
 
 // IsAvailable returns true if the generator is properly configured.
 func (g *LLMGenerator) IsAvailable() bool {
 	return g.available && g.llm != nil
+}
+
+// ModelInfo returns information about the model being used (e.g., "vertex/gemini-2.5-flash").
+func (g *LLMGenerator) ModelInfo() string {
+	return g.modelInfo
 }
 
 // GenerateRecommendations uses the LLM to analyze task data and generate recommendations.
@@ -186,7 +206,9 @@ If ANY recommendation is critical, overallStatus MUST be "critical".
 
 ## Data Quality Notes
 1. SHORT TASKS: Tasks with duration < 60 seconds may show 0% CPU or inaccurate memory metrics due to sampling frequency. Be cautious when making recommendations for very short tasks.
-2. COST PRIORITY: Focus your most detailed recommendations on tasks with HIGHEST cost contribution. A task with 50% of total cost deserves more optimization attention than one with 2%.
+2. CPU 0%: A CPU mean of 0% does NOT necessarily mean the task was idle. It often indicates the task completed very quickly (before monitoring could sample CPU usage) or that monitoring data was not collected. In these cases, do NOT recommend reducing CPU - the current allocation may be appropriate. Instead, note that metrics are unreliable for this task.
+3. MEMORY/DISK 0: Similarly, if memory_peak=0 or disk_peak=0, it usually means monitoring failed to capture metrics, not that the task used no resources. Do not recommend reducing these resources based on 0 values.
+4. COST PRIORITY: Focus your most detailed recommendations on tasks with HIGHEST cost contribution. A task with 50% of total cost deserves more optimization attention than one with 2%.
 
 ## Formula Guidelines
 1. Use the LARGEST variable input for the formula (gives smaller, more intuitive multipliers)

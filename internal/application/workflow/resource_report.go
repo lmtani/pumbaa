@@ -51,7 +51,7 @@ type TaskResourceReport struct {
 	DurationSeconds float64          // Task execution duration in seconds
 	CPUMean         float64
 	MemoryPeakMB    float64
-	DiskPeakGB      float64
+	DiskPeakBytes   int64
 	Error           string // Non-empty if failed to get metrics
 }
 
@@ -310,7 +310,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 
 	baseReport.CPUMean = report.CPU.Avg
 	baseReport.MemoryPeakMB = report.Mem.Peak
-	baseReport.DiskPeakGB = report.Disk.Peak
+	baseReport.DiskPeakBytes = int64(report.Disk.Peak * 1024 * 1024 * 1024)
 
 	return baseReport
 }
@@ -380,7 +380,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	defer file.Close()
 
 	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
+	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_bytes\terror")
 	if err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 		errorMsg = strings.ReplaceAll(errorMsg, "\r", "")
 		errorMsg = strings.ReplaceAll(errorMsg, "\t", " ")
 
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
+		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%d\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
 			task.CPURequest,
@@ -410,7 +410,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			task.DurationSeconds,
 			task.CPUMean,
 			task.MemoryPeakMB,
-			task.DiskPeakGB,
+			task.DiskPeakBytes,
 			errorMsg)
 		if err != nil {
 			return err

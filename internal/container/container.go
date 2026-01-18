@@ -9,6 +9,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/metrics"
 	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
@@ -102,6 +103,9 @@ func New(cfg *config.Config, version string) *Container {
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
 
+	// Initialize metrics reader for TSV files
+	metricsReader := metrics.NewTSVReader()
+
 	// Initialize LLM-based recommendation generator if LLM is configured
 	var recommendationGenerator = recommendation.NewLLMGenerator(cfg, nil)
 	if cfg.WDLDirectory != "" {
@@ -111,7 +115,7 @@ func New(cfg *config.Config, version string) *Container {
 			recommendationGenerator = recommendation.NewLLMGenerator(cfg, indexer)
 		}
 	}
-	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(recommendationGenerator)
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator)
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
