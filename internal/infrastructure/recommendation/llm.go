@@ -142,8 +142,15 @@ func convertToolsToGenAI(adkTools []tool.Tool) []*genai.Tool {
 }
 
 const summarySystemInstruction = `You are an expert in WDL resource optimization.
-Your task is to write a concise Executive Summary based on the provided aggregate statistics and top tasks.
-Focus on high-level insights, cost drivers, and overall health.
+Your task is to write a concise, balanced Executive Summary based on the provided aggregate statistics.
+
+Guidelines:
+- Be BALANCED: mention both what's working well AND what needs improvement
+- If most tasks are "Good", lead with that positive finding
+- Only emphasize problems if Critical or Warning count is significant (>30% of tasks)
+- Focus on actionable insights for the top cost drivers
+- Keep it under 200 words
+
 Output format: JSON {"summary": "your summary text"}`
 
 const systemInstruction = `You are an expert in WDL (Workflow Description Language) resource optimization.
@@ -200,9 +207,10 @@ If ANY recommendation is critical, overallStatus MUST be "critical".
 2. 20% THRESHOLD: Only suggest reducing resources if usage is consistently below 80% of the request.
 3. PEAKS: Always respect the peak usage. If peak is 10 GB, request should probably be at least 11-12 GB.
 
-## Cloud Provider Constraints
-1. MINIMUM DISK SIZE: Cloud providers typically have a minimum disk of 10 GB. Do NOT recommend reducing disk below 10 GB.
-2. PREEMPTIBLE VMs: Tasks may run on preemptible VMs which are cheaper but can be interrupted.
+## Cloud Provider Constraints (GCP)
+1. MINIMUM DISK SIZE: GCP has a minimum disk of 10 GB. Do NOT recommend reducing disk below 10 GB.
+2. MINIMUM MEMORY: GCP has a minimum memory of 1 GB. Do NOT recommend reducing memory below 1 GB.
+3. PREEMPTIBLE VMs: Tasks may run on preemptible VMs which are cheaper but can be interrupted.
 
 ## Data Quality Notes
 1. SHORT TASKS: Tasks with duration < 60 seconds may show 0% CPU or inaccurate memory metrics due to sampling frequency. Be cautious when making recommendations for very short tasks.
@@ -275,7 +283,7 @@ func buildPrompt(tasks []ports.TaskAnalysisData) string {
 		sb.WriteString("\n---\n\n")
 	}
 
-	sb.WriteString("Output JSON recommendations only. Include severity for each recommendation. Remember: min disk is 10 GB.")
+	sb.WriteString("Output JSON recommendations only. Include severity for each recommendation. Remember GCP constraints: min disk is 10 GB, min memory is 1 GB.")
 	return sb.String()
 }
 
@@ -471,7 +479,11 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 	for _, t := range tasks {
 		totalCost += t.ResourceCost
 	}
+
+	// Build a map of tasks that have recommendations
+	tasksWithRecs := make(map[string]bool)
 	for _, r := range recommendations {
+		tasksWithRecs[r.TaskName] = true
 		switch r.OverallStatus {
 		case ports.SeverityCritical:
 			criticalCount++
@@ -482,10 +494,14 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 		}
 	}
 
+	// Tasks without explicit recommendations are considered "good" (well-optimized)
+	tasksWithoutRecs := len(tasks) - len(tasksWithRecs)
+	goodCount += tasksWithoutRecs
+
 	sb.WriteString("Generate an Executive Summary for the workflow resource analysis based on the following aggregate data.\n\n")
 	sb.WriteString(fmt.Sprintf("**Global Stats**:\n"))
 	sb.WriteString(fmt.Sprintf("- Total Tasks Analyzed: %d\n", len(tasks)))
-	sb.WriteString(fmt.Sprintf("- Optimization Status: %d Critical, %d Warnings, %d Good\n", criticalCount, warningCount, goodCount))
+	sb.WriteString(fmt.Sprintf("- Optimization Status: %d Critical, %d Warnings, %d Good (including %d tasks with no issues found)\n", criticalCount, warningCount, goodCount, tasksWithoutRecs))
 	sb.WriteString("\n**Top 10 Tasks by Resource Cost**:\n")
 
 	// Sort tasks by cost (they should be already sorted, but let's be safe or just take top 10 if input is sorted)
@@ -505,10 +521,11 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 	}
 
 	sb.WriteString("\n**Instructions**:\n")
-	sb.WriteString("Write a concise executive summary (max 200 words) focusing on:")
-	sb.WriteString("1. The overall health of the workflow (efficient vs wasteful).")
-	sb.WriteString("2. The main cost drivers (top tasks).")
-	sb.WriteString("3. Key actions to take.\n")
+	sb.WriteString("Write a BALANCED executive summary (max 200 words) that:\n")
+	sb.WriteString("1. Starts with the overall health - if most tasks are 'Good', lead with that positive finding\n")
+	sb.WriteString("2. Mentions the main cost drivers (top tasks by cost)\n")
+	sb.WriteString("3. Lists specific actions to take, if any\n")
+	sb.WriteString("4. If most tasks are well-optimized, acknowledge that and focus on the few that need attention\n")
 	sb.WriteString("Output ONLY a JSON object: {\"summary\": \"...\"}")
 
 	return sb.String()

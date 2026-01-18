@@ -584,6 +584,13 @@
                                     </div>
                                     <div style="font-size: 0.65rem; opacity: 0.7;">Disk Peak</div>
                                 </div>
+                                <div
+                                    style="text-align: center; padding: 6px 10px; background: rgba(255, 183, 77, 0.1); border-radius: 6px;">
+                                    <div style="color: #ffb74d; font-weight: 600;"
+                                        x-text="formatDuration(getTaskByName(rec.taskName).avgDurationSeconds)">
+                                    </div>
+                                    <div style="font-size: 0.65rem; opacity: 0.7;">Avg Duration</div>
+                                </div>
                                 <span class="status-badge" :class="'status-' + rec.overallStatus"
                                     x-text="rec.overallStatus === 'good' ? 'Good' : rec.overallStatus === 'critical' ? 'Critical' : 'Warning'"></span>
                             </div>
@@ -656,6 +663,7 @@
                                     <thead>
                                         <tr>
                                             <th>Shard</th>
+                                            <th>Duration</th>
                                             <th>Input Size</th>
                                             <th>CPU Mean</th>
                                             <th>Mem Peak</th>
@@ -670,6 +678,7 @@
                                                 <td class="mono"
                                                     x-text="shard.shardIndex === -1 ? '-' : shard.shardIndex">
                                                 </td>
+                                                <td class="mono" x-text="formatDuration(shard.durationSeconds)"></td>
                                                 <td class="mono" x-text="formatBytes(shard.totalInputBytes)"></td>
                                                 <td class="mono" x-text="shard.cpuMean.toFixed(1) + '%'"></td>
                                                 <td class="mono" x-text="shard.memoryPeakMB.toFixed(0) + ' MB'"></td>
@@ -757,7 +766,8 @@
                                     memoryMax: 0,
                                     diskMax: 0,
                                     memoryRequestMax: 0,
-                                    diskRequestMax: 0
+                                    diskRequestMax: 0,
+                                    durationSum: 0
                                 };
                             }
                             var task = taskMap[row.taskName];
@@ -767,6 +777,7 @@
                             task.diskMax = Math.max(task.diskMax, row.diskPeakBytes);
                             task.memoryRequestMax = Math.max(task.memoryRequestMax, row.memoryRequestBytes);
                             task.diskRequestMax = Math.max(task.diskRequestMax, row.diskSizeRequestBytes);
+                            task.durationSum += row.durationSeconds || 0;
                         });
 
                         var result = [];
@@ -781,6 +792,7 @@
                                 memoryPeakMB: task.memoryMax,
                                 diskPeakGB: task.diskMax / (1024 * 1024 * 1024),
                                 diskMax: task.diskMax,
+                                avgDurationSeconds: task.durationSum / task.shards.length,
                                 shards: task.shards,
                                 efficiency: effResult.status,
                                 efficiencyLabel: effResult.label,
@@ -821,6 +833,19 @@
                         var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
                         var i = Math.floor(Math.log(bytes) / Math.log(k));
                         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                    },
+
+                    formatDuration: function (seconds) {
+                        if (!seconds || seconds === 0) return '0s';
+                        if (seconds < 60) return Math.round(seconds) + 's';
+                        if (seconds < 3600) {
+                            var mins = Math.floor(seconds / 60);
+                            var secs = Math.round(seconds % 60);
+                            return mins + 'm ' + secs + 's';
+                        }
+                        var hours = Math.floor(seconds / 3600);
+                        var mins = Math.floor((seconds % 3600) / 60);
+                        return hours + 'h ' + mins + 'm';
                     },
 
                     openModal: function (task) {
