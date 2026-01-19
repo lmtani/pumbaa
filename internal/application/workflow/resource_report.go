@@ -73,7 +73,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	}
 
 	// Collect all calls recursively (including from subworkflows)
-	callsToProcess := uc.collectCallsRecursively(ctx, wf)
+	callsToProcess := uc.collectCalls(ctx, wf)
 
 	if len(callsToProcess) == 0 {
 		return &ResourceReportOutput{
@@ -119,17 +119,10 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	// Save cache to disk for future use
 	_ = sizeCache.Save()
 
-	// Sort results by task name, then by shard index for consistent output
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].TaskName != results[j].TaskName {
-			return results[i].TaskName < results[j].TaskName
-		}
-		return results[i].ShardIndex < results[j].ShardIndex
-	})
+	uc.sortTaskMetrics(results)
 
-	// Generate output file
-	outputFile := fmt.Sprintf("%s.tsv", input.WorkflowID)
-	if err := uc.metricsWriter.WriteToFile(outputFile, results); err != nil {
+	outputFile, err := uc.writeReport(input.WorkflowID, results)
+	if err != nil {
 		return nil, application.NewUseCaseError("resource_report", "failed to write TSV file", err)
 	}
 
@@ -146,9 +139,9 @@ func (uc *ResourceReportUseCase) Execute(ctx context.Context, input ResourceRepo
 	return uc.ExecuteWithProgress(ctx, input, nil)
 }
 
-// collectCallsRecursively collects all calls with monitoring logs from a workflow,
+// collectCalls collects all calls with monitoring logs from a workflow,
 // including calls from subworkflows (recursively).
-func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf *workflowDomain.Workflow) []workflowDomain.Call {
+func (uc *ResourceReportUseCase) collectCalls(ctx context.Context, wf *workflowDomain.Workflow) []workflowDomain.Call {
 	var calls []workflowDomain.Call
 
 	for _, callList := range wf.Calls {
@@ -160,7 +153,7 @@ func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf
 					// Log error but continue with other calls
 					continue
 				}
-				subCalls := uc.collectCallsRecursively(ctx, subWf)
+				subCalls := uc.collectCalls(ctx, subWf)
 				calls = append(calls, subCalls...)
 			} else if call.MonitoringLog != "" && !call.CacheHit {
 				// Regular task with monitoring log
@@ -170,6 +163,23 @@ func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf
 	}
 
 	return calls
+}
+
+func (uc *ResourceReportUseCase) sortTaskMetrics(tasks []workflowDomain.TaskMetrics) {
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].TaskName != tasks[j].TaskName {
+			return tasks[i].TaskName < tasks[j].TaskName
+		}
+		return tasks[i].ShardIndex < tasks[j].ShardIndex
+	})
+}
+
+func (uc *ResourceReportUseCase) writeReport(workflowID string, tasks []workflowDomain.TaskMetrics) (string, error) {
+	outputFile := fmt.Sprintf("%s.tsv", workflowID)
+	if err := uc.metricsWriter.WriteToFile(outputFile, tasks); err != nil {
+		return "", err
+	}
+	return outputFile, nil
 }
 
 // processCall processes a single call and returns its resource report.
