@@ -479,7 +479,7 @@ func TestExtractTaskName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.fullName, func(t *testing.T) {
-			result := extractTaskName(tt.fullName)
+			result := workflow.ExtractTaskName(tt.fullName)
 			if result != tt.expected {
 				t.Errorf("expected '%s', got '%s'", tt.expected, result)
 			}

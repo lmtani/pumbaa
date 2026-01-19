@@ -26,6 +26,52 @@ type TaskMetrics struct {
 	Error                string
 }
 
+// NewTaskMetricsFromCall creates TaskMetrics from a workflow call and input sizing data.
+func NewTaskMetricsFromCall(call Call, workflowID string, totalInputBytes int64, inputs map[string]int64) TaskMetrics {
+	memory := Memory(call.Memory)
+	disk := NewDiskConfig(call.Disk)
+
+	var durationSeconds float64
+	if !call.Start.IsZero() && !call.End.IsZero() {
+		durationSeconds = call.End.Sub(call.Start).Seconds()
+	}
+
+	return TaskMetrics{
+		TaskName:             ExtractTaskName(call.Name),
+		ShardIndex:           call.ShardIndex,
+		WorkflowID:           workflowID,
+		CPURequest:           call.CPU,
+		MemoryRequestBytes:   memory.ToBytes(),
+		DiskSizeRequestBytes: disk.SizeBytes(),
+		DiskType:             disk.Type(),
+		TotalInputBytes:      totalInputBytes,
+		Inputs:               inputs,
+		DurationSeconds:      durationSeconds,
+	}
+}
+
+// WithMonitoringReport enriches metrics with monitoring-derived usage stats.
+func (m TaskMetrics) WithMonitoringReport(report *EfficiencyReport) TaskMetrics {
+	if report == nil {
+		return m
+	}
+
+	const bytesPerGB = 1024 * 1024 * 1024
+	m.CPUMean = report.CPU.Avg
+	m.MemoryPeakMB = report.Mem.Peak
+	m.DiskPeakBytes = int64(report.Disk.Peak * bytesPerGB)
+
+	return m
+}
+
+// ExtractTaskName removes the workflow prefix from a task name.
+func ExtractTaskName(fullName string) string {
+	if idx := strings.LastIndex(fullName, "."); idx != -1 {
+		return fullName[idx+1:]
+	}
+	return fullName
+}
+
 // HasExecutionError returns true if the error indicates a task execution failure.
 // Monitoring errors (e.g., "monitoring.log exists but no content") return false
 // because the task completed successfully but monitoring data was not collected.

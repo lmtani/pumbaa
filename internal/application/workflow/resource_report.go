@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/lmtani/pumbaa/internal/application"
@@ -175,34 +174,9 @@ func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf
 
 // processCall processes a single call and returns its resource report.
 func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID string, call workflowDomain.Call, sizeCache ports.FileSizeCache) workflowDomain.TaskMetrics {
-	taskName := extractTaskName(call.Name)
-
 	// Calculate total input bytes and per-input sizes
 	totalInputBytes, inputs := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
-
-	// Parse memory and disk configurations using domain Value Objects
-	memory := workflowDomain.Memory(call.Memory)
-	disk := workflowDomain.NewDiskConfig(call.Disk)
-
-	// Calculate duration from call timing
-	var durationSeconds float64
-	if !call.Start.IsZero() && !call.End.IsZero() {
-		durationSeconds = call.End.Sub(call.Start).Seconds()
-	}
-
-	// Base report with task identification and configuration
-	baseReport := workflowDomain.TaskMetrics{
-		TaskName:             taskName,
-		ShardIndex:           call.ShardIndex,
-		WorkflowID:           workflowID,
-		CPURequest:           call.CPU,
-		MemoryRequestBytes:   memory.ToBytes(),
-		DiskSizeRequestBytes: disk.SizeBytes(),
-		DiskType:             disk.Type(),
-		TotalInputBytes:      totalInputBytes,
-		Inputs:               inputs,
-		DurationSeconds:      durationSeconds,
-	}
+	baseReport := workflowDomain.NewTaskMetricsFromCall(call, workflowID, totalInputBytes, inputs)
 
 	// Read and parse monitoring log
 	content, err := uc.fileProvider.Read(ctx, call.MonitoringLog)
@@ -223,12 +197,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID str
 	}
 
 	report := metrics.Analyze()
-
-	baseReport.CPUMean = report.CPU.Avg
-	baseReport.MemoryPeakMB = report.Mem.Peak
-	baseReport.DiskPeakBytes = int64(report.Disk.Peak * 1024 * 1024 * 1024)
-
-	return baseReport
+	return baseReport.WithMonitoringReport(report)
 }
 
 // calculateInputFileSizes calculates the total size of input files and per-input sizes.
@@ -243,7 +212,7 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 
 	for key, value := range inputs {
 		// Clean the input key (remove workflow name prefix if likely present)
-		inputName := extractTaskName(key)
+		inputName := workflowDomain.ExtractTaskName(key)
 
 		// Use domain Value Object to extract file paths
 		paths := workflowDomain.ExtractFilePaths(value)
@@ -276,13 +245,4 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 	}
 
 	return total, inputSizes
-}
-
-// extractTaskName removes the workflow prefix from task name.
-func extractTaskName(fullName string) string {
-	// Remove workflow prefix if present (e.g., "MyWorkflow.task_name" -> "task_name")
-	if idx := strings.LastIndex(fullName, "."); idx != -1 {
-		return fullName[idx+1:]
-	}
-	return fullName
 }
