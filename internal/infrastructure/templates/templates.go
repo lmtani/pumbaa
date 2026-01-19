@@ -17,6 +17,7 @@ type ReportData struct {
 	WorkflowsJSON       template.JS // List of workflow IDs
 	RecommendationsJSON template.JS // Task recommendations as JSON
 	FaviconBase64       string      // Favicon as base64 encoded PNG
+	LLMModelInfo        string      // LLM provider and model used for recommendations (e.g., "vertex/gemini-2.5-flash")
 }
 
 // RenderReport generates the HTML report from the template and data.

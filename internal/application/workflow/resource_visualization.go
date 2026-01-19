@@ -2,33 +2,40 @@
 package workflow
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"html/template"
-	"math"
+	"log"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
+	"sort"
 
 	"github.com/lmtani/pumbaa/internal/application"
+	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 )
 
 // ResourceVisualizationUseCase handles resource visualization report generation.
-type ResourceVisualizationUseCase struct{}
+type ResourceVisualizationUseCase struct {
+	metricsReader           ports.TaskMetricsReader
+	recommendationGenerator ports.RecommendationGenerator
+}
 
 // NewResourceVisualizationUseCase creates a new resource visualization use case.
-func NewResourceVisualizationUseCase() *ResourceVisualizationUseCase {
-	return &ResourceVisualizationUseCase{}
+// metricsReader is required; generator can be nil if LLM is not configured.
+func NewResourceVisualizationUseCase(metricsReader ports.TaskMetricsReader, generator ports.RecommendationGenerator) *ResourceVisualizationUseCase {
+	return &ResourceVisualizationUseCase{
+		metricsReader:           metricsReader,
+		recommendationGenerator: generator,
+	}
 }
 
 // ResourceVisualizationInput represents the input for resource visualization.
 type ResourceVisualizationInput struct {
-	Directory  string // Directory containing TSV files
-	OutputFile string // Output HTML file (default: "resource_report.html")
+	Directory    string // Directory containing TSV files
+	OutputFile   string // Output HTML file (default: "resource_report.html")
+	SkipLLM      bool   // Skip LLM-based recommendations
+	LLMBatchSize int    // Number of tasks per LLM request (Batching)
 }
 
 // ResourceVisualizationOutput contains the result of visualization generation.
@@ -38,8 +45,8 @@ type ResourceVisualizationOutput struct {
 	TaskCount     int
 }
 
-// TaskData represents a single task row from TSV for JSON serialization.
-type TaskData struct {
+// TaskDataDTO is a data transfer object for task data JSON serialization.
+type TaskDataDTO struct {
 	TaskName             string           `json:"taskName"`
 	ShardIndex           int              `json:"shardIndex"`
 	CPURequest           string           `json:"cpuRequest"`
@@ -48,366 +55,55 @@ type TaskData struct {
 	DiskType             string           `json:"diskType"`
 	TotalInputBytes      int64            `json:"totalInputBytes"`
 	Inputs               map[string]int64 `json:"inputs"`
+	DurationSeconds      float64          `json:"durationSeconds"`
 	CPUMean              float64          `json:"cpuMean"`
 	MemoryPeakMB         float64          `json:"memoryPeakMB"`
-	DiskPeakGB           float64          `json:"diskPeakGB"`
+	DiskPeakBytes        int64            `json:"diskPeakBytes"`
 	Error                string           `json:"error"`
 	WorkflowID           string           `json:"workflowId"`
 }
 
-// TaskRecommendation contains optimization recommendations for a task.
-type TaskRecommendation struct {
-	TaskName        string   `json:"taskName"`
-	SampleCount     int      `json:"sampleCount"`
-	DiskFormula     string   `json:"diskFormula,omitempty"`
-	DiskR2          float64  `json:"diskR2,omitempty"`
-	MemoryFormula   string   `json:"memoryFormula,omitempty"`
-	MemoryR2        float64  `json:"memoryR2,omitempty"`
-	Recommendations []string `json:"recommendations"`
-}
-
-// regressionResult holds the result of a linear regression.
-type regressionResult struct {
-	Slope     float64
-	Intercept float64
-	R2        float64
-}
-
-// linearRegression calculates simple linear regression for (x, y) points.
-// Returns slope, intercept, and R² (coefficient of determination).
-func linearRegression(xs, ys []float64) regressionResult {
-	n := float64(len(xs))
-	if n < 2 {
-		return regressionResult{}
-	}
-
-	// Calculate means
-	var sumX, sumY float64
-	for i := range xs {
-		sumX += xs[i]
-		sumY += ys[i]
-	}
-	meanX := sumX / n
-	meanY := sumY / n
-
-	// Calculate slope and intercept
-	var numerator, denominator float64
-	for i := range xs {
-		numerator += (xs[i] - meanX) * (ys[i] - meanY)
-		denominator += (xs[i] - meanX) * (xs[i] - meanX)
-	}
-
-	if denominator == 0 {
-		return regressionResult{Intercept: meanY}
-	}
-
-	slope := numerator / denominator
-	intercept := meanY - slope*meanX
-
-	// Calculate R²
-	var ssRes, ssTot float64
-	for i := range xs {
-		predicted := slope*xs[i] + intercept
-		ssRes += (ys[i] - predicted) * (ys[i] - predicted)
-		ssTot += (ys[i] - meanY) * (ys[i] - meanY)
-	}
-
-	var r2 float64
-	if ssTot > 0 {
-		r2 = 1 - ssRes/ssTot
-	}
-
-	return regressionResult{Slope: slope, Intercept: intercept, R2: r2}
-}
-
-// generateRecommendations analyzes task data and generates optimization recommendations.
-func generateRecommendations(allData []TaskData) []TaskRecommendation {
-	// Group valid data by task name
-	taskGroups := make(map[string][]TaskData)
-	for _, task := range allData {
-		if task.Error != "" {
-			continue // Skip tasks with errors
-		}
-		taskGroups[task.TaskName] = append(taskGroups[task.TaskName], task)
-	}
-
-	var recommendations []TaskRecommendation
-	const minSamples = 3
-	const minR2 = 0.7
-
-	for taskName, tasks := range taskGroups {
-		rec := TaskRecommendation{
-			TaskName:    taskName,
-			SampleCount: len(tasks),
-		}
-
-		// Need at least minSamples for meaningful regression
-		if len(tasks) >= minSamples {
-			// 1. Collect Data Arrays
-			var diskPeaksGB, memPeaksMB []float64
-			var totalCPUMean float64
-			var totalMemReq, totalDiskReq int64
-
-			// Collect all unique input keys and their values per task
-			inputKeys := make(map[string]bool)
-			// Map to check for constant input sizes: key -> size (if constant), -1 if variable
-			inputConstSizes := make(map[string]int64)
-
-			// Initialize inputConstSizes with the first task's inputs
-			for k, v := range tasks[0].Inputs {
-				inputConstSizes[k] = v
-			}
-
-			for _, t := range tasks {
-				diskPeaksGB = append(diskPeaksGB, t.DiskPeakGB)
-				memPeaksMB = append(memPeaksMB, t.MemoryPeakMB)
-				totalCPUMean += t.CPUMean
-				totalMemReq += t.MemoryRequestBytes
-				totalDiskReq += t.DiskSizeRequestBytes
-
-				for k := range t.Inputs {
-					inputKeys[k] = true
-				}
-
-				// Check for constants
-				for k, v := range inputConstSizes {
-					if v != -1 {
-						if currentVal, ok := t.Inputs[k]; !ok || currentVal != v {
-							inputConstSizes[k] = -1 // Not constant or missing
-						}
-					}
-				}
-				// Keys present in current task but not in initialization (unlikely if same WDL, but possible)
-				// are ignored for "constant" candidate status as they weren't in the first one.
-				// To be strictly correct we should ensure it exists in ALL. The logic above handles mis-match by checking existence.
-			}
-
-			// Identify large constant inputs (> 100MB) to use in formula explanations
-			var constantInputs []string
-			for k, v := range inputConstSizes {
-				if v > 100*1024*1024 { // 100MB threshold
-					constantInputs = append(constantInputs, k)
-				}
-			}
-
-			// 2. Generic Consumption Stats
-			avgCPUMean := totalCPUMean / float64(len(tasks))
-			avgMemReqMB := float64(totalMemReq) / float64(len(tasks)) / (1024 * 1024)
-			avgDiskReqGB := float64(totalDiskReq) / float64(len(tasks)) / (1024 * 1024 * 1024)
-
-			var avgMemPeak, avgDiskPeak float64
-			for _, t := range tasks {
-				avgMemPeak += t.MemoryPeakMB
-				avgDiskPeak += t.DiskPeakGB
-			}
-			avgMemPeak /= float64(len(tasks))
-			avgDiskPeak /= float64(len(tasks))
-
-			// 3. Helper to find best regression
-			type bestFit struct {
-				Key       string // "total" or input name
-				R2        float64
-				Slope     float64
-				Intercept float64
-			}
-
-			findBestFit := func(ys []float64) bestFit {
-				// Start with TotalInputBytes as baseline
-				var baselineXs []float64
-				for _, t := range tasks {
-					baselineXs = append(baselineXs, float64(t.TotalInputBytes)/(1024*1024*1024))
-				}
-				reg := linearRegression(baselineXs, ys)
-				best := bestFit{Key: "total", R2: reg.R2, Slope: reg.Slope, Intercept: reg.Intercept}
-
-				// Check each individual input - PREFER specific inputs over total
-				for key := range inputKeys {
-					// Skip if this key is effectively constant (variance ~ 0)
-					if v, ok := inputConstSizes[key]; ok && v != -1 {
-						continue
-					}
-
-					var connectedXs []float64
-					for _, t := range tasks {
-						val := t.Inputs[key]
-						connectedXs = append(connectedXs, float64(val)/(1024*1024*1024))
-					}
-
-					r := linearRegression(connectedXs, ys)
-					// Prefer specific input over total if R² is >= (equal or better)
-					// This ensures we use specific names like "ubam_input" instead of generic "inputs"
-					if r.R2 >= best.R2 || (best.Key == "total" && r.R2 >= minR2) {
-						best = bestFit{Key: key, R2: r.R2, Slope: r.Slope, Intercept: r.Intercept}
-					}
-				}
-				return best
-			}
-
-			// 4. Generate Formula String Helper
-			generateFormula := func(fit bestFit, target string) string {
-				slope := math.Ceil(fit.Slope*10) / 10
-				intercept := fit.Intercept
-
-				// Clamp negative intercepts to 0 (they make no practical sense)
-				if intercept < 0 {
-					intercept = 0
-				}
-
-				// Try to explain intercept with constants
-				var explainedParts []string
-
-				// Only try to decompose if we have a positive intercept
-				if intercept > 0 {
-					for _, k := range constantInputs {
-						// Don't use the variable itself as a constant (boundary case)
-						if k == fit.Key {
-							continue
-						}
-
-						sizeGB := float64(inputConstSizes[k]) / (1024 * 1024 * 1024)
-						// If constant size fits within the intercept (with some buffer 0.1GB), subtract it
-						if intercept >= sizeGB-0.1 {
-							intercept -= sizeGB
-							explainedParts = append(explainedParts, fmt.Sprintf(`size(%s, "GB")`, k))
-						}
-					}
-				}
-
-				intercept = math.Ceil(intercept)
-				// Clamp again after ceiling in case we went negative from subtraction
-				if intercept < 0 {
-					intercept = 0
-				}
-
-				var variablePart string
-				if fit.Key == "total" {
-					variablePart = fmt.Sprintf("%.1f * size(inputs, \"GB\")", slope)
-				} else {
-					variablePart = fmt.Sprintf("%.1f * size(%s, \"GB\")", slope, fit.Key)
-				}
-
-				// Construct final formula
-				var formulaBuilder strings.Builder
-				formulaBuilder.WriteString(fmt.Sprintf("%s = ceil(", target))
-				formulaBuilder.WriteString(variablePart)
-
-				if intercept > 0 {
-					formulaBuilder.WriteString(fmt.Sprintf(" + %.0f", intercept))
-				}
-				formulaBuilder.WriteString(")")
-
-				for _, part := range explainedParts {
-					formulaBuilder.WriteString(" + ")
-					formulaBuilder.WriteString(part)
-				}
-
-				return formulaBuilder.String()
-			}
-
-			// 5. Run Analysis for Disk
-			diskFit := findBestFit(diskPeaksGB)
-			if diskFit.R2 >= minR2 {
-				rec.DiskR2 = math.Round(diskFit.R2*100) / 100
-				rec.DiskFormula = generateFormula(diskFit, "Int disk_gb")
-			}
-
-			// 6. Run Analysis for Memory
-			memFit := findBestFit(memPeaksMB)
-			if memFit.R2 >= minR2 {
-				rec.MemoryR2 = math.Round(memFit.R2*100) / 100
-				// Adjust slope/intercept to GB for memory formula if needed,
-				// but usually memory is just MB. User asked for "Int memory_gb", so assuming GB.
-				// The regression was run on MB (Y). We need to convert results to GB.
-
-				memFitGB := bestFit{
-					Key:       memFit.Key,
-					R2:        memFit.R2,
-					Slope:     memFit.Slope / 1024,
-					Intercept: memFit.Intercept / 1024,
-				}
-				rec.MemoryFormula = generateFormula(memFitGB, "Int memory_gb")
-			}
-
-			// 7. Generic recommendations
-			if avgCPUMean < 30 {
-				rec.Recommendations = append(rec.Recommendations,
-					fmt.Sprintf("CPU utilization is low (%.0f%%). Consider reducing CPU request.", avgCPUMean))
-			}
-
-			memEfficiency := (avgMemPeak / avgMemReqMB) * 100
-			if memEfficiency < 50 {
-				rec.Recommendations = append(rec.Recommendations,
-					fmt.Sprintf("Memory utilization is low (%.0f%%). Consider reducing memory request.", memEfficiency))
-			}
-
-			diskEfficiency := (avgDiskPeak / avgDiskReqGB) * 100
-			if diskEfficiency < 30 {
-				rec.Recommendations = append(rec.Recommendations,
-					fmt.Sprintf("Disk utilization is low (%.0f%%). Consider reducing disk request.", diskEfficiency))
-			}
-		}
-
-		// Only add if there are any recommendations or formulas
-		if len(rec.Recommendations) > 0 || rec.DiskFormula != "" || rec.MemoryFormula != "" {
-			recommendations = append(recommendations, rec)
-		}
-	}
-
-	return recommendations
-}
-
 // Execute generates the HTML visualization report.
 func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input ResourceVisualizationInput) (*ResourceVisualizationOutput, error) {
+	// 1. Validate input
 	if input.Directory == "" {
 		return nil, application.NewInputValidationError("directory", "is required")
 	}
 
-	// Set default output file
 	outputFile := input.OutputFile
 	if outputFile == "" {
 		outputFile = "resource_report.html"
 	}
 
-	// Find all TSV files in the directory
-	tsvFiles, err := filepath.Glob(filepath.Join(input.Directory, "*.tsv"))
+	log.Printf("[resource_visualization] Starting analysis of directory: %s", input.Directory)
+
+	// 2. Read metrics from directory (delegated to metricsReader)
+	log.Printf("[resource_visualization] Reading TSV files from directory...")
+	collection, workflows, err := uc.metricsReader.ReadFromDirectory(input.Directory)
 	if err != nil {
-		return nil, application.NewUseCaseError("resource_visualization", "failed to find TSV files", err)
+		return nil, application.NewUseCaseError("resource_visualization", "failed to read TSV files", err)
 	}
 
-	if len(tsvFiles) == 0 {
+	if len(workflows) == 0 {
 		return nil, application.NewUseCaseError("resource_visualization", "no TSV files found in directory", nil)
 	}
 
-	// Parse all TSV files and collect data
-	var allData []TaskData
-	var workflows []string
+	log.Printf("[resource_visualization] Found %d workflow(s) with %d total task records", len(workflows), collection.Len())
 
-	for _, tsvFile := range tsvFiles {
-		workflowID := strings.TrimSuffix(filepath.Base(tsvFile), ".tsv")
-		workflows = append(workflows, workflowID)
-
-		tasks, err := uc.parseTSV(tsvFile, workflowID)
-		if err != nil {
-			// Skip files that can't be parsed, but log the error
-			continue
-		}
-		allData = append(allData, tasks...)
-	}
-
-	if len(allData) == 0 {
+	if collection.Len() == 0 {
 		return nil, application.NewUseCaseError("resource_visualization", "no valid data found in TSV files", nil)
 	}
 
-	// Filter out data with errors for visualization
-	var validData []TaskData
-	for _, d := range allData {
-		if d.Error == "" {
-			validData = append(validData, d)
-		}
-	}
+	// 3. Filter valid executions (delegated to domain)
+	log.Printf("[resource_visualization] Filtering out execution errors...")
+	validCollection := collection.FilterByValidExecution()
+	log.Printf("[resource_visualization] %d records after filtering (removed %d with execution errors)",
+		validCollection.Len(), collection.Len()-validCollection.Len())
 
-	// Generate JSON for template
-	dataJSON, err := json.Marshal(validData)
+	// 4. Convert to DTOs for JSON serialization
+	validDataDTOs := uc.toTaskDataDTOs(validCollection)
+
+	dataJSON, err := json.Marshal(validDataDTOs)
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode data as JSON", err)
 	}
@@ -417,111 +113,171 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode workflows as JSON", err)
 	}
 
-	// Generate recommendations
-	recommendations := generateRecommendations(allData)
-	recommendationsJSON, err := json.Marshal(recommendations)
+	// 5. Generate recommendations
+	var recommendationResult *ports.RecommendationResult
+	var llmModelInfo string
+	analysisData := uc.toAnalysisData(validCollection)
+	log.Printf("[resource_visualization] Aggregated into %d unique tasks for analysis", len(analysisData))
+
+	if !input.SkipLLM && uc.recommendationGenerator != nil && uc.recommendationGenerator.IsAvailable() {
+		llmModelInfo = uc.recommendationGenerator.ModelInfo()
+		log.Printf("[resource_visualization] Using LLM for recommendations: %s", llmModelInfo)
+
+		// Use LLM to generate recommendations
+		if len(analysisData) > 0 {
+			log.Printf("[resource_visualization] Generating LLM recommendations for %d tasks (batch size: %d)...",
+				len(analysisData), input.LLMBatchSize)
+			recommendationResult, err = uc.recommendationGenerator.GenerateRecommendations(ctx, analysisData, input.LLMBatchSize)
+			if err != nil {
+				log.Printf("[resource_visualization] LLM recommendation failed: %v. Falling back to basic stats.", err)
+				recommendationResult = uc.generateBasicStats(validCollection)
+				llmModelInfo = "" // Clear model info since we fell back
+			} else {
+				log.Printf("[resource_visualization] LLM generated %d recommendations", len(recommendationResult.Recommendations))
+			}
+		}
+	} else if len(analysisData) > 0 {
+		// LLM not available or skipped - generate basic statistics
+		if input.SkipLLM {
+			log.Printf("[resource_visualization] LLM skipped by user request, generating basic statistics...")
+		} else {
+			log.Printf("[resource_visualization] LLM not available, generating basic statistics...")
+		}
+		recommendationResult = uc.generateBasicStats(validCollection)
+	}
+
+	// 6. Ensure all tasks are included in results
+	if recommendationResult != nil {
+		recommendationResult = uc.ensureAllTasksIncluded(recommendationResult, analysisData)
+		log.Printf("[resource_visualization] Final recommendation count: %d tasks", len(recommendationResult.Recommendations))
+	}
+
+	recommendationsJSON, err := json.Marshal(recommendationResult)
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode recommendations as JSON", err)
 	}
 
-	// Render HTML template
+	// 7. Render HTML template
+	log.Printf("[resource_visualization] Rendering HTML report...")
 	html, err := templates.RenderReport(templates.ReportData{
 		DataJSON:            template.JS(dataJSON),
 		WorkflowsJSON:       template.JS(workflowsJSON),
 		RecommendationsJSON: template.JS(recommendationsJSON),
+		LLMModelInfo:        llmModelInfo,
 	})
 	if err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to render HTML template", err)
 	}
 
-	// Write HTML to file
+	// 8. Write HTML to file
+	log.Printf("[resource_visualization] Writing report to: %s", outputFile)
 	if err := os.WriteFile(outputFile, []byte(html), 0644); err != nil {
 		return nil, application.NewUseCaseError("resource_visualization", "failed to write HTML file", err)
 	}
 
-	// Count unique tasks
-	taskNames := make(map[string]bool)
-	for _, t := range allData {
-		taskNames[t.TaskName] = true
-	}
+	log.Printf("[resource_visualization] Report generation complete!")
 
 	return &ResourceVisualizationOutput{
 		OutputFile:    outputFile,
 		WorkflowCount: len(workflows),
-		TaskCount:     len(taskNames),
+		TaskCount:     collection.UniqueTaskNames(),
 	}, nil
 }
 
-// parseTSV parses a TSV file and returns task data.
-func (uc *ResourceVisualizationUseCase) parseTSV(filename string, workflowID string) ([]TaskData, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var tasks []TaskData
-	scanner := bufio.NewScanner(file)
-	var headers []string
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		fields := strings.Split(line, "\t")
-
-		// First line is header
-		if headers == nil {
-			headers = fields
-			continue
-		}
-
-		// Parse data row
-		task := TaskData{WorkflowID: workflowID}
-		for i, header := range headers {
-			if i >= len(fields) {
-				break
-			}
-			value := fields[i]
-
-			switch header {
-			case "task_name":
-				task.TaskName = value
-			case "shard_index":
-				task.ShardIndex, _ = strconv.Atoi(value)
-			case "cpu_request":
-				task.CPURequest = value
-			case "memory_request_bytes":
-				task.MemoryRequestBytes, _ = strconv.ParseInt(value, 10, 64)
-			case "disk_size_request_bytes":
-				task.DiskSizeRequestBytes, _ = strconv.ParseInt(value, 10, 64)
-			case "disk_type":
-				task.DiskType = value
-			case "total_bytes_input":
-				task.TotalInputBytes, _ = strconv.ParseInt(value, 10, 64)
-			case "inputs_json":
-				_ = json.Unmarshal([]byte(value), &task.Inputs)
-			case "cpu_mean":
-				task.CPUMean, _ = strconv.ParseFloat(value, 64)
-			case "memory_peak_mb":
-				task.MemoryPeakMB, _ = strconv.ParseFloat(value, 64)
-			case "disk_peak_gb":
-				task.DiskPeakGB, _ = strconv.ParseFloat(value, 64)
-			case "error":
-				task.Error = value
-			}
-		}
-
-		if task.TaskName != "" {
-			tasks = append(tasks, task)
+// toTaskDataDTOs converts domain metrics to DTOs for JSON serialization.
+func (uc *ResourceVisualizationUseCase) toTaskDataDTOs(collection *workflow.TaskMetricsCollection) []TaskDataDTO {
+	metrics := collection.Metrics()
+	dtos := make([]TaskDataDTO, len(metrics))
+	for i, m := range metrics {
+		dtos[i] = TaskDataDTO{
+			TaskName:             m.TaskName,
+			ShardIndex:           m.ShardIndex,
+			CPURequest:           m.CPURequest,
+			MemoryRequestBytes:   m.MemoryRequestBytes,
+			DiskSizeRequestBytes: m.DiskSizeRequestBytes,
+			DiskType:             m.DiskType,
+			TotalInputBytes:      m.TotalInputBytes,
+			Inputs:               m.Inputs,
+			DurationSeconds:      m.DurationSeconds,
+			CPUMean:              m.CPUMean,
+			MemoryPeakMB:         m.MemoryPeakMB,
+			DiskPeakBytes:        m.DiskPeakBytes,
+			Error:                m.Error,
+			WorkflowID:           m.WorkflowID,
 		}
 	}
+	return dtos
+}
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
+// toAnalysisData converts domain aggregated metrics to ports.TaskAnalysisData.
+func (uc *ResourceVisualizationUseCase) toAnalysisData(collection *workflow.TaskMetricsCollection) []ports.TaskAnalysisData {
+	aggregated := collection.ToAggregatedMetrics()
+	result := make([]ports.TaskAnalysisData, len(aggregated))
+	for i, agg := range aggregated {
+		result[i] = ports.TaskAnalysisData{
+			TaskName:        agg.TaskName,
+			SampleCount:     agg.SampleCount,
+			CPURequest:      agg.CPURequest,
+			MemoryReqGB:     agg.MemoryReqGB,
+			DiskReqGB:       agg.DiskReqGB,
+			DiskPeaksGB:     agg.DiskPeaksGB,
+			MemoryPeaksMB:   agg.MemoryPeaksMB,
+			CPUMeans:        agg.CPUMeans,
+			DurationSeconds: agg.DurationSeconds,
+			InputSizes:      agg.InputSizes,
+			ResourceCost:    agg.ResourceCost,
+		}
+	}
+	return result
+}
+
+// generateBasicStats creates recommendation cards with basic resource efficiency statistics.
+func (uc *ResourceVisualizationUseCase) generateBasicStats(collection *workflow.TaskMetricsCollection) *ports.RecommendationResult {
+	stats := collection.CalculateEfficiencyStats()
+	recommendations := make([]ports.TaskRecommendation, len(stats))
+	for i, s := range stats {
+		recommendations[i] = ports.TaskRecommendation{
+			TaskName:      s.TaskName,
+			SampleCount:   s.SampleCount,
+			OverallStatus: ports.RecommendationSeverity(s.OverallStatus),
+			ResourceCost:  s.ResourceCost,
+		}
+	}
+	return &ports.RecommendationResult{
+		Summary:         "Basic resource usage metrics. Enable the LLM to receive detailed recommendations.",
+		Recommendations: recommendations,
+	}
+}
+
+// ensureAllTasksIncluded ensures all tasks from analysisData are present in recommendations.
+func (uc *ResourceVisualizationUseCase) ensureAllTasksIncluded(result *ports.RecommendationResult, analysisData []ports.TaskAnalysisData) *ports.RecommendationResult {
+	includedTasks := make(map[string]bool)
+	for _, rec := range result.Recommendations {
+		includedTasks[rec.TaskName] = true
 	}
 
-	return tasks, nil
+	for _, task := range analysisData {
+		if !includedTasks[task.TaskName] {
+			// Create a default "Info" recommendation for tasks skipped by LLM
+			result.Recommendations = append(result.Recommendations, ports.TaskRecommendation{
+				TaskName:      task.TaskName,
+				SampleCount:   task.SampleCount,
+				OverallStatus: ports.SeverityGood,
+				ResourceCost:  task.ResourceCost,
+				Recommendations: []ports.RecommendationItem{
+					{
+						Message:  "No specific optimization recommendations generated.",
+						Severity: ports.SeverityGood,
+					},
+				},
+			})
+		}
+	}
+
+	// Sort recommendations by cost (highest first)
+	sort.Slice(result.Recommendations, func(i, j int) bool {
+		return result.Recommendations[i].ResourceCost > result.Recommendations[j].ResourceCost
+	})
+
+	return result
 }

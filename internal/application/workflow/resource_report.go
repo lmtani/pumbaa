@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
-	"regexp"
+	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -48,9 +48,10 @@ type TaskResourceReport struct {
 
 	TotalInputBytes int64
 	Inputs          map[string]int64 // Map of input name to total size in bytes
+	DurationSeconds float64          // Task execution duration in seconds
 	CPUMean         float64
 	MemoryPeakMB    float64
-	DiskPeakGB      float64
+	DiskPeakBytes   int64
 	Error           string // Non-empty if failed to get metrics
 }
 
@@ -65,7 +66,7 @@ type ResourceReportOutput struct {
 // ProgressCallback is called to report progress during execution.
 type ProgressCallback func(completed, total int, currentTask string)
 
-// fileSizeCache provides thread-safe caching of file sizes.
+// fileSizeCache provides thread-safe caching of file sizes with persistent storage.
 type fileSizeCache struct {
 	mu    sync.RWMutex
 	sizes map[string]int64
@@ -90,6 +91,55 @@ func (c *fileSizeCache) set(path string, size int64) {
 	c.sizes[path] = size
 }
 
+// getCacheFilePath returns the path to the persistent cache file.
+func getCacheFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".pumbaa", "input_sizes.json")
+}
+
+// loadFromDisk loads the cache from the persistent file.
+func (c *fileSizeCache) loadFromDisk() {
+	path := getCacheFilePath()
+	if path == "" {
+		return
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return // File doesn't exist or can't be read - start fresh
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_ = json.Unmarshal(data, &c.sizes)
+}
+
+// saveToDisk persists the cache to the filesystem.
+func (c *fileSizeCache) saveToDisk() {
+	path := getCacheFilePath()
+	if path == "" {
+		return
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+
+	c.mu.RLock()
+	data, err := json.Marshal(c.sizes)
+	c.mu.RUnlock()
+	if err != nil {
+		return
+	}
+
+	_ = os.WriteFile(path, data, 0644)
+}
+
 // ExecuteWithProgress generates a resource report for all tasks in a workflow with progress reporting.
 func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input ResourceReportInput, progress ProgressCallback) (*ResourceReportOutput, error) {
 	if input.WorkflowID == "" {
@@ -107,16 +157,8 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		return nil, application.NewUseCaseError("resource_report", "failed to get workflow metadata", err)
 	}
 
-	// Collect all calls that have monitoring logs
-	var callsToProcess []workflowDomain.Call
-	for _, calls := range wf.Calls {
-		for _, call := range calls {
-			// Only process calls that have monitoring logs and are not cache hits
-			if call.MonitoringLog != "" && !call.CacheHit {
-				callsToProcess = append(callsToProcess, call)
-			}
-		}
-	}
+	// Collect all calls recursively (including from subworkflows)
+	callsToProcess := uc.collectCallsRecursively(ctx, wf)
 
 	if len(callsToProcess) == 0 {
 		return &ResourceReportOutput{
@@ -129,6 +171,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	// Create a cache for file sizes to avoid redundant GCS queries
 	sizeCache := newFileSizeCache()
+	sizeCache.loadFromDisk() // Load previously cached sizes
 
 	// Process calls concurrently
 	results := make([]TaskResourceReport, len(callsToProcess))
@@ -159,6 +202,9 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	wg.Wait()
 
+	// Save cache to disk for future use
+	sizeCache.saveToDisk()
+
 	// Sort results by task name, then by shard index for consistent output
 	sort.Slice(results, func(i, j int) bool {
 		if results[i].TaskName != results[j].TaskName {
@@ -186,6 +232,32 @@ func (uc *ResourceReportUseCase) Execute(ctx context.Context, input ResourceRepo
 	return uc.ExecuteWithProgress(ctx, input, nil)
 }
 
+// collectCallsRecursively collects all calls with monitoring logs from a workflow,
+// including calls from subworkflows (recursively).
+func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf *workflowDomain.Workflow) []workflowDomain.Call {
+	var calls []workflowDomain.Call
+
+	for _, callList := range wf.Calls {
+		for _, call := range callList {
+			// If this is a subworkflow, fetch its metadata and process recursively
+			if call.SubWorkflowID != "" {
+				subWf, err := uc.metadataReader.GetMetadata(ctx, call.SubWorkflowID)
+				if err != nil {
+					// Log error but continue with other calls
+					continue
+				}
+				subCalls := uc.collectCallsRecursively(ctx, subWf)
+				calls = append(calls, subCalls...)
+			} else if call.MonitoringLog != "" && !call.CacheHit {
+				// Regular task with monitoring log
+				calls = append(calls, call)
+			}
+		}
+	}
+
+	return calls
+}
+
 // processCall processes a single call and returns its resource report.
 func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowDomain.Call, sizeCache *fileSizeCache) TaskResourceReport {
 	taskName := extractTaskName(call.Name)
@@ -193,26 +265,38 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	// Calculate total input bytes and per-input sizes
 	totalInputBytes, inputs := uc.calculateInputFileSizes(ctx, call.Inputs, sizeCache)
 
-	// Parse memory and disk configurations to bytes
-	memoryBytes := parseMemoryToBytes(call.Memory)
-	diskSizeBytes, diskType := parseDiskConfig(call.Disk)
+	// Parse memory and disk configurations using domain Value Objects
+	memory := workflowDomain.Memory(call.Memory)
+	disk := workflowDomain.NewDiskConfig(call.Disk)
+
+	// Calculate duration from call timing
+	var durationSeconds float64
+	if !call.Start.IsZero() && !call.End.IsZero() {
+		durationSeconds = call.End.Sub(call.Start).Seconds()
+	}
 
 	// Base report with task identification and configuration
 	baseReport := TaskResourceReport{
 		TaskName:             taskName,
 		ShardIndex:           call.ShardIndex,
 		CPURequest:           call.CPU,
-		MemoryRequestBytes:   memoryBytes,
-		DiskSizeRequestBytes: diskSizeBytes,
-		DiskType:             diskType,
+		MemoryRequestBytes:   memory.ToBytes(),
+		DiskSizeRequestBytes: disk.SizeBytes(),
+		DiskType:             disk.Type(),
 		TotalInputBytes:      totalInputBytes,
 		Inputs:               inputs,
+		DurationSeconds:      durationSeconds,
 	}
 
 	// Read and parse monitoring log
 	content, err := uc.fileProvider.Read(ctx, call.MonitoringLog)
 	if err != nil {
 		baseReport.Error = fmt.Sprintf("failed to read monitoring log: %v", err)
+		return baseReport
+	}
+
+	if content == "" {
+		baseReport.Error = fmt.Sprintf("%s exists but no content", call.MonitoringLog)
 		return baseReport
 	}
 
@@ -226,13 +310,13 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 
 	baseReport.CPUMean = report.CPU.Avg
 	baseReport.MemoryPeakMB = report.Mem.Peak
-	baseReport.DiskPeakGB = report.Disk.Peak
+	baseReport.DiskPeakBytes = int64(report.Disk.Peak * 1024 * 1024 * 1024)
 
 	return baseReport
 }
 
 // calculateInputFileSizes calculates the total size of input files and per-input sizes.
-// It extracts GCS paths from the inputs and queries their sizes.
+// It extracts file paths from the inputs and queries their sizes.
 func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache *fileSizeCache) (int64, map[string]int64) {
 	if inputs == nil {
 		return 0, nil
@@ -243,29 +327,32 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 
 	for key, value := range inputs {
 		// Clean the input key (remove workflow name prefix if likely present)
-		inputName := extractTaskName(key) // Reuse extractTaskName as it does what we want (removes prefix before last dot)
+		inputName := extractTaskName(key)
 
-		paths := extractFilePaths(value)
+		// Use domain Value Object to extract file paths
+		paths := workflowDomain.ExtractFilePaths(value)
 		if len(paths) == 0 {
 			continue
 		}
 
 		var keySize int64
 		for _, path := range paths {
+			pathStr := path.String()
 			// Check cache first
-			if size, ok := cache.get(path); ok {
+			if size, ok := cache.get(pathStr); ok {
+				log.Printf("Cache hit for file size: %s (%d bytes)", pathStr, size)
 				keySize += size
 				continue
 			}
 
 			// Query file size
-			size, err := uc.fileProvider.GetSize(ctx, path)
+			size, err := uc.fileProvider.GetSize(ctx, pathStr)
 			if err != nil {
 				continue
 			}
 
 			// Cache the result
-			cache.set(path, size)
+			cache.set(pathStr, size)
 			keySize += size
 		}
 		inputSizes[inputName] = keySize
@@ -273,50 +360,6 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 	}
 
 	return total, inputSizes
-}
-
-// extractFilePaths recursively extracts all file paths (gs:// or local) from a value.
-func extractFilePaths(value interface{}) []string {
-	var paths []string
-	extractFilePathsRecursive(value, &paths)
-	return paths
-}
-
-// extractFilePathsRecursive is the recursive helper for extractFilePaths.
-func extractFilePathsRecursive(value interface{}, paths *[]string) {
-	switch v := value.(type) {
-	case string:
-		// Check if it's a GCS path or a local file path
-		if isFilePath(v) {
-			*paths = append(*paths, v)
-		}
-	case []interface{}:
-		for _, item := range v {
-			extractFilePathsRecursive(item, paths)
-		}
-	case map[string]interface{}:
-		for _, val := range v {
-			extractFilePathsRecursive(val, paths)
-		}
-	}
-}
-
-// isFilePath checks if a string looks like a file path.
-// Returns true for GCS paths (gs://) and paths that look like file paths.
-func isFilePath(s string) bool {
-	// GCS paths
-	if strings.HasPrefix(s, "gs://") {
-		return true
-	}
-	// Local absolute paths (Unix)
-	if strings.HasPrefix(s, "/") && strings.Contains(s, ".") {
-		return true
-	}
-	// S3 paths (for future support)
-	if strings.HasPrefix(s, "s3://") {
-		return true
-	}
-	return false
 }
 
 // extractTaskName removes the workflow prefix from task name.
@@ -337,7 +380,7 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 	defer file.Close()
 
 	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tcpu_mean\tmemory_peak_mb\tdisk_peak_gb\terror")
+	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_bytes\terror")
 	if err != nil {
 		return err
 	}
@@ -350,7 +393,12 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			inputsJSON = []byte("{}")
 		}
 
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%s\n",
+		// Sanitize error message to prevent newlines breaking TSV format
+		errorMsg := strings.ReplaceAll(task.Error, "\n", " ")
+		errorMsg = strings.ReplaceAll(errorMsg, "\r", "")
+		errorMsg = strings.ReplaceAll(errorMsg, "\t", " ")
+
+		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%d\t%s\n",
 			task.TaskName,
 			task.ShardIndex,
 			task.CPURequest,
@@ -359,77 +407,15 @@ func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceR
 			task.DiskType,
 			task.TotalInputBytes,
 			string(inputsJSON),
+			task.DurationSeconds,
 			task.CPUMean,
 			task.MemoryPeakMB,
-			task.DiskPeakGB,
-			task.Error,
-		)
+			task.DiskPeakBytes,
+			errorMsg)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-// parseMemoryToBytes parses memory strings like "1 GB", "6 GB", "512 MB" to bytes.
-func parseMemoryToBytes(memory string) int64 {
-	if memory == "" {
-		return 0
-	}
-
-	// Regex to match patterns like "1 GB", "512 MB", "1GB", "2.5 GB"
-	re := regexp.MustCompile(`(?i)^(\d+(?:\.\d+)?)\s*(GB|MB|KB|TB|GiB|MiB|KiB|TiB|G|M|K|T)?$`)
-	matches := re.FindStringSubmatch(strings.TrimSpace(memory))
-	if matches == nil {
-		return 0
-	}
-
-	value, err := strconv.ParseFloat(matches[1], 64)
-	if err != nil {
-		return 0
-	}
-
-	unit := strings.ToUpper(matches[2])
-	var multiplier float64 = 1
-
-	switch unit {
-	case "TB", "TIB", "T":
-		multiplier = 1024 * 1024 * 1024 * 1024
-	case "GB", "GIB", "G", "":
-		multiplier = 1024 * 1024 * 1024
-	case "MB", "MIB", "M":
-		multiplier = 1024 * 1024
-	case "KB", "KIB", "K":
-		multiplier = 1024
-	}
-
-	return int64(value * multiplier)
-}
-
-// parseDiskConfig parses disk configuration strings like "local-disk 31 HDD" or "local-disk 13 SSD".
-// Returns the size in bytes and the disk type.
-func parseDiskConfig(disk string) (int64, string) {
-	if disk == "" {
-		return 0, ""
-	}
-
-	// Regex to match patterns like "local-disk 31 HDD", "local-disk 13 SSD"
-	re := regexp.MustCompile(`(?i)local-disk\s+(\d+)\s+(\w+)`)
-	matches := re.FindStringSubmatch(strings.TrimSpace(disk))
-	if matches == nil {
-		return 0, ""
-	}
-
-	sizeGB, err := strconv.ParseInt(matches[1], 10, 64)
-	if err != nil {
-		return 0, ""
-	}
-
-	diskType := strings.ToUpper(matches[2])
-
-	// Convert GB to bytes
-	sizeBytes := sizeGB * 1024 * 1024 * 1024
-
-	return sizeBytes, diskType
 }
