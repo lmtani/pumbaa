@@ -74,6 +74,7 @@ func New(cfg *config.Config, version string) *Container {
 
 	// Initialize FileProvider for file system access
 	fileProvider := storage.NewFileProvider()
+	metricsWriter := metrics.NewTSVWriter()
 
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
@@ -99,7 +100,7 @@ func New(cfg *config.Config, version string) *Container {
 	c.OutputsUseCase = workflow.NewOutputsUseCase(c.CromwellClient)
 	c.InputsUseCase = workflow.NewInputsUseCase(c.CromwellClient)
 	c.MonitoringUseCase = workflow.NewMonitoringUseCase(fileProvider)
-	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider)
+	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider, metricsWriter)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
 

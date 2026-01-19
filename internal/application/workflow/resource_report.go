@@ -21,13 +21,15 @@ import (
 type ResourceReportUseCase struct {
 	metadataReader ports.WorkflowMetadataReader
 	fileProvider   ports.FileProvider
+	metricsWriter  ports.TaskMetricsWriter
 }
 
 // NewResourceReportUseCase creates a new resource report use case.
-func NewResourceReportUseCase(reader ports.WorkflowMetadataReader, fp ports.FileProvider) *ResourceReportUseCase {
+func NewResourceReportUseCase(reader ports.WorkflowMetadataReader, fp ports.FileProvider, writer ports.TaskMetricsWriter) *ResourceReportUseCase {
 	return &ResourceReportUseCase{
 		metadataReader: reader,
 		fileProvider:   fp,
+		metricsWriter:  writer,
 	}
 }
 
@@ -37,29 +39,11 @@ type ResourceReportInput struct {
 	Concurrency int // Number of concurrent workers (default: 5)
 }
 
-// TaskResourceReport contains resource metrics for a single task.
-type TaskResourceReport struct {
-	TaskName             string
-	ShardIndex           int    // -1 if not sharded
-	CPURequest           string // Configured CPU (from runtime attributes)
-	MemoryRequestBytes   int64  // Configured memory in bytes (parsed from runtime attributes)
-	DiskSizeRequestBytes int64  // Configured disk size in bytes (parsed from runtime attributes)
-	DiskType             string // Disk type (HDD, SSD, etc.)
-
-	TotalInputBytes int64
-	Inputs          map[string]int64 // Map of input name to total size in bytes
-	DurationSeconds float64          // Task execution duration in seconds
-	CPUMean         float64
-	MemoryPeakMB    float64
-	DiskPeakBytes   int64
-	Error           string // Non-empty if failed to get metrics
-}
-
 // ResourceReportOutput contains the result of resource report generation.
 type ResourceReportOutput struct {
 	WorkflowID   string
 	WorkflowName string
-	Tasks        []TaskResourceReport
+	Tasks        []workflowDomain.TaskMetrics
 	OutputFile   string
 }
 
@@ -146,6 +130,10 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		return nil, application.NewInputValidationError("workflowID", "is required")
 	}
 
+	if uc.metricsWriter == nil {
+		return nil, application.NewUseCaseError("resource_report", "task metrics writer is required", nil)
+	}
+
 	concurrency := input.Concurrency
 	if concurrency <= 0 {
 		concurrency = 5
@@ -164,7 +152,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		return &ResourceReportOutput{
 			WorkflowID:   wf.ID,
 			WorkflowName: wf.Name,
-			Tasks:        []TaskResourceReport{},
+			Tasks:        []workflowDomain.TaskMetrics{},
 			OutputFile:   fmt.Sprintf("%s.tsv", input.WorkflowID),
 		}, nil
 	}
@@ -174,7 +162,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	sizeCache.loadFromDisk() // Load previously cached sizes
 
 	// Process calls concurrently
-	results := make([]TaskResourceReport, len(callsToProcess))
+	results := make([]workflowDomain.TaskMetrics, len(callsToProcess))
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, concurrency)
 	var completedCount int
@@ -188,7 +176,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
-			report := uc.processCall(ctx, c, sizeCache)
+			report := uc.processCall(ctx, wf.ID, c, sizeCache)
 			results[idx] = report
 
 			mu.Lock()
@@ -215,7 +203,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	// Generate output file
 	outputFile := fmt.Sprintf("%s.tsv", input.WorkflowID)
-	if err := uc.writeTSV(outputFile, results); err != nil {
+	if err := uc.metricsWriter.WriteToFile(outputFile, results); err != nil {
 		return nil, application.NewUseCaseError("resource_report", "failed to write TSV file", err)
 	}
 
@@ -259,7 +247,7 @@ func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf
 }
 
 // processCall processes a single call and returns its resource report.
-func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowDomain.Call, sizeCache *fileSizeCache) TaskResourceReport {
+func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID string, call workflowDomain.Call, sizeCache *fileSizeCache) workflowDomain.TaskMetrics {
 	taskName := extractTaskName(call.Name)
 
 	// Calculate total input bytes and per-input sizes
@@ -276,9 +264,10 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, call workflowD
 	}
 
 	// Base report with task identification and configuration
-	baseReport := TaskResourceReport{
+	baseReport := workflowDomain.TaskMetrics{
 		TaskName:             taskName,
 		ShardIndex:           call.ShardIndex,
+		WorkflowID:           workflowID,
 		CPURequest:           call.CPU,
 		MemoryRequestBytes:   memory.ToBytes(),
 		DiskSizeRequestBytes: disk.SizeBytes(),
@@ -372,50 +361,3 @@ func extractTaskName(fullName string) string {
 }
 
 // writeTSV writes the resource report to a TSV file.
-func (uc *ResourceReportUseCase) writeTSV(filename string, tasks []TaskResourceReport) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Write header
-	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_bytes\terror")
-	if err != nil {
-		return err
-	}
-
-	// Write data rows
-	for _, task := range tasks {
-		inputsJSON, _ := json.Marshal(task.Inputs)
-		// Clean up errors in inputsJSON marshalling by using empty object if needed, though map shouldn't fail
-		if inputsJSON == nil {
-			inputsJSON = []byte("{}")
-		}
-
-		// Sanitize error message to prevent newlines breaking TSV format
-		errorMsg := strings.ReplaceAll(task.Error, "\n", " ")
-		errorMsg = strings.ReplaceAll(errorMsg, "\r", "")
-		errorMsg = strings.ReplaceAll(errorMsg, "\t", " ")
-
-		_, err = fmt.Fprintf(file, "%s\t%d\t%s\t%d\t%d\t%s\t%d\t%s\t%.2f\t%.2f\t%.2f\t%d\t%s\n",
-			task.TaskName,
-			task.ShardIndex,
-			task.CPURequest,
-			task.MemoryRequestBytes,
-			task.DiskSizeRequestBytes,
-			task.DiskType,
-			task.TotalInputBytes,
-			string(inputsJSON),
-			task.DurationSeconds,
-			task.CPUMean,
-			task.MemoryPeakMB,
-			task.DiskPeakBytes,
-			errorMsg)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}

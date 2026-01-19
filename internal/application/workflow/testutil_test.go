@@ -87,3 +87,20 @@ func (m *mockFileProvider) GetSize(ctx context.Context, path string) (int64, err
 	}
 	return 0, nil
 }
+
+// =============================================================================
+// Mock TaskMetricsWriter
+// =============================================================================
+
+// mockTaskMetricsWriter is a test double for ports.TaskMetricsWriter.
+// Configure the writeFunc to control behavior in tests.
+type mockTaskMetricsWriter struct {
+	writeFunc func(filename string, metrics []workflow.TaskMetrics) error
+}
+
+func (m *mockTaskMetricsWriter) WriteToFile(filename string, metrics []workflow.TaskMetrics) error {
+	if m.writeFunc != nil {
+		return m.writeFunc(filename, metrics)
+	}
+	return nil
+}

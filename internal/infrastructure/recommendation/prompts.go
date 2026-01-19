@@ -183,7 +183,7 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 	goodCount += tasksWithoutRecs
 
 	sb.WriteString("Generate an Executive Summary for the workflow resource analysis based on the following aggregate data.\n\n")
-	sb.WriteString(fmt.Sprintf("**Global Stats**:\n"))
+	sb.WriteString("**Global Stats**:\n")
 	sb.WriteString(fmt.Sprintf("- Total Tasks Analyzed: %d\n", len(tasks)))
 	sb.WriteString(fmt.Sprintf("- Optimization Status: %d Critical, %d Warnings, %d Good (including %d tasks with no issues found)\n", criticalCount, warningCount, goodCount, tasksWithoutRecs))
 	sb.WriteString("\n**Top 10 Tasks by Resource Cost**:\n")

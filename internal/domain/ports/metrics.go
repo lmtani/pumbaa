@@ -13,3 +13,10 @@ type TaskMetricsReader interface {
 	// Returns the collection of metrics, a list of workflow IDs found, and any error.
 	ReadFromDirectory(dir string) (*workflow.TaskMetricsCollection, []string, error)
 }
+
+// TaskMetricsWriter abstracts writing task metrics to external sinks.
+// Implementations may write TSV files, databases, or other formats.
+type TaskMetricsWriter interface {
+	// WriteToFile writes task metrics to a file in the implementation's format.
+	WriteToFile(filename string, metrics []workflow.TaskMetrics) error
+}
