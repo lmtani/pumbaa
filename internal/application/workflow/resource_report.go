@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"golang.org/x/sync/errgroup"
 )
 
 // ResourceReportUseCase handles resource usage analysis for all tasks in a workflow.
@@ -86,23 +87,29 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	sizeCache := uc.sizeCache
 	_ = sizeCache.Load()
+	defer func() {
+		_ = sizeCache.Save()
+	}()
 
 	// Process calls concurrently
 	results := make([]workflowDomain.TaskMetrics, len(callsToProcess))
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, concurrency)
 	var completedCount int
 	var mu sync.Mutex
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(concurrency)
 
 	for i, call := range callsToProcess {
-		wg.Add(1)
-		go func(idx int, c workflowDomain.Call) {
-			defer wg.Done()
+		idx := i
+		c := call
+		group.Go(func() error {
+			if err := groupCtx.Err(); err != nil {
+				return err
+			}
 
-			semaphore <- struct{}{}        // Acquire
-			defer func() { <-semaphore }() // Release
-
-			report := uc.processCall(ctx, wf.ID, c, sizeCache)
+			report := uc.processCall(groupCtx, wf.ID, c, sizeCache)
+			if err := groupCtx.Err(); err != nil {
+				return err
+			}
 			results[idx] = report
 
 			mu.Lock()
@@ -111,13 +118,14 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 				progress(completedCount, len(callsToProcess), c.Name)
 			}
 			mu.Unlock()
-		}(i, call)
+
+			return nil
+		})
 	}
 
-	wg.Wait()
-
-	// Save cache to disk for future use
-	_ = sizeCache.Save()
+	if err := group.Wait(); err != nil {
+		return nil, application.NewUseCaseError("resource_report", "resource report cancelled", err)
+	}
 
 	uc.sortTaskMetrics(results)
 
