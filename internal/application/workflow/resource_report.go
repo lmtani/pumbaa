@@ -4,7 +4,6 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 
@@ -44,6 +43,7 @@ type ResourceReportOutput struct {
 	WorkflowName string
 	Tasks        []workflowDomain.TaskMetrics
 	OutputFile   string
+	Warnings     []string // Non-fatal issues encountered during processing
 }
 
 // ProgressCallback is called to report progress during execution.
@@ -74,7 +74,9 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	}
 
 	// Collect all calls recursively (including from subworkflows)
-	callsToProcess := uc.collectCalls(ctx, wf)
+	collectResult := uc.collectCalls(ctx, wf)
+	callsToProcess := collectResult.calls
+	warnings := collectResult.warnings
 
 	if len(callsToProcess) == 0 {
 		return &ResourceReportOutput{
@@ -82,14 +84,9 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 			WorkflowName: wf.Name,
 			Tasks:        []workflowDomain.TaskMetrics{},
 			OutputFile:   fmt.Sprintf("%s.tsv", input.WorkflowID),
+			Warnings:     warnings,
 		}, nil
 	}
-
-	sizeCache := uc.sizeCache
-	_ = sizeCache.Load()
-	defer func() {
-		_ = sizeCache.Save()
-	}()
 
 	// Process calls concurrently
 	results := make([]workflowDomain.TaskMetrics, len(callsToProcess))
@@ -106,7 +103,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 				return err
 			}
 
-			report := uc.processCall(groupCtx, wf.ID, c, sizeCache)
+			report := uc.processCall(groupCtx, wf.ID, c, uc.sizeCache)
 			if err := groupCtx.Err(); err != nil {
 				return err
 			}
@@ -139,6 +136,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		WorkflowName: wf.Name,
 		Tasks:        results,
 		OutputFile:   outputFile,
+		Warnings:     warnings,
 	}, nil
 }
 
@@ -147,10 +145,17 @@ func (uc *ResourceReportUseCase) Execute(ctx context.Context, input ResourceRepo
 	return uc.ExecuteWithProgress(ctx, input, nil)
 }
 
+// collectCallsResult holds the result of collecting calls from a workflow.
+type collectCallsResult struct {
+	calls    []workflowDomain.Call
+	warnings []string
+}
+
 // collectCalls collects all calls with monitoring logs from a workflow,
 // including calls from subworkflows (recursively).
-func (uc *ResourceReportUseCase) collectCalls(ctx context.Context, wf *workflowDomain.Workflow) []workflowDomain.Call {
+func (uc *ResourceReportUseCase) collectCalls(ctx context.Context, wf *workflowDomain.Workflow) collectCallsResult {
 	var calls []workflowDomain.Call
+	var warnings []string
 
 	for _, callList := range wf.Calls {
 		for _, call := range callList {
@@ -158,11 +163,12 @@ func (uc *ResourceReportUseCase) collectCalls(ctx context.Context, wf *workflowD
 			if call.SubWorkflowID != "" {
 				subWf, err := uc.metadataReader.GetMetadata(ctx, call.SubWorkflowID)
 				if err != nil {
-					// Log error but continue with other calls
+					warnings = append(warnings, fmt.Sprintf("failed to fetch subworkflow %s: %v", call.SubWorkflowID, err))
 					continue
 				}
-				subCalls := uc.collectCalls(ctx, subWf)
-				calls = append(calls, subCalls...)
+				subResult := uc.collectCalls(ctx, subWf)
+				calls = append(calls, subResult.calls...)
+				warnings = append(warnings, subResult.warnings...)
 			} else if call.MonitoringLog != "" && !call.CacheHit {
 				// Regular task with monitoring log
 				calls = append(calls, call)
@@ -170,7 +176,7 @@ func (uc *ResourceReportUseCase) collectCalls(ctx context.Context, wf *workflowD
 		}
 	}
 
-	return calls
+	return collectCallsResult{calls: calls, warnings: warnings}
 }
 
 func (uc *ResourceReportUseCase) sortTaskMetrics(tasks []workflowDomain.TaskMetrics) {
@@ -243,7 +249,6 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 			pathStr := path.String()
 			// Check cache first
 			if size, ok := cache.Get(pathStr); ok {
-				log.Printf("Cache hit for file size: %s (%d bytes)", pathStr, size)
 				keySize += size
 				continue
 			}

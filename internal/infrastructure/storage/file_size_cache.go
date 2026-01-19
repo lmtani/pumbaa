@@ -10,10 +10,13 @@ import (
 )
 
 // FileSizeCache provides thread-safe caching of file sizes with persistent storage.
+// It automatically loads from disk on first access and saves after modifications.
 type FileSizeCache struct {
-	mu    sync.RWMutex
-	path  string
-	sizes map[string]int64
+	mu     sync.RWMutex
+	path   string
+	sizes  map[string]int64
+	loaded bool
+	dirty  bool
 }
 
 // NewFileSizeCache creates a FileSizeCache using the default cache path.
@@ -58,8 +61,16 @@ func (c *FileSizeCache) Load() error {
 	return nil
 }
 
-// Save persists the cache to storage.
+// Save persists the cache to storage if it has been modified.
 func (c *FileSizeCache) Save() error {
+	c.mu.Lock()
+	if !c.dirty {
+		c.mu.Unlock()
+		return nil
+	}
+	c.dirty = false
+	c.mu.Unlock()
+
 	if c.path == "" {
 		return nil
 	}
@@ -79,7 +90,9 @@ func (c *FileSizeCache) Save() error {
 }
 
 // Get returns the cached size for a path.
+// Automatically loads the cache from disk on first access.
 func (c *FileSizeCache) Get(path string) (int64, bool) {
+	c.ensureLoaded()
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	size, ok := c.sizes[path]
@@ -87,13 +100,33 @@ func (c *FileSizeCache) Get(path string) (int64, bool) {
 }
 
 // Set caches the size for a path.
+// Automatically loads the cache from disk on first access and marks it as dirty for saving.
 func (c *FileSizeCache) Set(path string, size int64) {
+	c.ensureLoaded()
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.sizes == nil {
 		c.sizes = make(map[string]int64)
 	}
 	c.sizes[path] = size
+	c.dirty = true
+	c.mu.Unlock()
+
+	// Auto-save after modification
+	_ = c.Save()
+}
+
+// ensureLoaded performs lazy loading of the cache from disk.
+func (c *FileSizeCache) ensureLoaded() {
+	c.mu.Lock()
+	if c.loaded {
+		c.mu.Unlock()
+		return
+	}
+	c.loaded = true
+	c.mu.Unlock()
+
+	// Load outside of lock to avoid blocking other operations
+	_ = c.Load()
 }
 
 func (c *FileSizeCache) snapshot() map[string]int64 {
