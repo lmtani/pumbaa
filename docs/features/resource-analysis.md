@@ -17,10 +17,10 @@ Data collection is performed using the `pumbaa workflow resource-report` command
 
 To generate a resource report, the workflow execution must meet the following requirements:
 
-- **Monitoring enabled**  
+- **Monitoring enabled**
   The workflow must have been executed with Cromwell options that enable the resource monitoring script. This script periodically records CPU, memory, and disk usage for each task.
 
-- **Accessible task inputs**  
+- **Accessible task inputs**
   Input files referenced by tasks must be accessible (e.g., GCS or local filesystem). Pumbaa computes total input size per task to support *resource usage vs. data volume* analysis.
 
 ### Usage
