@@ -3,11 +3,8 @@ package workflow
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -22,14 +19,16 @@ type ResourceReportUseCase struct {
 	metadataReader ports.WorkflowMetadataReader
 	fileProvider   ports.FileProvider
 	metricsWriter  ports.TaskMetricsWriter
+	sizeCache      ports.FileSizeCache
 }
 
 // NewResourceReportUseCase creates a new resource report use case.
-func NewResourceReportUseCase(reader ports.WorkflowMetadataReader, fp ports.FileProvider, writer ports.TaskMetricsWriter) *ResourceReportUseCase {
+func NewResourceReportUseCase(reader ports.WorkflowMetadataReader, fp ports.FileProvider, writer ports.TaskMetricsWriter, cache ports.FileSizeCache) *ResourceReportUseCase {
 	return &ResourceReportUseCase{
 		metadataReader: reader,
 		fileProvider:   fp,
 		metricsWriter:  writer,
+		sizeCache:      cache,
 	}
 }
 
@@ -50,80 +49,6 @@ type ResourceReportOutput struct {
 // ProgressCallback is called to report progress during execution.
 type ProgressCallback func(completed, total int, currentTask string)
 
-// fileSizeCache provides thread-safe caching of file sizes with persistent storage.
-type fileSizeCache struct {
-	mu    sync.RWMutex
-	sizes map[string]int64
-}
-
-func newFileSizeCache() *fileSizeCache {
-	return &fileSizeCache{
-		sizes: make(map[string]int64),
-	}
-}
-
-func (c *fileSizeCache) get(path string) (int64, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	size, ok := c.sizes[path]
-	return size, ok
-}
-
-func (c *fileSizeCache) set(path string, size int64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.sizes[path] = size
-}
-
-// getCacheFilePath returns the path to the persistent cache file.
-func getCacheFilePath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".pumbaa", "input_sizes.json")
-}
-
-// loadFromDisk loads the cache from the persistent file.
-func (c *fileSizeCache) loadFromDisk() {
-	path := getCacheFilePath()
-	if path == "" {
-		return
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return // File doesn't exist or can't be read - start fresh
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	_ = json.Unmarshal(data, &c.sizes)
-}
-
-// saveToDisk persists the cache to the filesystem.
-func (c *fileSizeCache) saveToDisk() {
-	path := getCacheFilePath()
-	if path == "" {
-		return
-	}
-
-	// Ensure directory exists
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return
-	}
-
-	c.mu.RLock()
-	data, err := json.Marshal(c.sizes)
-	c.mu.RUnlock()
-	if err != nil {
-		return
-	}
-
-	_ = os.WriteFile(path, data, 0644)
-}
-
 // ExecuteWithProgress generates a resource report for all tasks in a workflow with progress reporting.
 func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input ResourceReportInput, progress ProgressCallback) (*ResourceReportOutput, error) {
 	if input.WorkflowID == "" {
@@ -132,6 +57,9 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 
 	if uc.metricsWriter == nil {
 		return nil, application.NewUseCaseError("resource_report", "task metrics writer is required", nil)
+	}
+	if uc.sizeCache == nil {
+		return nil, application.NewUseCaseError("resource_report", "file size cache is required", nil)
 	}
 
 	concurrency := input.Concurrency
@@ -157,9 +85,8 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 		}, nil
 	}
 
-	// Create a cache for file sizes to avoid redundant GCS queries
-	sizeCache := newFileSizeCache()
-	sizeCache.loadFromDisk() // Load previously cached sizes
+	sizeCache := uc.sizeCache
+	_ = sizeCache.Load()
 
 	// Process calls concurrently
 	results := make([]workflowDomain.TaskMetrics, len(callsToProcess))
@@ -191,7 +118,7 @@ func (uc *ResourceReportUseCase) ExecuteWithProgress(ctx context.Context, input 
 	wg.Wait()
 
 	// Save cache to disk for future use
-	sizeCache.saveToDisk()
+	_ = sizeCache.Save()
 
 	// Sort results by task name, then by shard index for consistent output
 	sort.Slice(results, func(i, j int) bool {
@@ -247,7 +174,7 @@ func (uc *ResourceReportUseCase) collectCallsRecursively(ctx context.Context, wf
 }
 
 // processCall processes a single call and returns its resource report.
-func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID string, call workflowDomain.Call, sizeCache *fileSizeCache) workflowDomain.TaskMetrics {
+func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID string, call workflowDomain.Call, sizeCache ports.FileSizeCache) workflowDomain.TaskMetrics {
 	taskName := extractTaskName(call.Name)
 
 	// Calculate total input bytes and per-input sizes
@@ -306,7 +233,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID str
 
 // calculateInputFileSizes calculates the total size of input files and per-input sizes.
 // It extracts file paths from the inputs and queries their sizes.
-func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache *fileSizeCache) (int64, map[string]int64) {
+func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache ports.FileSizeCache) (int64, map[string]int64) {
 	if inputs == nil {
 		return 0, nil
 	}
@@ -328,7 +255,7 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 		for _, path := range paths {
 			pathStr := path.String()
 			// Check cache first
-			if size, ok := cache.get(pathStr); ok {
+			if size, ok := cache.Get(pathStr); ok {
 				log.Printf("Cache hit for file size: %s (%d bytes)", pathStr, size)
 				keySize += size
 				continue
@@ -341,7 +268,7 @@ func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, in
 			}
 
 			// Cache the result
-			cache.set(pathStr, size)
+			cache.Set(pathStr, size)
 			keySize += size
 		}
 		inputSizes[inputName] = keySize
@@ -359,5 +286,3 @@ func extractTaskName(fullName string) string {
 	}
 	return fullName
 }
-
-// writeTSV writes the resource report to a TSV file.

@@ -18,6 +18,22 @@ type FileProvider interface {
 	GetSize(ctx context.Context, path string) (int64, error)
 }
 
+// FileSizeCache defines the interface for caching file sizes.
+// Implementations may persist the cache to disk or other storage.
+type FileSizeCache interface {
+	// Load hydrates the cache from its persistent storage.
+	Load() error
+
+	// Save persists the cache to its storage.
+	Save() error
+
+	// Get returns the cached size for a path and whether it exists.
+	Get(path string) (int64, bool)
+
+	// Set caches the size for a path.
+	Set(path string, size int64)
+}
+
 // StorageBackend defines the interface for individual storage backends.
 // Each implementation handles a specific storage type (local, GCS, S3, etc.)
 // This follows the Strategy Pattern, allowing new backends to be added

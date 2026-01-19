@@ -20,7 +20,7 @@ const validMonitoringTSV = `timestamp	cpu_percent	mem_used_mb	mem_total_mb	disk_
 2023-01-01 00:02:00	30.0	2048.0	8192.0	15.0	100.0`
 
 func TestResourceReportUseCase_Execute_Validation(t *testing.T) {
-	uc := NewResourceReportUseCase(&mockWorkflowRepository{}, &mockFileProvider{}, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(&mockWorkflowRepository{}, &mockFileProvider{}, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	_, err := uc.Execute(context.Background(), ResourceReportInput{})
 	if err == nil {
@@ -44,7 +44,7 @@ func TestResourceReportUseCase_Execute_MetadataError(t *testing.T) {
 			return nil, errors.New("metadata fetch failed")
 		},
 	}
-	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	_, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err == nil {
@@ -76,7 +76,7 @@ func TestResourceReportUseCase_Execute_NoTasksWithMonitoringLogs(t *testing.T) {
 			}, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -109,7 +109,7 @@ func TestResourceReportUseCase_Execute_CacheHitsIgnored(t *testing.T) {
 			}, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, &mockFileProvider{}, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -157,7 +157,7 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 			return 1024, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -244,7 +244,7 @@ func TestResourceReportUseCase_Execute_ReadError(t *testing.T) {
 			return "", errors.New("file not found")
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -293,7 +293,7 @@ func TestResourceReportUseCase_Execute_ParseError(t *testing.T) {
 			return "timestamp\tcpu_percent\n", nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -340,7 +340,7 @@ func TestResourceReportUseCase_Execute_SortOrder(t *testing.T) {
 			return validMonitoringTSV, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -396,7 +396,7 @@ func TestResourceReportUseCase_ExecuteWithProgress(t *testing.T) {
 			return validMonitoringTSV, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	var progressCalls int64
 	progress := func(completed, total int, currentTask string) {
@@ -447,7 +447,7 @@ func TestResourceReportUseCase_Execute_DefaultConcurrency(t *testing.T) {
 			return validMonitoringTSV, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	// Concurrency = 0 should default to 5
 	output, err := uc.Execute(context.Background(), ResourceReportInput{
@@ -520,7 +520,7 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 			return 2048, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, metrics.NewTSVWriter())
+	uc := NewResourceReportUseCase(repo, fp, metrics.NewTSVWriter(), &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "test-workflow"})
 	if err != nil {
@@ -584,12 +584,6 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 }
 
 func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
-	// Clear persistent cache to ensure test starts fresh
-	cacheFile := getCacheFilePath()
-	if cacheFile != "" {
-		os.Remove(cacheFile)
-	}
-
 	// Track GetSize calls to verify caching
 	var getSizeCalls int64
 
@@ -631,7 +625,7 @@ func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
 			return 1024, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{
 		WorkflowID:  "test-workflow",
@@ -713,7 +707,7 @@ func TestResourceReportUseCase_CollectCallsRecursively(t *testing.T) {
 			return validMonitoringTSV, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "main-workflow"})
 	if err != nil {
@@ -779,7 +773,7 @@ func TestResourceReportUseCase_CollectCallsRecursively_SubworkflowError(t *testi
 			return validMonitoringTSV, nil
 		},
 	}
-	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{})
+	uc := NewResourceReportUseCase(repo, fp, &mockTaskMetricsWriter{}, &mockFileSizeCache{})
 
 	output, err := uc.Execute(context.Background(), ResourceReportInput{WorkflowID: "main-workflow"})
 	if err != nil {
