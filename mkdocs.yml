@@ -34,6 +34,7 @@ theme:
     - search.suggest
     - content.code.copy
     - content.code.annotate
+    - content.images.lightbox
 
 nav:
   - Home: index.md
@@ -83,3 +84,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - glightbox:
+      zoomable: true
+      draggable: true
+      loop: false
