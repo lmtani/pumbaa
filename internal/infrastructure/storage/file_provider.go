@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // FileProvider implements ports.FileProvider using a registry of storage backends.

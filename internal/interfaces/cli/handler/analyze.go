@@ -42,6 +42,20 @@ func (h *AnalyzeHandler) Command() *cli.Command {
 						Usage:   "Output HTML file path",
 						Value:   "resource_report.html",
 					},
+					&cli.BoolFlag{
+						Name:  "no-llm",
+						Usage: "Skip LLM-based recommendations (faster)",
+					},
+					&cli.IntFlag{
+						Name:    "llm-batch-size",
+						Usage:   "Number of tasks per LLM request",
+						Value:   25,
+						Aliases: []string{"b"},
+					},
+					&cli.StringFlag{
+						Name:  "llm-debug",
+						Usage: "File path to write LLM debug logs (prompts and responses)",
+					},
 				},
 				Action: h.handleResources,
 			},
@@ -60,8 +74,11 @@ func (h *AnalyzeHandler) handleResources(c *cli.Context) error {
 	outputFile := c.String("output")
 
 	input := workflow.ResourceVisualizationInput{
-		Directory:  directory,
-		OutputFile: outputFile,
+		Directory:    directory,
+		OutputFile:   outputFile,
+		SkipLLM:      c.Bool("no-llm"),
+		LLMBatchSize: c.Int("llm-batch-size"),
+		LLMDebugFile: c.String("llm-debug"),
 	}
 
 	h.presenter.Info("Scanning TSV files in %s...", directory)

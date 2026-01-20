@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"github.com/lmtani/pumbaa/internal/application"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 

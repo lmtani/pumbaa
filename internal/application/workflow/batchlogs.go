@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/application"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // GetBatchLogsUseCase handles retrieval of Google Batch job logs.

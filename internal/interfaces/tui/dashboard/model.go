@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"

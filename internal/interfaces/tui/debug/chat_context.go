@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 

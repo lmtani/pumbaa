@@ -5,15 +5,15 @@ import (
 
 	"cloud.google.com/go/logging"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // FormatLogEntry extracts a cleaned, human-readable message from a Cloud Logging entry.
 // Message extraction priority:
-//   1. String payload (text message)
-//   2. JSON payload with "message" key
-//   3. JSON payload (stringified)
-//   4. Fallback: fmt.Sprintf("%v", payload), truncated
+//  1. String payload (text message)
+//  2. JSON payload with "message" key
+//  3. JSON payload (stringified)
+//  4. Fallback: fmt.Sprintf("%v", payload), truncated
 //
 // The returned message is truncated to maxLen characters.
 func FormatLogEntry(entry *logging.Entry, maxLen int) ports.BatchLogEntry {

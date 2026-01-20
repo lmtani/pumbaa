@@ -8,7 +8,7 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // GCSBackend implements StorageBackend for Google Cloud Storage access.

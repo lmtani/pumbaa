@@ -6,8 +6,8 @@ import (
 	adksession "google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
 
 // Dependencies holds all shared dependencies for TUI screens.

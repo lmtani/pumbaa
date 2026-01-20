@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"sync"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
@@ -86,4 +87,67 @@ func (m *mockFileProvider) GetSize(ctx context.Context, path string) (int64, err
 		return m.getSizeFunc(ctx, path)
 	}
 	return 0, nil
+}
+
+// =============================================================================
+// Mock TaskMetricsWriter
+// =============================================================================
+
+// mockTaskMetricsWriter is a test double for ports.TaskMetricsWriter.
+// Configure the writeFunc to control behavior in tests.
+type mockTaskMetricsWriter struct {
+	writeFunc func(filename string, metrics []workflow.TaskMetrics) error
+}
+
+func (m *mockTaskMetricsWriter) WriteToFile(filename string, metrics []workflow.TaskMetrics) error {
+	if m.writeFunc != nil {
+		return m.writeFunc(filename, metrics)
+	}
+	return nil
+}
+
+// =============================================================================
+// Mock FileSizeCache
+// =============================================================================
+
+// mockFileSizeCache is a test double for ports.FileSizeCache.
+// Configure the *Func fields to control behavior in tests.
+type mockFileSizeCache struct {
+	mu       sync.RWMutex
+	sizes    map[string]int64
+	loadFunc func() error
+	saveFunc func() error
+}
+
+func (m *mockFileSizeCache) Load() error {
+	if m.loadFunc != nil {
+		return m.loadFunc()
+	}
+	return nil
+}
+
+func (m *mockFileSizeCache) Save() error {
+	if m.saveFunc != nil {
+		return m.saveFunc()
+	}
+	return nil
+}
+
+func (m *mockFileSizeCache) Get(path string) (int64, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.sizes == nil {
+		return 0, false
+	}
+	size, ok := m.sizes[path]
+	return size, ok
+}
+
+func (m *mockFileSizeCache) Set(path string, size int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.sizes == nil {
+		m.sizes = make(map[string]int64)
+	}
+	m.sizes[path] = size
 }

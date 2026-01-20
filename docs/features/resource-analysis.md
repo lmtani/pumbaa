@@ -1,50 +1,181 @@
 # Resource Analysis
 
-Pumbaa provides a suite for analyzing workflow resource efficiency. It helps you understand how your tasks consume CPU, Memory, and Disk, and identifies optimization opportunities.
+**Pumbaa** provides a structured and data-driven way to analyze resource utilization in Cromwell-executed workflows. By processing monitoring logs, it enables a per-task evaluation of **CPU, memory, and disk usage**, allowing you to correlate resource consumption with input size and identify concrete optimization opportunities.
 
-## Individual Workflow Analysis
+The analysis workflow is composed of **two independent steps**:
 
-The `resource-report` command analyzes the monitoring logs for a specific workflow execution.
+1. **Data collection** — process monitoring logs for a specific workflow execution.
+2. **Visualization and interpretation** — aggregate one or more reports into an interactive dashboard.
+
+---
+
+## Step 1 — Data Collection
+
+Data collection is performed using the `pumbaa workflow resource-report` command. This step analyzes the monitoring logs of a single workflow execution and produces a normalized TSV report with per-task metrics.
 
 ### Prerequisites
 
-To use this feature, your workflow instructions must adhere to the following requirements:
+To generate a resource report, the workflow execution must meet the following requirements:
 
-1.  **Monitoring Script**: The workflow must have been executed with Cromwell options that enable the resource monitoring script. See [Resource Monitoring](resource-monitoring.md) for setup instructions.
-2.  **Input Availability**: The input files for the tasks must still be accessible (e.g., on GCS or local disk) so Pumbaa can calculate their sizes to correlate with resource usage.
+- **Monitoring enabled**
+  The workflow must have been executed with Cromwell options that enable the resource monitoring script. This script periodically records CPU, memory, and disk usage for each task.
+
+- **Accessible task inputs**
+  Input files referenced by tasks must be accessible (e.g., GCS or local filesystem). Pumbaa computes total input size per task to support *resource usage vs. data volume* analysis.
 
 ### Usage
+
+Run the command with the target Workflow ID:
 
 ```bash
 pumbaa workflow resource-report [flags] <workflow-id>
 ```
 
-**Flags:**
+**Flags**
 
--   `--concurrency/-c`: Number of concurrent workers for fetching monitoring logs (default: 5).
+* `--concurrency`, `-c`
+  Number of concurrent workers used to fetch monitoring logs (default: `5`).
 
-### Features
+### What This Command Does
 
--   **Utilization Engine**: Parses monitoring TSVs to compute Peak, Mean, and Efficiency metrics.
--   **Recursive Input Analysis**: Calculates the total footprint of input data to help correlate data size with resource usage.
--   **Optimization Recommendations**: Automatically flags inefficient tasks (e.g., low CPU utilization, high memory waste) and suggests tuning actions.
+1. **Metadata retrieval**
+   Fetches workflow metadata from the Cromwell server.
 
-## Consolidated Visualization
+2. **Recursive traversal**
+   Walks the full workflow graph, including subworkflows, collecting all calls that expose monitoring logs.
 
-The `analyze resources` command generates an interactive HTML dashboard from a collection of resource report TSVs.
+3. **Input size calculation**
+   Computes the total size of input files per task to enable efficiency and scaling analysis.
+
+4. **Monitoring log parsing**
+   Downloads and parses per-task monitoring TSVs to derive:
+
+     * Peak memory usage
+     * Peak disk usage
+     * Mean CPU utilization
+
+5. **Report generation**
+   Writes the aggregated results to `<workflow-id>.tsv` in the current working directory.
+
+---
+
+## Step 2 — Visualization and Analysis
+
+Once one or more TSV reports have been generated, the `pumbaa analyze resources` command aggregates them into an interactive HTML dashboard.
 
 ### Usage
+
+Point the command to a directory containing one or more TSV files:
 
 ```bash
 pumbaa analyze resources [flags] <directory>
 ```
 
-**Flags:**
+**Flags**
 
--   `--output/-o`: Output HTML file path (default: `resource_report.html`).
+| Flag | Description |
+|------|-------------|
+| `--output`, `-o` | Output path for the generated HTML report (default: `resource_report.html`) |
+| `--no-llm` | Disable LLM-based optimization recommendations. Useful for offline usage or faster generation. |
+| `--llm-batch-size` | Number of tasks analyzed per LLM request (default: `25`). |
+| `--llm-debug` | Path to save LLM prompts and responses for debugging purposes. |
 
-### Features
+---
 
--   **Interactive Dashboard**: A self-contained HTML report with interactive charts.
--   **Efficiency Scatter Plots**: Visualizes Efficiency vs. Input Size for CPU, Memory, and Disk to spot scaling trends and outliers.
--   **Smart Filtering**: Filter tasks by status (Critical, Warning, Good) to focus on the biggest cost drivers.
+## Dashboard Features
+
+### Interactive Overview
+
+The generated output is a **self-contained HTML file**, viewable in any modern browser. It provides both a high-level summary of workflow efficiency and detailed per-task metrics.
+
+![Resource Analysis Report](../assets/resource-analysis-report.png)
+
+---
+
+### Executive Summary
+
+At the top of the report, an **executive summary** provides a quick overview of workflow health:
+
+- Total number of tasks analyzed
+- Breakdown by optimization status (Good, Warning, Critical)
+- Top cost drivers and their percentage of total resource cost
+- Key recommendations for where to focus optimization efforts
+
+This summary is generated by the LLM and gives you an at-a-glance understanding of where to prioritize your time.
+
+---
+
+### Optimization Recommendations (LLM)
+
+When enabled, Pumbaa uses a Large Language Model (LLM) to analyze task-level metrics and generate actionable optimization recommendations. For each task, the LLM evaluates:
+
+* CPU utilization patterns
+* Memory peak vs. allocated memory
+* Disk usage efficiency
+* Scaling behavior relative to input size
+
+Recommendations are color-coded by severity:
+
+- 🟢 **Good** — Resource allocation is appropriate
+- 🟡 **Warning** — Potential for optimization
+- 🔴 **Critical** — Significant over-provisioning detected
+
+!!! warning "Important"
+    LLM-generated recommendations are suggestions based on observed patterns and may not be accurate in all cases. **Always test changes in a non-production environment** before applying them to production workflows. Resource requirements can vary based on factors not captured in the metrics, such as algorithm complexity or data characteristics.
+
+!!! note
+    When running with `--no-llm`, the report includes only descriptive statistics and visualizations, without automated optimization guidance.
+
+---
+
+### Dynamic Resource Formulas
+
+A unique feature of Pumbaa's LLM analysis is the generation of **dynamic resource formulas**. Instead of recommending static values, the LLM derives formulas based on input file sizes:
+
+```wdl
+# Example disk formula
+disk: ceil(1.5 * size(alignment, "GB") + 10)
+
+# Example memory formula
+memory: ceil(0.8 * size(input_bam, "GB") + 4)
+```
+
+These formulas:
+
+- **Scale automatically** with varying input sizes
+- **Include safety margins** to prevent task failures
+- Are accompanied by **reasoning** explaining why the formula was chosen
+
+The formula reasoning appears directly below each formula in the report, helping you understand the LLM's analysis methodology (e.g., "Memory usage shows linear scaling with input size, slope ~0.8 GB per GB of input").
+
+---
+
+### Efficiency Scatter Plots
+
+Selecting an individual task opens a detailed modal view with efficiency plots such as **Memory Usage vs. Input Size**. These plots are particularly useful for:
+
+* Identifying non-linear scaling behavior
+* Detecting tasks with inconsistent resource profiles
+* Validating runtime assumptions across varying input sizes
+
+![Resource Analysis Modal](../assets/resource-analysis-report-modal.png)
+
+---
+
+## Troubleshooting
+
+### Debugging LLM Interactions
+
+If recommendations seem unexpected, you can save and inspect the LLM interactions:
+
+```bash
+pumbaa analyze resources --llm-debug=llm_debug.txt ./reports/
+```
+
+The debug file contains:
+
+- System instructions sent to the LLM
+- Formatted prompts with task data
+- Raw LLM responses
+
+This is useful for understanding how the LLM interprets your data and for reporting issues.

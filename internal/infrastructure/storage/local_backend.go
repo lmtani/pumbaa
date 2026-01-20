@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // LocalBackend implements StorageBackend for local filesystem access.

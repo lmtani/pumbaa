@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/application"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // MockBatchLogsRepository is a mock implementation for testing.
