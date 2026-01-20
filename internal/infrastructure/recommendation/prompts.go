@@ -2,10 +2,83 @@ package recommendation
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 )
+
+const formulaSystemInstruction = `You are an expert in WDL (Workflow Description Language) resource optimization, specializing in deriving resource formulas from execution data.
+
+## Your Task
+Analyze the provided execution data and derive formulas for disk and memory allocation based on input file sizes.
+
+## CRITICAL: Why Dynamic Formulas Are Essential
+The execution samples you see are just a SMALL SUBSET of real-world data. In production:
+- **Genomics workflows** process files ranging from 1GB to 200GB+
+- **A fixed value that works for 5GB input will FAIL for 50GB input**
+- **Disk usage almost ALWAYS scales with input size** (temporary files, sorted outputs, indexes)
+
+**ALWAYS prefer dynamic formulas over fixed integers**, especially for disk.
+
+## Methodology
+For each task, you will receive a table of execution samples showing:
+- input_gb: Size of the largest input file in GB
+- disk_peak_gb: Actual disk usage peak in GB
+- memory_peak_gb: Actual memory usage peak in GB
+
+**Step 1: Calculate the relationship**
+- slope = (max_usage - min_usage) / (max_input - min_input)
+- If inputs have low variance, estimate slope from ratio: disk_peak / input_size
+
+**Step 2: Derive the formula**
+- Formula format: ceil(slope * size(input_name, "GB") + intercept)
+- Add 10-20% safety margin to the intercept
+
+## Formula Guidelines
+
+### DISK (Almost always needs a dynamic formula)
+- Disk usage scales with input in most bioinformatics tasks
+- Even if samples show little variation, EXTRAPOLATE: what happens if input is 10x larger?
+- Calculate ratio: avg(disk_peak) / avg(input_size) to estimate multiplier
+- Only use fixed value if task genuinely doesn't read input files (e.g., download tasks)
+
+### MEMORY
+- Memory often has a base requirement + scaling component
+- Can use fixed values if peaks are consistent regardless of input size
+- But prefer formulas when memory clearly scales with input
+
+### Minimum values (GCP constraints)
+- disk >= 10 GB
+- memory >= 1 GB
+
+## Output Format
+Your output MUST be valid JSON in this exact format:
+{
+  "formulas": [
+    {
+      "taskName": "AlignReads",
+      "diskFormula": "ceil(2.5 * size(input_bam, \"GB\") + 15)",
+      "diskReasoning": "Disk usage ~2.5x input size (observed 12GB disk for 5GB input); formula scales for larger genomes",
+      "memoryFormula": "ceil(0.8 * size(input_bam, \"GB\") + 8)",
+      "memoryReasoning": "Memory scales ~0.8x input size with 8GB base overhead"
+    },
+    {
+      "taskName": "DownloadReference",
+      "diskFormula": "50",
+      "diskReasoning": "Fixed 50GB - downloads fixed reference genome, no input file dependency",
+      "memoryFormula": "4",
+      "memoryReasoning": "Fixed 4GB - simple download task with consistent memory usage"
+    }
+  ]
+}
+
+## When to Use Fixed Values (RARE)
+Only use fixed integers when:
+1. Task does NOT process variable-size input files (downloads, uploads, fixed operations)
+2. Resource usage is genuinely constant regardless of any input
+
+**If in doubt, use a formula.** A formula that overestimates is better than a fixed value that fails on larger inputs.`
 
 const summarySystemInstruction = `You are an expert in WDL resource optimization.
 Your task is to write a concise, balanced Executive Summary based on the provided aggregate statistics.
@@ -34,13 +107,10 @@ For each task, you will receive:
 ## Output Format
 Your output MUST be valid JSON in this exact format:
 {
-  "summary": "Brief executive summary (max 200 words). Include: tasks ignored due to insufficient data, main cost drivers, and key optimization opportunities. This summary will be shown to users.",
   "recommendations": [
     {
       "taskName": "TaskName",
       "overallStatus": "warning",
-      "diskFormula": "Int disk_gb = ceil(2 * size(input_bam, \"GB\") + 5)",
-      "memoryFormula": "Int memory_gb = ceil(0.5 * size(input_bam, \"GB\") + 4)",
       "recommendations": [
         {"message": "CPU is well-utilized at 80%, maintain current allocation", "severity": "good"},
         {"message": "Memory peaks are high, consider increasing by 20%", "severity": "warning"},
@@ -49,13 +119,6 @@ Your output MUST be valid JSON in this exact format:
     }
   ]
 }
-
-## Summary Guidelines
-The summary field should:
-- Start by mentioning any tasks that were ignored or have unreliable data (short duration, insufficient samples)
-- Highlight the top 1-2 tasks by cost contribution
-- Summarize the overall optimization potential
-- Keep it under 200 words, be concise
 
 ## Status Assignment Rules
 - overallStatus: "good" = ALL recommendations are good (no action needed)
@@ -82,14 +145,7 @@ If ANY recommendation is critical, overallStatus MUST be "critical".
 1. SHORT TASKS: Tasks with duration < 60 seconds may show 0% CPU or inaccurate memory metrics due to sampling frequency. Be cautious when making recommendations for very short tasks.
 2. CPU 0%: A CPU mean of 0% does NOT necessarily mean the task was idle. It often indicates the task completed very quickly (before monitoring could sample CPU usage) or that monitoring data was not collected. In these cases, do NOT recommend reducing CPU - the current allocation may be appropriate. Instead, note that metrics are unreliable for this task.
 3. MEMORY/DISK 0: Similarly, if memory_peak=0 or disk_peak=0, it usually means monitoring failed to capture metrics, not that the task used no resources. Do not recommend reducing these resources based on 0 values.
-4. COST PRIORITY: Focus your most detailed recommendations on tasks with HIGHEST cost contribution. A task with 50% of total cost deserves more optimization attention than one with 2%.
-
-## Formula Guidelines
-1. Use the LARGEST variable input for the formula (gives smaller, more intuitive multipliers)
-2. Round up intercepts to whole numbers for safety margin
-3. Always ensure minimum 10 GB for disk formulas (e.g., ceil(...) + 10, or max(10, ...))
-4. Use ceil() to ensure sufficient resources
-5. Keep formulas simple and readable`
+4. COST PRIORITY: Focus your most detailed recommendations on tasks with HIGHEST cost contribution. A task with 50% of total cost deserves more optimization attention than one with 2%.`
 
 func buildPrompt(tasks []ports.TaskAnalysisData) string {
 	var sb strings.Builder
@@ -212,5 +268,151 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 	sb.WriteString("4. If most tasks are well-optimized, acknowledge that and focus on the few that need attention\n")
 	sb.WriteString("Output ONLY a JSON object: {\"summary\": \"...\"}")
 
+	return sb.String()
+}
+
+func buildFormulaPrompt(tasks []ports.TaskAnalysisData) string {
+	var sb strings.Builder
+
+	sb.WriteString("Derive disk and memory formulas for the following tasks based on their execution data.\n\n")
+	sb.WriteString("**IMPORTANT**: Choose the input that VARIES between samples for the formula. Inputs with constant size (like reference genomes) should NOT be used - look for BAM/CRAM files or other sample-specific inputs.\n\n")
+
+	for _, task := range tasks {
+		// Only include tasks with sufficient samples
+		if task.SampleCount < 3 {
+			continue
+		}
+
+		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
+		sb.WriteString(fmt.Sprintf("Samples: %d\n\n", task.SampleCount))
+
+		// Collect all inputs and calculate their variance
+		type inputInfo struct {
+			name     string
+			sizes    []int64
+			minGB    float64
+			maxGB    float64
+			avgGB    float64
+			variance float64
+		}
+		var inputs []inputInfo
+
+		for inputName, sizes := range task.InputSizes {
+			if len(sizes) == 0 {
+				continue
+			}
+			var sum float64
+			var minVal, maxVal float64 = float64(sizes[0]), float64(sizes[0])
+			for _, s := range sizes {
+				gb := float64(s) / (1024 * 1024 * 1024)
+				sum += gb
+				if gb < minVal {
+					minVal = gb
+				}
+				if gb > maxVal {
+					maxVal = gb
+				}
+			}
+			avgGB := sum / float64(len(sizes))
+
+			// Calculate variance
+			var varianceSum float64
+			for _, s := range sizes {
+				gb := float64(s) / (1024 * 1024 * 1024)
+				varianceSum += (gb - avgGB) * (gb - avgGB)
+			}
+			variance := varianceSum / float64(len(sizes))
+
+			inputs = append(inputs, inputInfo{
+				name:     inputName,
+				sizes:    sizes,
+				minGB:    minVal,
+				maxGB:    maxVal,
+				avgGB:    avgGB,
+				variance: variance,
+			})
+		}
+
+		if len(inputs) > 0 {
+			// Sort inputs by variance (highest first) to highlight variable inputs
+			sort.Slice(inputs, func(i, j int) bool {
+				return inputs[i].variance > inputs[j].variance
+			})
+
+			// Show input summary
+			sb.WriteString("### Available Inputs (sorted by variance - use the one that varies!):\n")
+			for _, inp := range inputs {
+				varianceLabel := "CONSTANT"
+				if inp.variance > 0.01 {
+					varianceLabel = "VARIES"
+				}
+				sb.WriteString(fmt.Sprintf("- **%s**: min=%.2f GB, max=%.2f GB, avg=%.2f GB [%s]\n",
+					inp.name, inp.minGB, inp.maxGB, inp.avgGB, varianceLabel))
+			}
+			sb.WriteString("\n")
+
+			// Build execution table with ALL inputs
+			sb.WriteString("### Execution Data Table\n")
+
+			// Build header
+			sb.WriteString("| sample |")
+			for _, inp := range inputs {
+				sb.WriteString(fmt.Sprintf(" %s_gb |", inp.name))
+			}
+			sb.WriteString(" disk_peak_gb | memory_peak_gb |\n")
+
+			// Build separator
+			sb.WriteString("|--------|")
+			for range inputs {
+				sb.WriteString("----------|")
+			}
+			sb.WriteString("--------------|----------------|\n")
+
+			// Find minimum sample count
+			numSamples := len(task.DiskPeaksGB)
+			if numSamples > len(task.MemoryPeaksMB) {
+				numSamples = len(task.MemoryPeaksMB)
+			}
+			for _, inp := range inputs {
+				if len(inp.sizes) < numSamples {
+					numSamples = len(inp.sizes)
+				}
+			}
+
+			// Build data rows
+			for i := 0; i < numSamples; i++ {
+				sb.WriteString(fmt.Sprintf("| %d |", i+1))
+				for _, inp := range inputs {
+					inputGB := float64(inp.sizes[i]) / (1024 * 1024 * 1024)
+					sb.WriteString(fmt.Sprintf(" %.2f |", inputGB))
+				}
+				diskGB := task.DiskPeaksGB[i]
+				memGB := task.MemoryPeaksMB[i] / 1024
+				sb.WriteString(fmt.Sprintf(" %.2f | %.2f |\n", diskGB, memGB))
+			}
+		} else {
+			// No input sizes available
+			sb.WriteString("### Execution Data (no input sizes available)\n")
+			sb.WriteString("| sample | disk_peak_gb | memory_peak_gb |\n")
+			sb.WriteString("|--------|--------------|----------------|\n")
+
+			numSamples := len(task.DiskPeaksGB)
+			if numSamples > len(task.MemoryPeaksMB) {
+				numSamples = len(task.MemoryPeaksMB)
+			}
+
+			for i := 0; i < numSamples; i++ {
+				diskGB := task.DiskPeaksGB[i]
+				memGB := task.MemoryPeaksMB[i] / 1024
+				sb.WriteString(fmt.Sprintf("| %d | %.2f | %.2f |\n", i+1, diskGB, memGB))
+			}
+			sb.WriteString("\n*Note: Use fixed values based on peak usage since no input correlation is available.*\n")
+		}
+
+		sb.WriteString("\n---\n\n")
+	}
+
+	sb.WriteString("Output JSON with formulas for each task. Remember: disk minimum is 10 GB, memory minimum is 1 GB.\n")
+	sb.WriteString("**Use the input that VARIES between samples for your formula. If all inputs are constant, use a fixed value based on peak usage.**")
 	return sb.String()
 }

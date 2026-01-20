@@ -91,7 +91,7 @@ func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []port
 
 	var allRecommendations []ports.TaskRecommendation
 
-	// 1. Process in batches
+	// 1. Process in batches (severity and textual recommendations)
 	for i := 0; i < len(tasks); i += batchSize {
 		end := i + batchSize
 		if end > len(tasks) {
@@ -108,7 +108,26 @@ func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []port
 		allRecommendations = append(allRecommendations, batchRecs...)
 	}
 
-	// 2. Generate Global Summary
+	// 2. Generate formulas (dedicated call for tasks with >= 3 samples)
+	formulas, err := g.generateFormulas(ctx, tasks)
+	if err != nil {
+		// Formula generation is optional; continue without formulas if it fails
+		formulas = nil
+	}
+
+	// Apply formulas to recommendations
+	if formulas != nil {
+		for i := range allRecommendations {
+			if f, ok := formulas[allRecommendations[i].TaskName]; ok {
+				allRecommendations[i].DiskFormula = f.DiskFormula
+				allRecommendations[i].DiskReasoning = f.DiskReasoning
+				allRecommendations[i].MemoryFormula = f.MemoryFormula
+				allRecommendations[i].MemoryReasoning = f.MemoryReasoning
+			}
+		}
+	}
+
+	// 3. Generate Global Summary
 	// We use the aggregated results to create a high-level summary
 	summary, err := g.generateGlobalSummary(ctx, tasks, allRecommendations)
 	if err != nil {
@@ -193,8 +212,6 @@ func parseRecommendations(response string, tasks []ports.TaskAnalysisData) (*por
 			SampleCount:     task.SampleCount,
 			OverallStatus:   overallStatus,
 			ResourceCost:    task.ResourceCost,
-			DiskFormula:     rec.DiskFormula,
-			MemoryFormula:   rec.MemoryFormula,
 			Recommendations: items,
 		})
 	}
@@ -309,4 +326,49 @@ func (g *LLMGenerator) generateGlobalSummary(ctx context.Context, tasks []ports.
 		return "", err
 	}
 	return resp.Summary, nil
+}
+
+// generateFormulas generates disk and memory formulas for tasks with sufficient data.
+// It uses a dedicated LLM call with specialized prompt for formula derivation.
+func (g *LLMGenerator) generateFormulas(ctx context.Context, tasks []ports.TaskAnalysisData) (map[string]formulaItem, error) {
+	// Filter tasks with sufficient samples (>= 3)
+	var eligibleTasks []ports.TaskAnalysisData
+	for _, task := range tasks {
+		if task.SampleCount >= 3 {
+			eligibleTasks = append(eligibleTasks, task)
+		}
+	}
+
+	if len(eligibleTasks) == 0 {
+		return nil, nil
+	}
+
+	prompt := buildFormulaPrompt(eligibleTasks)
+
+	responseText, err := g.callLLM(ctx, prompt, formulaSystemInstruction)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write debug log if writer is configured
+	if g.debugWriter != nil {
+		_ = g.debugWriter.WriteInteraction("FORMULA_GENERATION", formulaSystemInstruction, prompt, responseText)
+	}
+
+	jsonStr := extractJSON(responseText)
+	if jsonStr == "" {
+		return nil, fmt.Errorf("no JSON found in formula response")
+	}
+
+	var resp formulaResponse
+	if err := json.Unmarshal([]byte(jsonStr), &resp); err != nil {
+		return nil, err
+	}
+
+	// Build map for easy lookup
+	result := make(map[string]formulaItem)
+	for _, f := range resp.Formulas {
+		result[f.TaskName] = f
+	}
+	return result, nil
 }

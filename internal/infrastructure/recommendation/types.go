@@ -29,8 +29,20 @@ type llmResponse struct {
 	Recommendations []struct {
 		TaskName        string                  `json:"taskName"`
 		OverallStatus   string                  `json:"overallStatus,omitempty"` // good, warning, critical
-		DiskFormula     string                  `json:"diskFormula,omitempty"`
-		MemoryFormula   string                  `json:"memoryFormula,omitempty"`
 		Recommendations []llmRecommendationItem `json:"recommendations,omitempty"`
 	} `json:"recommendations"`
+}
+
+// formulaItem represents a single task's formula from the LLM
+type formulaItem struct {
+	TaskName        string `json:"taskName"`
+	DiskFormula     string `json:"diskFormula"`
+	DiskReasoning   string `json:"diskReasoning"`
+	MemoryFormula   string `json:"memoryFormula"`
+	MemoryReasoning string `json:"memoryReasoning"`
+}
+
+// formulaResponse represents the expected JSON structure for formula generation
+type formulaResponse struct {
+	Formulas []formulaItem `json:"formulas"`
 }
