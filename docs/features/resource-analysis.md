@@ -126,6 +126,9 @@ Recommendations are color-coded by severity:
 !!! note
     When running with `--no-llm`, the report includes only descriptive statistics and visualizations, without automated optimization guidance.
 
+!!! tip "Tested Models"
+    The LLM recommendations have been tested with **gemini-3-flash-preview** and produce good results. Smaller local models (e.g., ollama/gpt-oss:20b) may not generate useful recommendations due to their limited reasoning capabilities.
+
 ---
 
 ### Dynamic Resource Formulas

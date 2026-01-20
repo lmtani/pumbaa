@@ -59,6 +59,18 @@ func GetPumbaaTool(registry *Registry) tool.Tool {
 	return t
 }
 
+// GetWDLOnlyTools returns only WDL tools for use cases like recommendation.
+// This allows features to receive pre-configured tools without knowing how to create them.
+func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
+	r := NewRegistry()
+	if wdlRepo != nil {
+		r.Register("wdl_list", wdl.NewListHandler(wdlRepo))
+		r.Register("wdl_search", wdl.NewSearchHandler(wdlRepo))
+		r.Register("wdl_info", wdl.NewInfoHandler(wdlRepo))
+	}
+	return []tool.Tool{GetPumbaaTool(r)}
+}
+
 // GetAllTools returns all available tools in this package.
 // cromwellRepo is the Cromwell repository implementation for API interactions.
 // wdlRepo is the WDL index repository (can be nil if not configured).

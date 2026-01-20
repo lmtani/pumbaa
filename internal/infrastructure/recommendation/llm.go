@@ -14,13 +14,12 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
 
 // NewLLMGenerator creates a new LLM-based recommendation generator.
 // Returns a generator with available=false if LLM is not configured.
-func NewLLMGenerator(cfg *config.Config, wdlRepo wdl.Repository) *LLMGenerator {
+// The tools parameter allows the caller to provide pre-configured tools for the LLM.
+func NewLLMGenerator(cfg *config.Config, tools []tool.Tool) *LLMGenerator {
 	if cfg == nil || cfg.LLMProvider == "" {
 		return &LLMGenerator{available: false}
 	}
@@ -44,17 +43,9 @@ func NewLLMGenerator(cfg *config.Config, wdlRepo wdl.Repository) *LLMGenerator {
 		modelInfo = cfg.LLMProvider
 	}
 
-	// Create tools registry with WDL tools only
-	registry := tools.NewRegistry()
-	if wdlRepo != nil {
-		registry.Register("wdl_list", wdl.NewListHandler(wdlRepo))
-		registry.Register("wdl_search", wdl.NewSearchHandler(wdlRepo))
-		registry.Register("wdl_info", wdl.NewInfoHandler(wdlRepo))
-	}
-
 	return &LLMGenerator{
 		llm:       llmModel,
-		tools:     []tool.Tool{tools.GetPumbaaTool(registry)},
+		tools:     tools,
 		available: true,
 		modelInfo: modelInfo,
 	}

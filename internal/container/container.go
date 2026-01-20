@@ -7,6 +7,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/bundle"
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/metrics"
@@ -109,14 +110,16 @@ func New(cfg *config.Config, version string) *Container {
 	metricsReader := metrics.NewTSVReader()
 
 	// Initialize LLM-based recommendation generator if LLM is configured
-	var recommendationGenerator = recommendation.NewLLMGenerator(cfg, nil)
+	// The container creates the tools and passes them to the generator
+	var wdlTools = tools.GetWDLOnlyTools(nil)
 	if cfg.WDLDirectory != "" {
 		// Try to initialize WDL indexer for better recommendations
 		indexer, err := wdlindexer.NewIndexer(cfg.WDLDirectory, cfg.WDLIndexPath, false)
 		if err == nil {
-			recommendationGenerator = recommendation.NewLLMGenerator(cfg, indexer)
+			wdlTools = tools.GetWDLOnlyTools(indexer)
 		}
 	}
+	recommendationGenerator := recommendation.NewLLMGenerator(cfg, wdlTools)
 	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator)
 
 	// Initialize handlers
