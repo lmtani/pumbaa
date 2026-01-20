@@ -120,11 +120,11 @@ Recommendations are color-coded by severity:
 - 🟡 **Warning** — Potential for optimization
 - 🔴 **Critical** — Significant over-provisioning detected
 
-> [!CAUTION]
-> LLM-generated recommendations are suggestions based on observed patterns and may not be accurate in all cases. **Always test changes in a non-production environment** before applying them to production workflows. Resource requirements can vary based on factors not captured in the metrics, such as algorithm complexity or data characteristics.
+!!! warning "Important"
+    LLM-generated recommendations are suggestions based on observed patterns and may not be accurate in all cases. **Always test changes in a non-production environment** before applying them to production workflows. Resource requirements can vary based on factors not captured in the metrics, such as algorithm complexity or data characteristics.
 
-> **Note**
-> When running with `--no-llm`, the report includes only descriptive statistics and visualizations, without automated optimization guidance.
+!!! note
+    When running with `--no-llm`, the report includes only descriptive statistics and visualizations, without automated optimization guidance.
 
 ---
 
@@ -137,7 +137,7 @@ A unique feature of Pumbaa's LLM analysis is the generation of **dynamic resourc
 disk: ceil(1.5 * size(alignment, "GB") + 10)
 
 # Example memory formula
-memory: ceil(0.8 * size(input_bam, "GB") + 4) + " GB"
+memory: ceil(0.8 * size(input_bam, "GB") + 4)
 ```
 
 These formulas:
