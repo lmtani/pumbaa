@@ -9,7 +9,7 @@ import (
 
 	"cloud.google.com/go/storage"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // MaxFileSize is the maximum file size that can be downloaded (5 MB).

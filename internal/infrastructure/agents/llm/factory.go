@@ -7,7 +7,7 @@ import (
 	"google.golang.org/adk/model"
 
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm/ollama"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm/ollama"
 )
 
 // Provider constants

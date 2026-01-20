@@ -7,10 +7,10 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/gcs"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
 
 // NewDefaultRegistry creates a Registry with all default handlers registered.
@@ -57,6 +57,18 @@ func GetPumbaaTool(registry *Registry) tool.Tool {
 		panic(fmt.Sprintf("failed to create pumbaa tool: %v", err))
 	}
 	return t
+}
+
+// GetWDLOnlyTools returns only WDL tools for use cases like recommendation.
+// This allows features to receive pre-configured tools without knowing how to create them.
+func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
+	r := NewRegistry()
+	if wdlRepo != nil {
+		r.Register("wdl_list", wdl.NewListHandler(wdlRepo))
+		r.Register("wdl_search", wdl.NewSearchHandler(wdlRepo))
+		r.Register("wdl_info", wdl.NewInfoHandler(wdlRepo))
+	}
+	return []tool.Tool{GetPumbaaTool(r)}
 }
 
 // GetAllTools returns all available tools in this package.

@@ -39,9 +39,9 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 │   │   ├── wdlindex/           # WDL index entities
 │   │   └── workflow/           # Workflow entities and errors
 │   ├── infrastructure/         # External services adapters (Infrastructure Layer)
-│   │   ├── chat/               # LLM integrations and agent tools
-│   │   │   ├── agent/tools/    # Tool registry for chat agent
-│   │   │   └── llm/            # LLM providers (Gemini, Vertex, Ollama)
+│   │   ├── agents/             # LLM agent infrastructure
+│   │   │   ├── llm/            # LLM providers (Gemini, Vertex, Ollama)
+│   │   │   └── tools/          # Reusable tools for agents (Cromwell, GCS, WDL)
 │   │   ├── cromwell/           # Cromwell API client
 │   │   ├── session/            # SQLite session management
 │   │   ├── storage/            # File storage (local and GCS)
@@ -113,17 +113,17 @@ Contains implementations of external services and adapters for domain interfaces
   - Error handling and status code mapping
   - Complete workflow lifecycle management
 
-- **`chat/llm/`**: LLM provider implementations
-  - `ollama/` - Local Ollama integration
-  - `gemini.go` - Google Gemini API client
-  - `vertex.go` - Google Vertex AI client
-  - `factory.go` - LLM provider factory pattern
-
-- **`chat/agent/tools/`**: Tool registry for AI agent
-  - **`cromwell/`**: Query, status, metadata, logs, outputs tools
-  - **`gcs/`**: Google Cloud Storage file download
-  - **`wdl/`**: WDL search, list, and info tools
-  - **`registry.go`**: Tool registration and schema generation
+- **`agents/`**: LLM agent infrastructure
+  - **`llm/`**: LLM provider implementations
+    - `ollama/` - Local Ollama integration
+    - `gemini.go` - Google Gemini API client
+    - `vertex.go` - Google Vertex AI client
+    - `factory.go` - LLM provider factory pattern
+  - **`tools/`**: Reusable tool registry for agents
+    - **`cromwell/`**: Query, status, metadata, logs, outputs tools
+    - **`gcs/`**: Google Cloud Storage file download
+    - **`wdl/`**: WDL search, list, and info tools
+    - **`registry.go`**: Tool registration and schema generation
 
 - **`wdl/`**: WDL indexer implementing `ports.WDLRepository`
   - File system traversal

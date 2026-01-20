@@ -10,9 +10,9 @@ import (
 	adksession "google.golang.org/adk/session"
 
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
