@@ -70,6 +70,11 @@ func (g *LLMGenerator) ModelInfo() string {
 	return g.modelInfo
 }
 
+// SetDebugWriter sets an optional debug writer for logging LLM interactions.
+func (g *LLMGenerator) SetDebugWriter(w ports.LLMDebugWriter) {
+	g.debugWriter = w
+}
+
 // GenerateRecommendations uses the LLM to analyze task data and generate recommendations.
 func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []ports.TaskAnalysisData, batchSize int) (*ports.RecommendationResult, error) {
 	if !g.IsAvailable() {
@@ -228,6 +233,11 @@ func (g *LLMGenerator) processBatch(ctx context.Context, tasks []ports.TaskAnaly
 		return nil, err
 	}
 
+	// Write debug log if writer is configured
+	if g.debugWriter != nil {
+		_ = g.debugWriter.WriteInteraction("BATCH_RECOMMENDATIONS", systemInstruction, prompt, responseText)
+	}
+
 	result, err := parseRecommendations(responseText, tasks)
 	if err != nil {
 		return nil, err
@@ -280,6 +290,11 @@ func (g *LLMGenerator) generateGlobalSummary(ctx context.Context, tasks []ports.
 	responseText, err := g.callLLM(ctx, prompt, summarySystemInstruction)
 	if err != nil {
 		return "", err
+	}
+
+	// Write debug log if writer is configured
+	if g.debugWriter != nil {
+		_ = g.debugWriter.WriteInteraction("GLOBAL_SUMMARY", summarySystemInstruction, prompt, responseText)
 	}
 
 	jsonStr := extractJSON(responseText)

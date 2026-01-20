@@ -74,4 +74,18 @@ type RecommendationGenerator interface {
 	// ModelInfo returns information about the model being used (e.g., "vertex/gemini-2.5-flash").
 	// Returns empty string if no model is configured.
 	ModelInfo() string
+
+	// SetDebugWriter sets an optional debug writer for logging LLM interactions.
+	// Pass nil to disable debug logging.
+	SetDebugWriter(w LLMDebugWriter)
+}
+
+// LLMDebugWriter writes debug information about LLM interactions.
+// Implementations can write to files, stdout, or other destinations.
+type LLMDebugWriter interface {
+	// WriteInteraction logs a complete LLM interaction (system instruction, prompt, response).
+	WriteInteraction(callType, systemInstruction, prompt, response string) error
+
+	// Close closes the writer and releases any resources.
+	Close() error
 }

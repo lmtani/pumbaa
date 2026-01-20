@@ -12,6 +12,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 )
 
@@ -36,6 +37,7 @@ type ResourceVisualizationInput struct {
 	OutputFile   string // Output HTML file (default: "resource_report.html")
 	SkipLLM      bool   // Skip LLM-based recommendations
 	LLMBatchSize int    // Number of tasks per LLM request (Batching)
+	LLMDebugFile string // Optional file path to write LLM debug logs (empty = no debug)
 }
 
 // ResourceVisualizationOutput contains the result of visualization generation.
@@ -122,6 +124,23 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 	if !input.SkipLLM && uc.recommendationGenerator != nil && uc.recommendationGenerator.IsAvailable() {
 		llmModelInfo = uc.recommendationGenerator.ModelInfo()
 		log.Printf("[resource_visualization] Using LLM for recommendations: %s", llmModelInfo)
+
+		// Set up debug writer if configured
+		var debugWriter ports.LLMDebugWriter
+		if input.LLMDebugFile != "" {
+			var debugErr error
+			debugWriter, debugErr = recommendation.NewFileDebugWriter(input.LLMDebugFile)
+			if debugErr != nil {
+				log.Printf("[resource_visualization] Warning: failed to create debug writer: %v", debugErr)
+			} else {
+				uc.recommendationGenerator.SetDebugWriter(debugWriter)
+				defer func() {
+					debugWriter.Close()
+					uc.recommendationGenerator.SetDebugWriter(nil)
+				}()
+				log.Printf("[resource_visualization] LLM debug logging enabled: %s", input.LLMDebugFile)
+			}
+		}
 
 		// Use LLM to generate recommendations
 		if len(analysisData) > 0 {

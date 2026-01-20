@@ -52,6 +52,10 @@ func (h *AnalyzeHandler) Command() *cli.Command {
 						Value:   25,
 						Aliases: []string{"b"},
 					},
+					&cli.StringFlag{
+						Name:  "llm-debug",
+						Usage: "File path to write LLM debug logs (prompts and responses)",
+					},
 				},
 				Action: h.handleResources,
 			},
@@ -74,6 +78,7 @@ func (h *AnalyzeHandler) handleResources(c *cli.Context) error {
 		OutputFile:   outputFile,
 		SkipLLM:      c.Bool("no-llm"),
 		LLMBatchSize: c.Int("llm-batch-size"),
+		LLMDebugFile: c.String("llm-debug"),
 	}
 
 	h.presenter.Info("Scanning TSV files in %s...", directory)
