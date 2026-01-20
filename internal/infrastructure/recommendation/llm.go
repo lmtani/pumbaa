@@ -109,7 +109,7 @@ func (g *LLMGenerator) GenerateRecommendations(ctx context.Context, tasks []port
 	}
 
 	// 2. Generate formulas (dedicated call for tasks with >= 3 samples)
-	formulas, err := g.generateFormulas(ctx, tasks)
+	formulas, err := g.generateFormulas(ctx, tasks, allRecommendations)
 	if err != nil {
 		// Formula generation is optional; continue without formulas if it fails
 		formulas = nil
@@ -330,7 +330,7 @@ func (g *LLMGenerator) generateGlobalSummary(ctx context.Context, tasks []ports.
 
 // generateFormulas generates disk and memory formulas for tasks with sufficient data.
 // It uses a dedicated LLM call with specialized prompt for formula derivation.
-func (g *LLMGenerator) generateFormulas(ctx context.Context, tasks []ports.TaskAnalysisData) (map[string]formulaItem, error) {
+func (g *LLMGenerator) generateFormulas(ctx context.Context, tasks []ports.TaskAnalysisData, recommendations []ports.TaskRecommendation) (map[string]formulaItem, error) {
 	// Filter tasks with sufficient samples (>= 3)
 	var eligibleTasks []ports.TaskAnalysisData
 	for _, task := range tasks {
@@ -343,7 +343,7 @@ func (g *LLMGenerator) generateFormulas(ctx context.Context, tasks []ports.TaskA
 		return nil, nil
 	}
 
-	prompt := buildFormulaPrompt(eligibleTasks)
+	prompt := buildFormulaPrompt(eligibleTasks, recommendations)
 
 	responseText, err := g.callLLM(ctx, prompt, formulaSystemInstruction)
 	if err != nil {

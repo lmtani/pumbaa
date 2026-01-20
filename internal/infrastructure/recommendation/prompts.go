@@ -271,11 +271,17 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 	return sb.String()
 }
 
-func buildFormulaPrompt(tasks []ports.TaskAnalysisData) string {
+func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.TaskRecommendation) string {
 	var sb strings.Builder
 
 	sb.WriteString("Derive disk and memory formulas for the following tasks based on their execution data.\n\n")
 	sb.WriteString("**IMPORTANT**: Choose the input that VARIES between samples for the formula. Inputs with constant size (like reference genomes) should NOT be used - look for BAM/CRAM files or other sample-specific inputs.\n\n")
+
+	// Map recommendations for easy lookup
+	recMap := make(map[string]ports.TaskRecommendation)
+	for _, r := range recommendations {
+		recMap[r.TaskName] = r
+	}
 
 	for _, task := range tasks {
 		// Only include tasks with sufficient samples
@@ -284,7 +290,17 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData) string {
 		}
 
 		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
-		sb.WriteString(fmt.Sprintf("Samples: %d\n\n", task.SampleCount))
+		sb.WriteString(fmt.Sprintf("Samples: %d\n", task.SampleCount))
+
+		// Inject Optimization Context
+		if rec, ok := recMap[task.TaskName]; ok {
+			sb.WriteString(fmt.Sprintf("\n### Optimization Context (from previous analysis):\n"))
+			sb.WriteString(fmt.Sprintf("- Overall Status: %s\n", rec.OverallStatus))
+			for _, item := range rec.Recommendations {
+				sb.WriteString(fmt.Sprintf("- [%s] %s\n", item.Severity, item.Message))
+			}
+		}
+		sb.WriteString("\n")
 
 		// Collect all inputs and calculate their variance
 		type inputInfo struct {
