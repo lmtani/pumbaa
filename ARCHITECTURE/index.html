@@ -1427,9 +1427,9 @@
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   │   ├── wdlindex/           # WDL index entities
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   │   └── workflow/           # Workflow entities and errors
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│   ├── infrastructure/         # External services adapters (Infrastructure Layer)
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   │   ├── chat/               # LLM integrations and agent tools
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   │   │   ├── agent/tools/    # Tool registry for chat agent
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   │   │   └── llm/            # LLM providers (Gemini, Vertex, Ollama)
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   │   ├── agents/             # LLM agent infrastructure
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   │   │   ├── llm/            # LLM providers (Gemini, Vertex, Ollama)
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   │   │   └── tools/          # Reusable tools for agents (Cromwell, GCS, WDL)
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│   │   ├── cromwell/           # Cromwell API client
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│   │   ├── session/            # SQLite session management
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│   │   ├── storage/            # File storage (local and GCS)
@@ -1498,22 +1498,23 @@
 <p>Complete workflow lifecycle management</p>
 </li>
 <li>
-<p><strong><code>chat/llm/</code></strong>: LLM provider implementations</p>
+<p><strong><code>agents/</code></strong>: LLM agent infrastructure</p>
 </li>
+<li><strong><code>llm/</code></strong>: LLM provider implementations<ul>
 <li><code>ollama/</code> - Local Ollama integration</li>
 <li><code>gemini.go</code> - Google Gemini API client</li>
 <li><code>vertex.go</code> - Google Vertex AI client</li>
-<li>
-<p><code>factory.go</code> - LLM provider factory pattern</p>
+<li><code>factory.go</code> - LLM provider factory pattern</li>
+</ul>
 </li>
 <li>
-<p><strong><code>chat/agent/tools/</code></strong>: Tool registry for AI agent</p>
-</li>
+<p><strong><code>tools/</code></strong>: Reusable tool registry for agents</p>
+<ul>
 <li><strong><code>cromwell/</code></strong>: Query, status, metadata, logs, outputs tools</li>
 <li><strong><code>gcs/</code></strong>: Google Cloud Storage file download</li>
 <li><strong><code>wdl/</code></strong>: WDL search, list, and info tools</li>
-<li>
-<p><strong><code>registry.go</code></strong>: Tool registration and schema generation</p>
+<li><strong><code>registry.go</code></strong>: Tool registration and schema generation</li>
+</ul>
 </li>
 <li>
 <p><strong><code>wdl/</code></strong>: WDL indexer implementing <code>ports.WDLRepository</code></p>

@@ -1580,6 +1580,10 @@
 <p class="admonition-title">Note</p>
 <p>When running with <code>--no-llm</code>, the report includes only descriptive statistics and visualizations, without automated optimization guidance.</p>
 </div>
+<div class="admonition tip">
+<p class="admonition-title">Tested Models</p>
+<p>The LLM recommendations have been tested with <strong>gemini-3-flash-preview</strong> and produce good results. Smaller local models (e.g., ollama/gpt-oss:20b) may not generate useful recommendations due to their limited reasoning capabilities.</p>
+</div>
 <hr>
 <h3 id="dynamic-resource-formulas">Dynamic Resource Formulas</h3>
 <p>A unique feature of Pumbaa's LLM analysis is the generation of <strong>dynamic resource formulas</strong>. Instead of recommending static values, the LLM derives formulas based on input file sizes:</p>
