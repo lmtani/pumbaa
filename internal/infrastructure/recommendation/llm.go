@@ -13,9 +13,9 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
 
 // NewLLMGenerator creates a new LLM-based recommendation generator.

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/adk/model"
 	"google.golang.org/genai"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 )
 
 // buildRequest converts an ADK LLMRequest to ChatRequest

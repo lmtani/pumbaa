@@ -49,7 +49,7 @@ type TaskRecommendation struct {
 	DiskCost        float64                `json:"diskCost"`      // Disk contribution
 	DiskFormula     string                 `json:"diskFormula,omitempty"`
 	DiskR2          float64                `json:"diskR2,omitempty"`
-	DiskReasoning   string                 `json:"diskReasoning,omitempty"`   // LLM explanation for disk formula
+	DiskReasoning   string                 `json:"diskReasoning,omitempty"` // LLM explanation for disk formula
 	MemoryFormula   string                 `json:"memoryFormula,omitempty"`
 	MemoryR2        float64                `json:"memoryR2,omitempty"`
 	MemoryReasoning string                 `json:"memoryReasoning,omitempty"` // LLM explanation for memory formula

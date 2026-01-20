@@ -7,10 +7,10 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/cromwell"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/gcs"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
 
 // NewDefaultRegistry creates a Registry with all default handlers registered.
