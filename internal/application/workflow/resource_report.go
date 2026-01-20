@@ -7,10 +7,11 @@ import (
 	"sort"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
-	"golang.org/x/sync/errgroup"
 )
 
 // ResourceReportUseCase handles resource usage analysis for all tasks in a workflow.

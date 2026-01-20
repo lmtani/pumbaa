@@ -3,7 +3,7 @@ package cromwell
 import (
 	"context"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/types"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // OutputsHandler handles the "outputs" action to get workflow output files.

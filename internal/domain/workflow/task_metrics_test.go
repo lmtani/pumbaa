@@ -57,9 +57,9 @@ func TestTaskMetrics_CalculateResourceCost(t *testing.T) {
 			name: "standard cost calculation",
 			metrics: TaskMetrics{
 				CPURequest:           "2",
-				MemoryRequestBytes:   1024 * 1024 * 1024,     // 1 GB
+				MemoryRequestBytes:   1024 * 1024 * 1024,      // 1 GB
 				DiskSizeRequestBytes: 10 * 1024 * 1024 * 1024, // 10 GB
-				DurationSeconds:      3600,                   // 1 hour
+				DurationSeconds:      3600,                    // 1 hour
 			},
 			expected: 2 * 1 * 10 * 1, // CPU * Mem(GB) * Disk(GB) * Duration(hours) = 20
 		},
@@ -200,21 +200,21 @@ func TestTaskMetricsCollection_CalculateEfficiencyStats(t *testing.T) {
 		{
 			TaskName:             "efficient_task",
 			CPURequest:           "2",
-			MemoryRequestBytes:   1024 * 1024 * 1024,     // 1 GB
+			MemoryRequestBytes:   1024 * 1024 * 1024,      // 1 GB
 			DiskSizeRequestBytes: 10 * 1024 * 1024 * 1024, // 10 GB
 			DurationSeconds:      3600,
-			CPUMean:              80.0, // 80% CPU usage
-			MemoryPeakMB:         800,  // 800 MB of 1 GB = 78%
+			CPUMean:              80.0,                   // 80% CPU usage
+			MemoryPeakMB:         800,                    // 800 MB of 1 GB = 78%
 			DiskPeakBytes:        8 * 1024 * 1024 * 1024, // 8 GB of 10 GB = 80%
 		},
 		{
 			TaskName:             "inefficient_task",
 			CPURequest:           "4",
-			MemoryRequestBytes:   4 * 1024 * 1024 * 1024,  // 4 GB
+			MemoryRequestBytes:   4 * 1024 * 1024 * 1024,   // 4 GB
 			DiskSizeRequestBytes: 100 * 1024 * 1024 * 1024, // 100 GB
 			DurationSeconds:      3600,
-			CPUMean:              10.0, // 10% CPU usage
-			MemoryPeakMB:         100,  // 100 MB of 4 GB = 2.4%
+			CPUMean:              10.0,                   // 10% CPU usage
+			MemoryPeakMB:         100,                    // 100 MB of 4 GB = 2.4%
 			DiskPeakBytes:        1 * 1024 * 1024 * 1024, // 1 GB of 100 GB = 1%
 		},
 	})
