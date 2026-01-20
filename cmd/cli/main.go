@@ -123,6 +123,7 @@ func printUpdateNotice(ch <-chan *version.VersionInfo) {
 	case info := <-ch:
 		if info != nil && info.UpdateAvailable {
 			fmt.Fprintf(os.Stderr, "\n💡 Update available: %s → %s\n", info.Current, info.Latest)
+			fmt.Fprintf(os.Stderr, "   Release notes: %s\n", info.ReleaseURL)
 			fmt.Fprintf(os.Stderr, "   Run: curl -sSL https://raw.githubusercontent.com/lmtani/pumbaa/main/install.sh | bash\n\n")
 		}
 	case <-time.After(500 * time.Millisecond):

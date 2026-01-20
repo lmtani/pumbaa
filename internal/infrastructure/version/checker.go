@@ -14,6 +14,7 @@ type VersionInfo struct {
 	Current         string
 	Latest          string
 	UpdateAvailable bool
+	ReleaseURL      string
 }
 
 // Checker checks for version updates asynchronously.
@@ -23,15 +24,17 @@ type Checker interface {
 
 // GitHubChecker checks for updates using GitHub releases API.
 type GitHubChecker struct {
-	repo    string
-	timeout time.Duration
+	repo       string
+	releaseURL string
+	timeout    time.Duration
 }
 
 // NewGitHubChecker creates a new GitHub-based version checker.
 func NewGitHubChecker(repo string) *GitHubChecker {
 	return &GitHubChecker{
-		repo:    repo,
-		timeout: 3 * time.Second,
+		repo:       repo,
+		releaseURL: fmt.Sprintf("https://github.com/%s/releases/tag", repo),
+		timeout:    3 * time.Second,
 	}
 }
 
@@ -57,6 +60,7 @@ func (c *GitHubChecker) Check(currentVersion string) <-chan *VersionInfo {
 			Current:         currentVersion,
 			Latest:          latest,
 			UpdateAvailable: isNewerVersion(latest, currentVersion),
+			ReleaseURL:      fmt.Sprintf("%s/v%s", c.releaseURL, latest),
 		}
 		ch <- info
 	}()
