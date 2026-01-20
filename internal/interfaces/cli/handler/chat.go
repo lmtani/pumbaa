@@ -302,6 +302,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 
 	agentTools := tools.GetAllTools(cromwellClient, wdlRepo)
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
+	m.SetStandalone(true) // Running directly from CLI, not embedded in TUI
 
 	p := tea.NewProgram(&m, tea.WithAltScreen())
 	m.SetProgram(p)

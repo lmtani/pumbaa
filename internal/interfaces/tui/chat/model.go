@@ -129,6 +129,7 @@ type Model struct {
 	// Navigation state
 	wantsToGoBack bool
 	wantsToQuit   bool
+	standalone    bool // True when running directly from CLI (pumbaa chat), not embedded in TUI
 }
 
 type ChatMessage struct {
@@ -273,6 +274,12 @@ func (m *Model) SetContextLabel(label string) {
 	m.contextLabel = label
 }
 
+// SetStandalone sets whether the chat is running in standalone mode (directly from CLI).
+// When true, exit commands will close the program. When false, they navigate back.
+func (m *Model) SetStandalone(standalone bool) {
+	m.standalone = standalone
+}
+
 // AddInfoMessage adds a muted informational message to the message list.
 func (m *Model) AddInfoMessage(content string) {
 	if m.msgs == nil || strings.TrimSpace(content) == "" {
@@ -348,14 +355,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
-		case tea.KeyEsc:
+		case tea.KeyCtrlX:
+			// Ctrl+X always exits the chat, works even when textarea has focus
 			m.wantsToGoBack = true
+			if m.standalone {
+				return m, tea.Quit
+			}
 			return m, nil
 
+		case tea.KeyEsc:
+			// Esc only works in messages mode (when textarea is blurred)
+			if m.focusMode == FocusMessages {
+				m.wantsToGoBack = true
+				return m, nil
+			}
+
 		case tea.KeyRunes:
-			// Handle 'q' to quit when not in text input mode
+			// Handle 'q' to quit/back when not in text input mode
 			if len(msg.Runes) > 0 && msg.Runes[0] == 'q' && m.focusMode == FocusMessages {
-				m.wantsToQuit = true
+				if m.standalone {
+					m.wantsToQuit = true
+				} else {
+					m.wantsToGoBack = true
+				}
 				return m, nil
 			}
 			// Handle 'y' for copy when in messages mode
@@ -712,6 +734,11 @@ func (m *Model) scrollToSelectedMsg() {
 func (m Model) renderFooter() string {
 	var help string
 	if m.focusMode == FocusMessages {
+		// Show 'q' as quit only in standalone mode, otherwise as back
+		qAction := "back"
+		if m.standalone {
+			qAction = "quit"
+		}
 		help = fmt.Sprintf(
 			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("↑↓"),
@@ -720,14 +747,14 @@ func (m Model) renderFooter() string {
 			common.DescStyle.Render("copy"),
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("type"),
-			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("back"),
+			common.KeyStyle.Render("ctrl+x"),
+			common.DescStyle.Render("exit"),
 			common.KeyStyle.Render("q"),
-			common.DescStyle.Render("quit"),
+			common.DescStyle.Render(qAction),
 		)
 	} else {
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("ctrl+d"),
 			common.DescStyle.Render("send"),
 			common.KeyStyle.Render("ctrl+s"),
@@ -736,10 +763,8 @@ func (m Model) renderFooter() string {
 			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("navigate msgs"),
-			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render("back"),
-			common.KeyStyle.Render("q"),
-			common.DescStyle.Render("quit"),
+			common.KeyStyle.Render("ctrl+x"),
+			common.DescStyle.Render("exit"),
 		)
 	}
 
