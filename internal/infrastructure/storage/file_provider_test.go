@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 func TestFileProvider_DelegatesToCorrectBackend(t *testing.T) {

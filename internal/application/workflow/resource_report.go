@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/lmtani/pumbaa/internal/application"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
 	"golang.org/x/sync/errgroup"
 )

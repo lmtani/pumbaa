@@ -11,8 +11,8 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools"
 	"github.com/lmtani/pumbaa/internal/infrastructure/chat/agent/tools/wdl"
 	"github.com/lmtani/pumbaa/internal/infrastructure/chat/llm"

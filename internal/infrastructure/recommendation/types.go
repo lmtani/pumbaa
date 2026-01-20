@@ -4,7 +4,7 @@ import (
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/tool"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // LLMGenerator uses an LLM to generate resource optimization recommendations.

@@ -12,8 +12,8 @@ import (
 	adksession "google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/domain/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/debug/tree"
 )
@@ -92,9 +92,9 @@ type Model struct {
 	optionsModalViewport viewport.Model
 
 	// Call-level modal state
-	callInputsViewport   viewport.Model
-	callOutputsViewport  viewport.Model
-	callCommandViewport  viewport.Model
+	callInputsViewport  viewport.Model
+	callOutputsViewport viewport.Model
+	callCommandViewport viewport.Model
 
 	// Global timeline modal state (shows all tasks with duration)
 	globalTimelineViewport viewport.Model
@@ -105,12 +105,12 @@ type Model struct {
 	resourceError  string
 
 	// Batch logs modal state
-	batchLogsViewport       viewport.Model
-	batchLogsContent        string // Highlighted content for display
-	batchLogsRawContent     string // Raw content for clipboard
-	batchLogsError          string
-	batchLogsLoading        bool
-	batchLogsHScrollOffset  int // Horizontal scroll offset for batch logs modal
+	batchLogsViewport      viewport.Model
+	batchLogsContent       string // Highlighted content for display
+	batchLogsRawContent    string // Raw content for clipboard
+	batchLogsError         string
+	batchLogsLoading       bool
+	batchLogsHScrollOffset int // Horizontal scroll offset for batch logs modal
 
 	// Chat modal state
 	chatDataSelections  ChatDataSelection // User's data selections
@@ -139,9 +139,9 @@ type Model struct {
 	statusCopyContext    string    // What was copied (for better feedback)
 
 	// Infrastructure
-	monitoringUC    *workflowapp.MonitoringUseCase
-	fileProvider    ports.FileProvider
-	batchLogsUC     *workflowapp.GetBatchLogsUseCase
+	monitoringUC *workflowapp.MonitoringUseCase
+	fileProvider ports.FileProvider
+	batchLogsUC  *workflowapp.GetBatchLogsUseCase
 
 	// Pre-computed preemption summary
 	preemption *workflow.PreemptionSummary

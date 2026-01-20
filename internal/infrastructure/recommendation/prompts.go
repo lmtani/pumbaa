@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lmtani/pumbaa/internal/domain/ports"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 const formulaSystemInstruction = `You are an expert in WDL (Workflow Description Language) resource optimization, specializing in deriving resource formulas from execution data.
