@@ -469,6 +469,163 @@
             color: var(--md-sys-color-on-surface-variant);
             font-size: 0.875rem;
         }
+
+        .click-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--md-sys-color-primary);
+            opacity: 0.7;
+            transition: opacity 0.2s, transform 0.2s;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .recommendation-card:hover .click-indicator {
+            opacity: 1;
+            transform: translateX(4px);
+        }
+
+        .click-indicator svg {
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .stat-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card.memory .stat-value {
+            color: #ddbce0;
+        }
+
+        .stat-card.disk .stat-value {
+            color: #a8d5a2;
+        }
+
+        .stat-card.duration .stat-value {
+            color: #ffb74d;
+        }
+
+        .modal-task-summary {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .modal-task-summary .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8125rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .modal-task-summary .summary-item .value {
+            color: var(--md-sys-color-on-surface);
+            font-weight: 500;
+        }
+
+        .efficiency-bars {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 700px) {
+            .efficiency-bars {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .efficiency-bar-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .efficiency-bar-card h4 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .efficiency-bar {
+            height: 8px;
+            background: var(--md-sys-color-surface-container-highest);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .efficiency-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .efficiency-bar-fill.cpu {
+            background: linear-gradient(90deg, #a0c4ff, #6ba3ff);
+        }
+
+        .efficiency-bar-fill.memory {
+            background: linear-gradient(90deg, #ddbce0, #c89bcf);
+        }
+
+        .efficiency-bar-fill.disk {
+            background: linear-gradient(90deg, #a8d5a2, #7bc175);
+        }
+
+        .efficiency-bar-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+        }
+
+        .efficiency-bar-labels .used {
+            color: var(--md-sys-color-on-surface);
+            font-weight: 500;
+        }
+
+        .efficiency-bar-labels .requested {
+            color: var(--md-sys-color-on-surface-variant);
+        }
     </style>
 </head>
 
@@ -624,6 +781,16 @@
                             </template>
                         </ul>
                     </template>
+                    <div class="click-indicator">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"></path>
+                            <path d="M18 9l-5 5-4-4-3 3"></path>
+                        </svg>
+                        <span>Click to view detailed charts and statistics</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
                 </div>
             </template>
         </div>
@@ -632,17 +799,97 @@
             <div class="modal-backdrop" @click.self="closeModal()" @keydown.escape.window="closeModal()">
                 <div class="modal">
                     <div class="modal-header">
-                        <h2 x-text="selectedTask.name"></h2>
+                        <div>
+                            <h2 x-text="selectedTask.name"></h2>
+                            <div class="modal-task-summary">
+                                <div class="summary-item">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="14" width="7" height="7"></rect>
+                                        <rect x="3" y="14" width="7" height="7"></rect>
+                                    </svg>
+                                    <span class="value" x-text="selectedTask.shards.length"></span> shards
+                                </div>
+                                <div class="summary-item">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    Avg: <span class="value" x-text="formatDuration(selectedTask.avgDurationSeconds)"></span>
+                                </div>
+                                <div class="summary-item">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                                    </svg>
+                                    <span class="status-badge" :class="'status-' + selectedTask.efficiency" x-text="selectedTask.efficiencyLabel" style="padding: 2px 8px; font-size: 0.7rem;"></span>
+                                </div>
+                            </div>
+                        </div>
                         <button class="close-btn" @click="closeModal()">&#x2715;</button>
                     </div>
                     <div class="modal-body">
+                        <!-- Statistics Summary -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" x-text="selectedTask.cpuMean.toFixed(1) + '%'"></div>
+                                <div class="stat-label">Avg CPU Usage</div>
+                            </div>
+                            <div class="stat-card memory">
+                                <div class="stat-value" x-text="selectedTask.memoryPeakMB.toFixed(0) + ' MB'"></div>
+                                <div class="stat-label">Peak Memory</div>
+                            </div>
+                            <div class="stat-card disk">
+                                <div class="stat-value" x-text="selectedTask.diskPeakGB.toFixed(2) + ' GB'"></div>
+                                <div class="stat-label">Peak Disk</div>
+                            </div>
+                            <div class="stat-card duration">
+                                <div class="stat-value" x-text="formatDuration(getTaskStats().totalDuration)"></div>
+                                <div class="stat-label">Total Duration</div>
+                            </div>
+                        </div>
+
+                        <!-- Efficiency Bars -->
+                        <div class="efficiency-bars">
+                            <div class="efficiency-bar-card">
+                                <h4>CPU Efficiency</h4>
+                                <div class="efficiency-bar">
+                                    <div class="efficiency-bar-fill cpu" :style="'width: ' + Math.min(selectedTask.cpuMean, 100) + '%'"></div>
+                                </div>
+                                <div class="efficiency-bar-labels">
+                                    <span class="used" x-text="selectedTask.cpuMean.toFixed(1) + '% used'"></span>
+                                    <span class="requested">of allocated</span>
+                                </div>
+                            </div>
+                            <div class="efficiency-bar-card">
+                                <h4>Memory Efficiency</h4>
+                                <div class="efficiency-bar">
+                                    <div class="efficiency-bar-fill memory" :style="'width: ' + Math.min(getTaskStats().memoryEfficiency, 100) + '%'"></div>
+                                </div>
+                                <div class="efficiency-bar-labels">
+                                    <span class="used" x-text="formatBytes(selectedTask.memoryPeakMB * 1024 * 1024)"></span>
+                                    <span class="requested" x-text="'of ' + formatBytes(getTaskStats().maxMemoryRequest)"></span>
+                                </div>
+                            </div>
+                            <div class="efficiency-bar-card">
+                                <h4>Disk Efficiency</h4>
+                                <div class="efficiency-bar">
+                                    <div class="efficiency-bar-fill disk" :style="'width: ' + Math.min(getTaskStats().diskEfficiency, 100) + '%'"></div>
+                                </div>
+                                <div class="efficiency-bar-labels">
+                                    <span class="used" x-text="selectedTask.diskPeakGB.toFixed(2) + ' GB'"></span>
+                                    <span class="requested" x-text="'of ' + (getTaskStats().maxDiskRequest / (1024*1024*1024)).toFixed(0) + ' GB'"></span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="methodology">
                             <strong>Methodology:</strong> CPU shows mean usage during execution. Memory and Disk show
-                            peak
-                            usage.
-                            Percentages are calculated as <code>peak / requested × 100</code>.
+                            peak usage. Percentages are calculated as <code>peak / requested × 100</code>.
                         </div>
-                        <div class="charts-grid">
+
+                        <!-- Charts Grid - now 2x2 -->
+                        <div class="charts-grid" style="grid-template-columns: repeat(2, 1fr);">
                             <div class="chart-card">
                                 <h3>CPU Usage vs Input Size</h3>
                                 <div class="chart-wrapper"><canvas x-ref="cpuChart"></canvas></div>
@@ -655,7 +902,67 @@
                                 <h3>Disk Usage % vs Input Size</h3>
                                 <div class="chart-wrapper"><canvas x-ref="diskChart"></canvas></div>
                             </div>
+                            <div class="chart-card">
+                                <h3>Duration vs Input Size</h3>
+                                <div class="chart-wrapper"><canvas x-ref="durationChart"></canvas></div>
+                            </div>
                         </div>
+
+                        <!-- Min/Max/Avg Statistics Table -->
+                        <div class="shards-section" style="margin-top: 20px;">
+                            <h3>Resource Statistics Summary</h3>
+                            <div class="shards-table-container">
+                                <table class="shards-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Metric</th>
+                                            <th>Min</th>
+                                            <th>Max</th>
+                                            <th>Average</th>
+                                            <th>Median</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>CPU Usage</td>
+                                            <td class="mono" x-text="getTaskStats().cpuMin.toFixed(1) + '%'"></td>
+                                            <td class="mono" x-text="getTaskStats().cpuMax.toFixed(1) + '%'"></td>
+                                            <td class="mono" x-text="getTaskStats().cpuAvg.toFixed(1) + '%'"></td>
+                                            <td class="mono" x-text="getTaskStats().cpuMedian.toFixed(1) + '%'"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Memory Peak</td>
+                                            <td class="mono" x-text="getTaskStats().memMin.toFixed(0) + ' MB'"></td>
+                                            <td class="mono" x-text="getTaskStats().memMax.toFixed(0) + ' MB'"></td>
+                                            <td class="mono" x-text="getTaskStats().memAvg.toFixed(0) + ' MB'"></td>
+                                            <td class="mono" x-text="getTaskStats().memMedian.toFixed(0) + ' MB'"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Disk Peak</td>
+                                            <td class="mono" x-text="(getTaskStats().diskMin / (1024*1024*1024)).toFixed(2) + ' GB'"></td>
+                                            <td class="mono" x-text="(getTaskStats().diskMax / (1024*1024*1024)).toFixed(2) + ' GB'"></td>
+                                            <td class="mono" x-text="(getTaskStats().diskAvg / (1024*1024*1024)).toFixed(2) + ' GB'"></td>
+                                            <td class="mono" x-text="(getTaskStats().diskMedian / (1024*1024*1024)).toFixed(2) + ' GB'"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Duration</td>
+                                            <td class="mono" x-text="formatDuration(getTaskStats().durationMin)"></td>
+                                            <td class="mono" x-text="formatDuration(getTaskStats().durationMax)"></td>
+                                            <td class="mono" x-text="formatDuration(getTaskStats().durationAvg)"></td>
+                                            <td class="mono" x-text="formatDuration(getTaskStats().durationMedian)"></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Input Size</td>
+                                            <td class="mono" x-text="formatBytes(getTaskStats().inputMin)"></td>
+                                            <td class="mono" x-text="formatBytes(getTaskStats().inputMax)"></td>
+                                            <td class="mono" x-text="formatBytes(getTaskStats().inputAvg)"></td>
+                                            <td class="mono" x-text="formatBytes(getTaskStats().inputMedian)"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <div class="shards-section">
                             <h3>Shard Details (<span x-text="selectedTask.shards.length"></span> shards)</h3>
                             <div class="shards-table-container">
@@ -848,6 +1155,69 @@
                         return hours + 'h ' + mins + 'm';
                     },
 
+                    getTaskStats: function () {
+                        if (!this.selectedTask || !this.selectedTask.shards || this.selectedTask.shards.length === 0) {
+                            return {
+                                cpuMin: 0, cpuMax: 0, cpuAvg: 0, cpuMedian: 0,
+                                memMin: 0, memMax: 0, memAvg: 0, memMedian: 0,
+                                diskMin: 0, diskMax: 0, diskAvg: 0, diskMedian: 0,
+                                durationMin: 0, durationMax: 0, durationAvg: 0, durationMedian: 0,
+                                inputMin: 0, inputMax: 0, inputAvg: 0, inputMedian: 0,
+                                totalDuration: 0, memoryEfficiency: 0, diskEfficiency: 0,
+                                maxMemoryRequest: 0, maxDiskRequest: 0
+                            };
+                        }
+                        var shards = this.selectedTask.shards;
+                        var cpuValues = shards.map(function (s) { return s.cpuMean; }).sort(function (a, b) { return a - b; });
+                        var memValues = shards.map(function (s) { return s.memoryPeakMB; }).sort(function (a, b) { return a - b; });
+                        var diskValues = shards.map(function (s) { return s.diskPeakBytes; }).sort(function (a, b) { return a - b; });
+                        var durationValues = shards.map(function (s) { return s.durationSeconds || 0; }).sort(function (a, b) { return a - b; });
+                        var inputValues = shards.map(function (s) { return s.totalInputBytes || 0; }).sort(function (a, b) { return a - b; });
+
+                        function median(arr) {
+                            if (arr.length === 0) return 0;
+                            var mid = Math.floor(arr.length / 2);
+                            return arr.length % 2 !== 0 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+                        }
+                        function avg(arr) {
+                            if (arr.length === 0) return 0;
+                            return arr.reduce(function (a, b) { return a + b; }, 0) / arr.length;
+                        }
+
+                        var maxMemReq = Math.max.apply(null, shards.map(function (s) { return s.memoryRequestBytes || 0; }));
+                        var maxDiskReq = Math.max.apply(null, shards.map(function (s) { return s.diskSizeRequestBytes || 0; }));
+                        var peakMem = this.selectedTask.memoryPeakMB * 1024 * 1024;
+                        var peakDisk = this.selectedTask.diskMax;
+
+                        return {
+                            cpuMin: Math.min.apply(null, cpuValues),
+                            cpuMax: Math.max.apply(null, cpuValues),
+                            cpuAvg: avg(cpuValues),
+                            cpuMedian: median(cpuValues),
+                            memMin: Math.min.apply(null, memValues),
+                            memMax: Math.max.apply(null, memValues),
+                            memAvg: avg(memValues),
+                            memMedian: median(memValues),
+                            diskMin: Math.min.apply(null, diskValues),
+                            diskMax: Math.max.apply(null, diskValues),
+                            diskAvg: avg(diskValues),
+                            diskMedian: median(diskValues),
+                            durationMin: Math.min.apply(null, durationValues),
+                            durationMax: Math.max.apply(null, durationValues),
+                            durationAvg: avg(durationValues),
+                            durationMedian: median(durationValues),
+                            inputMin: Math.min.apply(null, inputValues),
+                            inputMax: Math.max.apply(null, inputValues),
+                            inputAvg: avg(inputValues),
+                            inputMedian: median(inputValues),
+                            totalDuration: durationValues.reduce(function (a, b) { return a + b; }, 0),
+                            memoryEfficiency: maxMemReq > 0 ? (peakMem / maxMemReq) * 100 : 0,
+                            diskEfficiency: maxDiskReq > 0 ? (peakDisk / maxDiskReq) * 100 : 0,
+                            maxMemoryRequest: maxMemReq,
+                            maxDiskRequest: maxDiskReq
+                        };
+                    },
+
                     openModal: function (task) {
                         var self = this;
                         this.selectedTask = task;
@@ -913,6 +1283,19 @@
                                     }]
                                 },
                                 options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Disk Usage %', color: '#8d9199' } } } })
+                            }));
+                        }
+                        if (this.$refs.durationChart) {
+                            this.charts.push(new Chart(this.$refs.durationChart, {
+                                type: 'scatter',
+                                data: {
+                                    datasets: [{
+                                        data: shards.map(function (s) {
+                                            return { x: s.totalInputBytes / (1024 * 1024 * 1024), y: (s.durationSeconds || 0) / 60 };
+                                        }), backgroundColor: '#ffb74d', pointRadius: 6, pointHoverRadius: 8
+                                    }]
+                                },
+                                options: Object.assign({}, commonOptions, { scales: { x: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Input (GB)', color: '#8d9199' } }, y: { grid: { color: 'rgba(67, 71, 78, 0.5)' }, ticks: { color: '#8d9199' }, title: { display: true, text: 'Duration (min)', color: '#8d9199' } } } })
                             }));
                         }
                     }
