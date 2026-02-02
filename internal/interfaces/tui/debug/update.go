@@ -262,9 +262,6 @@ func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
-	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
-
 	case key.Matches(msg, m.keys.Help):
 		if m.activeModal == ModalHelp {
 			m.activeModal = ModalNone

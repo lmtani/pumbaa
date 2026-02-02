@@ -151,6 +151,11 @@ func (m *Model) SetCurrentVersion(v string) {
 	m.currentVersion = v
 }
 
+// HasActiveModal returns true if there's an active modal being displayed.
+func (m *Model) HasActiveModal() bool {
+	return m.showFilter || m.showConfirm || m.showLabelsModal
+}
+
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd

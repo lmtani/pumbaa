@@ -57,8 +57,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("tab", "switch panel"),
 		),
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "quit"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),

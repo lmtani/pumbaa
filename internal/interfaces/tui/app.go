@@ -52,6 +52,7 @@ type NavigateToDashboardMsg struct{}
 type AppModel struct {
 	currentScreen  Screen
 	previousScreen Screen
+	startScreen    Screen // The screen we started on (for determining if ESC should quit or go back)
 	dashboard      dashboard.Model
 	debug          debug.Model
 	chat           *chat.Model
@@ -64,12 +65,16 @@ type AppModel struct {
 	lastWorkflow        *workflow.Workflow
 	lastChatInstruction string
 	lastChatSummary     string
+
+	// Quit confirmation modal
+	showQuitConfirm bool
 }
 
 // NewAppModel creates a new app model with the given dependencies.
-func NewAppModel(deps *Dependencies, startScreen Screen) AppModel {
+func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	m := AppModel{
-		currentScreen: startScreen,
+		currentScreen: initialScreen,
+		startScreen:   initialScreen,
 		globalKeys:    common.DefaultGlobalKeys(),
 		deps:          deps,
 	}
@@ -89,6 +94,7 @@ func NewAppModel(deps *Dependencies, startScreen Screen) AppModel {
 func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel {
 	m := AppModel{
 		currentScreen: ScreenDebug,
+		startScreen:   ScreenDebug,
 		globalKeys:    common.DefaultGlobalKeys(),
 		deps:          deps,
 		lastWorkflow:  wf,
@@ -103,6 +109,9 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 		deps.BatchLogsUC,
 		convertChatDeps(deps.ChatDeps),
 	)
+
+	// Since we're starting directly on debug, ESC should quit, not go back
+	m.debug.SetCanGoBack(false)
 
 	return m
 }
@@ -132,9 +141,20 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateCurrentScreen(msg)
 
 	case tea.KeyMsg:
-		// Global quit
+		// Handle quit confirmation modal first
+		if m.showQuitConfirm {
+			return m.handleQuitConfirmKeys(msg)
+		}
+
+		// Ctrl+C shows quit confirmation
 		if key.Matches(msg, m.globalKeys.Quit) {
-			return m, tea.Quit
+			m.showQuitConfirm = true
+			return m, nil
+		}
+
+		// ESC handling: delegate to screen first, then handle back navigation
+		if msg.Type == tea.KeyEsc {
+			return m.handleEscapeKey()
 		}
 
 	// Handle navigation messages
@@ -333,8 +353,89 @@ func (m AppModel) updateCurrentScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleQuitConfirmKeys handles key presses when quit confirmation modal is shown.
+func (m AppModel) handleQuitConfirmKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y", "Y":
+		return m, tea.Quit
+	case "n", "N", "esc":
+		m.showQuitConfirm = false
+	}
+	return m, nil
+}
+
+// handleEscapeKey handles ESC key press with the new navigation flow.
+func (m AppModel) handleEscapeKey() (tea.Model, tea.Cmd) {
+	// Check if current screen has a modal open or can handle ESC internally
+	switch m.currentScreen {
+	case ScreenDebug:
+		// Check if debug has a modal open
+		if m.debug.HasActiveModal() {
+			// Let debug handle it
+			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
+		}
+		// If debug is in search mode, let it handle to exit search
+		if m.debug.IsSearchActive() {
+			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
+		}
+		// If debug is in a non-tree view mode, let it handle to return to tree view
+		if m.debug.GetViewMode() != debug.ViewModeTree {
+			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
+		}
+		// If we started on debug, show quit confirmation (no dashboard to go back to)
+		if m.startScreen == ScreenDebug {
+			m.showQuitConfirm = true
+			return m, nil
+		}
+		// Otherwise, go back to dashboard
+		return m.navigateToDashboard()
+
+	case ScreenChat:
+		if m.chat != nil {
+			// If chat has a modal, let it handle
+			if m.chat.HasActiveModal() {
+				return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
+			}
+			// If in FocusInput, switch to FocusMessages
+			if m.chat.GetFocusMode() == chat.FocusInput {
+				m.chat.SetFocusMode(chat.FocusMessages)
+				return m, nil
+			}
+			// If we started on chat, show quit confirmation
+			if m.startScreen == ScreenChat {
+				m.showQuitConfirm = true
+				return m, nil
+			}
+			// In FocusMessages, go back
+			return m.navigateBack()
+		}
+		// If we started on chat, show quit confirmation
+		if m.startScreen == ScreenChat {
+			m.showQuitConfirm = true
+			return m, nil
+		}
+		return m.navigateBack()
+
+	case ScreenDashboard:
+		// If dashboard has a modal open, let it handle ESC
+		if m.dashboard.HasActiveModal() {
+			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
+		}
+		// Dashboard is root - show quit confirmation
+		m.showQuitConfirm = true
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // View implements tea.Model.
 func (m AppModel) View() string {
+	// Show quit confirmation modal if active
+	if m.showQuitConfirm {
+		return m.renderWithQuitModal()
+	}
+
 	switch m.currentScreen {
 	case ScreenDashboard:
 		return m.dashboard.View()
@@ -346,6 +447,50 @@ func (m AppModel) View() string {
 		}
 	}
 	return ""
+}
+
+// renderWithQuitModal renders the current screen with a quit confirmation modal overlay.
+func (m AppModel) renderWithQuitModal() string {
+	// Get the background (current screen)
+	var bg string
+	switch m.currentScreen {
+	case ScreenDashboard:
+		bg = m.dashboard.View()
+	case ScreenDebug:
+		bg = m.debug.View()
+	case ScreenChat:
+		if m.chat != nil {
+			bg = m.chat.View()
+		}
+	}
+
+	// Create the modal
+	modalContent := common.TitleStyle.Render("Quit Pumbaa?") + "\n\n" +
+		"Are you sure you want to exit?\n\n" +
+		common.KeyStyle.Render("[Y]") + " " + common.DescStyle.Render("Yes, quit") + "    " +
+		common.KeyStyle.Render("[N]") + " " + common.DescStyle.Render("No, stay")
+
+	modal := common.ModalStyle.
+		Width(40).
+		Render(modalContent)
+
+	// Center the modal
+	modalWidth := 44  // modal width + border
+	modalHeight := 7  // approximate modal height
+
+	// Calculate position
+	x := (m.width - modalWidth) / 2
+	y := (m.height - modalHeight) / 2
+
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+
+	// Place modal on top of background
+	return common.PlaceOverlay(x, y, modal, bg)
 }
 
 // convertChatDeps converts tui.ChatDependencies to debug.ChatDependencies.

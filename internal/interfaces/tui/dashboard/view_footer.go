@@ -75,7 +75,7 @@ func (m Model) renderFooter() string {
 		common.DescStyle.Render("status"),
 		common.KeyStyle.Render("r"),
 		common.DescStyle.Render("refresh"),
-		common.KeyStyle.Render("q"),
+		common.KeyStyle.Render("esc"),
 		common.DescStyle.Render("quit"),
 	)
 	parts = append(parts, help)

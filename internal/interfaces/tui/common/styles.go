@@ -183,7 +183,20 @@ func RenderBreadcrumbs(screens []Screen) string {
 // RenderNavHints renders navigation hints for the current screen.
 func RenderNavHints(canGoBack bool) string {
 	if canGoBack {
-		return NavHintStyle.Render("[ESC] back  [q] quit")
+		return NavHintStyle.Render("[ESC] back  [ctrl+c] quit")
 	}
-	return NavHintStyle.Render("[q] quit")
+	return NavHintStyle.Render("[ESC] quit  [ctrl+c] quit")
+}
+
+// PlaceOverlay places a modal string centered on top of a background string.
+func PlaceOverlay(_, _ int, modal, background string) string {
+	return lipgloss.Place(
+		lipgloss.Width(background),
+		lipgloss.Height(background),
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceForeground(lipgloss.Color("0")),
+	)
 }

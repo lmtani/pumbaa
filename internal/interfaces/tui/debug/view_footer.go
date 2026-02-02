@@ -95,7 +95,15 @@ func (m Model) renderFooterHints() string {
 		hints = append(hints, renderFooterHint("ctrl+x", "clear"))
 	}
 
-	hints = append(hints, renderFooterHint("?", "help"), renderFooterHint("esc", "back"), renderFooterHint("q", "quit"))
+	hints = append(hints, renderFooterHint("?", "help"))
+
+	// Show "back" or "quit" depending on whether we can go back
+	if m.canGoBack {
+		hints = append(hints, renderFooterHint("esc", "back"))
+	} else {
+		hints = append(hints, renderFooterHint("esc", "quit"))
+	}
+
 	return strings.Join(hints, "  ")
 }
 

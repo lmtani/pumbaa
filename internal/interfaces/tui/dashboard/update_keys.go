@@ -13,10 +13,6 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch {
-	case key.Matches(msg, m.globalKeys.Quit):
-		m.ShouldQuit = true
-		return m, tea.Quit
-
 	case key.Matches(msg, m.keys.Up):
 		if m.cursor > 0 {
 			m.cursor--

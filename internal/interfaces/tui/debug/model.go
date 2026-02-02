@@ -127,6 +127,7 @@ type Model struct {
 	NavigateToChatContextSummary    string  // Deprecated: use pendingNavigation
 	pendingNavigation               tea.Cmd // Pending navigation command for parent
 	wantsToGoBack                   bool    // True when user wants to go back to previous screen
+	canGoBack                       bool    // True if ESC should go back, false if ESC should quit
 
 	// Components
 	keys           KeyMap
@@ -192,6 +193,7 @@ func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetch
 		detailViewport:     viewport.New(80, 20),
 		loadingSpinner:     s,
 		chatDataSelections: DefaultChatDataSelection(),
+		canGoBack:          true, // Default to true, AppModel will set to false if started directly
 	}
 
 	// Add chat dependencies if provided
@@ -246,4 +248,29 @@ func (m *Model) SetPendingChatNavigation(systemInstruction, contextSummary strin
 			ContextSummary:    contextSummary,
 		}
 	}
+}
+
+// HasActiveModal returns true if there's an active modal being displayed.
+func (m *Model) HasActiveModal() bool {
+	return m.activeModal != ModalNone
+}
+
+// GetViewMode returns the current view mode.
+func (m *Model) GetViewMode() ViewMode {
+	return m.viewMode
+}
+
+// IsSearchActive returns true if search mode is active.
+func (m *Model) IsSearchActive() bool {
+	return m.searchActive
+}
+
+// SetCanGoBack sets whether ESC should show "back" or "quit" in the footer.
+func (m *Model) SetCanGoBack(canGoBack bool) {
+	m.canGoBack = canGoBack
+}
+
+// CanGoBack returns whether ESC should go back or quit.
+func (m *Model) CanGoBack() bool {
+	return m.canGoBack
 }

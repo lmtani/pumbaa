@@ -309,6 +309,32 @@ func (m *Model) ShouldQuit() bool {
 	return m.wantsToQuit
 }
 
+// HasActiveModal returns true if there's an active modal being displayed.
+func (m *Model) HasActiveModal() bool {
+	return m.activeModal != ModalNone
+}
+
+// GetFocusMode returns the current focus mode.
+func (m *Model) GetFocusMode() FocusMode {
+	return m.focusMode
+}
+
+// SetFocusMode sets the focus mode and updates UI state accordingly.
+func (m *Model) SetFocusMode(mode FocusMode) {
+	m.focusMode = mode
+	if mode == FocusInput {
+		m.selectedMsg = -1
+		m.textarea.Focus()
+	} else {
+		m.textarea.Blur()
+		// Select last message if none selected
+		if m.selectedMsg < 0 && m.msgs != nil && len(*m.msgs) > 0 {
+			m.selectedMsg = len(*m.msgs) - 1
+		}
+	}
+	m.viewport.SetContent(m.renderMessages())
+}
+
 func (m *Model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, tea.EnterAltScreen)
 }
@@ -355,31 +381,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
-		case tea.KeyCtrlX:
-			// Ctrl+X always exits the chat, works even when textarea has focus
-			m.wantsToGoBack = true
-			if m.standalone {
+		case tea.KeyEsc:
+			// In standalone mode, ESC in FocusMessages triggers back
+			// In embedded mode, AppModel handles this
+			if m.standalone && m.focusMode == FocusMessages {
+				m.wantsToGoBack = true
 				return m, tea.Quit
 			}
-			return m, nil
-
-		case tea.KeyEsc:
-			// Esc only works in messages mode (when textarea is blurred)
-			if m.focusMode == FocusMessages {
-				m.wantsToGoBack = true
-				return m, nil
-			}
+			// ESC is now handled by AppModel for navigation
 
 		case tea.KeyRunes:
-			// Handle 'q' to quit/back when not in text input mode
-			if len(msg.Runes) > 0 && msg.Runes[0] == 'q' && m.focusMode == FocusMessages {
-				if m.standalone {
-					m.wantsToQuit = true
-				} else {
-					m.wantsToGoBack = true
-				}
-				return m, nil
-			}
 			// Handle 'y' for copy when in messages mode
 			if len(msg.Runes) > 0 && msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
 				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
@@ -732,25 +743,24 @@ func (m *Model) scrollToSelectedMsg() {
 }
 
 func (m Model) renderFooter() string {
+	// Determine if ESC should show "back" or "quit"
+	escAction := "back"
+	if m.standalone {
+		escAction = "quit"
+	}
+
 	var help string
 	if m.focusMode == FocusMessages {
-		// Show 'q' as quit only in standalone mode, otherwise as back
-		qAction := "back"
-		if m.standalone {
-			qAction = "quit"
-		}
 		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s  %s %s",
+			"%s %s  %s %s  %s %s  %s %s",
 			common.KeyStyle.Render("↑↓"),
 			common.DescStyle.Render("navigate"),
 			common.KeyStyle.Render("y"),
 			common.DescStyle.Render("copy"),
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("type"),
-			common.KeyStyle.Render("ctrl+x"),
-			common.DescStyle.Render("exit"),
-			common.KeyStyle.Render("q"),
-			common.DescStyle.Render(qAction),
+			common.KeyStyle.Render("esc"),
+			common.DescStyle.Render(escAction),
 		)
 	} else {
 		help = fmt.Sprintf(
@@ -763,8 +773,8 @@ func (m Model) renderFooter() string {
 			common.DescStyle.Render("scroll"),
 			common.KeyStyle.Render("tab"),
 			common.DescStyle.Render("navigate msgs"),
-			common.KeyStyle.Render("ctrl+x"),
-			common.DescStyle.Render("exit"),
+			common.KeyStyle.Render("esc"),
+			common.DescStyle.Render(escAction),
 		)
 	}
 
