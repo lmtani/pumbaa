@@ -8,6 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // Presenter handles terminal output formatting.
@@ -60,19 +61,21 @@ func (p *Presenter) KeyValue(key string, value interface{}) {
 
 // NewTable creates a new table writer.
 func (p *Presenter) NewTable(headers []string) *tablewriter.Table {
-	table := tablewriter.NewWriter(p.out)
-	table.SetHeader(headers)
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetCenterSeparator("")
-	table.SetColumnSeparator("")
-	table.SetRowSeparator("")
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("  ")
-	table.SetNoWhiteSpace(true)
+	table := tablewriter.NewTable(p.out,
+		tablewriter.WithHeader(headers),
+		tablewriter.WithHeaderAutoFormat(tw.On),
+		tablewriter.WithHeaderAlignment(tw.AlignLeft),
+		tablewriter.WithRowAutoWrap(tw.WrapNone),
+		tablewriter.WithRowAlignment(tw.AlignLeft),
+		tablewriter.WithTrimSpace(tw.On),
+		tablewriter.WithRendition(tw.Rendition{
+			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			Settings: tw.Settings{
+				Separators: tw.Separators{BetweenRows: tw.Off, BetweenColumns: tw.Off},
+				Lines:      tw.Lines{ShowHeaderLine: tw.Off},
+			},
+		}),
+	)
 	return table
 }
 
