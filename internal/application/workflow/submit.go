@@ -6,6 +6,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/pkg/wdl"
 )
 
 // SubmitUseCase handles workflow submission.
@@ -68,6 +69,10 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		if err != nil {
 			return nil, application.NewUseCaseError("submit", "failed to read dependencies file", err)
 		}
+	}
+
+	if err := wdl.ValidateInputs(workflowSource, inputsData); err != nil {
+		return nil, application.NewInputValidationError("workflowInputs", err.Error())
 	}
 
 	req := workflow2.SubmitRequest{

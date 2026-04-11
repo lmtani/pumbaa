@@ -204,3 +204,89 @@ func TestSubmitUseCase_Execute_SubmitError(t *testing.T) {
 		t.Errorf("expected operation submit, got %s", ucErr.Operation)
 	}
 }
+
+func TestSubmitUseCase_Execute_MissingRequiredInputs(t *testing.T) {
+	wdlContent := `version 1.0
+workflow Hello {
+    input {
+        String name
+        File reference
+        String? optional_param
+    }
+}
+`
+	repo := &mockWorkflowRepository{}
+	fp := &mockFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			switch path {
+			case "hello.wdl":
+				return []byte(wdlContent), nil
+			case "inputs.json":
+				return []byte(`{"Hello.name": "world"}`), nil
+			default:
+				return nil, errors.New("unexpected path")
+			}
+		},
+	}
+	uc := NewSubmitUseCase(repo, fp)
+
+	input := SubmitInput{
+		WorkflowFile: "hello.wdl",
+		InputsFile:   "inputs.json",
+	}
+	_, err := uc.Execute(context.Background(), input)
+	if err == nil {
+		t.Fatal("expected error for missing required inputs, got nil")
+	}
+	if !errors.Is(err, application.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got %v", err)
+	}
+	var inputErr *application.InputValidationError
+	if !errors.As(err, &inputErr) {
+		t.Fatalf("expected InputValidationError, got %T", err)
+	}
+	if inputErr.Field != "workflowInputs" {
+		t.Errorf("expected field workflowInputs, got %s", inputErr.Field)
+	}
+}
+
+func TestSubmitUseCase_Execute_AllRequiredInputsProvided(t *testing.T) {
+	wdlContent := `version 1.0
+workflow Hello {
+    input {
+        String name
+        String? optional_param
+    }
+}
+`
+	repo := &mockWorkflowRepository{
+		submitFunc: func(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error) {
+			return &workflow.SubmitResponse{ID: "wf-123", Status: workflow.StatusSubmitted}, nil
+		},
+	}
+	fp := &mockFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			switch path {
+			case "hello.wdl":
+				return []byte(wdlContent), nil
+			case "inputs.json":
+				return []byte(`{"Hello.name": "world"}`), nil
+			default:
+				return nil, errors.New("unexpected path")
+			}
+		},
+	}
+	uc := NewSubmitUseCase(repo, fp)
+
+	input := SubmitInput{
+		WorkflowFile: "hello.wdl",
+		InputsFile:   "inputs.json",
+	}
+	output, err := uc.Execute(context.Background(), input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output.WorkflowID != "wf-123" {
+		t.Errorf("expected WorkflowID wf-123, got %s", output.WorkflowID)
+	}
+}
