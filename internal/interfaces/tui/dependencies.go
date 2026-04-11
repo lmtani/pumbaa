@@ -14,9 +14,8 @@ import (
 // This centralizes dependency injection and eliminates duplication across handlers.
 type Dependencies struct {
 	// Core infrastructure
-	Repository     ports.WorkflowRepository
-	FileProvider   ports.FileProvider
-	MetadataParser ports.MetadataParser
+	Repository   ports.WorkflowRepository
+	FileProvider ports.FileProvider
 
 	// App info
 	CurrentVersion string

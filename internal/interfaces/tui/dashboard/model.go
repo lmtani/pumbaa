@@ -37,7 +37,8 @@ type Model struct {
 	scrollY     int
 	keys        KeyMap
 	globalKeys  common.GlobalKeys
-	fetcher     ports.WorkflowQuerier
+	querier     ports.WorkflowQuerier
+	aborter     ports.WorkflowAborter
 	loading     bool
 	spinner     spinner.Model
 	error       string
@@ -63,7 +64,6 @@ type Model struct {
 	loadingDebug       bool
 	loadingDebugID     string
 	metadataFetcher    ports.WorkflowMetadataFetcher
-	metadataParser     ports.MetadataParser
 	DebugMetadataReady []byte // Deprecated: metadata ready for debug view
 
 	// Health status
@@ -118,10 +118,11 @@ func NewModel() Model {
 	}
 }
 
-// NewModelWithFetcher creates a new dashboard model with a workflow fetcher.
-func NewModelWithFetcher(fetcher ports.WorkflowQuerier) Model {
+// NewModelWithDeps creates a new dashboard model with query and abort capabilities.
+func NewModelWithDeps(querier ports.WorkflowQuerier, aborter ports.WorkflowAborter) Model {
 	m := NewModel()
-	m.fetcher = fetcher
+	m.querier = querier
+	m.aborter = aborter
 	m.loading = true
 	return m
 }
@@ -141,11 +142,6 @@ func (m *Model) SetLabelManager(manager ports.LabelManager) {
 	m.labelManager = manager
 }
 
-// SetMetadataParser sets the metadata parser for debug transitions
-func (m *Model) SetMetadataParser(parser ports.MetadataParser) {
-	m.metadataParser = parser
-}
-
 // SetCurrentVersion sets the current version for version checking
 func (m *Model) SetCurrentVersion(v string) {
 	m.currentVersion = v
@@ -160,7 +156,7 @@ func (m *Model) HasActiveModal() bool {
 func (m Model) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
-	if m.fetcher != nil {
+	if m.querier != nil {
 		cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 	}
 
@@ -228,8 +224,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingDebug = false
 		m.loadingDebugID = ""
 		// Parse metadata and set up navigation
-		if m.metadataParser != nil {
-			wf, err := m.metadataParser.ParseMetadata(msg.metadata)
+		if m.metadataFetcher != nil {
+			wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
 			if err != nil {
 				m.statusMsg = fmt.Sprintf("✗ Failed to parse metadata: %v", err)
 				m.LastError = err

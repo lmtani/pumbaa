@@ -9,11 +9,11 @@ import (
 
 // StatusHandler handles the "status" action to get workflow status.
 type StatusHandler struct {
-	repo ports.WorkflowRepository
+	repo ports.WorkflowReader
 }
 
 // NewStatusHandler creates a new StatusHandler.
-func NewStatusHandler(repo ports.WorkflowRepository) *StatusHandler {
+func NewStatusHandler(repo ports.WorkflowReader) *StatusHandler {
 	return &StatusHandler{repo: repo}
 }
 

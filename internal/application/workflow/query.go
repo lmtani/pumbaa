@@ -10,11 +10,11 @@ import (
 
 // QueryUseCase handles workflow queries.
 type QueryUseCase struct {
-	queryer ports.WorkflowQueryer
+	queryer ports.WorkflowQuerier
 }
 
 // NewQueryUseCase creates a new query use case.
-func NewQueryUseCase(queryer ports.WorkflowQueryer) *QueryUseCase {
+func NewQueryUseCase(queryer ports.WorkflowQuerier) *QueryUseCase {
 	return &QueryUseCase{queryer: queryer}
 }
 

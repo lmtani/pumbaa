@@ -112,12 +112,12 @@ Use **only** to understand or explain WDL definitions.
 `
 
 type ChatHandler struct {
-	repository ports.WorkflowRepository
+	repository ports.WorkflowReader
 	config     *config.Config
 	telemetry  telemetry.Service
 }
 
-func NewChatHandler(repo ports.WorkflowRepository, cfg *config.Config, ts telemetry.Service) *ChatHandler {
+func NewChatHandler(repo ports.WorkflowReader, cfg *config.Config, ts telemetry.Service) *ChatHandler {
 	return &ChatHandler{repository: repo, config: cfg, telemetry: ts}
 }
 

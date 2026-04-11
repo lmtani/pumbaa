@@ -11,11 +11,11 @@ import (
 
 // QueryHandler handles the "query" action to search Cromwell workflows.
 type QueryHandler struct {
-	repo ports.WorkflowRepository
+	repo ports.WorkflowReader
 }
 
 // NewQueryHandler creates a new QueryHandler.
-func NewQueryHandler(repo ports.WorkflowRepository) *QueryHandler {
+func NewQueryHandler(repo ports.WorkflowReader) *QueryHandler {
 	return &QueryHandler{repo: repo}
 }
 

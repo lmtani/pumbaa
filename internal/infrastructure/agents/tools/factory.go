@@ -16,7 +16,7 @@ import (
 
 // NewDefaultRegistry creates a Registry with all default handlers registered.
 // wdlRepo can be nil if WDL indexing is not configured.
-func NewDefaultRegistry(repo ports.WorkflowRepository, wdlRepo wdl.Repository) *Registry {
+func NewDefaultRegistry(repo ports.WorkflowReader, wdlRepo wdl.Repository) *Registry {
 	r := NewRegistry()
 
 	// Cromwell actions
@@ -75,7 +75,7 @@ func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
 // GetAllTools returns all available tools in this package.
 // repo is the workflow repository for API interactions.
 // wdlRepo is the WDL index repository (can be nil if not configured).
-func GetAllTools(repo ports.WorkflowRepository, wdlRepo wdl.Repository) []tool.Tool {
+func GetAllTools(repo ports.WorkflowReader, wdlRepo wdl.Repository) []tool.Tool {
 	registry := NewDefaultRegistry(repo, wdlRepo)
 	return []tool.Tool{
 		GetPumbaaTool(registry),

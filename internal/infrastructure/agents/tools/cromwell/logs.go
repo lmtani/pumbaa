@@ -9,11 +9,11 @@ import (
 
 // LogsHandler handles the "logs" action to get workflow log file paths.
 type LogsHandler struct {
-	repo ports.WorkflowRepository
+	repo ports.WorkflowReader
 }
 
 // NewLogsHandler creates a new LogsHandler.
-func NewLogsHandler(repo ports.WorkflowRepository) *LogsHandler {
+func NewLogsHandler(repo ports.WorkflowReader) *LogsHandler {
 	return &LogsHandler{repo: repo}
 }
 

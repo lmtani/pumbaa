@@ -19,13 +19,12 @@ import (
 
 // DebugHandler handles workflow debug TUI commands.
 type DebugHandler struct {
-	repository     ports.WorkflowRepository
-	telemetry      telemetry.Service
-	monitoringUC   *workflowapp.MonitoringUseCase
-	fileProvider   ports.FileProvider
-	metadataParser ports.MetadataParser
-	batchLogsUC    *workflowapp.GetBatchLogsUseCase
-	config         *config.Config
+	repository   ports.WorkflowRepository
+	telemetry    telemetry.Service
+	monitoringUC *workflowapp.MonitoringUseCase
+	fileProvider ports.FileProvider
+	batchLogsUC  *workflowapp.GetBatchLogsUseCase
+	config       *config.Config
 }
 
 // NewDebugHandler creates a new debug handler.
@@ -34,18 +33,16 @@ func NewDebugHandler(
 	ts telemetry.Service,
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
-	mp ports.MetadataParser,
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cfg *config.Config,
 ) *DebugHandler {
 	return &DebugHandler{
-		repository:     client,
-		telemetry:      ts,
-		monitoringUC:   muc,
-		fileProvider:   fp,
-		metadataParser: mp,
-		batchLogsUC:    bluc,
-		config:         cfg,
+		repository:   client,
+		telemetry:    ts,
+		monitoringUC: muc,
+		fileProvider: fp,
+		batchLogsUC:  bluc,
+		config:       cfg,
 	}
 }
 
@@ -131,8 +128,8 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 		}
 	}
 
-	// Parse metadata using injected parser
-	wf, err := h.metadataParser.ParseMetadata(metadataBytes)
+	// Parse metadata
+	wf, err := h.repository.ParseMetadata(metadataBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse metadata: %w", err)
 	}
@@ -157,11 +154,10 @@ func (h *DebugHandler) handle(c *cli.Context) error {
 // createDependencies creates the shared dependencies for the TUI.
 func (h *DebugHandler) createDependencies() *tui.Dependencies {
 	deps := &tui.Dependencies{
-		Repository:     h.repository,
-		FileProvider:   h.fileProvider,
-		MetadataParser: h.metadataParser,
-		MonitoringUC:   h.monitoringUC,
-		BatchLogsUC:    h.batchLogsUC,
+		Repository:   h.repository,
+		FileProvider: h.fileProvider,
+		MonitoringUC: h.monitoringUC,
+		BatchLogsUC:  h.batchLogsUC,
 	}
 
 	// Initialize chat dependencies if LLM is configured

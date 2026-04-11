@@ -28,8 +28,8 @@ func (m Model) checkVersion() tea.Cmd {
 // fetchWorkflows fetches workflows with applied filters and returns a message.
 func (m Model) fetchWorkflows() tea.Cmd {
 	return func() tea.Msg {
-		if m.fetcher == nil {
-			return workflowsErrorMsg{err: fmt.Errorf("no fetcher configured")}
+		if m.querier == nil {
+			return workflowsErrorMsg{err: fmt.Errorf("no querier configured")}
 		}
 
 		filter := workflow.QueryFilter{
@@ -49,7 +49,7 @@ func (m Model) fetchWorkflows() tea.Cmd {
 			}
 		}
 
-		result, err := m.fetcher.Query(context.Background(), filter)
+		result, err := m.querier.Query(context.Background(), filter)
 		if err != nil {
 			return workflowsErrorMsg{err: err}
 		}
@@ -69,11 +69,11 @@ func (m Model) fetchWorkflows() tea.Cmd {
 // abortWorkflow aborts a workflow and returns a message.
 func (m Model) abortWorkflow(id string) tea.Cmd {
 	return func() tea.Msg {
-		if m.fetcher == nil {
-			return abortResultMsg{success: false, id: id, err: fmt.Errorf("no fetcher configured")}
+		if m.aborter == nil {
+			return abortResultMsg{success: false, id: id, err: fmt.Errorf("no aborter configured")}
 		}
 
-		err := m.fetcher.Abort(context.Background(), id)
+		err := m.aborter.Abort(context.Background(), id)
 		if err != nil {
 			return abortResultMsg{success: false, id: id, err: err}
 		}

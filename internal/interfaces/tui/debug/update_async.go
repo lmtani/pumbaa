@@ -26,7 +26,7 @@ func (m Model) fetchSubWorkflowMetadata(node *TreeNode) tea.Cmd {
 			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
 		}
 
-		metadata, err := m.metadataParser.ParseMetadata(data)
+		metadata, err := m.fetcher.ParseMetadata(data)
 		if err != nil {
 			return subWorkflowErrorMsg{nodeID: nodeID, err: err}
 		}

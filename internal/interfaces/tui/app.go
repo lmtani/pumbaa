@@ -80,11 +80,10 @@ func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	}
 
 	// Initialize dashboard
-	m.dashboard = dashboard.NewModelWithFetcher(deps.Repository)
+	m.dashboard = dashboard.NewModelWithDeps(deps.Repository, deps.Repository)
 	m.dashboard.SetMetadataFetcher(deps.Repository)
 	m.dashboard.SetHealthChecker(deps.Repository)
 	m.dashboard.SetLabelManager(deps.Repository)
-	m.dashboard.SetMetadataParser(deps.MetadataParser)
 	m.dashboard.SetCurrentVersion(deps.CurrentVersion)
 
 	return m
@@ -104,7 +103,6 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 	m.debug = debug.NewModelWithChat(
 		wf,
 		deps.Repository,
-		deps.MetadataParser,
 		deps.MonitoringUC,
 		deps.FileProvider,
 		deps.BatchLogsUC,
@@ -192,7 +190,6 @@ func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
 	m.debug = debug.NewModelWithChat(
 		wf,
 		m.deps.Repository,
-		m.deps.MetadataParser,
 		m.deps.MonitoringUC,
 		m.deps.FileProvider,
 		m.deps.BatchLogsUC,

@@ -19,14 +19,13 @@ import (
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	repository     ports.WorkflowRepository
-	telemetry      telemetry.Service
-	monitoringUC   *workflowapp.MonitoringUseCase
-	fileProvider   ports.FileProvider
-	metadataParser ports.MetadataParser
-	batchLogsUC    *workflowapp.GetBatchLogsUseCase
-	config         *config.Config
-	version        string
+	repository   ports.WorkflowRepository
+	telemetry    telemetry.Service
+	monitoringUC *workflowapp.MonitoringUseCase
+	fileProvider ports.FileProvider
+	batchLogsUC  *workflowapp.GetBatchLogsUseCase
+	config       *config.Config
+	version      string
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -35,20 +34,18 @@ func NewDashboardHandler(
 	ts telemetry.Service,
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
-	mp ports.MetadataParser,
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cfg *config.Config,
 	version string,
 ) *DashboardHandler {
 	return &DashboardHandler{
-		repository:     client,
-		telemetry:      ts,
-		monitoringUC:   muc,
-		fileProvider:   fp,
-		metadataParser: mp,
-		batchLogsUC:    bluc,
-		config:         cfg,
-		version:        version,
+		repository:   client,
+		telemetry:    ts,
+		monitoringUC: muc,
+		fileProvider: fp,
+		batchLogsUC:  bluc,
+		config:       cfg,
+		version:      version,
 	}
 }
 
@@ -113,7 +110,6 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 	deps := &tui.Dependencies{
 		Repository:     h.repository,
 		FileProvider:   h.fileProvider,
-		MetadataParser: h.metadataParser,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
 		CurrentVersion: h.version,

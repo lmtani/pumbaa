@@ -42,7 +42,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.ensureVisible()
 
 	case key.Matches(msg, m.keys.Refresh):
-		if m.fetcher != nil && !m.loading {
+		if m.querier != nil && !m.loading {
 			m.loading = true
 			m.statusMsg = ""
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
@@ -96,14 +96,14 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.activeFilters = FilterState{Status: []workflow.Status{}}
 		m.filterInput.SetValue("")
 		m.filterType = ""
-		if m.fetcher != nil {
+		if m.querier != nil {
 			m.loading = true
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
 
 	case key.Matches(msg, m.keys.StatusFilter):
 		m.cycleStatusFilter()
-		if m.fetcher != nil {
+		if m.querier != nil {
 			m.loading = true
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
@@ -142,7 +142,7 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.activeFilters.Name = m.filterInput.Value()
 		}
-		if m.fetcher != nil {
+		if m.querier != nil {
 			m.loading = true
 			return m, tea.Batch(m.spinner.Tick, m.fetchWorkflows())
 		}
@@ -157,7 +157,7 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleConfirmKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
-		if m.confirmAction == "abort" && m.fetcher != nil {
+		if m.confirmAction == "abort" && m.aborter != nil {
 			return m, m.abortWorkflow(m.confirmID)
 		}
 		m.showConfirm = false

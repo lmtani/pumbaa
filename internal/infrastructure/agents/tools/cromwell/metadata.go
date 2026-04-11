@@ -9,11 +9,11 @@ import (
 
 // MetadataHandler handles the "metadata" action to get workflow metadata.
 type MetadataHandler struct {
-	repo ports.WorkflowRepository
+	repo ports.WorkflowReader
 }
 
 // NewMetadataHandler creates a new MetadataHandler.
-func NewMetadataHandler(repo ports.WorkflowRepository) *MetadataHandler {
+func NewMetadataHandler(repo ports.WorkflowReader) *MetadataHandler {
 	return &MetadataHandler{repo: repo}
 }
 

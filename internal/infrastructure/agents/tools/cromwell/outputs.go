@@ -9,11 +9,11 @@ import (
 
 // OutputsHandler handles the "outputs" action to get workflow output files.
 type OutputsHandler struct {
-	repo ports.WorkflowRepository
+	repo ports.WorkflowReader
 }
 
 // NewOutputsHandler creates a new OutputsHandler.
-func NewOutputsHandler(repo ports.WorkflowRepository) *OutputsHandler {
+func NewOutputsHandler(repo ports.WorkflowReader) *OutputsHandler {
 	return &OutputsHandler{repo: repo}
 }
 
