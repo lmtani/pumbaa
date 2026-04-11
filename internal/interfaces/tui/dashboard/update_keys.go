@@ -1,6 +1,9 @@
 package dashboard
 
 import (
+	"strings"
+	"time"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -45,6 +48,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.querier != nil && !m.loading {
 			m.loading = true
 			m.statusMsg = ""
+			m.statusMessageExpires = time.Time{}
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
 
@@ -65,7 +69,8 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.confirmAction = "abort"
 				m.confirmID = wf.ID
 			} else {
-				m.statusMsg = "Can only abort Running or Submitted workflows"
+				m.setStatusMessage("Can only abort Running or Submitted workflows")
+				cmds = append(cmds, getClearStatusCmd())
 			}
 		}
 
@@ -82,6 +87,14 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filterType = "label"
 		m.filterInput.Placeholder = "key:value or just key..."
 		m.filterInput.SetValue(m.activeFilters.Label)
+		m.filterInput.Focus()
+		return m, textinput.Blink
+
+	case key.Matches(msg, m.keys.GoToUUID):
+		m.showFilter = true
+		m.filterType = "uuid"
+		m.filterInput.Placeholder = "workflow UUID..."
+		m.filterInput.SetValue("")
 		m.filterInput.Focus()
 		return m, textinput.Blink
 
@@ -130,6 +143,15 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEnter:
 		m.showFilter = false
 		m.filterInput.Blur()
+		if m.filterType == "uuid" {
+			uuid := strings.TrimSpace(m.filterInput.Value())
+			if uuid != "" {
+				m.loadingDebug = true
+				m.loadingDebugID = uuid
+				return m, tea.Batch(m.spinner.Tick, m.fetchDebugMetadata(uuid))
+			}
+			return m, nil
+		}
 		if m.filterType == "label" {
 			m.activeFilters.Label = m.filterInput.Value()
 		} else {

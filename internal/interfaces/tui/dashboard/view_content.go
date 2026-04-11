@@ -62,8 +62,11 @@ func (m Model) renderContent() string {
 // renderFilterInput renders the filter input modal.
 func (m Model) renderFilterInput() string {
 	title := "Search by Name"
-	if m.filterType == "label" {
+	switch m.filterType {
+	case "label":
 		title = "Search by Label"
+	case "uuid":
+		title = "Go to Workflow"
 	}
 
 	filterBox := lipgloss.NewStyle().

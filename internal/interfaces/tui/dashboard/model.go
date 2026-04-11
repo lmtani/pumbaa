@@ -2,6 +2,7 @@
 package dashboard
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -42,8 +43,9 @@ type Model struct {
 	loading     bool
 	spinner     spinner.Model
 	error       string
-	statusMsg   string
-	lastRefresh time.Time
+	statusMsg            string
+	statusMessageExpires time.Time
+	lastRefresh          time.Time
 
 	// Version check
 	updateInfo     *version.VersionInfo
@@ -166,13 +168,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case clearStatusMsg:
+		m.statusMsg = ""
+		m.statusMessageExpires = time.Time{}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.statusMsg != "" {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -196,12 +203,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case abortResultMsg:
 		m.showConfirm = false
 		if msg.success {
-			m.statusMsg = fmt.Sprintf("✓ Workflow %s abort requested", truncateID(msg.id))
+			m.setStatusMessage("✓ Workflow " + truncateID(msg.id) + " abort requested")
 			// Refresh the list
 			m.loading = true
-			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
+			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows(), getClearStatusCmd())
 		} else {
-			m.statusMsg = fmt.Sprintf("✗ Failed to abort: %v", msg.err)
+			m.setStatusMessage("✗ Failed to abort: " + msg.err.Error())
+			cmds = append(cmds, getClearStatusCmd())
 		}
 
 	case debugMetadataLoadedMsg:
@@ -210,9 +218,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Parse metadata and set up navigation
 		wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
 		if err != nil {
-			m.statusMsg = fmt.Sprintf("✗ Failed to parse metadata: %v", err)
+			m.setStatusMessage("✗ Failed to parse metadata")
 			m.LastError = err
-			return m, nil
+			return m, getClearStatusCmd()
 		}
 		m.SetPendingNavigation(wf)
 		return m, nil
@@ -220,8 +228,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case debugMetadataErrorMsg:
 		m.loadingDebug = false
 		m.loadingDebugID = ""
-		m.statusMsg = fmt.Sprintf("✗ Failed to load metadata: %v", msg.err)
 		m.LastError = msg.err
+		errorMsg := friendlyError(msg.err)
+		m.setStatusMessage("✗ " + errorMsg)
+		return m, getClearStatusCmd()
 
 	case healthStatusLoadedMsg:
 		m.healthStatus = msg.status
@@ -249,8 +259,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case labelsErrorMsg:
 		m.labelsLoading = false
 		m.showLabelsModal = false
-		m.statusMsg = fmt.Sprintf("✗ Failed to load labels: %v", msg.err)
+		m.setStatusMessage(fmt.Sprintf("✗ Failed to load labels: %v", msg.err))
 		m.LastError = msg.err
+		cmds = append(cmds, getClearStatusCmd())
 
 	case labelsUpdatedMsg:
 		m.labelsUpdating = false
@@ -317,4 +328,39 @@ func (m *Model) SetPendingNavigation(wf *workflow.Workflow) {
 	m.pendingNavigation = func() tea.Msg {
 		return NavigateToDebugMsg{Workflow: wf}
 	}
+}
+
+// setStatusMessage sets a temporary status message that auto-clears after 3 seconds.
+func (m *Model) setStatusMessage(message string) {
+	m.statusMsg = message
+	m.statusMessageExpires = time.Now().Add(statusDuration)
+}
+
+// getClearStatusCmd returns a command to clear the status message after the duration.
+func getClearStatusCmd() tea.Cmd {
+	return tea.Tick(statusDuration, func(t time.Time) tea.Msg {
+		return clearStatusMsg{}
+	})
+}
+
+// friendlyError translates infrastructure errors into user-facing messages.
+func friendlyError(err error) string {
+	if errors.Is(err, workflow.ErrWorkflowNotFound) {
+		return "Workflow not found"
+	}
+	if errors.Is(err, workflow.ErrConnectionFailed) {
+		return "Cannot connect to server"
+	}
+	var apiErr workflow.APIError
+	if errors.As(err, &apiErr) {
+		if apiErr.StatusCode == 400 {
+			return "Invalid workflow ID"
+		}
+		return fmt.Sprintf("Server error (HTTP %d)", apiErr.StatusCode)
+	}
+	msg := err.Error()
+	if len(msg) > 80 {
+		return msg[:77] + "..."
+	}
+	return msg
 }

@@ -53,5 +53,8 @@ type labelsUpdatedMsg struct {
 	err     error
 }
 
+// clearStatusMsg clears the temporary status message after expiry.
+type clearStatusMsg struct{}
+
 // tickMsg is for periodic health checks
 type tickMsg struct{}

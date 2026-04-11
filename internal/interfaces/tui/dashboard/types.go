@@ -15,6 +15,7 @@ type KeyMap struct {
 	Abort         key.Binding
 	Filter        key.Binding
 	LabelFilter   key.Binding
+	GoToUUID      key.Binding
 	ClearFilter   key.Binding
 	StatusFilter  key.Binding
 	LabelsManager key.Binding // Open labels modal for selected workflow
@@ -43,6 +44,10 @@ func DefaultKeyMap() KeyMap {
 		LabelFilter: key.NewBinding(
 			key.WithKeys("l"),
 			key.WithHelp("l", "search label"),
+		),
+		GoToUUID: key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("u", "go to UUID"),
 		),
 		ClearFilter: key.NewBinding(
 			key.WithKeys("ctrl+x"),

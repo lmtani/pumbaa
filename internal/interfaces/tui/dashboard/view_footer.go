@@ -3,19 +3,38 @@ package dashboard
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
+// statusDuration is the duration for temporary status messages.
+const statusDuration = 3 * time.Second
+
+// temporaryStatusStyle is the style for auto-expiring notification messages.
+var temporaryStatusStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FFFF00")).
+	Bold(true)
+
 // renderFooter renders the status bar and help footer.
 func (m Model) renderFooter() string {
 	var parts []string
 
-	// Status message
-	if m.statusMsg != "" {
-		parts = append(parts, m.statusMsg)
+	// Temporary status message with animated progress bar
+	if m.statusMsg != "" && !m.statusMessageExpires.IsZero() {
+		timeRemaining := time.Until(m.statusMessageExpires)
+		progressBar := ""
+		if timeRemaining > 0 {
+			percentage := int(timeRemaining.Seconds() * 100 / statusDuration.Seconds())
+			if percentage > 100 {
+				percentage = 100
+			}
+			barLength := (percentage * 20) / 100
+			progressBar = " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
+		}
+		parts = append(parts, temporaryStatusStyle.Render(m.statusMsg+progressBar))
 		parts = append(parts, " • ")
 	}
 
@@ -63,6 +82,7 @@ func (m Model) renderFooter() string {
 		renderHint("a", "abort"),
 		renderHint("/", "search name"),
 		renderHint("l", "search label"),
+		renderHint("u", "go to UUID"),
 		renderHint("L", "edit labels"),
 		renderHint("s", "status"),
 		renderHint("r", "refresh"),
