@@ -38,11 +38,11 @@ func DefaultKeyMap() KeyMap {
 		),
 		Filter: key.NewBinding(
 			key.WithKeys("/"),
-			key.WithHelp("/", "filter by name"),
+			key.WithHelp("/", "search name"),
 		),
 		LabelFilter: key.NewBinding(
 			key.WithKeys("l"),
-			key.WithHelp("l", "filter by label"),
+			key.WithHelp("l", "search label"),
 		),
 		ClearFilter: key.NewBinding(
 			key.WithKeys("ctrl+x"),
@@ -54,7 +54,7 @@ func DefaultKeyMap() KeyMap {
 		),
 		LabelsManager: key.NewBinding(
 			key.WithKeys("L"),
-			key.WithHelp("L", "manage labels"),
+			key.WithHelp("L", "edit labels"),
 		),
 	}
 }

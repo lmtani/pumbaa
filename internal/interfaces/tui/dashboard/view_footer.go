@@ -57,30 +57,25 @@ func (m Model) renderFooter() string {
 	}
 
 	// Help
-	help := fmt.Sprintf(
-		"%s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s  %s %s",
-		common.KeyStyle.Render("↑↓"),
-		common.DescStyle.Render("navigate"),
-		common.KeyStyle.Render("enter"),
-		common.DescStyle.Render("debug"),
-		common.KeyStyle.Render("a"),
-		common.DescStyle.Render("abort"),
-		common.KeyStyle.Render("/"),
-		common.DescStyle.Render("name"),
-		common.KeyStyle.Render("l"),
-		common.DescStyle.Render("label"),
-		common.KeyStyle.Render("L"),
-		common.DescStyle.Render("labels"),
-		common.KeyStyle.Render("s"),
-		common.DescStyle.Render("status"),
-		common.KeyStyle.Render("r"),
-		common.DescStyle.Render("refresh"),
-		common.KeyStyle.Render("esc"),
-		common.DescStyle.Render("quit"),
-	)
-	parts = append(parts, help)
+	hints := []string{
+		renderHint("↑↓", "navigate"),
+		renderHint("enter", "debug"),
+		renderHint("a", "abort"),
+		renderHint("/", "search name"),
+		renderHint("l", "search label"),
+		renderHint("L", "edit labels"),
+		renderHint("s", "status"),
+		renderHint("r", "refresh"),
+		renderHint("esc", "quit"),
+	}
+	parts = append(parts, strings.Join(hints, "  "))
 
 	return common.HelpBarStyle.
 		Width(m.width - 2).
 		Render(strings.Join(parts, ""))
+}
+
+// renderHint formats a single key binding hint for the footer help bar.
+func renderHint(key, desc string) string {
+	return common.KeyStyle.Render(key) + " " + common.DescStyle.Render(desc)
 }

@@ -61,6 +61,11 @@ func (m Model) renderContent() string {
 
 // renderFilterInput renders the filter input modal.
 func (m Model) renderFilterInput() string {
+	title := "Search by Name"
+	if m.filterType == "label" {
+		title = "Search by Label"
+	}
+
 	filterBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(common.PrimaryColor).
@@ -68,7 +73,7 @@ func (m Model) renderFilterInput() string {
 		Width(50).
 		Render(
 			lipgloss.JoinVertical(lipgloss.Left,
-				common.TitleStyle.Render("Filter Workflows"),
+				common.TitleStyle.Render(title),
 				"",
 				m.filterInput.View(),
 				"",

@@ -72,7 +72,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Filter):
 		m.showFilter = true
 		m.filterType = "name"
-		m.filterInput.Placeholder = "Filter by workflow name..."
+		m.filterInput.Placeholder = "workflow name..."
 		m.filterInput.SetValue(m.activeFilters.Name)
 		m.filterInput.Focus()
 		return m, textinput.Blink
@@ -80,7 +80,7 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.LabelFilter):
 		m.showFilter = true
 		m.filterType = "label"
-		m.filterInput.Placeholder = "Filter by label (key:value)..."
+		m.filterInput.Placeholder = "key:value or just key..."
 		m.filterInput.SetValue(m.activeFilters.Label)
 		m.filterInput.Focus()
 		return m, textinput.Blink
