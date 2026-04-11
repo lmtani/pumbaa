@@ -138,7 +138,7 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 							CPU:           "4",
 							Memory:        "8 GB",
 							Disk:          "local-disk 100 SSD",
-							Inputs: map[string]interface{}{
+							Inputs: map[string]any{
 								"input_file": "gs://bucket/input.txt",
 							},
 						},
@@ -502,7 +502,7 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 							CPU:           "4",
 							Memory:        "8 GB",
 							Disk:          "local-disk 100 HDD",
-							Inputs: map[string]interface{}{
+							Inputs: map[string]any{
 								"input": "gs://bucket/input.bam",
 							},
 						},
@@ -598,7 +598,7 @@ func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
 							Name:          "TestWorkflow.task1",
 							ShardIndex:    0,
 							MonitoringLog: "gs://bucket/task1/monitoring.log",
-							Inputs: map[string]interface{}{
+							Inputs: map[string]any{
 								"shared_file": "gs://bucket/shared.bam", // Same file
 							},
 						},
@@ -606,7 +606,7 @@ func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
 							Name:          "TestWorkflow.task1",
 							ShardIndex:    1,
 							MonitoringLog: "gs://bucket/task2/monitoring.log",
-							Inputs: map[string]interface{}{
+							Inputs: map[string]any{
 								"shared_file": "gs://bucket/shared.bam", // Same file - should use cache
 							},
 						},

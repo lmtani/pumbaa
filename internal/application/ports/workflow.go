@@ -61,7 +61,7 @@ type WorkflowReader interface {
 	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
 	GetStatus(ctx context.Context, workflowID string) (workflow.Status, error)
 	GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error)
-	GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error)
+	GetOutputs(ctx context.Context, workflowID string) (map[string]any, error)
 	GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error)
 }
 
@@ -84,6 +84,6 @@ type WorkflowRepository interface {
 
 	// Additional metadata operations
 	GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error)
-	GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error)
+	GetOutputs(ctx context.Context, workflowID string) (map[string]any, error)
 	GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error)
 }

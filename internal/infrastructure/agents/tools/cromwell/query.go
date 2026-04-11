@@ -39,9 +39,9 @@ func (h *QueryHandler) Handle(ctx context.Context, input types.Input) (types.Out
 		return types.NewErrorOutput("query", err.Error()), nil
 	}
 
-	workflows := make([]map[string]interface{}, 0, len(result.Workflows))
+	workflows := make([]map[string]any, 0, len(result.Workflows))
 	for _, wf := range result.Workflows {
-		workflows = append(workflows, map[string]interface{}{
+		workflows = append(workflows, map[string]any{
 			"id":           wf.ID,
 			"name":         wf.Name,
 			"status":       string(wf.Status),
@@ -52,7 +52,7 @@ func (h *QueryHandler) Handle(ctx context.Context, input types.Input) (types.Out
 		})
 	}
 
-	return types.NewSuccessOutput("query", map[string]interface{}{
+	return types.NewSuccessOutput("query", map[string]any{
 		"total":     result.TotalCount,
 		"workflows": workflows,
 	}), nil

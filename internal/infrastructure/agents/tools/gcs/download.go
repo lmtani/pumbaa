@@ -51,7 +51,7 @@ func (h *DownloadHandler) Handle(ctx context.Context, input types.Input) (types.
 		return types.NewErrorOutput(action, err.Error()), nil
 	}
 
-	return types.NewSuccessOutput(action, map[string]interface{}{
+	return types.NewSuccessOutput(action, map[string]any{
 		"bucket":       bucket,
 		"object":       object,
 		"size":         attrs.Size,

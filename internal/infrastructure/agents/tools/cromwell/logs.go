@@ -28,11 +28,11 @@ func (h *LogsHandler) Handle(ctx context.Context, input types.Input) (types.Outp
 		return types.NewErrorOutput("logs", err.Error()), nil
 	}
 
-	callLogs := make(map[string]interface{})
+	callLogs := make(map[string]any)
 	for callName, logEntries := range logs {
-		entries := make([]map[string]interface{}, 0, len(logEntries))
+		entries := make([]map[string]any, 0, len(logEntries))
 		for _, entry := range logEntries {
-			entries = append(entries, map[string]interface{}{
+			entries = append(entries, map[string]any{
 				"stdout":      entry.Stdout,
 				"stderr":      entry.Stderr,
 				"attempt":     entry.Attempt,
@@ -42,7 +42,7 @@ func (h *LogsHandler) Handle(ctx context.Context, input types.Input) (types.Outp
 		callLogs[callName] = entries
 	}
 
-	return types.NewSuccessOutput("logs", map[string]interface{}{
+	return types.NewSuccessOutput("logs", map[string]any{
 		"id":    input.WorkflowID,
 		"calls": callLogs,
 	}), nil

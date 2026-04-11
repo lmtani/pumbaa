@@ -38,8 +38,8 @@ type Workflow struct {
 
 	// Labels, Inputs, Outputs
 	Labels  map[string]string
-	Inputs  map[string]interface{}
-	Outputs map[string]interface{}
+	Inputs  map[string]any
+	Outputs map[string]any
 
 	// Calls and Failures
 	Calls    map[string][]Call
@@ -86,7 +86,7 @@ type Call struct {
 	Backend           string
 	CommandLine       string
 	CallRoot          string
-	RuntimeAttributes map[string]interface{}
+	RuntimeAttributes map[string]any
 
 	// Logs
 	Stdout        string
@@ -113,8 +113,8 @@ type Call struct {
 	VMCostPerHour float64
 
 	// Inputs/Outputs
-	Inputs  map[string]interface{}
-	Outputs map[string]interface{}
+	Inputs  map[string]any
+	Outputs map[string]any
 
 	// Events
 	ExecutionEvents []ExecutionEvent

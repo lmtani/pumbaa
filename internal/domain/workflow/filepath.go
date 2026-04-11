@@ -37,24 +37,24 @@ func (p FilePath) String() string {
 
 // ExtractFilePaths recursively extracts all valid file paths from a value.
 // It handles strings, slices, and maps.
-func ExtractFilePaths(value interface{}) []FilePath {
+func ExtractFilePaths(value any) []FilePath {
 	var paths []FilePath
 	extractFilePathsRecursive(value, &paths)
 	return paths
 }
 
-func extractFilePathsRecursive(value interface{}, paths *[]FilePath) {
+func extractFilePathsRecursive(value any, paths *[]FilePath) {
 	switch v := value.(type) {
 	case string:
 		p := FilePath(v)
 		if p.IsValid() {
 			*paths = append(*paths, p)
 		}
-	case []interface{}:
+	case []any:
 		for _, item := range v {
 			extractFilePathsRecursive(item, paths)
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		for _, val := range v {
 			extractFilePathsRecursive(val, paths)
 		}

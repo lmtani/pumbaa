@@ -40,7 +40,7 @@ func extractMessage(entry *logging.Entry, maxLen int) string {
 	}
 
 	// Priority 2: JSON payload (map) with "message" key
-	if msgObj, ok := entry.Payload.(map[string]interface{}); ok {
+	if msgObj, ok := entry.Payload.(map[string]any); ok {
 		if msg, exists := msgObj["message"]; exists {
 			if msgStr, ok := msg.(string); ok && msgStr != "" {
 				return truncateString(msgStr, maxLen)
@@ -61,7 +61,7 @@ func extractMessage(entry *logging.Entry, maxLen int) string {
 }
 
 // jsonToString converts a JSON payload to a string.
-func jsonToString(payload interface{}) (string, error) {
+func jsonToString(payload any) (string, error) {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		return "", err

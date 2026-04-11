@@ -65,7 +65,7 @@ func (s *CloudflareService) Track(event Event) {
 	}
 
 	// Payload for Worker
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"command":       event.Command,
 		"duration_ms":   event.Duration,
 		"success":       event.Success,
@@ -101,7 +101,7 @@ func (s *CloudflareService) TrackCommand(ctx CommandContext, err error) {
 		errMsg = err.Error()
 	}
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"command":       cmdName,
 		"duration_ms":   duration,
 		"success":       success,
@@ -126,7 +126,7 @@ func (s *CloudflareService) CaptureError(operation string, err error) {
 		return
 	}
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"command":       "error:" + operation,
 		"success":       false,
 		"error_type":    categorizeError(err),
@@ -168,7 +168,7 @@ func (s *CloudflareService) Close() {
 	}
 }
 
-func (s *CloudflareService) send(payload map[string]interface{}) {
+func (s *CloudflareService) send(payload map[string]any) {
 	// Recover from panics to never crash the app
 	defer func() {
 		if r := recover(); r != nil {

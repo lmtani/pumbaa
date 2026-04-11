@@ -28,7 +28,7 @@ func (h *OutputsHandler) Handle(ctx context.Context, input types.Input) (types.O
 		return types.NewErrorOutput("outputs", err.Error()), nil
 	}
 
-	return types.NewSuccessOutput("outputs", map[string]interface{}{
+	return types.NewSuccessOutput("outputs", map[string]any{
 		"id":      input.WorkflowID,
 		"outputs": outputs,
 	}), nil

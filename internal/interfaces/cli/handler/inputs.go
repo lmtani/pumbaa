@@ -72,7 +72,7 @@ func (h *InputsHandler) handle(c *cli.Context) error {
 	return nil
 }
 
-func (h *InputsHandler) displayJSON(inputs map[string]interface{}) error {
+func (h *InputsHandler) displayJSON(inputs map[string]any) error {
 	data, err := json.MarshalIndent(inputs, "", "  ")
 	if err != nil {
 		h.presenter.Error("Failed to marshal inputs: %v", err)
@@ -109,9 +109,9 @@ func (h *InputsHandler) displayHuman(output *workflow.InputsOutput) {
 }
 
 // formatInputValue formats a value for display, handling arrays and nested structures.
-func formatInputValue(v interface{}) interface{} {
+func formatInputValue(v any) any {
 	switch val := v.(type) {
-	case []interface{}:
+	case []any:
 		if len(val) == 0 {
 			return "[]"
 		}

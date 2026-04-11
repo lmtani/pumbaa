@@ -39,7 +39,7 @@ func (h *ListHandler) Handle(_ context.Context, _ types.Input) (types.Output, er
 		workflows = append(workflows, name)
 	}
 
-	return types.NewSuccessOutput(action, map[string]interface{}{
+	return types.NewSuccessOutput(action, map[string]any{
 		"directory":      index.Directory,
 		"indexed_at":     index.IndexedAt,
 		"task_count":     len(tasks),

@@ -24,8 +24,8 @@ type metadataResponse struct {
 	End          time.Time                 `json:"end"`
 	Submission   time.Time                 `json:"submission"`
 	Labels       map[string]string         `json:"labels"`
-	Inputs       map[string]interface{}    `json:"inputs"`
-	Outputs      map[string]interface{}    `json:"outputs"`
+	Inputs       map[string]any            `json:"inputs"`
+	Outputs      map[string]any            `json:"outputs"`
 	Calls        map[string][]callMetadata `json:"calls"`
 	Failures     []failureMetadata         `json:"failures"`
 
@@ -47,21 +47,21 @@ type submittedFiles struct {
 // callMetadata represents metadata for a single call.
 type callMetadata struct {
 	// Basic fields
-	ExecutionStatus   string                 `json:"executionStatus"`
-	Start             time.Time              `json:"start"`
-	End               time.Time              `json:"end"`
-	Attempt           int                    `json:"attempt"`
-	ShardIndex        int                    `json:"shardIndex"`
-	Backend           string                 `json:"backend"`
-	ReturnCode        *int                   `json:"returnCode"`
-	Stdout            string                 `json:"stdout"`
-	Stderr            string                 `json:"stderr"`
-	CommandLine       string                 `json:"commandLine"`
-	Inputs            map[string]interface{} `json:"inputs"`
-	Outputs           map[string]interface{} `json:"outputs"`
-	RuntimeAttributes map[string]interface{} `json:"runtimeAttributes"`
-	Failures          []failureMetadata      `json:"failures"`
-	SubWorkflowID     string                 `json:"subWorkflowId"`
+	ExecutionStatus   string            `json:"executionStatus"`
+	Start             time.Time         `json:"start"`
+	End               time.Time         `json:"end"`
+	Attempt           int               `json:"attempt"`
+	ShardIndex        int               `json:"shardIndex"`
+	Backend           string            `json:"backend"`
+	ReturnCode        *int              `json:"returnCode"`
+	Stdout            string            `json:"stdout"`
+	Stderr            string            `json:"stderr"`
+	CommandLine       string            `json:"commandLine"`
+	Inputs            map[string]any    `json:"inputs"`
+	Outputs           map[string]any    `json:"outputs"`
+	RuntimeAttributes map[string]any    `json:"runtimeAttributes"`
+	Failures          []failureMetadata `json:"failures"`
+	SubWorkflowID     string            `json:"subWorkflowId"`
 
 	// Detailed fields
 	JobID                string               `json:"jobId"`
@@ -71,7 +71,7 @@ type callMetadata struct {
 	CallRoot             string               `json:"callRoot"`
 	MonitoringLog        string               `json:"monitoringLog"`
 	DockerImageUsed      string               `json:"dockerImageUsed"`
-	CompressedDockerSize interface{}          `json:"compressedDockerSize"`
+	CompressedDockerSize any                  `json:"compressedDockerSize"`
 	VMCostPerHour        float64              `json:"vmCostPerHour"`
 	CallCaching          *callCachingInfo     `json:"callCaching"`
 	Labels               map[string]string    `json:"labels"`
@@ -117,8 +117,8 @@ type queryResult struct {
 
 // outputsResponse represents the response from getting workflow outputs.
 type outputsResponse struct {
-	ID      string                 `json:"id"`
-	Outputs map[string]interface{} `json:"outputs"`
+	ID      string         `json:"id"`
+	Outputs map[string]any `json:"outputs"`
 }
 
 // logsResponse represents the response from getting workflow logs.

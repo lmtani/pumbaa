@@ -38,25 +38,25 @@ func (h *SearchHandler) Handle(_ context.Context, input types.Input) (types.Outp
 		return types.NewErrorOutput(action, err.Error()), nil
 	}
 
-	taskResults := make([]map[string]interface{}, 0, len(tasks))
+	taskResults := make([]map[string]any, 0, len(tasks))
 	for _, t := range tasks {
-		taskResults = append(taskResults, map[string]interface{}{
+		taskResults = append(taskResults, map[string]any{
 			"name":        t.Name,
 			"source":      t.Source,
 			"description": t.Description,
 		})
 	}
 
-	workflowResults := make([]map[string]interface{}, 0, len(workflows))
+	workflowResults := make([]map[string]any, 0, len(workflows))
 	for _, w := range workflows {
-		workflowResults = append(workflowResults, map[string]interface{}{
+		workflowResults = append(workflowResults, map[string]any{
 			"name":        w.Name,
 			"source":      w.Source,
 			"description": w.Description,
 		})
 	}
 
-	return types.NewSuccessOutput(action, map[string]interface{}{
+	return types.NewSuccessOutput(action, map[string]any{
 		"query":     input.Query,
 		"tasks":     taskResults,
 		"workflows": workflowResults,

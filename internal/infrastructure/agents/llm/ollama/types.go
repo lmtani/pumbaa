@@ -39,9 +39,9 @@ type Tool struct {
 
 // Function defines the structure of a function/tool
 type Function struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Parameters  map[string]interface{} `json:"parameters"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Parameters  map[string]any `json:"parameters"`
 }
 
 // ChatRequest is the request body for /api/chat

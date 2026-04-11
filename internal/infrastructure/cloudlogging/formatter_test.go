@@ -29,7 +29,7 @@ func TestFormatLogEntry_JSONPayloadMessageFallback(t *testing.T) {
 	entry := &logging.Entry{
 		Timestamp: time.Now(),
 		Severity:  logging.Error,
-		Payload:   map[string]interface{}{"message": "Task failed with error code 1"},
+		Payload:   map[string]any{"message": "Task failed with error code 1"},
 	}
 
 	result := FormatLogEntry(entry, 500)
@@ -103,7 +103,7 @@ func TestFormatLogEntry_JSONPayloadNotString(t *testing.T) {
 	entry := &logging.Entry{
 		Timestamp: time.Now(),
 		Severity:  logging.Info,
-		Payload: map[string]interface{}{
+		Payload: map[string]any{
 			"message": 123,
 			"error":   "some error",
 		},

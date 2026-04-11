@@ -227,7 +227,7 @@ func (uc *ResourceReportUseCase) processCall(ctx context.Context, workflowID str
 
 // calculateInputFileSizes calculates the total size of input files and per-input sizes.
 // It extracts file paths from the inputs and queries their sizes.
-func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]interface{}, cache ports.FileSizeCache) (int64, map[string]int64) {
+func (uc *ResourceReportUseCase) calculateInputFileSizes(ctx context.Context, inputs map[string]any, cache ports.FileSizeCache) (int64, map[string]int64) {
 	if inputs == nil {
 		return 0, nil
 	}

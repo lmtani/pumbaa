@@ -60,8 +60,8 @@ func TestMapMetadataResponseToWorkflow(t *testing.T) {
 		WorkflowName: "TestWorkflow",
 		Status:       "Succeeded",
 		Labels:       map[string]string{"env": "test"},
-		Inputs:       map[string]interface{}{"input1": "value1"},
-		Outputs:      map[string]interface{}{"output1": "result1"},
+		Inputs:       map[string]any{"input1": "value1"},
+		Outputs:      map[string]any{"output1": "result1"},
 	}
 
 	wf := mapMetadataResponseToWorkflow(m)
@@ -92,7 +92,7 @@ func TestMapMetadataResponseToWorkflow_WithCalls(t *testing.T) {
 					Attempt:         1,
 					ExecutionStatus: "Done",
 					Backend:         "PAPIv2",
-					RuntimeAttributes: map[string]interface{}{
+					RuntimeAttributes: map[string]any{
 						"preemptible": "3",
 					},
 				},
@@ -205,7 +205,7 @@ func TestMapMetadataResponseToWorkflow_WithFailures(t *testing.T) {
 func TestParseDockerSize(t *testing.T) {
 	tests := []struct {
 		name  string
-		input interface{}
+		input any
 		want  int64
 	}{
 		{"nil", nil, 0},

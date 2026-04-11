@@ -72,7 +72,7 @@ func (h *OutputsHandler) handle(c *cli.Context) error {
 	return nil
 }
 
-func (h *OutputsHandler) displayJSON(outputs map[string]interface{}) error {
+func (h *OutputsHandler) displayJSON(outputs map[string]any) error {
 	data, err := json.MarshalIndent(outputs, "", "  ")
 	if err != nil {
 		h.presenter.Error("Failed to marshal outputs: %v", err)
@@ -109,9 +109,9 @@ func (h *OutputsHandler) displayHuman(output *workflow.OutputsOutput) {
 }
 
 // formatValue formats a value for display, handling arrays and nested structures.
-func formatValue(v interface{}) interface{} {
+func formatValue(v any) any {
 	switch val := v.(type) {
-	case []interface{}:
+	case []any:
 		if len(val) == 0 {
 			return "[]"
 		}
@@ -120,7 +120,7 @@ func formatValue(v interface{}) interface{} {
 		}
 		// For arrays, format each element on a new line
 		return v
-	case map[string]interface{}:
+	case map[string]any:
 		// For objects, just return as-is (will be displayed as JSON-like)
 		return v
 	default:

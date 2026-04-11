@@ -35,14 +35,14 @@ type Input struct {
 
 // Output represents the standardized output for all actions.
 type Output struct {
-	Success bool        `json:"success"`
-	Error   string      `json:"error,omitempty"`
-	Action  string      `json:"action"`
-	Data    interface{} `json:"data,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+	Action  string `json:"action"`
+	Data    any    `json:"data,omitempty"`
 }
 
 // NewSuccessOutput creates a successful output for the given action.
-func NewSuccessOutput(action string, data interface{}) Output {
+func NewSuccessOutput(action string, data any) Output {
 	return Output{
 		Success: true,
 		Action:  action,

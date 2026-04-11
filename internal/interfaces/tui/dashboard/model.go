@@ -61,10 +61,9 @@ type Model struct {
 	confirmID     string
 
 	// Debug transition state
-	loadingDebug       bool
-	loadingDebugID     string
-	metadataFetcher    ports.WorkflowMetadataFetcher
-	DebugMetadataReady []byte // Deprecated: metadata ready for debug view
+	loadingDebug    bool
+	loadingDebugID  string
+	metadataFetcher ports.WorkflowMetadataFetcher
 
 	// Health status
 	healthChecker ports.HealthChecker
@@ -86,8 +85,7 @@ type Model struct {
 	labelsMessage      string // In-modal feedback message
 
 	// Navigation state
-	NavigateToDebugID string // Deprecated: use pendingNavigation
-	ShouldQuit        bool
+	ShouldQuit bool
 	LastError         error              // Last error for telemetry capture
 	pendingNavigation tea.Cmd            // Pending navigation command for parent
 	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
@@ -210,19 +208,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingDebug = false
 		m.loadingDebugID = ""
 		// Parse metadata and set up navigation
-		if m.metadataFetcher != nil {
-			wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
-			if err != nil {
-				m.statusMsg = fmt.Sprintf("✗ Failed to parse metadata: %v", err)
-				m.LastError = err
-				return m, nil
-			}
-			m.SetPendingNavigation(wf)
-		} else {
-			// Fallback for backward compatibility
-			m.DebugMetadataReady = msg.metadata
-			m.NavigateToDebugID = msg.workflowID
+		wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
+		if err != nil {
+			m.statusMsg = fmt.Sprintf("✗ Failed to parse metadata: %v", err)
+			m.LastError = err
+			return m, nil
 		}
+		m.SetPendingNavigation(wf)
 		return m, nil
 
 	case debugMetadataErrorMsg:

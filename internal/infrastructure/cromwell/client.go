@@ -302,7 +302,7 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 }
 
 // GetOutputs retrieves the outputs of a completed workflow.
-func (c *Client) GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error) {
+func (c *Client) GetOutputs(ctx context.Context, workflowID string) (map[string]any, error) {
 	url := fmt.Sprintf("%s/api/workflows/v1/%s/outputs", c.BaseURL, workflowID)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

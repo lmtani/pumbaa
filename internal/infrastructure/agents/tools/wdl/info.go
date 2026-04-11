@@ -61,24 +61,24 @@ func (h *InfoHandler) Handle(_ context.Context, input types.Input) (types.Output
 }
 
 func buildTaskInfoOutput(task *wdlindex.IndexedTask) types.Output {
-	inputs := make([]map[string]interface{}, 0, len(task.Inputs))
+	inputs := make([]map[string]any, 0, len(task.Inputs))
 	for _, in := range task.Inputs {
-		inputs = append(inputs, map[string]interface{}{
+		inputs = append(inputs, map[string]any{
 			"name":     in.Name,
 			"type":     in.Type,
 			"optional": in.Optional,
 		})
 	}
 
-	outputs := make([]map[string]interface{}, 0, len(task.Outputs))
+	outputs := make([]map[string]any, 0, len(task.Outputs))
 	for _, out := range task.Outputs {
-		outputs = append(outputs, map[string]interface{}{
+		outputs = append(outputs, map[string]any{
 			"name": out.Name,
 			"type": out.Type,
 		})
 	}
 
-	return types.NewSuccessOutput("wdl_info", map[string]interface{}{
+	return types.NewSuccessOutput("wdl_info", map[string]any{
 		"type":        "task",
 		"name":        task.Name,
 		"source":      task.Source,
@@ -91,24 +91,24 @@ func buildTaskInfoOutput(task *wdlindex.IndexedTask) types.Output {
 }
 
 func buildWorkflowInfoOutput(wf *wdlindex.IndexedWorkflow) types.Output {
-	inputs := make([]map[string]interface{}, 0, len(wf.Inputs))
+	inputs := make([]map[string]any, 0, len(wf.Inputs))
 	for _, in := range wf.Inputs {
-		inputs = append(inputs, map[string]interface{}{
+		inputs = append(inputs, map[string]any{
 			"name":     in.Name,
 			"type":     in.Type,
 			"optional": in.Optional,
 		})
 	}
 
-	outputs := make([]map[string]interface{}, 0, len(wf.Outputs))
+	outputs := make([]map[string]any, 0, len(wf.Outputs))
 	for _, out := range wf.Outputs {
-		outputs = append(outputs, map[string]interface{}{
+		outputs = append(outputs, map[string]any{
 			"name": out.Name,
 			"type": out.Type,
 		})
 	}
 
-	return types.NewSuccessOutput("wdl_info", map[string]interface{}{
+	return types.NewSuccessOutput("wdl_info", map[string]any{
 		"type":        "workflow",
 		"name":        wf.Name,
 		"source":      wf.Source,

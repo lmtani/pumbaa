@@ -51,16 +51,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Open):
 		if len(m.workflows) > 0 && m.cursor < len(m.workflows) {
 			wf := m.workflows[m.cursor]
-			// If we have a metadata fetcher, load metadata with loading screen
-			if m.metadataFetcher != nil {
-				m.loadingDebug = true
-				m.loadingDebugID = wf.ID
-				cmds = append(cmds, m.spinner.Tick, m.fetchDebugMetadata(wf.ID))
-			} else {
-				// Fallback to old behavior if no metadata fetcher
-				m.NavigateToDebugID = wf.ID
-				return m, tea.Quit
-			}
+			m.loadingDebug = true
+			m.loadingDebugID = wf.ID
+			cmds = append(cmds, m.spinner.Tick, m.fetchDebugMetadata(wf.ID))
 		}
 
 	case key.Matches(msg, m.keys.Abort):

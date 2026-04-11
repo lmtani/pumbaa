@@ -470,8 +470,8 @@ func (m AppModel) renderWithQuitModal() string {
 		Render(modalContent)
 
 	// Center the modal
-	modalWidth := 44  // modal width + border
-	modalHeight := 7  // approximate modal height
+	modalWidth := 44 // modal width + border
+	modalHeight := 7 // approximate modal height
 
 	// Calculate position
 	x := (m.width - modalWidth) / 2

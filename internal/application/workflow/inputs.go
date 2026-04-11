@@ -26,7 +26,7 @@ type InputsInput struct {
 type InputsOutput struct {
 	WorkflowID   string
 	WorkflowName string
-	Inputs       map[string]interface{}
+	Inputs       map[string]any
 }
 
 // Execute retrieves inputs for a workflow.

@@ -35,7 +35,7 @@ const (
 // Interface to access the hidden definition method of functiontool
 type toolWithDefinition interface {
 	Declaration() *genai.FunctionDeclaration
-	Run(ctx tool.Context, args interface{}) (map[string]interface{}, error)
+	Run(ctx tool.Context, args any) (map[string]any, error)
 }
 
 // Styles for chat
@@ -149,7 +149,7 @@ type ResponseMsg struct {
 type ToolNotificationMsg struct {
 	ToolName string
 	Action   string
-	Params   map[string]interface{} // Additional parameters
+	Params   map[string]any // Additional parameters
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -1055,7 +1055,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 					}
 
 					// Collect other relevant params to show
-					otherParams := make(map[string]interface{})
+					otherParams := make(map[string]any)
 					for k, v := range tc.Args {
 						if k != "action" && v != nil && v != "" {
 							otherParams[k] = v
@@ -1072,7 +1072,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 						toolParts = append(toolParts, &genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
 								Name: tc.Name,
-								Response: map[string]interface{}{
+								Response: map[string]any{
 									"error": err.Error(),
 								},
 							},

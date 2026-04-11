@@ -89,27 +89,27 @@ func TestFilePath_IsValid(t *testing.T) {
 func TestExtractFilePaths(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected int
 	}{
 		{"nil value", nil, 0},
-		{"empty map", map[string]interface{}{}, 0},
-		{"single GCS path", map[string]interface{}{"file": "gs://bucket/file.txt"}, 1},
-		{"array of GCS paths", map[string]interface{}{
-			"files": []interface{}{"gs://bucket/file1.txt", "gs://bucket/file2.txt"},
+		{"empty map", map[string]any{}, 0},
+		{"single GCS path", map[string]any{"file": "gs://bucket/file.txt"}, 1},
+		{"array of GCS paths", map[string]any{
+			"files": []any{"gs://bucket/file1.txt", "gs://bucket/file2.txt"},
 		}, 2},
-		{"nested map", map[string]interface{}{
-			"ref": map[string]interface{}{
+		{"nested map", map[string]any{
+			"ref": map[string]any{
 				"fasta": "gs://bucket/ref.fasta",
 				"index": "gs://bucket/ref.fasta.fai",
 			},
 		}, 2},
-		{"mixed values", map[string]interface{}{
+		{"mixed values", map[string]any{
 			"name":  "sample1",
 			"count": 42,
 			"file":  "gs://bucket/input.bam",
 		}, 1},
-		{"non-path strings", map[string]interface{}{
+		{"non-path strings", map[string]any{
 			"name":    "sample1",
 			"command": "echo hello",
 		}, 0},

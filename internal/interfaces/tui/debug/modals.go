@@ -86,12 +86,12 @@ func (m *Model) resizeBatchLogsModalViewport() {
 }
 
 // formatValueForModal formats a value for display in modals with appropriate colors.
-func formatValueForModal(v interface{}, maxWidth int) string {
+func formatValueForModal(v any, maxWidth int) string {
 	return formatValueWithStyles(v, maxWidth, modalValueStyle, modalPathStyle, mutedStyle)
 }
 
 // formatValueWithStyles formats a value using the provided styles.
-func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutStyle lipgloss.Style) string {
+func formatValueWithStyles(v any, maxWidth int, valStyle, pthStyle, mutStyle lipgloss.Style) string {
 	if maxWidth < 20 {
 		maxWidth = 80
 	}
@@ -121,7 +121,7 @@ func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutS
 			return pthStyle.Render("  " + wrappedVal)
 		}
 		return valStyle.Render("  " + wrappedVal)
-	case []interface{}:
+	case []any:
 		if len(val) == 0 {
 			return mutStyle.Render("  []")
 		}
@@ -137,7 +137,7 @@ func formatValueWithStyles(v interface{}, maxWidth int, valStyle, pthStyle, mutS
 			}
 		}
 		return sb.String()
-	case map[string]interface{}:
+	case map[string]any:
 		// Pretty print maps with indentation
 		jsonBytes, err := json.MarshalIndent(val, "  ", "  ")
 		if err != nil {

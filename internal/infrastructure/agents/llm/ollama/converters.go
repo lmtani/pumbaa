@@ -143,13 +143,13 @@ func (m *Model) convertTools(tools []*genai.Tool) []Tool {
 				continue
 			}
 
-			params := make(map[string]interface{})
+			params := make(map[string]any)
 			if fn.Parameters != nil && len(fn.Parameters.Properties) > 0 {
 				// Use the schema from ADK
 				params["type"] = fn.Parameters.Type
-				props := make(map[string]interface{})
+				props := make(map[string]any)
 				for name, prop := range fn.Parameters.Properties {
-					propMap := map[string]interface{}{
+					propMap := map[string]any{
 						"type":        prop.Type,
 						"description": prop.Description,
 					}
@@ -184,7 +184,7 @@ func (m *Model) convertTools(tools []*genai.Tool) []Tool {
 
 // getPumbaaParametersSchema returns the schema from the tools package.
 // This ensures a single source of truth for the pumbaa tool parameters.
-func getPumbaaParametersSchema() map[string]interface{} {
+func getPumbaaParametersSchema() map[string]any {
 	return tools.GetParametersSchema()
 }
 

@@ -22,25 +22,25 @@ func New(out io.Writer) *Presenter {
 }
 
 // Success prints a success message.
-func (p *Presenter) Success(format string, args ...interface{}) {
+func (p *Presenter) Success(format string, args ...any) {
 	green := color.New(color.FgGreen, color.Bold)
 	green.Fprintf(p.out, "✓ "+format+"\n", args...)
 }
 
 // Error prints an error message.
-func (p *Presenter) Error(format string, args ...interface{}) {
+func (p *Presenter) Error(format string, args ...any) {
 	red := color.New(color.FgRed, color.Bold)
 	red.Fprintf(p.out, "✗ "+format+"\n", args...)
 }
 
 // Info prints an info message.
-func (p *Presenter) Info(format string, args ...interface{}) {
+func (p *Presenter) Info(format string, args ...any) {
 	cyan := color.New(color.FgCyan)
 	cyan.Fprintf(p.out, "ℹ "+format+"\n", args...)
 }
 
 // Warning prints a warning message.
-func (p *Presenter) Warning(format string, args ...interface{}) {
+func (p *Presenter) Warning(format string, args ...any) {
 	yellow := color.New(color.FgYellow)
 	yellow.Fprintf(p.out, "⚠ "+format+"\n", args...)
 }
@@ -53,7 +53,7 @@ func (p *Presenter) Title(title string) {
 }
 
 // KeyValue prints a key-value pair.
-func (p *Presenter) KeyValue(key string, value interface{}) {
+func (p *Presenter) KeyValue(key string, value any) {
 	gray := color.New(color.FgHiBlack)
 	gray.Fprintf(p.out, "  %s: ", key)
 	fmt.Fprintf(p.out, "%v\n", value)
@@ -130,11 +130,11 @@ func (p *Presenter) Newline() {
 }
 
 // Print prints a formatted string.
-func (p *Presenter) Print(format string, args ...interface{}) {
+func (p *Presenter) Print(format string, args ...any) {
 	fmt.Fprintf(p.out, format, args...)
 }
 
 // Println prints a line.
-func (p *Presenter) Println(args ...interface{}) {
+func (p *Presenter) Println(args ...any) {
 	fmt.Fprintln(p.out, args...)
 }

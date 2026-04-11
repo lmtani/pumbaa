@@ -143,7 +143,7 @@ func TestClient_GetHealthStatus_AllHealthy(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"Engine Database": map[string]bool{"ok": true},
 			"PAPI":            map[string]bool{"ok": true},
 		})
@@ -167,7 +167,7 @@ func TestClient_GetHealthStatus_AllHealthy(t *testing.T) {
 func TestClient_GetHealthStatus_Degraded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"Engine Database": map[string]bool{"ok": true},
 			"PAPI":            map[string]bool{"ok": false},
 		})
@@ -204,8 +204,8 @@ func TestClient_Query_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"results": []map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
+			"results": []map[string]any{
 				{
 					"id":     "wf-1",
 					"name":   "TestWorkflow",
@@ -244,7 +244,7 @@ func TestClient_GetLabels_Success(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"id": "test-id",
 			"labels": map[string]string{
 				"project": "test-project",
@@ -277,7 +277,7 @@ func TestClient_UpdateLabels_Success(t *testing.T) {
 			t.Errorf("expected Content-Type=application/json")
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"id": "test-id",
 			"labels": map[string]string{
 				"new-label": "new-value",

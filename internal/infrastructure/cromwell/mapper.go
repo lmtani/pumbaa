@@ -220,7 +220,7 @@ func formatBytes(b int64) string {
 }
 
 // parseDockerSize parses compressed docker size from interface{} (can be string or number).
-func parseDockerSize(v interface{}) int64 {
+func parseDockerSize(v any) int64 {
 	if v == nil {
 		return 0
 	}

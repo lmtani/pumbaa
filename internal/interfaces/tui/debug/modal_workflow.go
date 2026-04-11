@@ -119,7 +119,7 @@ func (m Model) formatOptionsForModal() string {
 	}
 
 	// Parse the JSON options
-	var options map[string]interface{}
+	var options map[string]any
 	if err := json.Unmarshal([]byte(m.metadata.SubmittedOptions), &options); err != nil {
 		// If it's not valid JSON, just return the raw string formatted
 		return modalValueStyle.Render(m.metadata.SubmittedOptions)
