@@ -10,9 +10,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
@@ -162,36 +159,8 @@ func (h *DebugHandler) createDependencies() *tui.Dependencies {
 
 	// Initialize chat dependencies if LLM is configured
 	if h.config != nil && h.config.LLMProvider != "" {
-		deps.ChatDeps = h.initializeChatDependencies()
+		deps.ChatDeps = initChatDependencies(h.config, h.repository)
 	}
 
 	return deps
-}
-
-// initializeChatDependencies creates the chat dependencies for the TUI.
-func (h *DebugHandler) initializeChatDependencies() *tui.ChatDependencies {
-	// Try to initialize LLM
-	llmModel, err := llm.NewLLM(h.config)
-	if err != nil {
-		// Log the error so user knows why chat is disabled
-		fmt.Fprintf(os.Stderr, "Warning: Chat disabled - LLM initialization failed: %v\n", err)
-		return nil
-	}
-
-	// Initialize session service
-	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
-	if err != nil {
-		// Log the error so user knows why chat is disabled
-		fmt.Fprintf(os.Stderr, "Warning: Chat disabled - Session service failed: %v\n", err)
-		return nil
-	}
-
-	// Initialize tools using the existing repository (without WDL for now)
-	agentTools := tools.GetAllTools(h.repository, nil)
-
-	return &tui.ChatDependencies{
-		LLM:        llmModel,
-		Tools:      agentTools,
-		SessionSvc: svc,
-	}
 }

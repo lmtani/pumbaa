@@ -80,11 +80,7 @@ func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	}
 
 	// Initialize dashboard
-	m.dashboard = dashboard.NewModelWithDeps(deps.Repository, deps.Repository)
-	m.dashboard.SetMetadataFetcher(deps.Repository)
-	m.dashboard.SetHealthChecker(deps.Repository)
-	m.dashboard.SetLabelManager(deps.Repository)
-	m.dashboard.SetCurrentVersion(deps.CurrentVersion)
+	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CurrentVersion)
 
 	return m
 }

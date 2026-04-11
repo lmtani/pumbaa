@@ -118,33 +118,19 @@ func NewModel() Model {
 	}
 }
 
-// NewModelWithDeps creates a new dashboard model with query and abort capabilities.
-func NewModelWithDeps(querier ports.WorkflowQuerier, aborter ports.WorkflowAborter) Model {
+// NewModelWithRepository creates a new dashboard model with all repository capabilities.
+// The repository satisfies WorkflowQuerier, WorkflowAborter, WorkflowMetadataFetcher,
+// HealthChecker, and LabelManager through interface composition.
+func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model {
 	m := NewModel()
-	m.querier = querier
-	m.aborter = aborter
+	m.querier = repo
+	m.aborter = repo
+	m.metadataFetcher = repo
+	m.healthChecker = repo
+	m.labelManager = repo
+	m.currentVersion = version
 	m.loading = true
 	return m
-}
-
-// SetMetadataFetcher sets the metadata fetcher for debug transitions
-func (m *Model) SetMetadataFetcher(fetcher ports.WorkflowMetadataFetcher) {
-	m.metadataFetcher = fetcher
-}
-
-// SetHealthChecker sets the health checker for server status monitoring
-func (m *Model) SetHealthChecker(checker ports.HealthChecker) {
-	m.healthChecker = checker
-}
-
-// SetLabelManager sets the label manager for workflow labels
-func (m *Model) SetLabelManager(manager ports.LabelManager) {
-	m.labelManager = manager
-}
-
-// SetCurrentVersion sets the current version for version checking
-func (m *Model) SetCurrentVersion(v string) {
-	m.currentVersion = v
 }
 
 // HasActiveModal returns true if there's an active modal being displayed.
