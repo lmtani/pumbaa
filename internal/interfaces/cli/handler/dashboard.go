@@ -12,7 +12,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
@@ -146,14 +145,8 @@ func (h *DashboardHandler) initializeChatDependencies() *tui.ChatDependencies {
 		return nil
 	}
 
-	// Create Cromwell client for tools
-	cromwellClient := cromwellclient.NewClient(cromwellclient.Config{
-		Host:    h.config.CromwellHost,
-		Timeout: h.config.CromwellTimeout,
-	})
-
-	// Initialize tools (without WDL for now)
-	agentTools := tools.GetAllTools(cromwellClient, nil)
+	// Initialize tools using the existing repository (without WDL for now)
+	agentTools := tools.GetAllTools(h.repository, nil)
 
 	return &tui.ChatDependencies{
 		LLM:        llmModel,

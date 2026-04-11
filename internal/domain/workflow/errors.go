@@ -19,8 +19,8 @@ var (
 	// ErrSubmissionFailed is returned when workflow submission fails.
 	ErrSubmissionFailed = errors.New("workflow submission failed")
 
-	// ErrConnectionFailed is returned when connection to Cromwell fails.
-	ErrConnectionFailed = errors.New("connection to Cromwell server failed")
+	// ErrConnectionFailed is returned when connection to the workflow engine fails.
+	ErrConnectionFailed = errors.New("connection to workflow server failed")
 )
 
 // ValidationError represents a validation error with field information.
@@ -33,7 +33,7 @@ func (e ValidationError) Error() string {
 	return fmt.Sprintf("validation error on field '%s': %s", e.Field, e.Message)
 }
 
-// APIError represents an error from the Cromwell API.
+// APIError represents an error from the workflow engine API.
 type APIError struct {
 	StatusCode int
 	Message    string

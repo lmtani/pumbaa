@@ -3,16 +3,17 @@ package cromwell
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // OutputsHandler handles the "outputs" action to get workflow output files.
 type OutputsHandler struct {
-	repo Repository
+	repo ports.WorkflowRepository
 }
 
 // NewOutputsHandler creates a new OutputsHandler.
-func NewOutputsHandler(repo Repository) *OutputsHandler {
+func NewOutputsHandler(repo ports.WorkflowRepository) *OutputsHandler {
 	return &OutputsHandler{repo: repo}
 }
 

@@ -3,16 +3,17 @@ package cromwell
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // MetadataHandler handles the "metadata" action to get workflow metadata.
 type MetadataHandler struct {
-	repo Repository
+	repo ports.WorkflowRepository
 }
 
 // NewMetadataHandler creates a new MetadataHandler.
-func NewMetadataHandler(repo Repository) *MetadataHandler {
+func NewMetadataHandler(repo ports.WorkflowRepository) *MetadataHandler {
 	return &MetadataHandler{repo: repo}
 }
 

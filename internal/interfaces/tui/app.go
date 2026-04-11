@@ -104,6 +104,7 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 	m.debug = debug.NewModelWithChat(
 		wf,
 		deps.Repository,
+		deps.MetadataParser,
 		deps.MonitoringUC,
 		deps.FileProvider,
 		deps.BatchLogsUC,
@@ -191,6 +192,7 @@ func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
 	m.debug = debug.NewModelWithChat(
 		wf,
 		m.deps.Repository,
+		m.deps.MetadataParser,
 		m.deps.MonitoringUC,
 		m.deps.FileProvider,
 		m.deps.BatchLogsUC,

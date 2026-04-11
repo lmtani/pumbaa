@@ -9,11 +9,11 @@ import (
 	"github.com/urfave/cli/v2"
 	adksession "google.golang.org/adk/session"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
-	cromwellclient "github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
@@ -112,12 +112,13 @@ Use **only** to understand or explain WDL definitions.
 `
 
 type ChatHandler struct {
-	config    *config.Config
-	telemetry telemetry.Service
+	repository ports.WorkflowRepository
+	config     *config.Config
+	telemetry  telemetry.Service
 }
 
-func NewChatHandler(cfg *config.Config, ts telemetry.Service) *ChatHandler {
-	return &ChatHandler{config: cfg, telemetry: ts}
+func NewChatHandler(repo ports.WorkflowRepository, cfg *config.Config, ts telemetry.Service) *ChatHandler {
+	return &ChatHandler{repository: repo, config: cfg, telemetry: ts}
 }
 
 func (h *ChatHandler) Command() *cli.Command {
@@ -281,11 +282,6 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	h.telemetry.AddBreadcrumb("chat", fmt.Sprintf("using LLM provider: %s", h.config.LLMProvider))
 	fmt.Printf("Using LLM: %s | Cromwell: %s\n", llmModel.Name(), h.config.CromwellHost)
 
-	cromwellClient := cromwellclient.NewClient(cromwellclient.Config{
-		Host:    h.config.CromwellHost,
-		Timeout: h.config.CromwellTimeout,
-	})
-
 	// Initialize WDL indexer if configured
 	var wdlRepo wdl.Repository
 	if h.config.WDLDirectory != "" {
@@ -300,7 +296,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 		}
 	}
 
-	agentTools := tools.GetAllTools(cromwellClient, wdlRepo)
+	agentTools := tools.GetAllTools(h.repository, wdlRepo)
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 	m.SetStandalone(true) // Running directly from CLI, not embedded in TUI
 

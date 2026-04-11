@@ -3,16 +3,17 @@ package cromwell
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // StatusHandler handles the "status" action to get workflow status.
 type StatusHandler struct {
-	repo Repository
+	repo ports.WorkflowRepository
 }
 
 // NewStatusHandler creates a new StatusHandler.
-func NewStatusHandler(repo Repository) *StatusHandler {
+func NewStatusHandler(repo ports.WorkflowRepository) *StatusHandler {
 	return &StatusHandler{repo: repo}
 }
 

@@ -3,16 +3,17 @@ package cromwell
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
 // LogsHandler handles the "logs" action to get workflow log file paths.
 type LogsHandler struct {
-	repo Repository
+	repo ports.WorkflowRepository
 }
 
 // NewLogsHandler creates a new LogsHandler.
-func NewLogsHandler(repo Repository) *LogsHandler {
+func NewLogsHandler(repo ports.WorkflowRepository) *LogsHandler {
 	return &LogsHandler{repo: repo}
 }
 

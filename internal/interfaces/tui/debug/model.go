@@ -46,7 +46,8 @@ type Model struct {
 	nodes    []*TreeNode
 
 	// Metadata fetcher for on-demand subworkflow loading
-	fetcher ports.WorkflowMetadataFetcher
+	fetcher        ports.WorkflowMetadataFetcher
+	metadataParser ports.MetadataParser
 
 	totalCost float64 // Cached total cost from API
 
@@ -157,12 +158,12 @@ type ChatDependencies struct {
 
 // NewModel creates a model with all dependencies.
 // The workflow is parsed by the handler and passed in; tree building happens here.
-func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase) Model {
-	return NewModelWithChat(wf, fetcher, muc, fp, bluc, nil)
+func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, mp ports.MetadataParser, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase) Model {
+	return NewModelWithChat(wf, fetcher, mp, muc, fp, bluc, nil)
 }
 
 // NewModelWithChat creates a model with all dependencies including optional chat support.
-func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase, chatDeps *ChatDependencies) Model {
+func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, mp ports.MetadataParser, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase, chatDeps *ChatDependencies) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
@@ -180,6 +181,7 @@ func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetch
 		nodes:              visible,
 		preemption:         preemption,
 		fetcher:            fetcher,
+		metadataParser:     mp,
 		monitoringUC:       muc,
 		fileProvider:       fp,
 		batchLogsUC:        bluc,

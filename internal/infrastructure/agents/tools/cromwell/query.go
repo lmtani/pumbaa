@@ -4,26 +4,18 @@ package cromwell
 import (
 	"context"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 )
 
-// Repository defines the interface for Cromwell operations.
-type Repository interface {
-	Query(ctx context.Context, filter workflow.QueryFilter) (*workflow.QueryResult, error)
-	GetStatus(ctx context.Context, workflowID string) (workflow.Status, error)
-	GetMetadata(ctx context.Context, workflowID string) (*workflow.Workflow, error)
-	GetOutputs(ctx context.Context, workflowID string) (map[string]interface{}, error)
-	GetLogs(ctx context.Context, workflowID string) (map[string][]workflow.CallLog, error)
-}
-
 // QueryHandler handles the "query" action to search Cromwell workflows.
 type QueryHandler struct {
-	repo Repository
+	repo ports.WorkflowRepository
 }
 
 // NewQueryHandler creates a new QueryHandler.
-func NewQueryHandler(repo Repository) *QueryHandler {
+func NewQueryHandler(repo ports.WorkflowRepository) *QueryHandler {
 	return &QueryHandler{repo: repo}
 }
 

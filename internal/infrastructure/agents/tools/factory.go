@@ -7,6 +7,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
@@ -15,7 +16,7 @@ import (
 
 // NewDefaultRegistry creates a Registry with all default handlers registered.
 // wdlRepo can be nil if WDL indexing is not configured.
-func NewDefaultRegistry(repo cromwell.Repository, wdlRepo wdl.Repository) *Registry {
+func NewDefaultRegistry(repo ports.WorkflowRepository, wdlRepo wdl.Repository) *Registry {
 	r := NewRegistry()
 
 	// Cromwell actions
@@ -72,10 +73,10 @@ func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
 }
 
 // GetAllTools returns all available tools in this package.
-// cromwellRepo is the Cromwell repository implementation for API interactions.
+// repo is the workflow repository for API interactions.
 // wdlRepo is the WDL index repository (can be nil if not configured).
-func GetAllTools(cromwellRepo cromwell.Repository, wdlRepo wdl.Repository) []tool.Tool {
-	registry := NewDefaultRegistry(cromwellRepo, wdlRepo)
+func GetAllTools(repo ports.WorkflowRepository, wdlRepo wdl.Repository) []tool.Tool {
+	registry := NewDefaultRegistry(repo, wdlRepo)
 	return []tool.Tool{
 		GetPumbaaTool(registry),
 	}
