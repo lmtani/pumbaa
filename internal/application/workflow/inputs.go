@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/application/ports"
@@ -40,9 +41,14 @@ func (uc *InputsUseCase) Execute(ctx context.Context, input InputsInput) (*Input
 		return nil, application.NewUseCaseError("inputs", "failed to get workflow inputs", err)
 	}
 
+	var inputs map[string]any
+	if err := json.Unmarshal([]byte(wf.SubmittedInputs), &inputs); err != nil {
+		return nil, application.NewUseCaseError("inputs", "failed to parse submitted inputs", err)
+	}
+
 	return &InputsOutput{
 		WorkflowID:   wf.ID,
 		WorkflowName: wf.Name,
-		Inputs:       wf.Inputs,
+		Inputs:       inputs,
 	}, nil
 }

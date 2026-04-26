@@ -508,7 +508,7 @@ func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Mod
 
 	switch keyNum {
 	case "1": // Inputs
-		if len(meta.Inputs) > 0 {
+		if meta.SubmittedInputs != "" {
 			m.activeModal = ModalInputs
 			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
 			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())

@@ -216,14 +216,10 @@ func copyToClipboard(text, ctx string) tea.Cmd {
 
 // getRawInputsJSON returns the workflow inputs as raw JSON string
 func (m Model) getRawInputsJSON() string {
-	if len(m.metadata.Inputs) == 0 {
+	if m.metadata.SubmittedInputs == "" {
 		return "{}"
 	}
-	data, err := json.MarshalIndent(m.metadata.Inputs, "", "  ")
-	if err != nil {
-		return "{}"
-	}
-	return string(data)
+	return m.metadata.SubmittedInputs
 }
 
 // getRawOutputsJSON returns the workflow outputs as raw JSON string

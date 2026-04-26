@@ -57,23 +57,28 @@ func (m Model) renderOptionsModal() string {
 }
 
 // formatWorkflowInputsForModal formats workflow inputs for display in the modal.
+// Uses the raw submitted inputs file (pre-Cromwell parsing) to reflect exactly
+// what the user submitted.
 func (m Model) formatWorkflowInputsForModal() string {
-	if len(m.metadata.Inputs) == 0 {
+	if m.metadata.SubmittedInputs == "" {
 		return mutedStyle.Render("No inputs available")
+	}
+
+	var inputs map[string]any
+	if err := json.Unmarshal([]byte(m.metadata.SubmittedInputs), &inputs); err != nil {
+		return modalValueStyle.Render(m.metadata.SubmittedInputs)
 	}
 
 	var sb strings.Builder
 
-	// Sort keys for consistent display
-	keys := make([]string, 0, len(m.metadata.Inputs))
-	for k := range m.metadata.Inputs {
+	keys := make([]string, 0, len(inputs))
+	for k := range inputs {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
 	for _, k := range keys {
-		v := m.metadata.Inputs[k]
-		// Skip null values
+		v := inputs[k]
 		if v == nil {
 			continue
 		}

@@ -445,7 +445,7 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			meta = m.metadata
 		}
 
-		if a := formatAction("1", "inputs", len(meta.Inputs) > 0); a != "" {
+		if a := formatAction("1", "inputs", meta.SubmittedInputs != ""); a != "" {
 			actions = append(actions, a)
 		}
 		if a := formatAction("2", "outputs", len(meta.Outputs) > 0); a != "" {
