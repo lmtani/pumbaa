@@ -20,7 +20,7 @@ type taskTimelineEntry struct {
 
 // renderGlobalTimelineModal renders the global timeline modal showing all tasks sorted by duration
 func (m Model) renderGlobalTimelineModal() string {
-	title := titleStyle.Render("⏱  Tasks by Duration (longest first): " + m.globalTimelineTitle)
+	title := titleStyle.Render("Tasks by Duration (longest first): " + m.globalTimelineTitle)
 
 	content := renderModalViewportContent(
 		m.globalTimelineViewport.View(),

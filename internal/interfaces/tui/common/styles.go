@@ -54,6 +54,14 @@ var (
 	SuccessStyle = lipgloss.NewStyle().
 			Foreground(StatusSucceeded)
 
+	// Aborted style (aborted/aborting workflows)
+	AbortedStyle = lipgloss.NewStyle().
+			Foreground(WarningColor)
+
+	// Submitted style (queued/on-hold workflows)
+	SubmittedStyle = lipgloss.NewStyle().
+			Foreground(InfoColor)
+
 	// Help bar style
 	HelpBarStyle = lipgloss.NewStyle().
 			Foreground(MutedColor).
@@ -76,13 +84,6 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(PrimaryColor).
 			Padding(1, 2)
-
-	// Header style
-	HeaderStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(PrimaryColor).
-			Padding(0, 1).
-			MarginBottom(0)
 
 	// Header title style
 	HeaderTitleStyle = lipgloss.NewStyle().
@@ -116,11 +117,6 @@ var (
 
 	BreadcrumbSeparatorStyle = lipgloss.NewStyle().
 					Foreground(MutedColor)
-
-	// Navigation hint style
-	NavHintStyle = lipgloss.NewStyle().
-			Foreground(MutedColor).
-			Italic(true)
 )
 
 // StatusStyle returns the appropriate style for a status.
@@ -132,6 +128,10 @@ func StatusStyle(status string) lipgloss.Style {
 		return ErrorStyle
 	case "Running":
 		return WarningStyle
+	case "Aborted", "Aborting":
+		return AbortedStyle
+	case "Submitted", "On Hold":
+		return SubmittedStyle
 	default:
 		return MutedStyle
 	}
@@ -147,6 +147,10 @@ func StatusBadgeStyle(status string) lipgloss.Style {
 		return base.Background(BadgeDangerBg)
 	case "Running":
 		return base.Background(BadgeWarnBg)
+	case "Aborted", "Aborting":
+		return base.Background(BadgeAbortedBg)
+	case "Submitted", "On Hold":
+		return base.Background(BadgeInfoBg)
 	default:
 		return base.Background(BadgeNeutralBg)
 	}
@@ -156,13 +160,15 @@ func StatusBadgeStyle(status string) lipgloss.Style {
 func StatusIcon(status string) string {
 	switch status {
 	case "Done", "Succeeded":
-		return "✓"
+		return IconSuccess
 	case "Failed":
-		return "✗"
+		return IconFailed
 	case "Running":
-		return "●"
+		return IconRunning
+	case "Aborted", "Aborting":
+		return IconAborted
 	default:
-		return "○"
+		return IconPending
 	}
 }
 
@@ -193,14 +199,6 @@ func RenderBreadcrumbs(screens []Screen) string {
 	}
 
 	return strings.Join(parts, "")
-}
-
-// RenderNavHints renders navigation hints for the current screen.
-func RenderNavHints(canGoBack bool) string {
-	if canGoBack {
-		return NavHintStyle.Render("[ESC] back  [ctrl+c] quit")
-	}
-	return NavHintStyle.Render("[ESC] quit  [ctrl+c] quit")
 }
 
 // PlaceOverlay places a modal string centered on top of a background string.

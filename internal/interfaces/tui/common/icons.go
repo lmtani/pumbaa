@@ -7,6 +7,7 @@ const (
 	IconFailed  = "✗"
 	IconRunning = "●"
 	IconPending = "○"
+	IconAborted = "⊘"
 	IconWarning = "!"
 )
 

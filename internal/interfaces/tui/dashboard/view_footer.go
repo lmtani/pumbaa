@@ -75,7 +75,7 @@ func (m Model) renderFooter() string {
 		parts = append(parts, common.KeyStyle.Render("ctrl+x")+common.DescStyle.Render(" clear")+"  ")
 	}
 
-	// Help
+	// Help - only as many hints as fit on one line, so the footer never wraps
 	hints := []string{
 		renderHint("↑↓", "navigate"),
 		renderHint("enter", "debug"),
@@ -88,11 +88,13 @@ func (m Model) renderFooter() string {
 		renderHint("r", "refresh"),
 		renderHint("esc", "quit"),
 	}
-	parts = append(parts, strings.Join(hints, "  "))
+	prefix := strings.Join(parts, "")
+	hintBudget := m.width - 2 - lipgloss.Width(prefix)
+	help := common.FitParts(hintBudget, "  ", hints)
 
 	return common.HelpBarStyle.
-		Width(m.width - 2).
-		Render(strings.Join(parts, ""))
+		Width(m.width).
+		Render(prefix + help)
 }
 
 // renderHint formats a single key binding hint for the footer help bar.

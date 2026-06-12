@@ -65,7 +65,7 @@ func (m Model) renderChatSelectionModal() string {
 	modalHeight := 18
 
 	// Title
-	title := titleStyle.Render("🤖 Chat with AI")
+	title := titleStyle.Render("Chat with AI")
 
 	// Subtitle
 	subtitle := mutedStyle.Render("Select data to include in context:")

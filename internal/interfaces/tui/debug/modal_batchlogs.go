@@ -7,7 +7,7 @@ import (
 // renderBatchLogsModal renders the batch logs modal.
 func (m Model) renderBatchLogsModal() string {
 	// Modal title
-	titleText := "📊 Google Batch Logs"
+	titleText := "Google Batch Logs"
 	if m.batchLogsHScrollOffset > 0 {
 		titleText += " ◀"
 	}

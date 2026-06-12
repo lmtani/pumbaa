@@ -11,7 +11,7 @@ import (
 )
 
 func (m Model) renderDetails() string {
-	style := detailsPanelStyle.Width(m.detailsWidth).Height(m.height - 8)
+	style := detailsPanelStyle.Width(m.detailsWidth).Height(common.ContentPanelHeight(m.height))
 	if m.focus == FocusDetails {
 		style = style.BorderForeground(common.FocusBorder)
 	}
@@ -27,15 +27,15 @@ func (m Model) renderDetails() string {
 func (m Model) getDetailsTitle() string {
 	switch m.viewMode {
 	case ViewModeCommand:
-		return "📜 Command"
+		return "Command"
 	case ViewModeLogs:
-		return "📋 Logs"
+		return "Logs"
 	case ViewModeInputs:
-		return "📥 Inputs"
+		return "Inputs"
 	case ViewModeOutputs:
-		return "📤 Outputs"
+		return "Outputs"
 	default:
-		return "📊 Details"
+		return "Details"
 	}
 }
 
@@ -104,7 +104,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 		// Timing
 		if !cd.Start.IsZero() || !cd.End.IsZero() || !cd.VMStartTime.IsZero() || !cd.VMEndTime.IsZero() {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("⏱ Timing") + "\n")
+			sb.WriteString(titleStyle.Render("Timing") + "\n")
 			if !cd.Start.IsZero() {
 				sb.WriteString(labelStyle.Render("Start: ") + valueStyle.Render(cd.Start.Format("15:04:05")) + "\n")
 			}
@@ -127,7 +127,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 		// Resources - only show if has data
 		if cd.CPU != "" || cd.Memory != "" || cd.Disk != "" || cd.Preemptible != "" {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("💻 Resources") + "\n")
+			sb.WriteString(titleStyle.Render("Resources") + "\n")
 			if cd.CPU != "" {
 				sb.WriteString(labelStyle.Render("CPU: ") + valueStyle.Render(cd.CPU) + "\n")
 			}
@@ -145,7 +145,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 		// Docker - only show if has data
 		if cd.DockerImage != "" || cd.DockerSize != "" {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("🐳 Docker") + "\n")
+			sb.WriteString(titleStyle.Render("Docker") + "\n")
 			if cd.DockerImage != "" {
 				sb.WriteString(labelStyle.Render("Image:") + " " + mutedStyle.Render("(y to copy)") + "\n")
 				sb.WriteString(formatDockerImage(cd.DockerImage))
@@ -158,7 +158,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 		// Cache - only show if has meaningful data
 		if cd.CacheHit || cd.CacheResult != "" {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("📦 Cache") + "\n")
+			sb.WriteString(titleStyle.Render("Cache") + "\n")
 			cacheStatus := "Miss"
 			if cd.CacheHit {
 				cacheStatus = "Hit"
@@ -172,14 +172,14 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 		// Cost
 		if cd.VMCostPerHour > 0 {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("💰 Cost") + "\n")
+			sb.WriteString(titleStyle.Render("Cost") + "\n")
 			sb.WriteString(labelStyle.Render("VM Cost/Hour: ") + valueStyle.Render(fmt.Sprintf("$%.4f", cd.VMCostPerHour)) + "\n")
 		}
 
 		// Google Batch (if applicable)
 		if cd.Backend != "" || cd.JobID != "" {
 			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("☁ Execution Backend") + "\n")
+			sb.WriteString(titleStyle.Render("Execution Backend") + "\n")
 			if cd.Backend != "" {
 				sb.WriteString(labelStyle.Render("Backend: ") + valueStyle.Render(cd.Backend) + "\n")
 			}
@@ -199,7 +199,7 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			if metadata != nil {
 				if metadata.WorkflowRoot != "" || metadata.WorkflowLog != "" {
 					sb.WriteString("\n")
-					sb.WriteString(titleStyle.Render("📁 Workflow Paths") + "\n")
+					sb.WriteString(titleStyle.Render("Workflow Paths") + "\n")
 					if metadata.WorkflowRoot != "" {
 						sb.WriteString(labelStyle.Render("Root:") + "\n")
 						sb.WriteString(pathStyle.Render(truncatePath(metadata.WorkflowRoot, m.detailsWidth-8)) + "\n")
@@ -356,7 +356,7 @@ func (m Model) renderScatterSummary(node *TreeNode) string {
 		return ""
 	}
 
-	sb.WriteString(titleStyle.Render("📊 Shards Summary") + "\n")
+	sb.WriteString(titleStyle.Render("Shards Summary") + "\n")
 	sb.WriteString(labelStyle.Render("Total Shards: ") + valueStyle.Render(fmt.Sprintf("%d", total)) + "\n")
 
 	// Count status breakdown
@@ -388,7 +388,7 @@ func (m Model) renderScatterSummary(node *TreeNode) string {
 
 	// Timing statistics
 	if len(durations) > 0 {
-		sb.WriteString("\n" + titleStyle.Render("⏱ Timing") + "\n")
+		sb.WriteString("\n" + titleStyle.Render("Timing") + "\n")
 
 		// Total duration (wall clock from first start to last end)
 		if !node.Start.IsZero() && !node.End.IsZero() {
@@ -508,23 +508,23 @@ func (m Model) renderMonitorContent() string {
 	report := m.resourceReport
 
 	// Header with duration and data points
-	sb.WriteString(mutedStyle.Render(fmt.Sprintf("⏱ Duration: %s  📊 Data points: %d",
+	sb.WriteString(mutedStyle.Render(fmt.Sprintf("Duration: %s  ·  Data points: %d",
 		formatDuration(report.Duration), report.DataPoints)) + "\n\n")
 
 	// CPU Section
-	sb.WriteString(titleStyle.Render("💻 CPU") + "\n")
+	sb.WriteString(titleStyle.Render("CPU") + "\n")
 	sb.WriteString(renderGaugeBar(report.CPU.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.0f%%  Avg: %.0f%%  Efficiency: %.0f%%\n\n",
 		report.CPU.Peak, report.CPU.Avg, report.CPU.Efficiency*100))
 
 	// Memory Section
-	sb.WriteString(titleStyle.Render("🧠 Memory") + "\n")
+	sb.WriteString(titleStyle.Render("Memory") + "\n")
 	sb.WriteString(renderGaugeBar(report.Mem.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.0fMB / %.0fMB  Efficiency: %.0f%%\n\n",
 		report.Mem.Peak, report.Mem.Total, report.Mem.Efficiency*100))
 
 	// Disk Section
-	sb.WriteString(titleStyle.Render("💾 Disk") + "\n")
+	sb.WriteString(titleStyle.Render("Disk") + "\n")
 	sb.WriteString(renderGaugeBar(report.Disk.Efficiency, 25) + "\n")
 	sb.WriteString(fmt.Sprintf("Peak: %.1fGB / %.1fGB  Efficiency: %.0f%%\n\n",
 		report.Disk.Peak, report.Disk.Total, report.Disk.Efficiency*100))

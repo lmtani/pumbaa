@@ -9,9 +9,10 @@ import (
 
 func (m Model) renderTree() string {
 	var sb strings.Builder
+	panelHeight := common.ContentPanelHeight(m.height)
 	if len(m.nodes) == 0 && m.searchQuery != "" {
 		sb.WriteString(mutedStyle.Render(fmt.Sprintf("No matches for %q", m.searchQuery)))
-		style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
+		style := treePanelStyle.Width(m.treeWidth).Height(panelHeight)
 		if m.focus == FocusTree {
 			style = style.BorderForeground(common.FocusBorder)
 		}
@@ -19,10 +20,7 @@ func (m Model) renderTree() string {
 	}
 
 	startIdx := 0
-	maxVisible := m.height - 10 // Leave room for header and footer
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := panelHeight
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
@@ -38,7 +36,7 @@ func (m Model) renderTree() string {
 		sb.WriteString("\n")
 	}
 
-	style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
+	style := treePanelStyle.Width(m.treeWidth).Height(panelHeight)
 	if m.focus == FocusTree {
 		style = style.BorderForeground(common.FocusBorder)
 	}

@@ -17,7 +17,7 @@ var errorMsgStyle = lipgloss.NewStyle().
 func (m Model) renderFailures() string {
 	var sb strings.Builder
 
-	sb.WriteString(errorStyle.Render("⚠️  Workflow Failures") + "\n\n")
+	sb.WriteString(errorStyle.Render("⚠  Workflow Failures") + "\n\n")
 
 	for i, failure := range m.metadata.Failures {
 		sb.WriteString(renderFailure(failure, 0, i+1, errorMsgStyle))
@@ -30,7 +30,7 @@ func (m Model) renderFailures() string {
 func (m Model) renderTaskFailures(failures []Failure) string {
 	var sb strings.Builder
 
-	sb.WriteString(errorStyle.Render("⚠️  Task Failures") + "\n\n")
+	sb.WriteString(errorStyle.Render("⚠  Task Failures") + "\n\n")
 
 	for i, failure := range failures {
 		sb.WriteString(renderFailure(failure, 0, i+1, errorMsgStyle))

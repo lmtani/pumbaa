@@ -32,6 +32,7 @@ func (m Model) renderTable() string {
 		colWidths[4], "DURATION",
 		colWidths[5], "LABELS",
 	)
+	header = common.TruncateWidth(header, m.width-6)
 	b.WriteString(headerStyle.Render(header) + "\n")
 
 	// Table rows
@@ -55,7 +56,7 @@ func (m Model) renderTable() string {
 
 	return common.PanelStyle.
 		Width(m.width - 2).
-		Height(m.height - 8).
+		Height(common.ContentPanelHeight(m.height)).
 		Render(b.String())
 }
 
@@ -92,7 +93,7 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 	labels := formatLabelsPlain(wf.Labels, maxRowWidth-lipgloss.Width(base))
 
 	if selected {
-		row := base + labels
+		row := common.TruncateWidth(base+labels, maxRowWidth)
 		// Pad to full width so the highlight covers the entire line
 		if d := maxRowWidth - lipgloss.Width(row); d > 0 {
 			row += strings.Repeat(" ", d)
@@ -112,26 +113,27 @@ func (m Model) renderWorkflowRow(wf workflow.Workflow, colWidths []int, selected
 		common.MutedStyle.Render(cells[4]),
 		common.MutedStyle.Render(labels),
 	}
-	return strings.Join(parts, "  ")
+	return common.TruncateANSI(strings.Join(parts, "  "), maxRowWidth)
 }
 
 // getColumnWidths calculates the width of each table column based on available space.
 func (m Model) getColumnWidths() []int {
-	// STATUS, ID, NAME, SUBMITTED, DURATION, LABELS
-	// Fixed widths: STATUS(12) + ID(9) + SUBMITTED(15) + DURATION(8) + separators(12) = 56
-	fixedWidth := 56
-	available := m.width - fixedWidth
+	// STATUS(12) + ID(9) + SUBMITTED(15) + DURATION(8) = 44 fixed columns,
+	// plus 5 separators of 2 cells = 54. NAME and LABELS share the rest.
+	maxRowWidth := m.width - 6
+	available := maxRowWidth - 54
 
-	// Distribute remaining space: 30% NAME, 70% LABELS
-	nameWidth := maxInt(10, available*30/100)
-	labelsWidth := maxInt(10, available-nameWidth)
+	// Distribute remaining space: 30% NAME, 70% LABELS. The row renderer gives
+	// LABELS whatever is left, so only NAME needs clamping here. The floor of
+	// 5 keeps very narrow terminals from producing zero-width columns.
+	nameWidth := maxInt(5, minInt(available*30/100, available-5))
 
 	return []int{
-		12,          // STATUS (icon + space + "Succeeded" = 11, +1 for padding)
-		9,           // ID (8 chars + space)
-		nameWidth,   // NAME (flexible)
-		15,          // SUBMITTED (YY-MM-DD HH:MM)
-		8,           // DURATION
-		labelsWidth, // LABELS (gets more space)
+		12,                             // STATUS (icon + space + "Succeeded" = 11, +1 for padding)
+		9,                              // ID (8 chars + space)
+		nameWidth,                      // NAME (flexible)
+		15,                             // SUBMITTED (YY-MM-DD HH:MM)
+		8,                              // DURATION
+		maxInt(5, available-nameWidth), // LABELS (gets more space)
 	}
 }

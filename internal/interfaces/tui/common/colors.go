@@ -42,6 +42,7 @@ var (
 	BadgeWarnBg    = lipgloss.Color("#D9BC6A") // active filters, context, running status
 	BadgeDangerBg  = lipgloss.Color("#D98C84") // update available, failed status
 	BadgeSearchBg  = lipgloss.Color("#D9A05C") // search mode
+	BadgeAbortedBg = lipgloss.Color("#D9A05C") // aborted/aborting status
 	BadgeNeutralBg = lipgloss.Color("#A5A5A5") // unknown/pending status
 	OnPrimaryColor = lipgloss.Color("#FFFFFF") // text on PrimaryColor backgrounds
 )

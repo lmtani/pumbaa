@@ -9,7 +9,7 @@ import (
 // renderLogModal renders the log modal.
 func (m Model) renderLogModal() string {
 	// Modal title with scroll indicator
-	titleText := "📄 " + m.logModalTitle
+	titleText := "" + m.logModalTitle
 	if m.logModalHScrollOffset > 0 {
 		titleText += " ◀"
 	}

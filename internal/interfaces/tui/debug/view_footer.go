@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -54,12 +56,14 @@ func (m Model) renderFooter() string {
 		parts = append(parts, " • ")
 	}
 
-	// Help shortcuts with consistent styling
-	parts = append(parts, m.renderFooterHints())
+	// Help shortcuts - only as many as fit, so the footer never wraps
+	prefix := strings.Join(parts, "")
+	hintBudget := m.width - 2 - lipgloss.Width(prefix)
+	help := common.FitParts(hintBudget, "  ", m.footerHints())
 
 	return common.HelpBarStyle.
-		Width(m.width - 2).
-		Render(strings.Join(parts, ""))
+		Width(m.width).
+		Render(prefix + help)
 }
 
 func (m Model) renderSearchStatus() string {
@@ -81,7 +85,7 @@ func (m Model) renderSearchStatus() string {
 	return fmt.Sprintf("%s %s", common.KeyStyle.Render("/"), common.DescStyle.Render(status))
 }
 
-func (m Model) renderFooterHints() string {
+func (m Model) footerHints() []string {
 	hints := []string{
 		renderFooterHint("↑↓", "navigate"),
 		renderFooterHint("tab", "switch"),
@@ -104,7 +108,7 @@ func (m Model) renderFooterHints() string {
 		hints = append(hints, renderFooterHint("esc", "quit"))
 	}
 
-	return strings.Join(hints, "  ")
+	return hints
 }
 
 func renderFooterHint(key, desc string) string {

@@ -1,5 +1,7 @@
 package dashboard
 
+import "github.com/lmtani/pumbaa/internal/interfaces/tui/common"
+
 // ensureVisible ensures the cursor is within the visible area.
 func (m *Model) ensureVisible() {
 	visibleRows := m.getVisibleRows()
@@ -10,8 +12,9 @@ func (m *Model) ensureVisible() {
 	}
 }
 
-// getVisibleRows calculates the number of rows that can be displayed.
+// getVisibleRows calculates the number of workflow rows that fit inside the
+// table panel: panel height minus the table header (2 lines including its
+// bottom border) and the scroll indicator (2 lines).
 func (m Model) getVisibleRows() int {
-	// Account for header, table header, footer, etc.
-	return maxInt(1, m.height-12)
+	return maxInt(1, common.ContentPanelHeight(m.height)-4)
 }

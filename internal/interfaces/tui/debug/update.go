@@ -236,7 +236,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.detailsWidth = m.width - m.treeWidth - 4
 		m.help.Width = m.width
 		m.detailViewport.Width = m.detailsWidth - 4
-		m.detailViewport.Height = m.height - 14 // Leave room for header, footer, and panel borders
+		// Panel height minus the details title and its blank line
+		m.detailViewport.Height = common.ContentPanelHeight(m.height) - 2
 		m.resizeActiveModal()
 		m.updateDetailsContent()
 

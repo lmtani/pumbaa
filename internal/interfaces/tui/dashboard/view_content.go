@@ -41,16 +41,16 @@ func (m Model) renderContent() string {
 
 		return common.PanelStyle.
 			Width(m.width - 2).
-			Height(m.height - 8).
-			Render(lipgloss.Place(m.width-4, m.height-10, lipgloss.Center, lipgloss.Center, errorBox))
+			Height(common.ContentPanelHeight(m.height)).
+			Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, errorBox))
 	}
 
 	if len(m.workflows) == 0 && !m.loading {
 		emptyMsg := common.MutedStyle.Render("No workflows found\n\nPress 'r' to refresh or '/' to filter")
 		return common.PanelStyle.
 			Width(m.width - 2).
-			Height(m.height - 8).
-			Render(lipgloss.Place(m.width-4, m.height-10, lipgloss.Center, lipgloss.Center, emptyMsg))
+			Height(common.ContentPanelHeight(m.height)).
+			Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, emptyMsg))
 	}
 
 	return m.renderTable()
@@ -83,14 +83,14 @@ func (m Model) renderFilterInput() string {
 
 	return common.PanelStyle.
 		Width(m.width - 2).
-		Height(m.height - 8).
-		Render(lipgloss.Place(m.width-4, m.height-10, lipgloss.Center, lipgloss.Center, filterBox))
+		Height(common.ContentPanelHeight(m.height)).
+		Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, filterBox))
 }
 
 // renderConfirmModal renders the abort confirmation modal.
 func (m Model) renderConfirmModal() string {
 	modalContent := lipgloss.JoinVertical(lipgloss.Center,
-		common.TitleStyle.Render("⚠️  Confirm Abort"),
+		common.TitleStyle.Render("⚠  Confirm Abort"),
 		"",
 		"Are you sure you want to abort workflow",
 		common.MutedStyle.Render(truncateID(m.confirmID)),

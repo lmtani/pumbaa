@@ -116,7 +116,7 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 
 	var sb strings.Builder
 
-	sb.WriteString(titleStyle.Render("🔄 Preemption Summary") + "\n")
+	sb.WriteString(titleStyle.Render("↻ Preemption Summary") + "\n")
 	sb.WriteString(mutedStyle.Render("  (this level only, excluding subworkflows)") + "\n\n")
 
 	// Cost-weighted efficiency with visual gauge bar

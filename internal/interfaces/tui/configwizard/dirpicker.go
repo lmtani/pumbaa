@@ -100,7 +100,7 @@ func (m DirectoryPickerModel) View() string {
 	helpStyle := lipgloss.NewStyle().
 		Foreground(common.MutedColor)
 
-	s.WriteString(titleStyle.Render("📁 Select WDL Directory"))
+	s.WriteString(titleStyle.Render("Select WDL Directory"))
 	s.WriteString("\n")
 	s.WriteString(pathStyle.Render("Current: " + m.filepicker.CurrentDirectory))
 	s.WriteString("\n\n")

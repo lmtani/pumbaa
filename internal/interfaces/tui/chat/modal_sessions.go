@@ -87,7 +87,7 @@ func (m *Model) renderSessionsModal() string {
 	modalWidth := 75
 	modalHeight := 20
 
-	title := common.HeaderTitleStyle.Render("🔄 Chat Sessions")
+	title := common.HeaderTitleStyle.Render("Chat Sessions")
 
 	if m.sessionsLoading {
 		content := common.MutedStyle.Render("Loading sessions...")
@@ -112,9 +112,9 @@ func (m *Model) renderSessionsModal() string {
 	// Search bar
 	searchBar := ""
 	if m.sessionsSearching {
-		searchBar = "🔍 " + m.sessionsSearchInput.View()
+		searchBar = "/ " + m.sessionsSearchInput.View()
 	} else if m.sessionsSearch != "" {
-		searchBar = common.MutedStyle.Render(fmt.Sprintf("🔍 Filter: %s (/ to edit, esc to clear)", m.sessionsSearch))
+		searchBar = common.MutedStyle.Render(fmt.Sprintf("Filter: %s (/ to edit, esc to clear)", m.sessionsSearch))
 	} else {
 		searchBar = common.MutedStyle.Render("/ to search")
 	}

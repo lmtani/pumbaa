@@ -16,7 +16,6 @@ var (
 
 // Styles shared with common - aliased so call sites in this package stay short.
 var (
-	headerStyle              = common.HeaderStyle
 	treePanelStyle           = common.PanelStyle
 	detailsPanelStyle        = common.PanelStyle
 	headerTitleStyle         = common.HeaderTitleStyle

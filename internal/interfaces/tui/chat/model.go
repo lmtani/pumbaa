@@ -375,12 +375,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		headerHeight := 3
-		footerHeight := 2
 		inputHeight := 5
-		contentBorderHeight := 2
-
-		availableHeight := m.height - headerHeight - footerHeight - inputHeight - contentBorderHeight
+		availableHeight := m.height - headerHeight - common.FooterHeight - inputHeight - common.PanelChrome
 
 		if !m.ready {
 			m.viewport = viewport.New(m.width-4, availableHeight)
@@ -625,74 +621,56 @@ func (m *Model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, content, input, footer)
 }
 
+// headerHeight is the fixed height of the chat header: the bar plus the
+// session line. Keeping it constant lets the viewport size stay stable even
+// when the session summary arrives asynchronously.
+const headerHeight = 2
+
 func (m Model) renderHeader() string {
-	// Breadcrumbs - Chat is after Dashboard and Debug
-	breadcrumbs := common.RenderBreadcrumbs([]common.Screen{
-		{Name: "Dashboard", Active: false},
-		{Name: "Debug", Active: false},
-		{Name: "Chat", Active: true},
-	})
+	brand := common.HeaderBrandStyle.Render("Pumbaa")
 
-	// Navigation hints
-	navHints := common.RenderNavHints(true) // Can go back to debug
+	// Breadcrumb reflects how the chat was opened
+	var screens []common.Screen
+	if m.standalone {
+		screens = []common.Screen{{Name: "Chat", Active: true}}
+	} else {
+		screens = []common.Screen{
+			{Name: "Dashboard", Active: false},
+			{Name: "Debug", Active: false},
+			{Name: "Chat", Active: true},
+		}
+	}
+	breadcrumbs := common.RenderBreadcrumbs(screens)
 
-	title := common.HeaderTitleStyle.Render("🐗 Pumbaa Chat")
-
-	// Build badges for the first line
-	var badges []string
-
-	// Context badge (e.g., Task Context)
+	left := brand + " " + breadcrumbs
 	if m.contextLabel != "" {
-		badges = append(badges, contextBadgeStyle.Render(m.contextLabel))
+		left += " " + contextBadgeStyle.Render(m.contextLabel)
 	}
 
-	// LLM provider badge
+	// Right side: LLM provider and token usage
+	var right []string
 	if m.llm != nil {
-		badges = append(badges, llmBadgeStyle.Render("🤖 "+m.llm.Name()))
+		right = append(right, llmBadgeStyle.Render(m.llm.Name()))
 	}
-
-	// Token usage badge
 	if m.inputTokens > 0 || m.outputTokens > 0 {
-		badges = append(badges, tokenBadgeStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
+		right = append(right, tokenBadgeStyle.Render(fmt.Sprintf("%s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
 	}
 
-	// First line: breadcrumbs and nav hints
-	headerLine1 := lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		breadcrumbs,
-		"  ",
-		navHints,
-	)
+	bar := common.RenderHeaderBar(m.width, left, strings.Join(right, " "))
 
-	// Second line: Title + Badges
-	titleLine := title
-	for _, badge := range badges {
-		titleLine = lipgloss.JoinHorizontal(lipgloss.Center, titleLine, " ", badge)
-	}
-
-	// Build content lines
-	var lines []string
-	lines = append(lines, headerLine1)
-	lines = append(lines, titleLine)
-
-	// Third line: Session summary (if available) or Session ID
+	// Session line: summary when available, otherwise the session ID
+	sessionLine := common.MutedStyle.Render("No session")
 	if m.sessionSummary != "" {
-		lines = append(lines, sessionSummaryStyle.Render("💬 "+m.sessionSummary))
+		sessionLine = sessionSummaryStyle.Render(common.Truncate(m.sessionSummary, m.width-2))
 	} else if m.session != nil {
-		// Show truncated session ID when no summary
 		sessionID := m.session.ID()
 		if len(sessionID) > 12 {
 			sessionID = sessionID[:12] + "…"
 		}
-		sessionStyle := common.MutedStyle
-		lines = append(lines, sessionStyle.Render("Session: "+sessionID))
+		sessionLine = common.MutedStyle.Render("Session: " + sessionID)
 	}
 
-	headerContent := lipgloss.JoinVertical(lipgloss.Left, lines...)
-
-	return common.HeaderStyle.
-		Width(m.width - 2).
-		Render(headerContent)
+	return lipgloss.JoinVertical(lipgloss.Left, bar, " "+sessionLine)
 }
 
 func (m Model) renderContent() string {
@@ -707,7 +685,7 @@ func (m Model) renderInput() string {
 	if m.loading {
 		var loadingText string
 		if m.toolNotification != "" {
-			loadingText = fmt.Sprintf("%s 🔧 Executing: %s", m.spinner.View(), m.toolNotification)
+			loadingText = fmt.Sprintf("%s Executing: %s", m.spinner.View(), m.toolNotification)
 		} else {
 			loadingText = fmt.Sprintf("%s Thinking...", m.spinner.View())
 		}
@@ -753,48 +731,44 @@ func (m Model) renderFooter() string {
 		escAction = "quit"
 	}
 
-	var help string
+	hint := func(key, desc string) string {
+		return common.KeyStyle.Render(key) + " " + common.DescStyle.Render(desc)
+	}
+	var hints []string
 	if m.focusMode == FocusMessages {
-		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s",
-			common.KeyStyle.Render("↑↓"),
-			common.DescStyle.Render("navigate"),
-			common.KeyStyle.Render("y"),
-			common.DescStyle.Render("copy"),
-			common.KeyStyle.Render("tab"),
-			common.DescStyle.Render("type"),
-			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render(escAction),
-		)
+		hints = []string{
+			hint("↑↓", "navigate"),
+			hint("y", "copy"),
+			hint("tab", "type"),
+			hint("esc", escAction),
+		}
 	} else {
-		help = fmt.Sprintf(
-			"%s %s  %s %s  %s %s  %s %s  %s %s",
-			common.KeyStyle.Render("ctrl+d"),
-			common.DescStyle.Render("send"),
-			common.KeyStyle.Render("ctrl+s"),
-			common.DescStyle.Render("sessions"),
-			common.KeyStyle.Render("↑↓"),
-			common.DescStyle.Render("scroll"),
-			common.KeyStyle.Render("tab"),
-			common.DescStyle.Render("navigate msgs"),
-			common.KeyStyle.Render("esc"),
-			common.DescStyle.Render(escAction),
-		)
+		hints = []string{
+			hint("ctrl+d", "send"),
+			hint("ctrl+s", "sessions"),
+			hint("↑↓", "scroll"),
+			hint("tab", "navigate msgs"),
+			hint("esc", escAction),
+		}
 	}
 
 	// Show status message if present
+	prefix := ""
 	if m.statusMessage != "" {
-		help = common.SuccessStyle.Render(m.statusMessage) + "  " + help
+		prefix = common.SuccessStyle.Render(m.statusMessage) + "  "
 	}
 
+	// Only as many hints as fit on one line, so the footer never wraps
+	help := common.FitParts(m.width-2-lipgloss.Width(prefix), "  ", hints)
+
 	return common.HelpBarStyle.
-		Width(m.width - 2).
-		Render(help)
+		Width(m.width).
+		Render(prefix + help)
 }
 
 func (m Model) renderMessages() string {
 	if m.msgs == nil || len(*m.msgs) == 0 {
-		return common.MutedStyle.Render("Welcome to Pumbaa Chat!\n\nType your message and press Ctrl+D to send.")
+		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Ctrl+D to send.")
 	}
 
 	var sb strings.Builder
@@ -1120,7 +1094,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		// Max turns reached
 		var summary strings.Builder
-		summary.WriteString("⚠️ I reached the tool iteration limit.\n\n")
+		summary.WriteString("⚠ I reached the tool iteration limit.\n\n")
 		summary.WriteString("**Information collected so far:**\n")
 
 		toolResultCount := 0
