@@ -17,7 +17,7 @@ func (m Model) renderDetails() string {
 	}
 
 	title := m.getDetailsTitle()
-	titleRendered := titleStyle.Render(title)
+	titleRendered := panelTitleStyle.Render(title)
 
 	content := m.detailViewport.View()
 

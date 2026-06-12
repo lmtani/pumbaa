@@ -31,14 +31,15 @@ var HeaderBrandStyle = lipgloss.NewStyle().
 
 // RenderHeaderBar lays out a single header line: left content anchored at the
 // start, right content aligned to the end, flexible space in between. When
-// there is not enough room for both, the right side is dropped.
+// there is not enough room for both, the right side is dropped first, then
+// the left side is truncated.
 func RenderHeaderBar(width int, left, right string) string {
 	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
 	if gap < 1 {
 		if right != "" {
 			return RenderHeaderBar(width, left, "")
 		}
-		return left
+		return TruncateANSI(left, width)
 	}
 	return left + strings.Repeat(" ", gap) + right
 }

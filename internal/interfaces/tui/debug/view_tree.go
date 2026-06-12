@@ -30,11 +30,13 @@ func (m Model) renderTree() string {
 		endIdx = len(m.nodes)
 	}
 
+	lines := make([]string, 0, endIdx-startIdx)
 	for i := startIdx; i < endIdx; i++ {
-		node := m.nodes[i]
-		sb.WriteString(m.renderTreeNode(node, i))
-		sb.WriteString("\n")
+		lines = append(lines, m.renderTreeNode(m.nodes[i], i))
 	}
+	// Join without a trailing newline: an extra final line would grow the
+	// panel past its height budget when the tree fills it completely.
+	sb.WriteString(strings.Join(lines, "\n"))
 
 	style := treePanelStyle.Width(m.treeWidth).Height(panelHeight)
 	if m.focus == FocusTree {

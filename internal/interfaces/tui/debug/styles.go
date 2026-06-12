@@ -34,6 +34,13 @@ var (
 
 // Debug-specific styles
 var (
+	// Panel title style - like titleStyle but without the bottom margin, so
+	// the details panel stays within its height budget (the margin would push
+	// the whole screen one line past the terminal height).
+	panelTitleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(common.PrimaryColor)
+
 	searchBadgeStyle = lipgloss.NewStyle().
 				Foreground(common.BadgeFg).
 				Background(common.BadgeSearchBg).
