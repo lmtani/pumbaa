@@ -78,6 +78,11 @@ func (m Model) modalDispatches() []modalDispatch {
 			handle: Model.handleBatchLogsModalKeys,
 			resize: func(m *Model) { m.resizeBatchLogsModalViewport() },
 		},
+		{
+			active: func(m Model) bool { return m.activeModal == ModalCopyMenu },
+			view:   Model.renderCopyMenuModal,
+			handle: Model.handleCopyMenuModalKeys,
+		},
 	}
 }
 

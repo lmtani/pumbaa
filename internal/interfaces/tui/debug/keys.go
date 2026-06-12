@@ -104,7 +104,7 @@ func DefaultKeyMap() KeyMap {
 		),
 		Copy: key.NewBinding(
 			key.WithKeys("y"),
-			key.WithHelp("y", "copy to clipboard"),
+			key.WithHelp("y", "copy menu"),
 		),
 		Chat: key.NewBinding(
 			key.WithKeys("6", "a"),

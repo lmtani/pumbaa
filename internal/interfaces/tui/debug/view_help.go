@@ -39,7 +39,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpLine("d", "Return to details view"))
 	content.WriteString(helpLine("/", "Filter tree (name/status)"))
 	content.WriteString(helpLine("Ctrl+X", "Clear search"))
-	content.WriteString(helpLine("y", "Copy to clipboard"))
+	content.WriteString(helpLine("y", "Copy menu (ID, paths, cmd)"))
 	content.WriteString(helpLine("Esc", "Close modal / back"))
 	content.WriteString(helpLine("q", "Quit"))
 	content.WriteString("\n")

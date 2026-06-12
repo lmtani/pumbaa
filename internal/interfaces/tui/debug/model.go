@@ -129,6 +129,10 @@ type Model struct {
 	chatSelectionCursor int               // Cursor for selection modal
 	chatContextNode     *TreeNode         // Node being used for chat context
 
+	// Copy menu modal state
+	copyMenuItems  []copyMenuItem
+	copyMenuCursor int
+
 	// Chat dependencies (optional - nil if not configured)
 	llm        adkmodel.LLM
 	chatTools  []tool.Tool

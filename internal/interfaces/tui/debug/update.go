@@ -441,16 +441,8 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, m.keys.Copy):
-		// Copy Docker image to clipboard when on details view
-		if m.cursor < len(m.nodes) {
-			node := m.nodes[m.cursor]
-			if node.CallData != nil && node.CallData.DockerImage != "" {
-				return m, copyToClipboard(node.CallData.DockerImage, "Docker image")
-			} else {
-				m.setStatusMessage("No Docker image to copy")
-				return m, getClearStatusCmd()
-			}
-		}
+		// Open the copy menu for the selected node (IDs, log paths, command, ...)
+		return m.openCopyMenu()
 
 	case key.Matches(msg, m.keys.SplitNarrow):
 		m.adjustSplit(-5)

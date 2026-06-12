@@ -16,4 +16,5 @@ const (
 	ModalCallOutputs
 	ModalCallCommand
 	ModalBatchLogs
+	ModalCopyMenu
 )
