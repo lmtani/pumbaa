@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // taskTimelineEntry represents a task with its timing information for the timeline
@@ -92,19 +94,13 @@ func (m Model) buildGlobalTimelineContentForMetadata(metadata *WorkflowMetadata)
 // formatTimelineEntryStatic formats a single timeline entry (static function)
 func (m Model) formatTimelineEntryStatic(e taskTimelineEntry, maxNameLen int, minStart time.Time, totalDuration time.Duration) string {
 	// Status icon
-	icon := StatusIcon(e.Status)
-	style := StatusStyle(e.Status)
+	icon := common.StatusIcon(e.Status)
+	style := common.StatusStyle(e.Status)
 
 	// Remove global title prefix from name to reduce space
 	name := strings.TrimPrefix(e.Name, m.globalTimelineTitle+".")
-	// Name (truncated if needed, left-aligned)
-	if len(name) > maxNameLen {
-		name = name[:maxNameLen-3] + "..."
-	}
-	// Pad name to maxNameLen
-	for len(name) < maxNameLen {
-		name = name + " "
-	}
+	// Truncate and left-align to maxNameLen (display-width aware)
+	name = common.PadRight(name, maxNameLen)
 
 	// Duration (right-aligned, 8 chars)
 	durStr := formatDurationCompact(e.Duration)

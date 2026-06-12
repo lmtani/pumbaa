@@ -93,7 +93,7 @@ func (m Model) renderChatSelectionModal() string {
 				Bold(true).
 				Render(checkbox)
 			labelStyled := lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFFFF")).
+				Foreground(textColor).
 				Bold(true).
 				Render(opt.label)
 			descStyled := mutedStyle.Render(" - " + opt.description)

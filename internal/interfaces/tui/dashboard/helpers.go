@@ -69,7 +69,7 @@ func formatLabelsPlain(labels map[string]string, maxWidth int) string {
 	// Sort for consistent display
 	sort.Strings(parts)
 
-	return strings.Join(parts, ", ")
+	return common.TruncateWidth(strings.Join(parts, ", "), maxWidth)
 }
 
 // categorizeErrorForDisplay analyzes an error message and returns an appropriate

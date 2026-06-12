@@ -6,241 +6,81 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// Colors - use common colors where possible, define debug-specific ones here
+// Colors - aliases of the shared palette (single source of truth in common/colors.go)
 var (
-	// Alias common colors for internal use
 	primaryColor = common.PrimaryColor
 	borderColor  = common.BorderColor
 	textColor    = common.TextColor
 	mutedColor   = common.MutedColor
 )
 
-// Styles
+// Styles shared with common - aliased so call sites in this package stay short.
 var (
-	// Header style
-	headerStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(primaryColor).
-			Padding(0, 1).
-			MarginBottom(0)
+	headerStyle              = common.HeaderStyle
+	treePanelStyle           = common.PanelStyle
+	detailsPanelStyle        = common.PanelStyle
+	headerTitleStyle         = common.HeaderTitleStyle
+	durationBadgeStyle       = common.DurationBadgeStyle
+	costBadgeStyle           = common.CostBadgeStyle
+	titleStyle               = common.TitleStyle
+	labelStyle               = common.LabelStyle
+	valueStyle               = common.ValueStyle
+	mutedStyle               = common.MutedStyle
+	errorStyle               = common.ErrorStyle
+	modalStyle               = common.ModalStyle
+	breadcrumbStyle          = common.BreadcrumbInactiveStyle
+	breadcrumbSeparatorStyle = common.BreadcrumbSeparatorStyle
+	breadcrumbActiveStyle    = common.BreadcrumbActiveStyle
+)
 
-	// Tree panel style
-	treePanelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#444444")).
-			Padding(0, 1)
-
-	// Details panel style
-	detailsPanelStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("#444444")).
-				Padding(0, 1)
-
-	// Header title style
-	headerTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("#FFFFFF"))
-
-	durationBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#000000")).
-				Background(lipgloss.Color("#87CEEB")).
-				Padding(0, 1).
-				MarginLeft(1)
-
-	costBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#98FB98")).
-			Padding(0, 1).
-			MarginLeft(1)
-
+// Debug-specific styles
+var (
 	searchBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#000000")).
-				Background(lipgloss.Color("#FFA500")).
+				Foreground(common.BadgeFg).
+				Background(common.BadgeSearchBg).
 				Padding(0, 1).
 				MarginLeft(1)
-
-	// Title styles
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(primaryColor).
-			MarginBottom(1)
-
-	// Status styles
-	statusDoneStyle = lipgloss.NewStyle().
-			Foreground(common.StatusSucceeded)
-
-	statusFailedStyle = lipgloss.NewStyle().
-				Foreground(common.StatusFailed)
-
-	statusRunningStyle = lipgloss.NewStyle().
-				Foreground(common.StatusRunning)
-
-	statusPendingStyle = lipgloss.NewStyle().
-				Foreground(common.StatusPending)
-
-	// Label styles
-	labelStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
-
-	valueStyle = lipgloss.NewStyle().
-			Foreground(textColor)
-
-	// Help bar style
-	helpBarStyle = lipgloss.NewStyle().
-			Foreground(mutedColor).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderTop(true).
-			BorderForeground(borderColor).
-			Padding(0, 1)
 
 	// Path style (for GCS/file paths)
 	pathStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#87ceeb")).
+			Foreground(common.InfoColor).
 			Italic(true)
 
-	// Muted style for less important text
-	mutedStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
-
-	// Error style
-	errorStyle = lipgloss.NewStyle().
-			Foreground(common.StatusFailed).
-			Bold(true)
-
-	// Modal style
-	modalStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(primaryColor).
-			Padding(1, 2)
+	// Informational note style (subworkflow hints, etc.)
+	infoNoteStyle = lipgloss.NewStyle().
+			Foreground(common.InfoColor).
+			Italic(true)
 
 	// Modal label style (brighter for dark background)
 	modalLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#AAAAAA")).
+			Foreground(mutedColor).
 			Bold(true)
 
 	// Modal value style (bright for dark background)
 	modalValueStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF"))
+			Foreground(textColor)
 
 	// Modal path style (for GCS/file paths in modals)
 	modalPathStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#87ceeb"))
-
-	// Button styles for quick actions
-	buttonStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(primaryColor).
-			Bold(true).
-			Padding(0, 1)
-
-	disabledButtonStyle = lipgloss.NewStyle().
-				Foreground(mutedColor).
-				Background(lipgloss.Color("#333333")).
-				Padding(0, 1)
+			Foreground(common.InfoColor)
 
 	// Temporary status message style
 	temporaryStatusStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFF00")).
+				Foreground(common.StatusRunning).
 				Bold(true)
 
 	// Docker tag style (highlighted for visibility)
 	tagStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00FFAA")).
+			Foreground(common.StatusSucceeded).
 			Bold(true)
-
-	// Breadcrumb styles - inline, no margins
-	breadcrumbStyle = lipgloss.NewStyle().
-			Foreground(mutedColor)
-
-	breadcrumbSeparatorStyle = lipgloss.NewStyle().
-					Foreground(lipgloss.Color("#555555"))
-
-	breadcrumbActiveStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFFFF")).
-				Bold(true)
 
 	// Section separator style
 	sectionSeparatorStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#444444"))
+				Foreground(borderColor)
 
 	// Selected tree node style
 	selectedStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#333333")).
-			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(common.HighlightColor).
+			Foreground(textColor).
 			Bold(true)
 )
-
-// StatusStyle returns the appropriate style for a status.
-func StatusStyle(status string) lipgloss.Style {
-	switch status {
-	case "Done", "Succeeded":
-		return statusDoneStyle
-	case "Failed":
-		return statusFailedStyle
-	case "Running":
-		return statusRunningStyle
-	default:
-		return statusPendingStyle
-	}
-}
-
-// StatusIcon returns an icon for the status.
-func StatusIcon(status string) string {
-	switch status {
-	case "Done", "Succeeded":
-		return "✓"
-	case "Failed":
-		return "✗"
-	case "Running":
-		return "●"
-	default:
-		return "○"
-	}
-}
-
-// NodeTypeIcon returns an icon for the node type.
-func NodeTypeIcon(t NodeType) string {
-	switch t {
-	case NodeTypeWorkflow:
-		return "📋"
-	case NodeTypeSubWorkflow:
-		return "📂"
-	case NodeTypeCall:
-		return "⚙"
-	case NodeTypeShard:
-		return "  "
-	default:
-		return " "
-	}
-}
-
-// TreePrefix returns the tree drawing prefix.
-func TreePrefix(depth int, isLast bool, parentExpanded bool) string {
-	if depth == 0 {
-		return ""
-	}
-
-	prefix := ""
-	for i := 0; i < depth-1; i++ {
-		prefix += "│  "
-	}
-
-	if isLast {
-		prefix += "└──"
-	} else {
-		prefix += "├──"
-	}
-
-	return prefix
-}
-
-// ExpandIcon returns the expand/collapse icon.
-func ExpandIcon(expanded bool, hasChildren bool) string {
-	if !hasChildren {
-		return " "
-	}
-	if expanded {
-		return "▼"
-	}
-	return "▶"
-}

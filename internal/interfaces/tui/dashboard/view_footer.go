@@ -15,7 +15,7 @@ const statusDuration = 3 * time.Second
 
 // temporaryStatusStyle is the style for auto-expiring notification messages.
 var temporaryStatusStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("#FFFF00")).
+	Foreground(common.StatusRunning).
 	Bold(true)
 
 // renderFooter renders the status bar and help footer.
@@ -46,8 +46,8 @@ func (m Model) renderFooter() string {
 			statusNames[i] = string(s)
 		}
 		parts = append(parts, common.BadgeStyle.
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#FFD700")).
+			Foreground(common.BadgeFg).
+			Background(common.BadgeWarnBg).
 			Render(fmt.Sprintf("Status: %s", strings.Join(statusNames, "/"))))
 		parts = append(parts, " ")
 		hasFilters = true
@@ -55,8 +55,8 @@ func (m Model) renderFooter() string {
 
 	if m.activeFilters.Name != "" {
 		parts = append(parts, common.BadgeStyle.
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#87CEEB")).
+			Foreground(common.BadgeFg).
+			Background(common.BadgeInfoBg).
 			Render(fmt.Sprintf("Name: %s", m.activeFilters.Name)))
 		parts = append(parts, " ")
 		hasFilters = true
@@ -64,8 +64,8 @@ func (m Model) renderFooter() string {
 
 	if m.activeFilters.Label != "" {
 		parts = append(parts, common.BadgeStyle.
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#98FB98")).
+			Foreground(common.BadgeFg).
+			Background(common.BadgeSuccessBg).
 			Render(fmt.Sprintf("Label: %s", m.activeFilters.Label)))
 		parts = append(parts, " ")
 		hasFilters = true

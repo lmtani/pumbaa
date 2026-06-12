@@ -140,7 +140,7 @@ func (m Model) renderLabelsModal() string {
 	if m.labelsLoading || m.labelsUpdating {
 		// Just show spinner - no extra icons
 		spinnerText := m.spinner.View()
-		spinnerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+		spinnerStyle := lipgloss.NewStyle().Foreground(common.MutedColor)
 
 		// Calculate padding to push spinner to the right
 		titleLen := lipgloss.Width(title)
@@ -182,8 +182,8 @@ func (m Model) renderLabelsModal() string {
 				prefix = "▶ "
 			}
 
-			keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#87CEEB")).Bold(true)
-			valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+			keyStyle := lipgloss.NewStyle().Foreground(common.InfoColor).Bold(true)
+			valueStyle := lipgloss.NewStyle().Foreground(common.TextColor)
 
 			if m.labelsUpdating || m.labelsLoading {
 				keyStyle = keyStyle.Faint(true)
@@ -197,7 +197,7 @@ func (m Model) renderLabelsModal() string {
 
 	// Show in-modal message if any
 	if m.labelsMessage != "" {
-		content.WriteString("\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Render(m.labelsMessage) + "\n")
+		content.WriteString("\n" + lipgloss.NewStyle().Foreground(common.WarningColor).Render(m.labelsMessage) + "\n")
 	}
 
 	// Footer
@@ -244,8 +244,5 @@ func getSortedLabelKeys(labels map[string]string) []string {
 
 // truncateName truncates a name to maxLen characters.
 func truncateName(name string, maxLen int) string {
-	if len(name) <= maxLen {
-		return name
-	}
-	return name[:maxLen-3] + "..."
+	return common.Truncate(name, maxLen)
 }

@@ -165,7 +165,7 @@ func NewModel(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc 
 func NewModelWithChat(wf *workflow.Workflow, fetcher ports.WorkflowMetadataFetcher, muc *workflowapp.MonitoringUseCase, fp ports.FileProvider, bluc *workflowapp.GetBatchLogsUseCase, chatDeps *ChatDependencies) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#7D56F4"))
+	s.Style = lipgloss.NewStyle().Foreground(primaryColor)
 
 	// Build the tree and visible nodes in the TUI layer (presentation concern)
 	root := tree.BuildTree(wf)

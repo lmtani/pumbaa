@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // FormatDuration formats a duration into a human-readable string.
@@ -37,14 +38,58 @@ func FormatDurationShort(d time.Duration) string {
 }
 
 // Truncate truncates a string to maxLen characters with ellipsis.
+// It operates on runes, so multi-byte characters are never cut in half.
 func Truncate(s string, maxLen int) string {
 	if maxLen <= 3 {
 		return s
 	}
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
+}
+
+// TruncateWidth truncates a string so its display width fits in maxWidth,
+// appending an ellipsis when truncated. Unlike Truncate, it measures
+// terminal cells (wide CJK runes count as 2), so table columns stay aligned.
+func TruncateWidth(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	target := maxWidth - 1 // reserve one cell for the ellipsis
+	var b strings.Builder
+	width := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if width+rw > target {
+			break
+		}
+		b.WriteRune(r)
+		width += rw
+	}
+	return b.String() + "…"
+}
+
+// PadRight pads s with spaces up to display width w, truncating first if needed.
+func PadRight(s string, w int) string {
+	s = TruncateWidth(s, w)
+	if d := w - lipgloss.Width(s); d > 0 {
+		return s + strings.Repeat(" ", d)
+	}
+	return s
+}
+
+// PadLeft pads s with leading spaces up to display width w, truncating first if needed.
+func PadLeft(s string, w int) string {
+	s = TruncateWidth(s, w)
+	if d := w - lipgloss.Width(s); d > 0 {
+		return strings.Repeat(" ", d) + s
+	}
+	return s
 }
 
 // MinInt returns the minimum of two integers.

@@ -18,40 +18,14 @@ func (m Model) renderHeader() string {
 	// Navigation hints
 	navHints := common.RenderNavHints(true) // Can go back to dashboard
 	// Get just the icon without styling
-	statusIcon := StatusIcon(string(m.metadata.Status))
+	statusIcon := common.StatusIcon(string(m.metadata.Status))
 
 	// Use cached total cost
 	totalCost := m.totalCost
 
 	// Build status badge based on workflow status
 	statusText := string(m.metadata.Status)
-	var statusBadge string
-	switch statusText {
-	case "Succeeded", "Done":
-		statusBadge = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#00FF00")).
-			Padding(0, 1).
-			Render(statusIcon + " " + statusText)
-	case "Failed":
-		statusBadge = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Background(lipgloss.Color("#FF0000")).
-			Padding(0, 1).
-			Render(statusIcon + " " + statusText)
-	case "Running":
-		statusBadge = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#FFFF00")).
-			Padding(0, 1).
-			Render(statusIcon + " " + statusText)
-	default:
-		statusBadge = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Background(lipgloss.Color("#888888")).
-			Padding(0, 1).
-			Render(statusIcon + " " + statusText)
-	}
+	statusBadge := common.StatusBadgeStyle(statusText).Render(statusIcon + " " + statusText)
 
 	// Duration badge
 	durationBadge := ""

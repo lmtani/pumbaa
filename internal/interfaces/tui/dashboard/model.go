@@ -30,19 +30,19 @@ type VersionCheckMsg struct {
 
 // Model represents the dashboard screen state.
 type Model struct {
-	width       int
-	height      int
-	workflows   []workflow.Workflow
-	totalCount  int
-	cursor      int
-	scrollY     int
-	keys        KeyMap
-	globalKeys  common.GlobalKeys
-	querier     ports.WorkflowQuerier
-	aborter     ports.WorkflowAborter
-	loading     bool
-	spinner     spinner.Model
-	error       string
+	width                int
+	height               int
+	workflows            []workflow.Workflow
+	totalCount           int
+	cursor               int
+	scrollY              int
+	keys                 KeyMap
+	globalKeys           common.GlobalKeys
+	querier              ports.WorkflowQuerier
+	aborter              ports.WorkflowAborter
+	loading              bool
+	spinner              spinner.Model
+	error                string
 	statusMsg            string
 	statusMessageExpires time.Time
 	lastRefresh          time.Time
@@ -87,7 +87,7 @@ type Model struct {
 	labelsMessage      string // In-modal feedback message
 
 	// Navigation state
-	ShouldQuit bool
+	ShouldQuit        bool
 	LastError         error              // Last error for telemetry capture
 	pendingNavigation tea.Cmd            // Pending navigation command for parent
 	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
@@ -360,7 +360,7 @@ func friendlyError(err error) string {
 	}
 	msg := err.Error()
 	if len(msg) > 80 {
-		return msg[:77] + "..."
+		return common.Truncate(msg, 80)
 	}
 	return msg
 }

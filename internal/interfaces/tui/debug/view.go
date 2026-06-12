@@ -7,12 +7,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	workflowDomain "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // statusStyle returns a styled status icon
 func statusStyle(status string) string {
-	icon := StatusIcon(status)
-	style := StatusStyle(status)
+	icon := common.StatusIcon(status)
+	style := common.StatusStyle(status)
 	return style.Render(icon)
 }
 
@@ -41,7 +42,7 @@ func (m Model) View() string {
 func (m Model) renderLoading() string {
 	loadingBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#7D56F4")).
+		BorderForeground(primaryColor).
 		Padding(2, 4).
 		Render(m.loadingSpinner.View() + " " + m.loadingMessage)
 
@@ -107,9 +108,8 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 		sb.WriteString(mutedStyle.Render("No preemptible tasks at this level\n"))
 		if subworkflowCount > 0 {
 			sb.WriteString("\n")
-			infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#5599FF")).Italic(true)
-			sb.WriteString(infoStyle.Render(fmt.Sprintf("ℹ This workflow has %d subworkflow(s).\n", subworkflowCount)))
-			sb.WriteString(infoStyle.Render("  Navigate to each subworkflow to see its preemption stats.\n"))
+			sb.WriteString(infoNoteStyle.Render(fmt.Sprintf("ℹ This workflow has %d subworkflow(s).\n", subworkflowCount)))
+			sb.WriteString(infoNoteStyle.Render("  Navigate to each subworkflow to see its preemption stats.\n"))
 		}
 		return sb.String()
 	}
@@ -153,13 +153,13 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 				task.TotalPreemptions,
 			)
 			effPercent := task.CostEfficiency * 100
-			var effColor lipgloss.Color
+			var effColor lipgloss.TerminalColor
 			if effPercent >= 80 {
-				effColor = lipgloss.Color("#00FF00")
+				effColor = common.StatusSucceeded
 			} else if effPercent >= 50 {
-				effColor = lipgloss.Color("#FFFF00")
+				effColor = common.StatusRunning
 			} else {
-				effColor = lipgloss.Color("#FF6B6B")
+				effColor = common.StatusFailed
 			}
 			effStyle := lipgloss.NewStyle().Foreground(effColor)
 			sb.WriteString(taskLine + " " + effStyle.Render(fmt.Sprintf("(%.0f%% eff)", effPercent)) + "\n")
@@ -169,9 +169,8 @@ func (m Model) renderPreemptionSummary(node *TreeNode) string {
 	// Hint about subworkflows if present
 	if subworkflowCount > 0 {
 		sb.WriteString("\n")
-		infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#5599FF")).Italic(true)
-		sb.WriteString(infoStyle.Render(fmt.Sprintf("ℹ This workflow has %d subworkflow(s).\n", subworkflowCount)))
-		sb.WriteString(infoStyle.Render("  Navigate to each subworkflow to see its preemption stats.\n"))
+		sb.WriteString(infoNoteStyle.Render(fmt.Sprintf("ℹ This workflow has %d subworkflow(s).\n", subworkflowCount)))
+		sb.WriteString(infoNoteStyle.Render("  Navigate to each subworkflow to see its preemption stats.\n"))
 	}
 
 	return sb.String()
@@ -190,17 +189,17 @@ func renderPreemptionGauge(efficiency float64, width int) string {
 	empty := width - filled
 
 	// Choose color based on efficiency level
-	var barColor lipgloss.Color
+	var barColor lipgloss.TerminalColor
 	if efficiency >= 0.8 {
-		barColor = lipgloss.Color("#00FF00") // Green for high efficiency
+		barColor = common.StatusSucceeded // Green for high efficiency
 	} else if efficiency >= 0.5 {
-		barColor = lipgloss.Color("#FFFF00") // Yellow for medium
+		barColor = common.StatusRunning // Yellow for medium
 	} else {
-		barColor = lipgloss.Color("#FF6B6B") // Red for low efficiency
+		barColor = common.StatusFailed // Red for low efficiency
 	}
 
 	filledStyle := lipgloss.NewStyle().Foreground(barColor)
-	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	emptyStyle := lipgloss.NewStyle().Foreground(common.SubtleColor)
 
 	bar := filledStyle.Render(strings.Repeat("█", filled)) +
 		emptyStyle.Render(strings.Repeat("░", empty))

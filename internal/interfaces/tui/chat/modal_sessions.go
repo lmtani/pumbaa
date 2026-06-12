@@ -170,7 +170,7 @@ func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) 
 	// Truncate ID to 16 chars
 	idDisplay := sess.ID
 	if len(idDisplay) > 16 {
-		idDisplay = idDisplay[:13] + "..."
+		idDisplay = common.Truncate(idDisplay, 16)
 	}
 
 	// Truncate summary to 30 chars
@@ -179,7 +179,7 @@ func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) 
 		summary = "(no summary)"
 	}
 	if len(summary) > 30 {
-		summary = summary[:27] + "..."
+		summary = common.Truncate(summary, 30)
 	}
 
 	// Format date
@@ -199,7 +199,7 @@ func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) 
 		// Highlight selected line
 		selectedStyle := lipgloss.NewStyle().
 			Background(common.PrimaryColor).
-			Foreground(lipgloss.Color("#000000"))
+			Foreground(common.OnPrimaryColor)
 		return selectedStyle.Render("▶ " + line)
 	}
 	return "  " + line
@@ -430,7 +430,7 @@ func (m *Model) generateAndSaveSummaryForSession(ctx context.Context, sessionID 
 		}
 		content := msg.Content
 		if len(content) > 200 {
-			content = content[:197] + "..."
+			content = common.Truncate(content, 200)
 		}
 		fmt.Fprintf(&sb, "%s: %s\n", msg.Role, content)
 	}
@@ -461,7 +461,7 @@ func (m *Model) generateAndSaveSummaryForSession(ctx context.Context, sessionID 
 					summary = strings.TrimSpace(part.Text)
 					// Truncate to reasonable length
 					if len(summary) > 200 {
-						summary = summary[:197] + "..."
+						summary = common.Truncate(summary, 200)
 					}
 					break
 				}

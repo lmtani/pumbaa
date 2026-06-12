@@ -1,6 +1,10 @@
 package common
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 // Shared styles used across multiple screens
 var (
@@ -83,7 +87,7 @@ var (
 	// Header title style
 	HeaderTitleStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#FFFFFF"))
+				Foreground(TextColor)
 
 	// Badge styles
 	BadgeStyle = lipgloss.NewStyle().
@@ -91,20 +95,20 @@ var (
 			MarginLeft(1)
 
 	DurationBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#000000")).
-				Background(lipgloss.Color("#87CEEB")).
+				Foreground(BadgeFg).
+				Background(BadgeInfoBg).
 				Padding(0, 1).
 				MarginLeft(1)
 
 	CostBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#98FB98")).
+			Foreground(BadgeFg).
+			Background(BadgeSuccessBg).
 			Padding(0, 1).
 			MarginLeft(1)
 
 	// Breadcrumb styles
 	BreadcrumbActiveStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFFFFF")).
+				Foreground(TextColor).
 				Bold(true)
 
 	BreadcrumbInactiveStyle = lipgloss.NewStyle().
@@ -130,6 +134,21 @@ func StatusStyle(status string) lipgloss.Style {
 		return WarningStyle
 	default:
 		return MutedStyle
+	}
+}
+
+// StatusBadgeStyle returns a background-filled badge style for a status.
+func StatusBadgeStyle(status string) lipgloss.Style {
+	base := lipgloss.NewStyle().Foreground(BadgeFg).Padding(0, 1)
+	switch status {
+	case "Done", "Succeeded":
+		return base.Background(BadgeSuccessBg)
+	case "Failed":
+		return base.Background(BadgeDangerBg)
+	case "Running":
+		return base.Background(BadgeWarnBg)
+	default:
+		return base.Background(BadgeNeutralBg)
 	}
 }
 
@@ -173,11 +192,7 @@ func RenderBreadcrumbs(screens []Screen) string {
 		}
 	}
 
-	result := ""
-	for _, part := range parts {
-		result += part
-	}
-	return result
+	return strings.Join(parts, "")
 }
 
 // RenderNavHints renders navigation hints for the current screen.

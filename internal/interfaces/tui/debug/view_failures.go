@@ -5,18 +5,17 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
+
+// errorMsgStyle renders failure message bodies (softer than the title).
+var errorMsgStyle = lipgloss.NewStyle().
+	Foreground(common.ErrorSoftColor)
 
 // renderFailures renders workflow-level failures
 func (m Model) renderFailures() string {
 	var sb strings.Builder
-
-	errorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF6B6B")).
-		Bold(true)
-
-	errorMsgStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF8E8E"))
 
 	sb.WriteString(errorStyle.Render("⚠️  Workflow Failures") + "\n\n")
 
@@ -30,13 +29,6 @@ func (m Model) renderFailures() string {
 // renderTaskFailures renders task-level failures
 func (m Model) renderTaskFailures(failures []Failure) string {
 	var sb strings.Builder
-
-	errorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF6B6B")).
-		Bold(true)
-
-	errorMsgStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF8E8E"))
 
 	sb.WriteString(errorStyle.Render("⚠️  Task Failures") + "\n\n")
 

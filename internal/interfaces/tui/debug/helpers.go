@@ -86,16 +86,20 @@ func truncatePath(path string, maxLen int) string {
 	lastSlash := strings.LastIndex(path, "/")
 	if lastSlash > 0 {
 		basename := path[lastSlash+1:]
-		dirPart := path[:lastSlash]
+		dirPart := []rune(path[:lastSlash])
 		availableLen := maxLen - len(basename) - 4 // ".../"
-		if availableLen > 10 {
-			return dirPart[:availableLen] + ".../" + basename
+		if availableLen > 10 && availableLen <= len(dirPart) {
+			return string(dirPart[:availableLen]) + ".../" + basename
 		}
 	}
 
-	// Fallback: truncate from middle
+	// Fallback: truncate from middle (rune-safe)
+	runes := []rune(path)
 	half := (maxLen - 3) / 2
-	return path[:half] + "..." + path[len(path)-half:]
+	if half < 1 || len(runes) <= maxLen {
+		return path
+	}
+	return string(runes[:half]) + "..." + string(runes[len(runes)-half:])
 }
 
 // formatDockerImage formats a Docker image name for display.

@@ -55,7 +55,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString("\n")
 
 	// Task actions
-	taskStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50"))
+	taskStyle := lipgloss.NewStyle().Foreground(common.StatusSucceeded)
 	content.WriteString(taskStyle.Render(common.IconTask+" Task / Shard") + "\n")
 	content.WriteString(helpLine("1", "Inputs"))
 	content.WriteString(helpLine("2", "Outputs"))

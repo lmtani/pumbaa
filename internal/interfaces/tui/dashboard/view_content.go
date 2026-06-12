@@ -20,14 +20,11 @@ func (m Model) renderContent() string {
 
 		// Build a compact, helpful error display
 		var errorContent strings.Builder
-		errorContent.WriteString(lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF6B6B")).
-			Bold(true).
-			Render(errorTitle) + "\n\n")
+		errorContent.WriteString(common.ErrorStyle.Render(errorTitle) + "\n\n")
 
 		errorContent.WriteString(common.MutedStyle.Render("Backend response:") + "\n")
 		errorContent.WriteString(lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF8E8E")).
+			Foreground(common.ErrorSoftColor).
 			Render(m.error) + "\n\n")
 
 		errorContent.WriteString(common.MutedStyle.Render("Troubleshooting:") + "\n")
@@ -37,7 +34,7 @@ func (m Model) renderContent() string {
 
 		errorBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#FF6B6B")).
+			BorderForeground(common.StatusFailed).
 			Padding(1, 2).
 			Width(maxInt(60, m.width/2)).
 			Render(errorContent.String())

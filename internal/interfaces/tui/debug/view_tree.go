@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -15,7 +13,7 @@ func (m Model) renderTree() string {
 		sb.WriteString(mutedStyle.Render(fmt.Sprintf("No matches for %q", m.searchQuery)))
 		style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
 		if m.focus == FocusTree {
-			style = style.BorderForeground(lipgloss.Color("#7D56F4"))
+			style = style.BorderForeground(common.FocusBorder)
 		}
 		return style.Render(sb.String())
 	}
@@ -42,7 +40,7 @@ func (m Model) renderTree() string {
 
 	style := treePanelStyle.Width(m.treeWidth).Height(m.height - 8)
 	if m.focus == FocusTree {
-		style = style.BorderForeground(lipgloss.Color("#7D56F4"))
+		style = style.BorderForeground(common.FocusBorder)
 	}
 
 	return style.Render(sb.String())

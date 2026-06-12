@@ -163,7 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			errorMsg = "Access denied to log file"
 		} else if len(errorMsg) > 80 {
 			// Truncate very long error messages
-			errorMsg = errorMsg[:77] + "..."
+			errorMsg = common.Truncate(errorMsg, 80)
 		}
 		m.setStatusMessage("Error loading log: " + errorMsg)
 		return m, getClearStatusCmd()
@@ -214,7 +214,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if strings.Contains(errorMsg, "unauthorized") {
 			errorMsg = "Access denied: check GCP permissions"
 		} else if len(errorMsg) > 80 {
-			errorMsg = errorMsg[:77] + "..."
+			errorMsg = common.Truncate(errorMsg, 80)
 		}
 
 		m.setStatusMessage("Error loading batch logs: " + errorMsg)

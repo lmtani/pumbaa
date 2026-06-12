@@ -38,7 +38,7 @@ func (m Model) renderHeader() string {
 	if m.healthStatus != nil {
 		if m.healthStatus.OK {
 			badges = append(badges, lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#00FF00")).
+				Foreground(common.StatusSucceeded).
 				Render(common.IconRunning+" Healthy"))
 		} else if m.healthStatus.Degraded {
 			// Show which systems are unhealthy
@@ -47,7 +47,7 @@ func (m Model) renderHeader() string {
 				systemsStr = " (" + strings.Join(m.healthStatus.UnhealthySystems, ", ") + ")"
 			}
 			badges = append(badges, lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#FFAA00")).
+				Foreground(common.WarningColor).
 				Render(common.IconWarning+" Degraded"+systemsStr))
 		}
 	}
@@ -55,24 +55,24 @@ func (m Model) renderHeader() string {
 	// Update available badge
 	if m.updateInfo != nil && m.updateInfo.UpdateAvailable {
 		updateBadge := common.BadgeStyle.
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#FF6B6B")).
+			Foreground(common.BadgeFg).
+			Background(common.BadgeDangerBg).
 			Render(fmt.Sprintf("⬆ Update: %s", m.updateInfo.Latest))
 		badges = append(badges, updateBadge)
 	}
 
 	// Workflow count
 	countBadge := common.BadgeStyle.
-		Foreground(lipgloss.Color("#000000")).
-		Background(lipgloss.Color("#87CEEB")).
+		Foreground(common.BadgeFg).
+		Background(common.BadgeInfoBg).
 		Render(fmt.Sprintf("%d workflows", m.totalCount))
 	badges = append(badges, countBadge)
 
 	// Active filter indicator
 	if len(m.activeFilters.Status) > 0 || m.activeFilters.Name != "" {
 		filterBadge := common.BadgeStyle.
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#FFD700")).
+			Foreground(common.BadgeFg).
+			Background(common.BadgeWarnBg).
 			Render("Filtered")
 		badges = append(badges, filterBadge)
 	}

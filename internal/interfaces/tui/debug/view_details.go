@@ -13,7 +13,7 @@ import (
 func (m Model) renderDetails() string {
 	style := detailsPanelStyle.Width(m.detailsWidth).Height(m.height - 8)
 	if m.focus == FocusDetails {
-		style = style.BorderForeground(lipgloss.Color("#7D56F4"))
+		style = style.BorderForeground(common.FocusBorder)
 	}
 
 	title := m.getDetailsTitle()
@@ -306,36 +306,36 @@ func (m Model) renderOutputs(node *TreeNode) string {
 // getNodeTypeBadge returns a clean header with node type and name
 func (m Model) getNodeTypeBadge(node *TreeNode) string {
 	var icon, label string
-	var color lipgloss.Color
+	var color lipgloss.TerminalColor
 
 	// Determine badge based on node type
 	switch node.Type {
 	case NodeTypeWorkflow:
 		icon = common.IconWorkflow
 		label = "workflow"
-		color = lipgloss.Color("#9C27B0") // Purple
+		color = primaryColor
 	case NodeTypeSubWorkflow:
 		icon = common.IconSubworkflow
 		label = "subworkflow"
-		color = lipgloss.Color("#2196F3") // Blue
+		color = common.InfoColor
 	case NodeTypeCall:
 		if len(node.Children) > 0 {
 			icon = "↻"
 			label = "scatter"
-			color = lipgloss.Color("#FFA726") // Orange
+			color = common.WarningColor
 		} else {
 			icon = common.IconTask
 			label = "task"
-			color = lipgloss.Color("#4CAF50") // Green
+			color = common.StatusSucceeded
 		}
 	case NodeTypeShard:
 		icon = common.IconShard
 		label = "shard"
-		color = lipgloss.Color("#4CAF50") // Green
+		color = common.StatusSucceeded
 	default:
 		icon = "·"
 		label = "node"
-		color = lipgloss.Color("#9E9E9E") // Gray
+		color = mutedColor
 	}
 
 	// Type style (colored, lowercase)
@@ -373,16 +373,16 @@ func (m Model) renderScatterSummary(node *TreeNode) string {
 	sb.WriteString(labelStyle.Render("Status: "))
 	var parts []string
 	if c := statusCounts["Done"]; c > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50")).Render(fmt.Sprintf("✓ %d Done", c)))
+		parts = append(parts, lipgloss.NewStyle().Foreground(common.StatusSucceeded).Render(fmt.Sprintf("✓ %d Done", c)))
 	}
 	if c := statusCounts["Running"]; c > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#2196F3")).Render(fmt.Sprintf("● %d Running", c)))
+		parts = append(parts, lipgloss.NewStyle().Foreground(common.StatusRunning).Render(fmt.Sprintf("● %d Running", c)))
 	}
 	if c := statusCounts["Failed"]; c > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B")).Render(fmt.Sprintf("✗ %d Failed", c)))
+		parts = append(parts, lipgloss.NewStyle().Foreground(common.StatusFailed).Render(fmt.Sprintf("✗ %d Failed", c)))
 	}
 	if c := statusCounts["Preempted"]; c > 0 {
-		parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color("#FFA726")).Render(fmt.Sprintf("↺ %d Preempted", c)))
+		parts = append(parts, lipgloss.NewStyle().Foreground(common.WarningColor).Render(fmt.Sprintf("↺ %d Preempted", c)))
 	}
 	sb.WriteString(strings.Join(parts, "  ") + "\n")
 
@@ -555,17 +555,17 @@ func renderGaugeBar(efficiency float64, width int) string {
 	empty := width - filled
 
 	// Choose color based on efficiency level
-	var barColor lipgloss.Color
+	var barColor lipgloss.TerminalColor
 	if efficiency >= 0.7 {
-		barColor = lipgloss.Color("#00FF00") // Green for high efficiency
+		barColor = common.StatusSucceeded // Green for high efficiency
 	} else if efficiency >= 0.4 {
-		barColor = lipgloss.Color("#FFFF00") // Yellow for medium
+		barColor = common.StatusRunning // Yellow for medium
 	} else {
-		barColor = lipgloss.Color("#FF6B6B") // Red for low efficiency
+		barColor = common.StatusFailed // Red for low efficiency
 	}
 
 	filledStyle := lipgloss.NewStyle().Foreground(barColor)
-	emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
+	emptyStyle := lipgloss.NewStyle().Foreground(common.SubtleColor)
 
 	bar := filledStyle.Render(strings.Repeat("█", filled)) +
 		emptyStyle.Render(strings.Repeat("░", empty))
@@ -622,7 +622,7 @@ func (m Model) renderBreadcrumb(node *TreeNode) string {
 		// Truncate long names
 		displayName := p.name
 		if len(displayName) > 20 {
-			displayName = displayName[:17] + "..."
+			displayName = common.Truncate(displayName, 20)
 		}
 
 		if i == len(path)-1 {

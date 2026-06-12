@@ -41,8 +41,27 @@ type toolWithDefinition interface {
 // Styles for chat
 var (
 	userStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00BFFF")).
+			Foreground(common.InfoColor).
 			Bold(true)
+
+	contextBadgeStyle = lipgloss.NewStyle().
+				Foreground(common.BadgeFg).
+				Background(common.BadgeWarnBg).
+				Padding(0, 1)
+
+	llmBadgeStyle = lipgloss.NewStyle().
+			Foreground(common.BadgeFg).
+			Background(common.BadgeInfoBg).
+			Padding(0, 1)
+
+	tokenBadgeStyle = lipgloss.NewStyle().
+			Foreground(common.BadgeFg).
+			Background(common.BadgeSuccessBg).
+			Padding(0, 1)
+
+	sessionSummaryStyle = lipgloss.NewStyle().
+				Foreground(common.MutedColor).
+				Italic(true)
 
 	agentStyle = lipgloss.NewStyle().
 			Foreground(common.PrimaryColor).
@@ -624,29 +643,17 @@ func (m Model) renderHeader() string {
 
 	// Context badge (e.g., Task Context)
 	if m.contextLabel != "" {
-		contextStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#FFD966")).
-			Padding(0, 1)
-		badges = append(badges, contextStyle.Render(m.contextLabel))
+		badges = append(badges, contextBadgeStyle.Render(m.contextLabel))
 	}
 
 	// LLM provider badge
 	if m.llm != nil {
-		llmStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#87CEEB")).
-			Padding(0, 1)
-		badges = append(badges, llmStyle.Render("🤖 "+m.llm.Name()))
+		badges = append(badges, llmBadgeStyle.Render("🤖 "+m.llm.Name()))
 	}
 
 	// Token usage badge
 	if m.inputTokens > 0 || m.outputTokens > 0 {
-		tokenStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#000000")).
-			Background(lipgloss.Color("#98FB98")).
-			Padding(0, 1)
-		badges = append(badges, tokenStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
+		badges = append(badges, tokenBadgeStyle.Render(fmt.Sprintf("📊 %s↑ %s↓", formatTokenCount(m.inputTokens), formatTokenCount(m.outputTokens))))
 	}
 
 	// First line: breadcrumbs and nav hints
@@ -670,10 +677,7 @@ func (m Model) renderHeader() string {
 
 	// Third line: Session summary (if available) or Session ID
 	if m.sessionSummary != "" {
-		summaryStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#AAAAAA")).
-			Italic(true)
-		lines = append(lines, summaryStyle.Render("💬 "+m.sessionSummary))
+		lines = append(lines, sessionSummaryStyle.Render("💬 "+m.sessionSummary))
 	} else if m.session != nil {
 		// Show truncated session ID when no summary
 		sessionID := m.session.ID()
@@ -801,7 +805,7 @@ func (m Model) renderMessages() string {
 
 	// Style for selected message
 	selectedStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color("#3a3a3a")).
+		Background(common.SubtleColor).
 		Padding(0, 1)
 
 	for i, msg := range *m.msgs {
