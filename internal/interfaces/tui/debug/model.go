@@ -54,14 +54,15 @@ type Model struct {
 	nodeStates map[string]NodeViewState
 
 	// UI state
-	cursor       int
-	focus        PanelFocus
-	viewMode     ViewMode
-	activeModal  ModalKind
-	width        int
-	height       int
-	treeWidth    int
-	detailsWidth int
+	cursor           int
+	focus            PanelFocus
+	viewMode         ViewMode
+	activeModal      ModalKind
+	width            int
+	height           int
+	treeWidth        int
+	detailsWidth     int
+	treeWidthPercent int // tree panel share of the width, adjustable with < and >
 
 	// Tree search/filter state
 	searchActive         bool

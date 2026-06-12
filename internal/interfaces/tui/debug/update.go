@@ -232,10 +232,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.treeWidth = m.width * 40 / 100 // 40% for tree
-		m.detailsWidth = m.width - m.treeWidth - 4
 		m.help.Width = m.width
-		m.detailViewport.Width = m.detailsWidth - 4
+		m.recalcPanelWidths()
 		// Panel height minus the details title and its blank line
 		m.detailViewport.Height = common.ContentPanelHeight(m.height) - 2
 		m.resizeActiveModal()
@@ -399,12 +397,43 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case key.Matches(msg, m.keys.SplitNarrow):
+		m.adjustSplit(-5)
+
+	case key.Matches(msg, m.keys.SplitWiden):
+		m.adjustSplit(5)
+
 	// Call-level quick actions (1-6)
 	default:
 		return m.handleQuickActions(msg)
 	}
 
 	return m, nil
+}
+
+// adjustSplit moves the tree/details split by delta percentage points,
+// clamped so neither panel becomes unusable.
+func (m *Model) adjustSplit(delta int) {
+	if m.treeWidthPercent == 0 {
+		m.treeWidthPercent = defaultTreeWidthPercent
+	}
+	m.treeWidthPercent = common.MaxInt(20, common.MinInt(70, m.treeWidthPercent+delta))
+	m.recalcPanelWidths()
+	m.updateDetailsContent()
+}
+
+// defaultTreeWidthPercent is the initial share of the width given to the tree panel.
+const defaultTreeWidthPercent = 40
+
+// recalcPanelWidths derives the tree/details panel widths from the current
+// terminal width and split percentage.
+func (m *Model) recalcPanelWidths() {
+	if m.treeWidthPercent == 0 {
+		m.treeWidthPercent = defaultTreeWidthPercent
+	}
+	m.treeWidth = m.width * m.treeWidthPercent / 100
+	m.detailsWidth = m.width - m.treeWidth - 4
+	m.detailViewport.Width = m.detailsWidth - 4
 }
 
 func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {

@@ -27,6 +27,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpLine("Enter", "Toggle expand or open log"))
 	content.WriteString(helpLine("g / G", "Go to first / last item"))
 	content.WriteString(helpLine("PgUp/Dn", "Page up/down"))
+	content.WriteString(helpLine("< / >", "Resize tree/details split"))
 	content.WriteString("\n")
 
 	// Global actions section

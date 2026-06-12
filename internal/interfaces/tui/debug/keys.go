@@ -23,6 +23,8 @@ type KeyMap struct {
 	PageDown    key.Binding
 	Copy        key.Binding
 	Chat        key.Binding
+	SplitNarrow key.Binding
+	SplitWiden  key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -104,6 +106,14 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("6", "a"),
 			key.WithHelp("6/a", "chat with AI"),
 		),
+		SplitNarrow: key.NewBinding(
+			key.WithKeys("<"),
+			key.WithHelp("<", "shrink tree panel"),
+		),
+		SplitWiden: key.NewBinding(
+			key.WithKeys(">"),
+			key.WithHelp(">", "widen tree panel"),
+		),
 	}
 }
 
@@ -119,6 +129,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.ExpandAll, k.CollapseAll},
 		{k.Home, k.End, k.PageUp, k.PageDown},
-		{k.Copy, k.Chat, k.Help, k.Quit},
+		{k.Copy, k.Chat, k.SplitNarrow, k.SplitWiden},
+		{k.Help, k.Quit},
 	}
 }
