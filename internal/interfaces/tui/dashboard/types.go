@@ -19,6 +19,7 @@ type KeyMap struct {
 	ClearFilter   key.Binding
 	StatusFilter  key.Binding
 	LabelsManager key.Binding // Open labels modal for selected workflow
+	Help          key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings for the dashboard.
@@ -60,6 +61,10 @@ func DefaultKeyMap() KeyMap {
 		LabelsManager: key.NewBinding(
 			key.WithKeys("L"),
 			key.WithHelp("L", "edit labels"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "help"),
 		),
 	}
 }

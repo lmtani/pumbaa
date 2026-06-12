@@ -75,18 +75,20 @@ func (m Model) renderFooter() string {
 		parts = append(parts, common.KeyStyle.Render("ctrl+x")+common.DescStyle.Render(" clear")+"  ")
 	}
 
-	// Help - only as many hints as fit on one line, so the footer never wraps
+	// Help - only as many hints as fit on one line, so the footer never wraps.
+	// The full reference lives in the ? overlay.
 	hints := []string{
 		renderHint("↑↓", "navigate"),
 		renderHint("enter", "debug"),
+		renderHint("/", "filter"),
 		renderHint("a", "abort"),
-		renderHint("/", "search name"),
-		renderHint("l", "search label"),
+		renderHint("?", "help"),
+		renderHint("esc", "quit"),
+		renderHint("l", "label filter"),
 		renderHint("u", "go to UUID"),
 		renderHint("L", "edit labels"),
 		renderHint("s", "status"),
 		renderHint("r", "refresh"),
-		renderHint("esc", "quit"),
 	}
 	prefix := strings.Join(parts, "")
 	hintBudget := m.width - 2 - lipgloss.Width(prefix)

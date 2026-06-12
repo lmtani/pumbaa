@@ -32,7 +32,8 @@ type VersionCheckMsg struct {
 type Model struct {
 	width                int
 	height               int
-	workflows            []workflow.Workflow
+	workflows            []workflow.Workflow // currently visible (possibly narrowed by the inline filter)
+	allWorkflows         []workflow.Workflow // full list from the last fetch
 	totalCount           int
 	cursor               int
 	scrollY              int
@@ -61,6 +62,9 @@ type Model struct {
 	showConfirm   bool
 	confirmAction string
 	confirmID     string
+
+	// Help overlay
+	showHelp bool
 
 	// Debug transition state
 	loadingDebug    bool
@@ -135,7 +139,7 @@ func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model
 
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp
 }
 
 // Init implements tea.Model.
@@ -186,7 +190,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case workflowsLoadedMsg:
 		m.loading = false
-		m.workflows = msg.workflows
+		m.allWorkflows = msg.workflows
+		if m.filterBarVisible() {
+			// Keep the live narrowing consistent with what the user is typing
+			m.applyLocalFilter()
+		} else {
+			m.workflows = msg.workflows
+		}
 		m.totalCount = msg.totalCount
 		m.lastRefresh = time.Now()
 		m.error = ""
@@ -278,6 +288,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Ignore keys while loading debug
 		if m.loadingDebug {
+			return m, nil
+		}
+
+		// Help overlay: any key closes it
+		if m.showHelp {
+			m.showHelp = false
 			return m, nil
 		}
 

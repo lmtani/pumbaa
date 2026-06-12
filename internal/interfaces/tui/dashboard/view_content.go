@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -8,9 +9,11 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// renderContent renders the main content area (filter input, error, empty state, or table).
+// renderContent renders the main content area (error, empty state, or table).
+// The UUID prompt is the only filter that still replaces the content area;
+// name/label filtering happens live in the inline bar above the table.
 func (m Model) renderContent() string {
-	if m.showFilter {
+	if m.showFilter && m.filterType == "uuid" {
 		return m.renderFilterInput()
 	}
 
@@ -41,19 +44,31 @@ func (m Model) renderContent() string {
 
 		return common.PanelStyle.
 			Width(m.width - 2).
-			Height(common.ContentPanelHeight(m.height)).
-			Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, errorBox))
+			Height(m.contentHeight()).
+			Render(lipgloss.Place(m.width-4, m.contentHeight()-2, lipgloss.Center, lipgloss.Center, errorBox))
 	}
 
 	if len(m.workflows) == 0 && !m.loading {
 		emptyMsg := common.MutedStyle.Render("No workflows found\n\nPress 'r' to refresh or '/' to filter")
 		return common.PanelStyle.
 			Width(m.width - 2).
-			Height(common.ContentPanelHeight(m.height)).
-			Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, emptyMsg))
+			Height(m.contentHeight()).
+			Render(lipgloss.Place(m.width-4, m.contentHeight()-2, lipgloss.Center, lipgloss.Center, emptyMsg))
 	}
 
 	return m.renderTable()
+}
+
+// renderFilterBar renders the single-line live filter bar above the table.
+func (m Model) renderFilterBar() string {
+	label := "Name"
+	if m.filterType == "label" {
+		label = "Label"
+	}
+	left := " " + common.KeyStyle.Render("/") + " " + common.LabelStyle.Render(label+":") + " " + m.filterInput.View()
+	count := common.ValueStyle.Render(fmt.Sprintf("%d/%d", len(m.workflows), len(m.allWorkflows)))
+	hint := common.MutedStyle.Render("enter apply on server · esc cancel")
+	return common.RenderHeaderBar(m.width, left, count+"  "+hint+" ")
 }
 
 // renderFilterInput renders the filter input modal.
@@ -83,8 +98,8 @@ func (m Model) renderFilterInput() string {
 
 	return common.PanelStyle.
 		Width(m.width - 2).
-		Height(common.ContentPanelHeight(m.height)).
-		Render(lipgloss.Place(m.width-4, common.ContentPanelHeight(m.height)-2, lipgloss.Center, lipgloss.Center, filterBox))
+		Height(m.contentHeight()).
+		Render(lipgloss.Place(m.width-4, m.contentHeight()-2, lipgloss.Center, lipgloss.Center, filterBox))
 }
 
 // renderConfirmModal renders the abort confirmation modal.

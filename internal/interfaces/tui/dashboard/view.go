@@ -18,9 +18,15 @@ func (m Model) View() string {
 		return m.renderLabelsModal()
 	}
 
-	header := m.renderHeader()
-	content := m.renderContent()
-	footer := m.renderFooter()
+	if m.showHelp {
+		return m.renderHelpModal()
+	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, header, content, footer)
+	sections := []string{m.renderHeader()}
+	if m.filterBarVisible() {
+		sections = append(sections, m.renderFilterBar())
+	}
+	sections = append(sections, m.renderContent(), m.renderFooter())
+
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }

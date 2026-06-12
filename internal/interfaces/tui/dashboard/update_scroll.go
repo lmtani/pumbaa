@@ -1,7 +1,5 @@
 package dashboard
 
-import "github.com/lmtani/pumbaa/internal/interfaces/tui/common"
-
 // ensureVisible ensures the cursor is within the visible area.
 func (m *Model) ensureVisible() {
 	visibleRows := m.getVisibleRows()
@@ -16,5 +14,5 @@ func (m *Model) ensureVisible() {
 // table panel: panel height minus the table header (2 lines including its
 // bottom border) and the scroll indicator (2 lines).
 func (m Model) getVisibleRows() int {
-	return maxInt(1, common.ContentPanelHeight(m.height)-4)
+	return maxInt(1, m.contentHeight()-4)
 }

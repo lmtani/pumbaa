@@ -125,6 +125,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.labelsCursor = 0
 			cmds = append(cmds, m.spinner.Tick, m.fetchLabels(wf.ID))
 		}
+
+	case key.Matches(msg, m.keys.Help):
+		m.showHelp = true
 	}
 
 	return m, tea.Batch(cmds...)
@@ -138,6 +141,12 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEsc:
 		m.showFilter = false
 		m.filterInput.Blur()
+		if m.filterType != "uuid" {
+			// Cancel the live narrowing; server-side filters stay as they were
+			m.workflows = m.allWorkflows
+			m.cursor = 0
+			m.scrollY = 0
+		}
 		return m, nil
 
 	case tea.KeyEnter:
@@ -165,6 +174,10 @@ func (m Model) handleFilterKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.filterInput, cmd = m.filterInput.Update(msg)
+	// Narrow the visible list on every keystroke for instant feedback
+	if m.filterType != "uuid" {
+		m.applyLocalFilter()
+	}
 	return m, cmd
 }
 

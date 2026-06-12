@@ -72,6 +72,55 @@ func formatLabelsPlain(labels map[string]string, maxWidth int) string {
 	return common.TruncateWidth(strings.Join(parts, ", "), maxWidth)
 }
 
+// filterBarVisible reports whether the inline filter bar is shown. The UUID
+// prompt stays a centered modal since it jumps to a workflow instead of
+// narrowing the list.
+func (m Model) filterBarVisible() bool {
+	return m.showFilter && m.filterType != "uuid"
+}
+
+// contentHeight returns the inner height of the main content panel, shrinking
+// by one line when the inline filter bar is visible.
+func (m Model) contentHeight() int {
+	h := common.ContentPanelHeight(m.height)
+	if m.filterBarVisible() {
+		h--
+	}
+	return h
+}
+
+// applyLocalFilter narrows the visible workflow list as the user types in the
+// inline filter bar. Enter still applies the filter server-side; this only
+// gives instant feedback on the rows already fetched.
+func (m *Model) applyLocalFilter() {
+	query := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+	if query == "" {
+		m.workflows = m.allWorkflows
+	} else {
+		filtered := make([]workflow.Workflow, 0, len(m.allWorkflows))
+		for _, wf := range m.allWorkflows {
+			if matchesLocalFilter(wf, m.filterType, query) {
+				filtered = append(filtered, wf)
+			}
+		}
+		m.workflows = filtered
+	}
+	m.cursor = 0
+	m.scrollY = 0
+}
+
+func matchesLocalFilter(wf workflow.Workflow, filterType, query string) bool {
+	if filterType == "label" {
+		for k, v := range wf.Labels {
+			if strings.Contains(strings.ToLower(k+":"+v), query) {
+				return true
+			}
+		}
+		return false
+	}
+	return strings.Contains(strings.ToLower(wf.Name), query)
+}
+
 // categorizeErrorForDisplay analyzes an error message and returns an appropriate
 // title and troubleshooting tips based on the error type.
 func categorizeErrorForDisplay(errorMsg string) (title string, tips []string) {

@@ -56,7 +56,7 @@ func (m Model) renderTable() string {
 
 	return common.PanelStyle.
 		Width(m.width - 2).
-		Height(common.ContentPanelHeight(m.height)).
+		Height(m.contentHeight()).
 		Render(b.String())
 }
 
