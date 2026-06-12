@@ -133,6 +133,10 @@ type Model struct {
 	copyMenuItems  []copyMenuItem
 	copyMenuCursor int
 
+	// Failure summary modal state
+	failureSummaryViewport viewport.Model
+	failureSummaryRaw      string // raw text for clipboard
+
 	// Chat dependencies (optional - nil if not configured)
 	llm        adkmodel.LLM
 	chatTools  []tool.Tool

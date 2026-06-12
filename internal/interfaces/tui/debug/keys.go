@@ -29,6 +29,7 @@ type KeyMap struct {
 	NextFailure    key.Binding
 	PrevFailure    key.Binding
 	Watch          key.Binding
+	FailureSummary key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -134,6 +135,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("w"),
 			key.WithHelp("w", "watch (auto-refresh)"),
 		),
+		FailureSummary: key.NewBinding(
+			key.WithKeys("F"),
+			key.WithHelp("F", "failure summary"),
+		),
 	}
 }
 
@@ -148,7 +153,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.ExpandAll, k.CollapseAll},
-		{k.ExpandFailures, k.NextFailure, k.PrevFailure, k.Watch},
+		{k.ExpandFailures, k.NextFailure, k.PrevFailure, k.Watch, k.FailureSummary},
 		{k.Home, k.End, k.PageUp, k.PageDown},
 		{k.Copy, k.Chat, k.SplitNarrow, k.SplitWiden},
 		{k.Help, k.Quit},

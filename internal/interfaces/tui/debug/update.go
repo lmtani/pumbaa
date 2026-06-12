@@ -412,6 +412,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Watch):
 		return m.toggleWatch()
 
+	case key.Matches(msg, m.keys.FailureSummary):
+		return m.openFailureSummary()
+
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)
 

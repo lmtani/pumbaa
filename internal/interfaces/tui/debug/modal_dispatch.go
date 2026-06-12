@@ -83,6 +83,12 @@ func (m Model) modalDispatches() []modalDispatch {
 			view:   Model.renderCopyMenuModal,
 			handle: Model.handleCopyMenuModalKeys,
 		},
+		{
+			active: func(m Model) bool { return m.activeModal == ModalFailureSummary },
+			view:   Model.renderFailureSummaryModal,
+			handle: Model.handleFailureSummaryModalKeys,
+			resize: func(m *Model) { m.resizeStandardModalViewport(&m.failureSummaryViewport) },
+		},
 	}
 }
 

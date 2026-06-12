@@ -35,6 +35,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpLine("E / C", "Expand / Collapse all"))
 	content.WriteString(helpLine("f", "Expand failures & preempted"))
 	content.WriteString(helpLine("] / [", "Next / prev failure"))
+	content.WriteString(helpLine("F", "Failure summary (grouped)"))
 	content.WriteString(helpLine("w", "Watch (auto-refresh)"))
 	content.WriteString(helpLine("d", "Return to details view"))
 	content.WriteString(helpLine("/", "Filter tree (name/status)"))
