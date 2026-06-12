@@ -52,6 +52,22 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
 
+	case key.Matches(msg, m.keys.AutoRefresh):
+		if m.querier == nil {
+			break
+		}
+		m.autoRefresh = !m.autoRefresh
+		if m.autoRefresh {
+			m.setStatusMessage("Auto-refresh on (30s)")
+			if !m.loading {
+				m.loading = true
+				cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
+			}
+		} else {
+			m.setStatusMessage("Auto-refresh off")
+		}
+		cmds = append(cmds, getClearStatusCmd())
+
 	case key.Matches(msg, m.keys.Open):
 		if len(m.workflows) > 0 && m.cursor < len(m.workflows) {
 			wf := m.workflows[m.cursor]

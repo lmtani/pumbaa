@@ -74,6 +74,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalCost = msg.totalCost
 		return m, nil
 
+	case watchTickMsg:
+		if !m.watchActive {
+			return m, nil
+		}
+		if m.watchRefreshing {
+			// Previous fetch still in flight; keep the ticker alive
+			return m, watchTick()
+		}
+		m.watchRefreshing = true
+		return m, m.refreshWorkflowMetadata()
+
+	case watchMetadataLoadedMsg:
+		m.watchRefreshing = false
+		if !m.watchActive {
+			return m, nil
+		}
+		changes, cmds := m.applyRefreshedMetadata(msg.metadata)
+		if msg.metadata.IsTerminal() {
+			m.watchActive = false
+			m.setStatusMessage(fmt.Sprintf("Workflow %s — watch stopped", msg.metadata.Status))
+		} else {
+			m.setStatusMessage(watchStatusMessage(changes))
+			cmds = append(cmds, watchTick())
+		}
+		cmds = append(cmds, getClearStatusCmd(), m.fetchTotalCost())
+		return m, tea.Batch(cmds...)
+
+	case watchErrorMsg:
+		m.watchRefreshing = false
+		if !m.watchActive {
+			return m, nil
+		}
+		m.setStatusMessage("Watch refresh failed: " + common.Truncate(msg.err.Error(), 60))
+		return m, tea.Batch(watchTick(), getClearStatusCmd())
+
 	case clipboardCopiedMsg:
 		if msg.Success {
 			m.setStatusMessage(fmt.Sprintf("✓ Copied %s!", msg.Context))
@@ -115,6 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case subWorkflowLoadedMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
+		var cmds []tea.Cmd
 		// Find the node and add children
 		node := m.findNodeByID(m.tree, msg.nodeID)
 		if node != nil && node.CallData != nil {
@@ -122,12 +158,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Rebuild children for this node
 			tree.AddSubWorkflowChildren(node, msg.metadata, node.Depth+1)
 			node.Expanded = true
+			cmds = append(cmds, m.restoreWatchStateInSubtree(node)...)
 			m.updateSearchFilter()
 		}
 		if m.failureExpandActive {
-			return m, m.continueFailureExpansion()
+			cmds = append(cmds, m.continueFailureExpansion())
 		}
-		return m, nil
+		return m, tea.Batch(cmds...)
 
 	case subWorkflowErrorMsg:
 		m.isLoading = false
@@ -371,6 +408,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.PrevFailure):
 		return m, m.jumpToFailure(false)
+
+	case key.Matches(msg, m.keys.Watch):
+		return m.toggleWatch()
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)

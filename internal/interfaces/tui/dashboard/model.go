@@ -42,6 +42,7 @@ type Model struct {
 	querier              ports.WorkflowQuerier
 	aborter              ports.WorkflowAborter
 	loading              bool
+	autoRefresh          bool // refresh the list on every periodic tick
 	spinner              spinner.Model
 	error                string
 	statusMsg            string
@@ -260,6 +261,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Periodic health check
 		if m.healthChecker != nil {
 			cmds = append(cmds, m.fetchHealthStatus(), tickHealthCheck())
+		}
+		// Auto-refresh the workflow list, unless the user is mid-interaction
+		if m.autoRefresh && m.querier != nil && !m.loading && !m.HasActiveModal() {
+			m.loading = true
+			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
 
 	case labelsLoadedMsg:

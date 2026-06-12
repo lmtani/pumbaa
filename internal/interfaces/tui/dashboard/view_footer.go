@@ -89,6 +89,7 @@ func (m Model) renderFooter() string {
 		renderHint("L", "edit labels"),
 		renderHint("s", "status"),
 		renderHint("r", "refresh"),
+		renderHint("w", "auto-refresh"),
 	}
 	prefix := strings.Join(parts, "")
 	hintBudget := m.width - 2 - lipgloss.Width(prefix)

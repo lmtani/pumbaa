@@ -94,4 +94,11 @@ var (
 	failedBadgeStyle = lipgloss.NewStyle().
 				Foreground(common.StatusFailed).
 				Bold(true)
+
+	// Watch mode badge in the header bar
+	watchBadgeStyle = lipgloss.NewStyle().
+			Foreground(common.BadgeFg).
+			Background(common.BadgeWarnBg).
+			Padding(0, 1).
+			MarginLeft(1)
 )

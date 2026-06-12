@@ -19,6 +19,7 @@ type KeyMap struct {
 	ClearFilter   key.Binding
 	StatusFilter  key.Binding
 	LabelsManager key.Binding // Open labels modal for selected workflow
+	AutoRefresh   key.Binding
 	Help          key.Binding
 }
 
@@ -61,6 +62,10 @@ func DefaultKeyMap() KeyMap {
 		LabelsManager: key.NewBinding(
 			key.WithKeys("L"),
 			key.WithHelp("L", "edit labels"),
+		),
+		AutoRefresh: key.NewBinding(
+			key.WithKeys("w"),
+			key.WithHelp("w", "auto-refresh"),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),

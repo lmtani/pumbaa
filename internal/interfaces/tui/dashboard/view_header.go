@@ -50,6 +50,12 @@ func (m Model) renderHeader() string {
 			Background(common.BadgeDangerBg).
 			Render(fmt.Sprintf("↑ Update: %s", m.updateInfo.Latest)))
 	}
+	if m.autoRefresh {
+		right = append(right, common.BadgeStyle.
+			Foreground(common.BadgeFg).
+			Background(common.BadgeWarnBg).
+			Render("⟳ AUTO 30s"))
+	}
 	right = append(right, common.BadgeStyle.
 		Foreground(common.BadgeFg).
 		Background(common.BadgeInfoBg).

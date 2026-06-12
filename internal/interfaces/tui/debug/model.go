@@ -76,6 +76,12 @@ type Model struct {
 	failureExpandPending  int             // in-flight subworkflow fetches
 	failureFetchRequested map[string]bool // node IDs already requested
 
+	// Watch mode state (w key): periodic metadata refresh while running
+	watchActive          bool
+	watchRefreshing      bool            // a refresh fetch is in flight
+	watchRestoreExpanded map[string]bool // expansion snapshot to reapply after subworkflow reloads
+	watchReloadSubs      map[string]bool // subworkflow node IDs still to re-fetch after a refresh
+
 	// Loading state
 	isLoading        bool
 	loadingMessage   string

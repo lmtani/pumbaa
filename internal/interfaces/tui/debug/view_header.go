@@ -40,6 +40,9 @@ func (m Model) renderHeader() string {
 	if m.totalCost > 0 {
 		right += costBadgeStyle.Render(fmt.Sprintf("$%.4f", m.totalCost))
 	}
+	if m.watchActive {
+		right += watchBadgeStyle.Render(fmt.Sprintf("⟳ WATCH %ds", int(watchInterval.Seconds())))
+	}
 	if m.searchActive || m.searchQuery != "" {
 		label := "SEARCH"
 		if m.searchActive && m.searchQuery == "" {
