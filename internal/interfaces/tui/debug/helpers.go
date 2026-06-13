@@ -13,20 +13,17 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// countPreemptions counts the number of preempted tasks in a node and its children
+// countPreemptions counts the leaf tasks in the subtree that went through
+// preemption or a retry, including ones that recovered on a later attempt
+// (their aggregate status is Done but the call took more than one attempt).
 func countPreemptions(node *TreeNode) int {
-	count := 0
-	// Check if this node itself is preempted
-	if node.Status == "Preempted" || node.Status == "RetryableFailure" {
-		count++
-	}
-	// Also check CallData for preemption status
-	if node.CallData != nil && (string(node.CallData.Status) == "Preempted" || string(node.CallData.Status) == "RetryableFailure") {
-		if node.Status != "Preempted" && node.Status != "RetryableFailure" {
-			count++ // Only count if not already counted
+	if len(node.Children) == 0 {
+		if wasRetried(node) {
+			return 1
 		}
+		return 0
 	}
-	// Recursively count children
+	count := 0
 	for _, child := range node.Children {
 		count += countPreemptions(child)
 	}

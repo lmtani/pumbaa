@@ -92,6 +92,7 @@ func (m Model) footerHints() []string {
 		renderFooterHint("d", "details"),
 		renderFooterHint("1-6", "actions"),
 		renderFooterHint("E/C", "expand/collapse"),
+		renderFooterHint("f", "failures"),
 		renderFooterHint("/", "search"),
 	}
 

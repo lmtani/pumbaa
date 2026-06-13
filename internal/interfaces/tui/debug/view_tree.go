@@ -64,12 +64,12 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 	}
 
 	// Expand/collapse indicator
+	expanded := node.Expanded
+	if m.searchQuery != "" && m.searchForcedExpanded != nil {
+		expanded = m.searchForcedExpanded[node]
+	}
 	expandIndicator := " "
 	if len(node.Children) > 0 || (node.Type == NodeTypeSubWorkflow && node.SubWorkflowID != "") {
-		expanded := node.Expanded
-		if m.searchQuery != "" && m.searchForcedExpanded != nil {
-			expanded = m.searchForcedExpanded[node]
-		}
 		if expanded {
 			expandIndicator = common.IconExpanded
 		} else {
@@ -102,15 +102,27 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 		}
 	}
 
-	// Name with truncation (account for preempt badge)
+	// Failed-descendant count on collapsed nodes, so failures buried in
+	// collapsed scatters/subworkflows stay visible at a glance
+	failedBadge := ""
+	if len(node.Children) > 0 && !expanded {
+		if failedCount := countFailedLeaves(node); failedCount > 0 {
+			failedBadge = failedBadgeStyle.Render(fmt.Sprintf(" %s%d", common.IconFailed, failedCount))
+		}
+	}
+
+	// Name with truncation (account for badges)
 	maxNameLen := m.treeWidth - node.Depth*2 - 12
 	if preemptBadge != "" {
+		maxNameLen -= 4 // Reserve space for badge
+	}
+	if failedBadge != "" {
 		maxNameLen -= 4 // Reserve space for badge
 	}
 	name := truncate(node.Name, maxNameLen)
 
 	// Build the node string
-	nodeStr := fmt.Sprintf("%s%s %s %s %s %s%s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name, preemptBadge)
+	nodeStr := fmt.Sprintf("%s%s %s %s %s %s%s%s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name, preemptBadge, failedBadge)
 
 	// Style based on selection
 	if index == m.cursor {

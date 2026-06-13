@@ -89,4 +89,9 @@ var (
 			Background(common.HighlightColor).
 			Foreground(textColor).
 			Bold(true)
+
+	// Failed-descendant badge on collapsed tree nodes
+	failedBadgeStyle = lipgloss.NewStyle().
+				Foreground(common.StatusFailed).
+				Bold(true)
 )

@@ -71,6 +71,11 @@ type Model struct {
 	searchMatchCursor    int
 	searchForcedExpanded map[*TreeNode]bool
 
+	// Failure expansion state (f key): chained fetches of failed subworkflows
+	failureExpandActive   bool
+	failureExpandPending  int             // in-flight subworkflow fetches
+	failureFetchRequested map[string]bool // node IDs already requested
+
 	// Loading state
 	isLoading        bool
 	loadingMessage   string

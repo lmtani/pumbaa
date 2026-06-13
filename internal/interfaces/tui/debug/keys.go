@@ -4,27 +4,30 @@ import "github.com/charmbracelet/bubbles/key"
 
 // KeyMap defines all key bindings for the TUI.
 type KeyMap struct {
-	Up          key.Binding
-	Down        key.Binding
-	Left        key.Binding
-	Right       key.Binding
-	Enter       key.Binding
-	Space       key.Binding
-	Tab         key.Binding
-	Quit        key.Binding
-	Help        key.Binding
-	Escape      key.Binding
-	Details     key.Binding
-	ExpandAll   key.Binding
-	CollapseAll key.Binding
-	Home        key.Binding
-	End         key.Binding
-	PageUp      key.Binding
-	PageDown    key.Binding
-	Copy        key.Binding
-	Chat        key.Binding
-	SplitNarrow key.Binding
-	SplitWiden  key.Binding
+	Up             key.Binding
+	Down           key.Binding
+	Left           key.Binding
+	Right          key.Binding
+	Enter          key.Binding
+	Space          key.Binding
+	Tab            key.Binding
+	Quit           key.Binding
+	Help           key.Binding
+	Escape         key.Binding
+	Details        key.Binding
+	ExpandAll      key.Binding
+	CollapseAll    key.Binding
+	Home           key.Binding
+	End            key.Binding
+	PageUp         key.Binding
+	PageDown       key.Binding
+	Copy           key.Binding
+	Chat           key.Binding
+	SplitNarrow    key.Binding
+	SplitWiden     key.Binding
+	ExpandFailures key.Binding
+	NextFailure    key.Binding
+	PrevFailure    key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings.
@@ -114,6 +117,18 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys(">"),
 			key.WithHelp(">", "widen tree panel"),
 		),
+		ExpandFailures: key.NewBinding(
+			key.WithKeys("f"),
+			key.WithHelp("f", "expand failures/preempted"),
+		),
+		NextFailure: key.NewBinding(
+			key.WithKeys("]"),
+			key.WithHelp("]", "next failure"),
+		),
+		PrevFailure: key.NewBinding(
+			key.WithKeys("["),
+			key.WithHelp("[", "prev failure"),
+		),
 	}
 }
 
@@ -128,6 +143,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.Enter, k.Space, k.Tab, k.Escape},
 		{k.Details, k.ExpandAll, k.CollapseAll},
+		{k.ExpandFailures, k.NextFailure, k.PrevFailure},
 		{k.Home, k.End, k.PageUp, k.PageDown},
 		{k.Copy, k.Chat, k.SplitNarrow, k.SplitWiden},
 		{k.Help, k.Quit},

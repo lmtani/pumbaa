@@ -124,12 +124,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			node.Expanded = true
 			m.updateSearchFilter()
 		}
+		if m.failureExpandActive {
+			return m, m.continueFailureExpansion()
+		}
 		return m, nil
 
 	case subWorkflowErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
 		m.setStatusMessage(fmt.Sprintf("Error loading subworkflow: %s", msg.err.Error()))
+		if m.failureExpandActive {
+			return m, tea.Batch(getClearStatusCmd(), m.continueFailureExpansion())
+		}
 		return m, getClearStatusCmd()
 
 	case logLoadedMsg:
@@ -356,6 +362,15 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.CollapseAll):
 		m.collapseAll(m.tree)
 		m.updateSearchFilter()
+
+	case key.Matches(msg, m.keys.ExpandFailures):
+		return m, m.expandToFailures()
+
+	case key.Matches(msg, m.keys.NextFailure):
+		return m, m.jumpToFailure(true)
+
+	case key.Matches(msg, m.keys.PrevFailure):
+		return m, m.jumpToFailure(false)
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)

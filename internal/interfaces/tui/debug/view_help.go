@@ -11,7 +11,7 @@ import (
 // renderHelpOverlay renders a contextual help overlay.
 func (m Model) renderHelpOverlay() string {
 	width := minInt(60, m.width-10)
-	height := minInt(38, m.height-6)
+	height := minInt(40, m.height-6)
 
 	var content strings.Builder
 
@@ -33,6 +33,8 @@ func (m Model) renderHelpOverlay() string {
 	// Global actions section
 	content.WriteString(helpSectionTitle("Actions") + "\n")
 	content.WriteString(helpLine("E / C", "Expand / Collapse all"))
+	content.WriteString(helpLine("f", "Expand failures & preempted"))
+	content.WriteString(helpLine("] / [", "Next / prev failure"))
 	content.WriteString(helpLine("d", "Return to details view"))
 	content.WriteString(helpLine("/", "Filter tree (name/status)"))
 	content.WriteString(helpLine("Ctrl+X", "Clear search"))
