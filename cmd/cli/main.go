@@ -83,6 +83,7 @@ func main() {
 			Subcommands: []*cli.Command{
 				cont.SubmitHandler.Command(),
 				cont.MetadataHandler.Command(),
+				cont.DiffHandler.Command(),
 				cont.AbortHandler.Command(),
 				cont.QueryHandler.Command(),
 				cont.OutputsHandler.Command(),

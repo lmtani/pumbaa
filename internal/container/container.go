@@ -32,6 +32,7 @@ type Container struct {
 	// Use cases
 	SubmitUseCase                *workflow.SubmitUseCase
 	MetadataUseCase              *workflow.MetadataUseCase
+	CompareUseCase               *workflow.CompareUseCase
 	AbortUseCase                 *workflow.AbortUseCase
 	QueryUseCase                 *workflow.QueryUseCase
 	OutputsUseCase               *workflow.OutputsUseCase
@@ -45,6 +46,7 @@ type Container struct {
 	// Handlers
 	SubmitHandler         *handler.SubmitHandler
 	MetadataHandler       *handler.MetadataHandler
+	DiffHandler           *handler.DiffHandler
 	AbortHandler          *handler.AbortHandler
 	QueryHandler          *handler.QueryHandler
 	OutputsHandler        *handler.OutputsHandler
@@ -97,6 +99,7 @@ func New(cfg *config.Config, version string) *Container {
 	// Initialize use cases
 	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
+	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
 	c.OutputsUseCase = workflow.NewOutputsUseCase(c.CromwellClient)
@@ -125,6 +128,7 @@ func New(cfg *config.Config, version string) *Container {
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
 	c.MetadataHandler = handler.NewMetadataHandler(c.MetadataUseCase, c.Presenter)
+	c.DiffHandler = handler.NewDiffHandler(c.CompareUseCase, c.Presenter)
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
 	c.QueryHandler = handler.NewQueryHandler(c.QueryUseCase, c.Presenter)
 	c.OutputsHandler = handler.NewOutputsHandler(c.OutputsUseCase, c.Presenter)
