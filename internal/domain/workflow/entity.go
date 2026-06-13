@@ -109,6 +109,16 @@ type Call struct {
 	CacheHit    bool
 	CacheResult string
 
+	// Recovery holds the real execution metrics recovered from the cache
+	// source when this call was a cache hit (nil otherwise). Set by the
+	// application layer; the domain only reads it when diffing.
+	Recovery *CacheRecovery
+
+	// SubworkflowCacheServed marks a subworkflow call whose work was entirely
+	// served from cache, so its wall-clock time is a cache artifact rather than
+	// real compute. Set by the application layer; the domain only reads it.
+	SubworkflowCacheServed bool
+
 	// Cost
 	VMCostPerHour float64
 

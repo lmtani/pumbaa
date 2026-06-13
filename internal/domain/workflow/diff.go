@@ -55,6 +55,9 @@ const (
 )
 
 // TaskDiff summarizes how a single call (grouped by name) differs between runs.
+// Duration, Docker and Status reflect the *effective* metrics: when a call was
+// a cache hit whose real execution could be recovered, the recovered values are
+// used so the comparison reflects real work rather than cache-copy time.
 type TaskDiff struct {
 	Name      string        `json:"name"`
 	Kind      ChangeKind    `json:"kind"`
@@ -70,6 +73,23 @@ type TaskDiff struct {
 	AttemptsB int           `json:"attemptsB"`
 	RunningA  bool          `json:"runningA,omitempty"`
 	RunningB  bool          `json:"runningB,omitempty"`
+
+	// Cache provenance. RecoveredX is true when at least one cache hit on that
+	// side had its real metrics recovered from the source run; CacheSourceX is
+	// the immediate source workflow ID. UnresolvedCacheX is true when a cache
+	// hit could not be recovered, in which case that side's duration is not
+	// comparable.
+	RecoveredA       bool   `json:"recoveredA,omitempty"`
+	RecoveredB       bool   `json:"recoveredB,omitempty"`
+	CacheSourceA     string `json:"cacheSourceA,omitempty"`
+	CacheSourceB     string `json:"cacheSourceB,omitempty"`
+	UnresolvedCacheA bool   `json:"unresolvedCacheA,omitempty"`
+	UnresolvedCacheB bool   `json:"unresolvedCacheB,omitempty"`
+
+	// SubworkflowCachedX marks a side whose subworkflow work was served from
+	// cache, making its wall-clock duration a cache artifact (not comparable).
+	SubworkflowCachedA bool `json:"subworkflowCachedA,omitempty"`
+	SubworkflowCachedB bool `json:"subworkflowCachedB,omitempty"`
 }
 
 // StatusChanged reports whether the aggregate task status differs.
@@ -82,8 +102,14 @@ func (t TaskDiff) DockerChanged() bool { return t.DockerA != t.DockerB }
 func (t TaskDiff) ShardsChanged() bool { return t.ShardsA != t.ShardsB }
 
 // DurationChangedSignificantly reports whether the wall-clock duration changed
-// enough (both proportionally and absolutely) to be worth surfacing.
+// enough (both proportionally and absolutely) to be worth surfacing. It returns
+// false when a side's duration is a cache artifact — an unresolved cache hit or
+// a subworkflow whose work was served from cache — because that is not
+// comparable to real execution time (the point-1 fallback).
 func (t TaskDiff) DurationChangedSignificantly() bool {
+	if t.UnresolvedCacheA || t.UnresolvedCacheB || t.SubworkflowCachedA || t.SubworkflowCachedB {
+		return false
+	}
 	a, b := t.DurationA, t.DurationB
 	if a <= 0 || b <= 0 {
 		return false
@@ -331,16 +357,82 @@ func fillTaskSide(td *TaskDiff, calls []Call, isA bool) {
 	docker := firstDockerImage(calls)
 	shards := distinctShardCount(calls)
 	attempts := maxAttempt(calls)
+	recovered, unresolved, subCached, source := cacheProvenance(calls)
 
 	if isA {
 		td.StatusA, td.RunningA = status, running
 		td.DurationA, td.DockerA = duration, docker
 		td.ShardsA, td.AttemptsA = shards, attempts
+		td.RecoveredA, td.UnresolvedCacheA, td.CacheSourceA = recovered, unresolved, source
+		td.SubworkflowCachedA = subCached
 	} else {
 		td.StatusB, td.RunningB = status, running
 		td.DurationB, td.DockerB = duration, docker
 		td.ShardsB, td.AttemptsB = shards, attempts
+		td.RecoveredB, td.UnresolvedCacheB, td.CacheSourceB = recovered, unresolved, source
+		td.SubworkflowCachedB = subCached
 	}
+}
+
+// cacheProvenance summarizes the cache state of a group of calls: whether any
+// leaf hit was recovered, whether any leaf hit is still unresolved, whether any
+// subworkflow call was served from cache, and a representative source workflow
+// ID for recovered hits.
+func cacheProvenance(calls []Call) (recovered, unresolved, subCached bool, source string) {
+	for _, c := range calls {
+		if c.SubworkflowCacheServed {
+			subCached = true
+		}
+		if !c.CacheHit {
+			continue
+		}
+		if c.Recovery != nil {
+			recovered = true
+			if source == "" {
+				source = c.Recovery.SourceWorkflowID
+			}
+		} else {
+			unresolved = true
+		}
+	}
+	return recovered, unresolved, subCached, source
+}
+
+// effStart, effEnd, effStatus and effDocker return a call's effective metrics,
+// preferring recovered values from the cache source when present.
+func (c Call) effStart() time.Time {
+	if c.Recovery != nil {
+		return c.Recovery.Start
+	}
+	return c.Start
+}
+
+func (c Call) effEnd() time.Time {
+	if c.Recovery != nil {
+		return c.Recovery.End
+	}
+	return c.End
+}
+
+func (c Call) effStatus() Status {
+	if c.Recovery != nil {
+		return c.Recovery.Status
+	}
+	return c.Status
+}
+
+func (c Call) effDocker() string {
+	if c.Recovery != nil && c.Recovery.DockerImage != "" {
+		return c.Recovery.DockerImage
+	}
+	return c.DockerImage
+}
+
+func (c Call) effAttempt() int {
+	if c.Recovery != nil && c.Recovery.Attempt > 0 {
+		return c.Recovery.Attempt
+	}
+	return c.Attempt
 }
 
 // aggregateCallStatus returns the overall status of a group of calls,
@@ -348,7 +440,7 @@ func fillTaskSide(td *TaskDiff, calls []Call, isA bool) {
 func aggregateCallStatus(calls []Call) (status string, running bool) {
 	hasFailed, hasRunning := false, false
 	for _, c := range calls {
-		switch c.Status {
+		switch c.effStatus() {
 		case StatusFailed:
 			hasFailed = true
 		case StatusRunning, StatusSubmitted:
@@ -367,7 +459,7 @@ func aggregateCallStatus(calls []Call) (status string, running bool) {
 			latest = c
 		}
 	}
-	return string(latest.Status), false
+	return string(latest.effStatus()), false
 }
 
 // wallClockDuration is the span from the earliest start to the latest end
@@ -375,11 +467,12 @@ func aggregateCallStatus(calls []Call) (status string, running bool) {
 func wallClockDuration(calls []Call) time.Duration {
 	var start, end time.Time
 	for _, c := range calls {
-		if !c.Start.IsZero() && (start.IsZero() || c.Start.Before(start)) {
-			start = c.Start
+		s, e := c.effStart(), c.effEnd()
+		if !s.IsZero() && (start.IsZero() || s.Before(start)) {
+			start = s
 		}
-		if !c.End.IsZero() && c.End.After(end) {
-			end = c.End
+		if !e.IsZero() && e.After(end) {
+			end = e
 		}
 	}
 	if start.IsZero() || end.IsZero() || end.Before(start) {
@@ -390,8 +483,8 @@ func wallClockDuration(calls []Call) time.Duration {
 
 func firstDockerImage(calls []Call) string {
 	for _, c := range calls {
-		if c.DockerImage != "" {
-			return c.DockerImage
+		if d := c.effDocker(); d != "" {
+			return d
 		}
 	}
 	return ""
@@ -408,8 +501,8 @@ func distinctShardCount(calls []Call) int {
 func maxAttempt(calls []Call) int {
 	maxAtt := 0
 	for _, c := range calls {
-		if c.Attempt > maxAtt {
-			maxAtt = c.Attempt
+		if att := c.effAttempt(); att > maxAtt {
+			maxAtt = att
 		}
 	}
 	return maxAtt

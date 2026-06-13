@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -36,6 +37,10 @@ func (h *DiffHandler) Command() *cli.Command {
 				Name:  "json",
 				Usage: "[optional] Output the diff as JSON",
 			},
+			&cli.BoolFlag{
+				Name:  "no-cache-resolve",
+				Usage: "[optional] Do not fetch cache sources to recover real metrics of cache-hit tasks",
+			},
 		},
 		Action: h.handle,
 	}
@@ -49,8 +54,9 @@ func (h *DiffHandler) handle(c *cli.Context) error {
 
 	ctx := context.Background()
 	input := workflow.CompareInput{
-		WorkflowIDA: c.Args().Get(0),
-		WorkflowIDB: c.Args().Get(1),
+		WorkflowIDA:  c.Args().Get(0),
+		WorkflowIDB:  c.Args().Get(1),
+		ResolveCache: !c.Bool("no-cache-resolve"),
 	}
 
 	diff, err := h.useCase.Execute(ctx, input)
@@ -182,7 +188,40 @@ func (h *DiffHandler) taskChangeLines(td workflowdomain.TaskDiff) []string {
 			h.presenter.FormatDuration(td.DurationB),
 			durationVerdict(td.DurationRatio())))
 	}
+	if note := cacheNote(td); note != "" {
+		lines = append(lines, note)
+	}
 	return lines
+}
+
+// cacheNote describes the cache provenance of a task's two sides: which side's
+// metrics were recovered from a source run, which had an unresolved cache hit,
+// and which was a subworkflow whose work was served from cache. In the latter
+// two cases the duration was not compared.
+func cacheNote(td workflowdomain.TaskDiff) string {
+	var parts []string
+	if a := sideCacheNote("A", td.RecoveredA, td.CacheSourceA, td.UnresolvedCacheA, td.SubworkflowCachedA); a != "" {
+		parts = append(parts, a)
+	}
+	if b := sideCacheNote("B", td.RecoveredB, td.CacheSourceB, td.UnresolvedCacheB, td.SubworkflowCachedB); b != "" {
+		parts = append(parts, b)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "cache:    " + strings.Join(parts, ", ")
+}
+
+func sideCacheNote(side string, recovered bool, source string, unresolved, subworkflowCached bool) string {
+	switch {
+	case recovered:
+		return side + " recovered from " + shortID(source)
+	case subworkflowCached:
+		return side + " subworkflow served from cache"
+	case unresolved:
+		return side + " cache hit (source unresolved)"
+	}
+	return ""
 }
 
 func durationVerdict(ratio float64) string {
