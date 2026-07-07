@@ -16,9 +16,10 @@ internal/
 │   ├── monitoring.go
 │   └── monitoring_test.go
 ├── application/workflow/
-│   └── debuginfo/
-│       ├── usecase.go
-│       └── usecase_test.go
+│   ├── metadata.go
+│   ├── metadata_test.go
+│   ├── query.go
+│   └── query_test.go
 └── infrastructure/cromwell/
     ├── mapper.go
     └── mapper_test.go
@@ -75,15 +76,18 @@ func TestCalculatePreemptionSummary(t *testing.T) {
 
 ### Test Data
 
-Place test fixtures in `test_data/`:
+Shared fixtures live in the top-level `test_data/` directory:
 
 ```
 test_data/
 ├── metadata.json           # Cromwell workflow metadata
-├── metadata_scattered.json # Scattered workflow example
-├── monitoring.tsv          # Resource monitoring output
-└── monitoring_empty.tsv    # Edge case: empty log
+└── wdl/                    # Sample WDL files for indexer/parser tests
+    ├── hello.wdl
+    ├── subworkflow/
+    └── tasks/
 ```
+
+Fixtures used by a single package are kept next to that package (package-local test data), not in `test_data/`.
 
 Load test data with relative paths:
 
@@ -164,7 +168,7 @@ go tool cover -html=coverage.out
 For infrastructure dependencies, create interfaces and mock implementations:
 
 ```go
-// In domain/ports/workflow.go
+// In internal/application/ports/workflow.go
 type WorkflowRepository interface {
     GetMetadata(ctx context.Context, id string) (*workflow.Workflow, error)
 }
@@ -179,6 +183,21 @@ func (m *mockRepository) GetMetadata(ctx context.Context, id string) (*workflow.
     return m.metadata, m.err
 }
 ```
+
+## Agent Tools E2E Test
+
+`internal/infrastructure/agents/tools/e2e_test.go` contains `TestToolsE2E`, which exercises every built-in agent action against a real Cromwell server (and, optionally, a real WDL directory). It is the "are the tools actually functional" check.
+
+The test is opt-in: it is skipped unless `PUMBAA_TOOLS_E2E=1` is set, because it needs live infrastructure.
+
+```bash
+PUMBAA_TOOLS_E2E=1 CROMWELL_HOST=http://localhost:8000 \
+PUMBAA_WDL_DIR=/path/to/workflows \
+go test ./internal/infrastructure/agents/tools/ -run TestToolsE2E -v
+```
+
+!!! note
+    `CROMWELL_HOST` defaults to `http://localhost:8000` when unset. `PUMBAA_WDL_DIR` is optional; without it, the WDL tools are not exercised.
 
 ## Edge Cases to Test
 

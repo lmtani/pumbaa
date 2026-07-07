@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // handleMainKeys processes keyboard input during normal navigation.
@@ -144,9 +145,36 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Help):
 		m.showHelp = true
+
+	case key.Matches(msg, m.keys.ErrorDetail):
+		if m.LastError != nil {
+			m.showError = true
+		} else {
+			m.setStatusMessage("No recent errors")
+			cmds = append(cmds, getClearStatusCmd())
+		}
+
+	case key.Matches(msg, m.keys.Compare):
+		if cmd := m.handleCompareKey(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+
+	case key.Matches(msg, m.keys.Escape):
+		// Nothing to close here; let the app decide (dashboard is the root,
+		// so this triggers the quit confirmation).
+		return m, common.NavigateCmd(common.NavigateBackMsg{})
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+// handleErrorModalKeys processes keyboard input in the error detail modal.
+func (m Model) handleErrorModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "e", "enter", "q":
+		m.showError = false
+	}
+	return m, nil
 }
 
 // handleFilterKeys processes keyboard input when filter input is active.

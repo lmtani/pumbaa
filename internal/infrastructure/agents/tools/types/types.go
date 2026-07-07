@@ -31,6 +31,15 @@ type Input struct {
 
 	// PageSize for query action (default: 10).
 	PageSize int `json:"page_size,omitempty"`
+
+	// Content is the file body for the write_file action.
+	Content string `json:"content,omitempty"`
+
+	// Executable marks the written file as executable (write_file action).
+	Executable bool `json:"executable,omitempty"`
+
+	// Overwrite allows write_file to replace an existing file.
+	Overwrite bool `json:"overwrite,omitempty"`
 }
 
 // Output represents the standardized output for all actions.

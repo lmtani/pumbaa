@@ -11,17 +11,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/charmbracelet/bubbles/viewport"
+
 	"github.com/lmtani/pumbaa/internal/application/ports"
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
-
-// NavigateToDebugMsg is sent when user wants to navigate to debug screen.
-// This message is handled by the parent AppModel.
-type NavigateToDebugMsg struct {
-	Workflow *workflow.Workflow
-}
 
 // VersionCheckMsg is sent when version check completes.
 type VersionCheckMsg struct {
@@ -67,6 +64,19 @@ type Model struct {
 	// Help overlay
 	showHelp bool
 
+	// Error detail modal (full text of the last error)
+	showError bool
+
+	// Compare / diff state
+	compareUC       *workflowapp.CompareUseCase
+	compareBaseID   string // Workflow marked as the comparison base ("" if none)
+	compareBaseName string
+	showDiff        bool
+	diffLoading     bool
+	diffViewport    viewport.Model
+	diffResult      *workflow.RunDiff
+	diffError       string
+
 	// Debug transition state
 	loadingDebug    bool
 	loadingDebugID  string
@@ -91,11 +101,8 @@ type Model struct {
 	labelsInput        textinput.Model
 	labelsMessage      string // In-modal feedback message
 
-	// Navigation state
-	ShouldQuit        bool
-	LastError         error              // Last error for telemetry capture
-	pendingNavigation tea.Cmd            // Pending navigation command for parent
-	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
+	// LastError keeps the most recent error for telemetry and the error modal.
+	LastError error
 }
 
 // FilterState holds the current filter configuration
@@ -125,22 +132,34 @@ func NewModel() Model {
 
 // NewModelWithRepository creates a new dashboard model with all repository capabilities.
 // The repository satisfies WorkflowQuerier, WorkflowAborter, WorkflowMetadataFetcher,
-// HealthChecker, and LabelManager through interface composition.
-func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model {
+// HealthChecker, and LabelManager through interface composition. compareUC may be
+// nil, in which case the compare feature is disabled.
+func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, version string) Model {
 	m := NewModel()
 	m.querier = repo
 	m.aborter = repo
 	m.metadataFetcher = repo
 	m.healthChecker = repo
 	m.labelManager = repo
+	m.compareUC = compareUC
 	m.currentVersion = version
 	m.loading = true
 	return m
 }
 
+// ResumeCmd re-arms self-perpetuating timers (the spinner) whose tick chain
+// dies while the screen is hidden, since spinner ticks are only routed to
+// the focused screen.
+func (m *Model) ResumeCmd() tea.Cmd {
+	if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating {
+		return m.spinner.Tick
+	}
+	return nil
+}
+
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff
 }
 
 // Init implements tea.Model.
@@ -184,10 +203,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.statusMsg != "" {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.statusMsg != "" {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+
+	case diffLoadedMsg:
+		m.diffLoading = false
+		m.diffResult = msg.diff
+		m.setDiffContent()
+		return m, nil
+
+	case diffErrorMsg:
+		m.diffLoading = false
+		m.diffError = friendlyError(msg.err)
+		m.LastError = msg.err
+		return m, nil
 
 	case workflowsLoadedMsg:
 		m.loading = false
@@ -226,15 +257,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case debugMetadataLoadedMsg:
 		m.loadingDebug = false
 		m.loadingDebugID = ""
-		// Parse metadata and set up navigation
+		// Parse metadata and hand navigation to the parent AppModel
 		wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
 		if err != nil {
 			m.setStatusMessage("✗ Failed to parse metadata")
 			m.LastError = err
 			return m, getClearStatusCmd()
 		}
-		m.SetPendingNavigation(wf)
-		return m, nil
+		return m, common.NavigateCmd(common.NavigateToDebugMsg{Workflow: wf})
 
 	case debugMetadataErrorMsg:
 		m.loadingDebug = false
@@ -303,6 +333,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Error detail modal
+		if m.showError {
+			return m.handleErrorModalKeys(msg)
+		}
+
+		// Diff modal
+		if m.showDiff {
+			return m.handleDiffModalKeys(msg)
+		}
+
 		// Handle confirmation modal first
 		if m.showConfirm {
 			return m.handleConfirmKeys(msg)
@@ -331,26 +371,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // - view_table.go: renderTable(), renderWorkflowRow(), getColumnWidths()
 // - view_footer.go: renderFooter()
 // Helper functions are in helpers.go
-
-// GetNavigationCmd returns a pending navigation command, if any.
-// This is used by the parent AppModel to check if the dashboard wants to navigate.
-func (m *Model) GetNavigationCmd() tea.Cmd {
-	return m.pendingNavigation
-}
-
-// ClearNavigation clears the pending navigation state.
-func (m *Model) ClearNavigation() {
-	m.pendingNavigation = nil
-	m.pendingWorkflow = nil
-}
-
-// SetPendingNavigation sets a navigation command to be executed by the parent.
-func (m *Model) SetPendingNavigation(wf *workflow.Workflow) {
-	m.pendingWorkflow = wf
-	m.pendingNavigation = func() tea.Msg {
-		return NavigateToDebugMsg{Workflow: wf}
-	}
-}
 
 // setStatusMessage sets a temporary status message that auto-clears after 3 seconds.
 func (m *Model) setStatusMessage(message string) {

@@ -34,8 +34,10 @@ Inspect workflow execution tree and call-level details.
 === "CLI"
 
     ```bash
-    pumbaa workflow debug <workflow-id>
+    pumbaa workflow debug --id <workflow-id>
     ```
+
+    Other options: `--file metadata.json` to debug from a saved metadata file (offline), and `--expand-subworkflows` to fetch subworkflow metadata upfront.
 
 ## :material-keyboard: Navigation
 
@@ -47,9 +49,18 @@ Inspect workflow execution tree and call-level details.
 | ++tab++ | Switch panel focus |
 | ++shift+e++ | Expand all nodes |
 | ++shift+c++ | Collapse all nodes |
-| ++y++ | Copy to clipboard |
+| ++slash++ | Search tree · ++n++ / ++shift+n++ next/prev match |
+| ++f++ | Expand failed/preempted paths |
+| ++"]"++ / ++"["++ | Jump to next / previous failure |
+| ++shift+f++ | Failure summary (grouped by error) |
+| ++e++ | Error details for selected node |
+| ++d++ | Node details panel |
+| ++"$"++ | Cost breakdown by task |
+| ++w++ | Watch mode (auto-refresh) |
+| ++y++ | Copy menu (context-sensitive) |
+| ++"<"++ / ++">"++ | Resize tree/details split |
 | ++a++ | Chat with AI |
-| ++q++ | Back / Quit |
+| ++esc++ | Close modal / back · ++ctrl+c++ quits |
 
 ## :material-lightning-bolt: Quick Actions
 
@@ -120,6 +131,28 @@ The timeline shows:
 
 !!! tip "Subworkflow Timelines"
     Navigate to a subworkflow node and press ++4++ to see its specific timeline, separate from the parent workflow.
+
+## :material-currency-usd: Cost Breakdown
+
+Press ++"$"++ to open the per-task cost breakdown modal.
+
+- Tasks are listed with their **estimated cost**, sorted by the most expensive first
+- Costs are billed on **VM lifetime** (provisioning to teardown), not just task wall-clock time
+- **Subworkflow costs are included by default** — the modal fetches expanded metadata as needed
+
+!!! tip "Where is my money going?"
+    Combine the cost modal with the timeline (++4++) and resource efficiency (++5++) views: the most expensive tasks are usually the best candidates for right-sizing.
+
+## :material-alert-circle: Investigating Failures
+
+For workflows with failed tasks:
+
+1. Press ++f++ to expand only the failed/preempted paths of the tree
+2. Jump between failures with ++"]"++ / ++"["++
+3. Press ++shift+f++ for a **failure summary** modal that groups failures by error message
+4. Press ++e++ on a node to see its full error details
+
+For workflows still running, press ++w++ to enable **watch mode** — the tree refreshes automatically while preserving your expand/collapse state.
 
 ## :material-chart-areaspline: Resource Efficiency
 

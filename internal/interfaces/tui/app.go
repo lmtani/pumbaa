@@ -2,11 +2,9 @@
 package tui
 
 import (
-	"context"
-
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	adksession "google.golang.org/adk/session"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
@@ -24,47 +22,35 @@ const (
 	ScreenChat
 )
 
-const (
-	debugChatAppName = "pumbaa-debug"
-	debugChatUserID  = "default"
-)
-
-// Navigation messages - these are used to navigate between screens
-
-// NavigateToDebugMsg requests navigation to the debug screen.
-type NavigateToDebugMsg struct {
-	Workflow *workflow.Workflow
-}
-
-// NavigateToChatMsg requests navigation to the chat screen.
-type NavigateToChatMsg struct {
-	SystemInstruction string
-	ContextSummary    string
-}
-
-// NavigateBackMsg requests navigation back to the previous screen.
-type NavigateBackMsg struct{}
-
-// NavigateToDashboardMsg requests navigation back to the dashboard.
-type NavigateToDashboardMsg struct{}
-
 // AppModel is the root model that coordinates navigation between screens.
+//
+// Screens are self-contained: they handle their own keys (including ESC) and
+// request navigation by emitting the common.Navigate* messages. AppModel only
+// switches screens, keeps the navigation stack, and owns the quit flow.
 type AppModel struct {
-	currentScreen  Screen
-	previousScreen Screen
-	startScreen    Screen // The screen we started on (for determining if ESC should quit or go back)
-	dashboard      dashboard.Model
-	debug          debug.Model
-	chat           *chat.Model
-	width          int
-	height         int
-	globalKeys     common.GlobalKeys
-	deps           *Dependencies
+	currentScreen Screen
+	stack         []Screen // Screens to return to on NavigateBackMsg
 
-	// State for preserving context during navigation
-	lastWorkflow        *workflow.Workflow
-	lastChatInstruction string
-	lastChatSummary     string
+	dashboard    dashboard.Model
+	hasDashboard bool // False when started directly on the debug screen
+	debug        debug.Model
+	chat         *chat.Model
+
+	// chatContextLabel/chatInstruction identify the conversation currently
+	// loaded in the chat screen, so re-entering the chat for the same task
+	// resumes it instead of starting over.
+	chatContextLabel string
+	chatInstruction  string
+
+	// debugWorkflow is the workflow currently loaded in the debug screen; it
+	// lets navigateToDebug reuse the model (preserving cursor, expansion,
+	// search and watch state) when the target workflow hasn't changed.
+	debugWorkflow *workflow.Workflow
+
+	width      int
+	height     int
+	globalKeys common.GlobalKeys
+	deps       *Dependencies
 
 	// Quit confirmation modal
 	showQuitConfirm bool
@@ -74,13 +60,13 @@ type AppModel struct {
 func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	m := AppModel{
 		currentScreen: initialScreen,
-		startScreen:   initialScreen,
 		globalKeys:    common.DefaultGlobalKeys(),
 		deps:          deps,
 	}
 
 	// Initialize dashboard
-	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CurrentVersion)
+	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CompareUC, deps.CurrentVersion)
+	m.hasDashboard = true
 
 	return m
 }
@@ -89,14 +75,21 @@ func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel {
 	m := AppModel{
 		currentScreen: ScreenDebug,
-		startScreen:   ScreenDebug,
 		globalKeys:    common.DefaultGlobalKeys(),
 		deps:          deps,
-		lastWorkflow:  wf,
+		debugWorkflow: wf,
 	}
 
-	// Initialize debug directly
-	m.debug = debug.NewModelWithChat(
+	m.debug = newDebugModel(deps, wf)
+	// Started directly on debug: there is no dashboard to go back to
+	m.debug.SetCanGoBack(false)
+
+	return m
+}
+
+// newDebugModel builds a debug screen model for the given workflow.
+func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
+	return debug.NewModelWithChat(
 		wf,
 		deps.Repository,
 		deps.MonitoringUC,
@@ -104,11 +97,6 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 		deps.BatchLogsUC,
 		convertChatDeps(deps.ChatDeps),
 	)
-
-	// Since we're starting directly on debug, ESC should quit, not go back
-	m.debug.SetCanGoBack(false)
-
-	return m
 }
 
 // Init implements tea.Model.
@@ -130,9 +118,10 @@ func (m AppModel) Init() tea.Cmd {
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		// Only the visible screen needs to re-layout; hidden screens get the
+		// size replayed (sizeCmd) when they become current again.
 		m.width = msg.Width
 		m.height = msg.Height
-		// Propagate to current screen
 		return m.updateCurrentScreen(msg)
 
 	case tea.KeyMsg:
@@ -141,148 +130,170 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleQuitConfirmKeys(msg)
 		}
 
-		// Ctrl+C shows quit confirmation
+		// Ctrl+C quits immediately; confirmation is only worth the friction
+		// when background work would be interrupted.
 		if key.Matches(msg, m.globalKeys.Quit) {
-			m.showQuitConfirm = true
-			return m, nil
+			if m.hasOngoingWork() {
+				m.showQuitConfirm = true
+				return m, nil
+			}
+			return m, tea.Quit
 		}
 
-		// ESC handling: delegate to screen first, then handle back navigation
-		if msg.Type == tea.KeyEsc {
-			return m.handleEscapeKey()
-		}
-
-	// Handle navigation messages
-	case NavigateToDebugMsg:
+	case common.NavigateToDebugMsg:
 		return m.navigateToDebug(msg.Workflow)
 
-	// Handle navigation from dashboard (different package, same message type)
-	case dashboard.NavigateToDebugMsg:
-		return m.navigateToDebug(msg.Workflow)
+	case common.NavigateToChatMsg:
+		return m.navigateToChat(msg)
 
-	case NavigateToChatMsg:
-		return m.navigateToChat(msg.SystemInstruction, msg.ContextSummary)
-
-	// Handle navigation from debug (different package)
-	case debug.NavigateToChatMsg:
-		return m.navigateToChat(msg.SystemInstruction, msg.ContextSummary)
-
-	case NavigateBackMsg:
+	case common.NavigateBackMsg:
 		return m.navigateBack()
-
-	case NavigateToDashboardMsg:
-		return m.navigateToDashboard()
 	}
 
-	return m.updateCurrentScreen(msg)
+	// Keys and spinner frames concern only the focused screen. Everything
+	// else (async results, timers) is broadcast so hidden screens keep
+	// working — e.g. watch mode keeps refreshing while the user is in chat.
+	switch msg.(type) {
+	case tea.KeyMsg, spinner.TickMsg:
+		return m.updateCurrentScreen(msg)
+	}
+	return m.broadcast(msg)
+}
+
+// broadcast forwards a message to every initialized screen. Screen message
+// types are package-private, so there is no cross-talk between screens.
+func (m AppModel) broadcast(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	if m.hasDashboard {
+		newModel, cmd := m.dashboard.Update(msg)
+		m.dashboard = newModel.(dashboard.Model)
+		cmds = append(cmds, cmd)
+	}
+	if m.debugWorkflow != nil {
+		newModel, cmd := m.debug.Update(msg)
+		m.debug = newModel.(debug.Model)
+		cmds = append(cmds, cmd)
+	}
+	if m.chat != nil {
+		newModel, cmd := m.chat.Update(msg)
+		m.chat = newModel.(*chat.Model)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // navigateToDebug switches to the debug screen with the given workflow.
 func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
-	m.previousScreen = m.currentScreen
+	m.stack = append(m.stack, m.currentScreen)
 	m.currentScreen = ScreenDebug
-	m.lastWorkflow = wf
 
-	m.debug = debug.NewModelWithChat(
-		wf,
-		m.deps.Repository,
-		m.deps.MonitoringUC,
-		m.deps.FileProvider,
-		m.deps.BatchLogsUC,
-		convertChatDeps(m.deps.ChatDeps),
-	)
-
-	// Send window size to new screen
-	cmd := m.debug.Init()
-	if m.width > 0 && m.height > 0 {
-		sizeCmd := func() tea.Msg {
-			return tea.WindowSizeMsg{Width: m.width, Height: m.height}
-		}
-		return m, tea.Batch(cmd, sizeCmd)
+	// Reuse the existing model when the workflow is unchanged so tree
+	// expansion, cursor, search and watch state survive the round trip.
+	if wf == m.debugWorkflow {
+		return m, tea.Batch(m.sizeCmd(), m.debug.ResumeCmd())
 	}
-	return m, cmd
+
+	m.debugWorkflow = wf
+	m.debug = newDebugModel(m.deps, wf)
+
+	return m, tea.Batch(m.debug.Init(), m.sizeCmd())
 }
 
-// navigateToChat switches to the chat screen.
-func (m AppModel) navigateToChat(systemInstruction, contextSummary string) (tea.Model, tea.Cmd) {
-	if m.deps.ChatDeps == nil || m.deps.ChatDeps.LLM == nil {
-		// Chat not available, stay on current screen
+// navigateToChat switches to the chat screen. The chat session is created
+// asynchronously so the UI never blocks on network or disk.
+//
+// Re-entering the chat for the same task (same context label) resumes the
+// live conversation instead of starting a new one; freshly collected context
+// only replaces the system instruction.
+func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.Cmd) {
+	if !m.deps.HasChat() {
+		// Screens guard against this before emitting the message; ignore.
 		return m, nil
 	}
 
-	m.previousScreen = m.currentScreen
+	m.stack = append(m.stack, m.currentScreen)
 	m.currentScreen = ScreenChat
-	m.lastChatInstruction = systemInstruction
-	m.lastChatSummary = contextSummary
 
-	// Create chat session
-	ctx := context.Background()
-	var sess adksession.Session
-	if m.deps.ChatDeps.SessionSvc != nil {
-		resp, err := m.deps.ChatDeps.SessionSvc.Create(ctx, &adksession.CreateRequest{
-			AppName: debugChatAppName,
-			UserID:  debugChatUserID,
-		})
-		if err == nil {
-			sess = resp.Session
+	label := msg.ContextLabel
+	if label == "" {
+		label = "Task Context"
+	}
+
+	// Same task: resume the existing conversation
+	if m.chat != nil && msg.ContextLabel != "" && msg.ContextLabel == m.chatContextLabel {
+		if msg.SystemInstruction != m.chatInstruction {
+			m.chatInstruction = msg.SystemInstruction
+			m.chat.SetSystemInstruction(msg.SystemInstruction)
+			m.chat.AppendNotice("Context refreshed for " + label)
 		}
+		return m, tea.Batch(m.sizeCmd(), m.chat.ResumeCmd())
 	}
 
 	chatModel := chat.NewModel(
 		m.deps.ChatDeps.LLM,
 		m.deps.ChatDeps.Tools,
-		systemInstruction,
+		msg.SystemInstruction,
 		m.deps.ChatDeps.SessionSvc,
-		sess,
+		nil, // the chat creates its session lazily on the first message
 	)
 	m.chat = &chatModel
-	m.chat.SetContextLabel("Task Context")
-	if contextSummary != "" {
-		m.chat.AddInfoMessage(contextSummary)
+	m.chatContextLabel = msg.ContextLabel
+	m.chatInstruction = msg.SystemInstruction
+
+	if m.deps.Program != nil {
+		// Enables streaming and tool records pushed from the generation goroutine
+		m.chat.SetProgram(m.deps.Program)
+	}
+	m.chat.SetContextLabel(label)
+	if msg.ContextSummary != "" {
+		m.chat.AddInfoMessage(msg.ContextSummary)
 	}
 
-	cmd := m.chat.Init()
-	if m.width > 0 && m.height > 0 {
-		sizeCmd := func() tea.Msg {
-			return tea.WindowSizeMsg{Width: m.width, Height: m.height}
-		}
-		return m, tea.Batch(cmd, sizeCmd)
-	}
-	return m, cmd
+	return m, tea.Batch(m.chat.Init(), m.sizeCmd())
 }
 
-// navigateBack returns to the previous screen.
+// navigateBack pops the navigation stack; at the root it starts the quit flow.
 func (m AppModel) navigateBack() (tea.Model, tea.Cmd) {
-	switch m.previousScreen {
+	if len(m.stack) == 0 {
+		m.showQuitConfirm = true
+		return m, nil
+	}
+
+	m.currentScreen = m.stack[len(m.stack)-1]
+	m.stack = m.stack[:len(m.stack)-1]
+
+	// Returning screens kept their state; they only need the current size
+	// and, if they were mid-load, a fresh spinner tick.
+	var resume tea.Cmd
+	switch m.currentScreen {
 	case ScreenDashboard:
-		return m.navigateToDashboard()
+		resume = m.dashboard.ResumeCmd()
 	case ScreenDebug:
-		if m.lastWorkflow != nil {
-			return m.navigateToDebug(m.lastWorkflow)
-		}
-		return m.navigateToDashboard()
-	default:
-		return m.navigateToDashboard()
+		resume = m.debug.ResumeCmd()
+	}
+	return m, tea.Batch(m.sizeCmd(), resume)
+}
+
+// sizeCmd replays the last known window size to the (new) current screen.
+func (m AppModel) sizeCmd() tea.Cmd {
+	if m.width == 0 || m.height == 0 {
+		return nil
+	}
+	width, height := m.width, m.height
+	return func() tea.Msg {
+		return tea.WindowSizeMsg{Width: width, Height: height}
 	}
 }
 
-// navigateToDashboard returns to the dashboard screen (preserving state).
-func (m AppModel) navigateToDashboard() (tea.Model, tea.Cmd) {
-	m.previousScreen = m.currentScreen
-	m.currentScreen = ScreenDashboard
-
-	// Dashboard maintains state, just send window size
-	var cmds []tea.Cmd
-	if m.width > 0 && m.height > 0 {
-		cmds = append(cmds, func() tea.Msg {
-			return tea.WindowSizeMsg{Width: m.width, Height: m.height}
-		})
+// hasOngoingWork reports whether quitting now would interrupt background
+// work on any screen — hidden screens keep working after navigation.
+func (m AppModel) hasOngoingWork() bool {
+	if m.debugWorkflow != nil && m.debug.HasOngoingWork() {
+		return true
 	}
-
-	if len(cmds) > 0 {
-		return m, tea.Batch(cmds...)
-	}
-	return m, nil
+	return m.chat != nil && m.chat.IsBusy()
 }
 
 // updateCurrentScreen delegates the update to the current screen.
@@ -291,37 +302,11 @@ func (m AppModel) updateCurrentScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ScreenDashboard:
 		newModel, cmd := m.dashboard.Update(msg)
 		m.dashboard = newModel.(dashboard.Model)
-
-		// Check for navigation request from dashboard
-		if navCmd := m.dashboard.GetNavigationCmd(); navCmd != nil {
-			m.dashboard.ClearNavigation()
-			// Execute the command and handle the resulting message
-			return m, navCmd
-		}
-
-		// Check if dashboard wants to quit
-		if m.dashboard.ShouldQuit {
-			return m, tea.Quit
-		}
-
 		return m, cmd
 
 	case ScreenDebug:
 		newModel, cmd := m.debug.Update(msg)
 		m.debug = newModel.(debug.Model)
-
-		// Check for back navigation from debug
-		if m.debug.ShouldGoBack() {
-			m.debug.ClearNavigation()
-			return m.navigateToDashboard()
-		}
-
-		// Check for navigation request from debug (to chat)
-		if navCmd := m.debug.GetNavigationCmd(); navCmd != nil {
-			m.debug.ClearNavigation()
-			return m, navCmd
-		}
-
 		return m, cmd
 
 	case ScreenChat:
@@ -330,18 +315,6 @@ func (m AppModel) updateCurrentScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		newModel, cmd := m.chat.Update(msg)
 		m.chat = newModel.(*chat.Model)
-
-		// Check for quit from chat
-		if m.chat.ShouldQuit() {
-			return m, tea.Quit
-		}
-
-		// Check for back navigation from chat
-		if m.chat.ShouldGoBack() {
-			m.chat.ClearNavigation()
-			return m.navigateBack()
-		}
-
 		return m, cmd
 	}
 
@@ -351,76 +324,11 @@ func (m AppModel) updateCurrentScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleQuitConfirmKeys handles key presses when quit confirmation modal is shown.
 func (m AppModel) handleQuitConfirmKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "y", "Y":
+	case "y", "Y", "ctrl+c":
 		return m, tea.Quit
 	case "n", "N", "esc":
 		m.showQuitConfirm = false
 	}
-	return m, nil
-}
-
-// handleEscapeKey handles ESC key press with the new navigation flow.
-func (m AppModel) handleEscapeKey() (tea.Model, tea.Cmd) {
-	// Check if current screen has a modal open or can handle ESC internally
-	switch m.currentScreen {
-	case ScreenDebug:
-		// Check if debug has a modal open
-		if m.debug.HasActiveModal() {
-			// Let debug handle it
-			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
-		}
-		// If debug is in search mode, let it handle to exit search
-		if m.debug.IsSearchActive() {
-			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
-		}
-		// If debug is in a non-tree view mode, let it handle to return to tree view
-		if m.debug.GetViewMode() != debug.ViewModeTree {
-			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
-		}
-		// If we started on debug, show quit confirmation (no dashboard to go back to)
-		if m.startScreen == ScreenDebug {
-			m.showQuitConfirm = true
-			return m, nil
-		}
-		// Otherwise, go back to dashboard
-		return m.navigateToDashboard()
-
-	case ScreenChat:
-		if m.chat != nil {
-			// If chat has a modal, let it handle
-			if m.chat.HasActiveModal() {
-				return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
-			}
-			// If in FocusInput, switch to FocusMessages
-			if m.chat.GetFocusMode() == chat.FocusInput {
-				m.chat.SetFocusMode(chat.FocusMessages)
-				return m, nil
-			}
-			// If we started on chat, show quit confirmation
-			if m.startScreen == ScreenChat {
-				m.showQuitConfirm = true
-				return m, nil
-			}
-			// In FocusMessages, go back
-			return m.navigateBack()
-		}
-		// If we started on chat, show quit confirmation
-		if m.startScreen == ScreenChat {
-			m.showQuitConfirm = true
-			return m, nil
-		}
-		return m.navigateBack()
-
-	case ScreenDashboard:
-		// If dashboard has a modal open, let it handle ESC
-		if m.dashboard.HasActiveModal() {
-			return m.updateCurrentScreen(tea.KeyMsg{Type: tea.KeyEsc})
-		}
-		// Dashboard is root - show quit confirmation
-		m.showQuitConfirm = true
-		return m, nil
-	}
-
 	return m, nil
 }
 
@@ -459,9 +367,14 @@ func (m AppModel) renderWithQuitModal() string {
 		}
 	}
 
+	body := "Are you sure you want to exit?"
+	if m.hasOngoingWork() {
+		body = "Background work is still running.\nQuit anyway?"
+	}
+
 	// Create the modal
 	modalContent := common.TitleStyle.Render("Quit Pumbaa?") + "\n\n" +
-		"Are you sure you want to exit?\n\n" +
+		body + "\n\n" +
 		common.KeyStyle.Render("[Y]") + " " + common.DescStyle.Render("Yes, quit") + "    " +
 		common.KeyStyle.Render("[N]") + " " + common.DescStyle.Render("No, stay")
 

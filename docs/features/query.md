@@ -20,6 +20,8 @@ List and filter workflows via CLI.
 pumbaa workflow query [FLAGS]
 ```
 
+Aliases: `pumbaa wf q`, `pumbaa wf list`
+
 ## :material-flag: Flags
 
 | Flag | Alias | Description |
@@ -73,7 +75,7 @@ pumbaa workflow query [FLAGS]
 
 Displays table with:
 
-- **ID** — First 8 chars
+- **ID** — Workflow UUID
 - **Name** — Workflow name
 - **Status** — Color-coded
 - **Submitted** — Timestamp

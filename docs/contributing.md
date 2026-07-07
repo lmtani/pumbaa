@@ -8,7 +8,7 @@ Thank you for your interest in contributing to Pumbaa! :heart:
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.25+
 - Make
 
 ### Build

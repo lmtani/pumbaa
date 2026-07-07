@@ -13,15 +13,14 @@ import (
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
-	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 )
 
-const appName = "pumbaa"
-const defaultUserID = "default"
+// Session scope shared with the embedded TUI chat (see session package).
+const appName = session.DefaultAppName
+const defaultUserID = session.DefaultUserID
 
 const systemInstruction = `You are Pumbaa, a helpful assistant specialized in bioinformatics workflows and Cromwell/WDL.
 
@@ -66,9 +65,22 @@ status, failures, logs, outputs, or runtime metadata.
 
 Use **only** to read real files produced by executions.
 
-- action="gcs_download"  
-  Read file from GCS  
+- action="gcs_download"
+  Read file from GCS
   Required: path (gs://bucket/file)
+
+---
+
+## 2b. Local files (user's working directory)
+
+Use to save scripts or files the user asks for — e.g. a bash script that
+fetches a task's inputs with gsutil and reruns the analysis locally with
+docker for debugging.
+
+- action="write_file"
+  Write a text file relative to the current working directory
+  Required: path (relative), content
+  Optional: executable=true for scripts, overwrite=true to replace
 
 ---
 
@@ -234,9 +246,12 @@ func (h *ChatHandler) ListSessions() error {
 		if summary == "" {
 			summary = "(no summary)"
 		}
-		// Truncate summary to 50 chars for display
-		if len(summary) > 50 {
-			summary = summary[:47] + "..."
+		if s.ContextLabel != "" {
+			summary = s.ContextLabel + ": " + summary
+		}
+		// Truncate summary to 60 chars for display
+		if len(summary) > 60 {
+			summary = summary[:57] + "..."
 		}
 		fmt.Printf("  - %-20s │ %s │ %s\n",
 			s.ID[:20],
@@ -282,21 +297,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	h.telemetry.AddBreadcrumb("chat", fmt.Sprintf("using LLM provider: %s", h.config.LLMProvider))
 	fmt.Printf("Using LLM: %s | Cromwell: %s\n", llmModel.Name(), h.config.CromwellHost)
 
-	// Initialize WDL indexer if configured
-	var wdlRepo wdl.Repository
-	if h.config.WDLDirectory != "" {
-		fmt.Printf("Indexing WDL workflows from: %s\n", h.config.WDLDirectory)
-		indexer, err := wdlindexer.NewIndexer(h.config.WDLDirectory, h.config.WDLIndexPath, rebuildIndex)
-		if err != nil {
-			fmt.Printf("Warning: Failed to initialize WDL indexer: %v\n", err)
-		} else {
-			wdlRepo = indexer
-			idx, _ := indexer.List()
-			fmt.Printf("WDL index: %d tasks, %d workflows\n", len(idx.Tasks), len(idx.Workflows))
-		}
-	}
-
-	agentTools := tools.GetAllTools(h.repository, wdlRepo)
+	agentTools := tools.GetAllTools(h.repository, initWDLRepository(h.config, rebuildIndex))
 	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
 	m.SetStandalone(true) // Running directly from CLI, not embedded in TUI
 

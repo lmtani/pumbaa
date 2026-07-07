@@ -4,6 +4,15 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
+// Diff messages (workflow comparison)
+type diffLoadedMsg struct {
+	diff *workflow.RunDiff
+}
+
+type diffErrorMsg struct {
+	err error
+}
+
 // Messages for dashboard model
 
 type workflowsLoadedMsg struct {

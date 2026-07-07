@@ -91,6 +91,7 @@ func (h *DashboardHandler) handle(c *cli.Context) error {
 
 	// Create and run the program
 	p := tea.NewProgram(model, tea.WithAltScreen())
+	deps.Program = p // Lets screens push messages from goroutines (streaming)
 	_, err := p.Run()
 	if err != nil {
 		h.telemetry.CaptureError("dashboard.tui", err)
@@ -108,6 +109,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		FileProvider:   h.fileProvider,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
+		CompareUC:      workflowapp.NewCompareUseCase(h.repository),
 		CurrentVersion: h.version,
 	}
 

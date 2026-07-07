@@ -69,7 +69,9 @@ pumbaa dashboard
 | ++a++ | Abort workflow |
 | ++shift+l++ | Manage labels |
 | ++r++ | Refresh |
-| ++q++ | Quit |
+| ++w++ | Toggle auto-refresh |
+| ++question++ | Help (all shortcuts) |
+| ++esc++ | Back / quit |
 
 ---
 
@@ -126,7 +128,19 @@ pumbaa workflow submit \
 -   :material-package: **Bundle WDL**
     
     ```bash
-    pumbaa bundle --workflow main.wdl
+    pumbaa bundle --workflow main.wdl --output bundle.zip
+    ```
+
+-   :material-file-compare: **Compare Two Runs**
+    
+    ```bash
+    pumbaa workflow diff <id-a> <id-b>
+    ```
+
+-   :material-robot: **Ask the AI Agent**
+    
+    ```bash
+    pumbaa chat
     ```
 
 </div>

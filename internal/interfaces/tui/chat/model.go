@@ -2,12 +2,15 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,6 +23,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
@@ -125,6 +129,26 @@ type Model struct {
 	statusMessage    string    // Temporary status message (e.g., "Copied!")
 	statusExpires    time.Time // When status message expires
 
+	// Streaming state: text of the in-progress response, shown live at the
+	// end of the transcript until the final ResponseMsg replaces it.
+	streamingText string
+
+	// cancelGen aborts the in-flight generation (ESC while loading).
+	cancelGen context.CancelFunc
+
+	// Lazy session lifecycle: the session is created on the first message so
+	// abandoned chats never leave empty rows behind.
+	sessionCreating bool
+	pendingFlush    bool // persist history once the in-flight generation ends
+
+	// resumableID points at a previous session for the same task context,
+	// offered for resume via ctrl+r.
+	resumableID string
+
+	// msgOffsets holds the rendered line offset of each message, refreshed
+	// by renderMessages, so selection scrolling targets real positions.
+	msgOffsets []int
+
 	// Token usage tracking
 	inputTokens  int // Accumulated input tokens for the session
 	outputTokens int // Accumulated output tokens for the session
@@ -145,10 +169,8 @@ type Model struct {
 	sessionsSearching   bool
 	sessionsSearchInput textinput.Model
 
-	// Navigation state
-	wantsToGoBack bool
-	wantsToQuit   bool
-	standalone    bool // True when running directly from CLI (pumbaa chat), not embedded in TUI
+	// standalone is true when running directly from CLI (pumbaa chat), not embedded in TUI
+	standalone bool
 }
 
 type ChatMessage struct {
@@ -162,6 +184,11 @@ type ResponseMsg struct {
 	Err          error
 	InputTokens  int // Input tokens used in this response
 	OutputTokens int // Output tokens generated in this response
+
+	// owner identifies the conversation that produced this response (the
+	// model's msgs pointer is unique per instance), so an in-flight response
+	// from a previous chat can never be appended to a newer conversation.
+	owner *[]ChatMessage
 }
 
 // ToolNotificationMsg is sent when a tool is being called
@@ -169,6 +196,35 @@ type ToolNotificationMsg struct {
 	ToolName string
 	Action   string
 	Params   map[string]any // Additional parameters
+
+	owner *[]ChatMessage // See ResponseMsg.owner
+}
+
+// streamChunkMsg carries the accumulated text of the current turn while the
+// response is streaming.
+type streamChunkMsg struct {
+	owner *[]ChatMessage
+	text  string
+}
+
+// toolRecordMsg appends a persistent record of an executed tool call to the
+// transcript (unlike ToolNotificationMsg, which is transient).
+type toolRecordMsg struct {
+	owner *[]ChatMessage
+	line  string
+}
+
+// sessionCreatedMsg carries the result of the lazy session creation.
+type sessionCreatedMsg struct {
+	owner   *[]ChatMessage
+	session session.Session
+	err     error
+}
+
+// resumableFoundMsg reports a previous session for the same task context.
+type resumableFoundMsg struct {
+	owner *[]ChatMessage
+	info  infraSession.SessionInfo
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -217,6 +273,11 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 	ta.ShowLineNumbers = false
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.BlurredStyle.CursorLine = lipgloss.NewStyle()
+	// Enter submits (handled in Update); newlines are inserted with ctrl+j
+	ta.KeyMap.InsertNewline = key.NewBinding(
+		key.WithKeys("ctrl+j"),
+		key.WithHelp("ctrl+j", "newline"),
+	)
 
 	vp := viewport.New(80, 20)
 
@@ -312,30 +373,107 @@ func (m *Model) AddInfoMessage(content string) {
 	*m.msgs = append([]ChatMessage{msg}, (*m.msgs)...)
 }
 
-// ShouldGoBack returns true if the user wants to navigate back.
-func (m *Model) ShouldGoBack() bool {
-	return m.wantsToGoBack
+// SetSession attaches a session created asynchronously after the screen
+// opened, so session creation never blocks the UI thread. Turns exchanged
+// while the session was still being created are persisted retroactively.
+func (m *Model) SetSession(sess session.Session) {
+	m.session = sess
+	if sess == nil {
+		return
+	}
+	if m.loading {
+		// A generation is appending to history from its own goroutine;
+		// copying it here would race. Flush once the response lands.
+		m.pendingFlush = true
+		return
+	}
+	m.flushHistory()
 }
 
-// ClearNavigation clears the navigation state.
-func (m *Model) ClearNavigation() {
-	m.wantsToGoBack = false
-	m.wantsToQuit = false
+// flushHistory persists the whole in-memory history to the session. Used
+// when the session attaches after turns already happened (lazy creation).
+func (m *Model) flushHistory() {
+	m.pendingFlush = false
+	if m.session == nil || m.sessionService == nil || m.history == nil || len(*m.history) == 0 {
+		return
+	}
+
+	backlog := make([]*genai.Content, len(*m.history))
+	copy(backlog, *m.history)
+	svc := m.sessionService
+	sess := m.session
+	go func() {
+		ctx := context.Background()
+		for _, content := range backlog {
+			ev := session.NewEvent("")
+			ev.Content = content
+			ev.Author = content.Role
+			svc.AppendEvent(ctx, sess, ev)
+		}
+	}()
 }
 
-// ShouldQuit returns true if the user wants to quit the program.
-func (m *Model) ShouldQuit() bool {
-	return m.wantsToQuit
+// IsBusy reports whether a response is currently being generated.
+func (m *Model) IsBusy() bool {
+	return m.loading
 }
 
-// HasActiveModal returns true if there's an active modal being displayed.
-func (m *Model) HasActiveModal() bool {
-	return m.activeModal != ModalNone
+// ResumeCmd re-arms the spinner when the screen becomes current again while
+// a response is still being generated (spinner ticks are focus-only).
+func (m *Model) ResumeCmd() tea.Cmd {
+	if m.loading {
+		return m.spinner.Tick
+	}
+	return nil
 }
 
-// GetFocusMode returns the current focus mode.
-func (m *Model) GetFocusMode() FocusMode {
-	return m.focusMode
+// SetSystemInstruction replaces the system instruction for future turns.
+// Used when the user re-enters the chat for the same task with freshly
+// collected context.
+func (m *Model) SetSystemInstruction(instruction string) {
+	m.systemInstruction = instruction
+}
+
+// AppendNotice appends a muted one-line notice to the end of the transcript.
+func (m *Model) AppendNotice(content string) {
+	if m.msgs == nil || strings.TrimSpace(content) == "" {
+		return
+	}
+	*m.msgs = append(*m.msgs, ChatMessage{Role: "notice", Content: content})
+	if m.ready {
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+	}
+}
+
+// submitInput sends the current textarea content to the LLM.
+func (m *Model) submitInput() (tea.Model, tea.Cmd) {
+	if m.loading {
+		return m, nil
+	}
+	input := m.textarea.Value()
+	if strings.TrimSpace(input) == "" {
+		return m, nil
+	}
+
+	*m.msgs = append(*m.msgs, ChatMessage{Role: "user", Content: input})
+	m.viewport.SetContent(m.renderMessages())
+	m.textarea.Reset()
+	m.viewport.GotoBottom()
+	m.loading = true
+
+	ctx, cancel := context.WithCancel(context.Background())
+	m.cancelGen = cancel
+
+	cmds := []tea.Cmd{m.spinner.Tick, m.generateResponse(ctx, input)}
+
+	// Lazy session creation: the first message brings the session to life
+	if m.session == nil && m.sessionService != nil && !m.sessionCreating {
+		m.sessionCreating = true
+		cmds = append(cmds, m.createSessionCmd())
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // SetFocusMode sets the focus mode and updates UI state accordingly.
@@ -355,7 +493,52 @@ func (m *Model) SetFocusMode(mode FocusMode) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, tea.EnterAltScreen)
+	return tea.Batch(textarea.Blink, tea.EnterAltScreen, m.findResumableCmd())
+}
+
+// findResumableCmd looks up a previous session for the same task context, so
+// the user can resume it with ctrl+r instead of starting over.
+func (m *Model) findResumableCmd() tea.Cmd {
+	if m.session != nil || m.contextLabel == "" {
+		return nil
+	}
+	svc, ok := m.sessionService.(*infraSession.SQLiteService)
+	if !ok {
+		return nil
+	}
+	label := m.contextLabel
+	owner := m.msgs
+	return func() tea.Msg {
+		info, err := svc.FindLatestByContextLabel(context.Background(), infraSession.DefaultAppName, infraSession.DefaultUserID, label)
+		if err != nil || info == nil {
+			return nil
+		}
+		return resumableFoundMsg{owner: owner, info: *info}
+	}
+}
+
+// createSessionCmd creates the persistent session on first use and tags it
+// with the task context for later resume-by-task lookups.
+func (m *Model) createSessionCmd() tea.Cmd {
+	svc := m.sessionService
+	label := m.contextLabel
+	owner := m.msgs
+	return func() tea.Msg {
+		ctx := context.Background()
+		resp, err := svc.Create(ctx, &session.CreateRequest{
+			AppName: infraSession.DefaultAppName,
+			UserID:  infraSession.DefaultUserID,
+		})
+		if err != nil {
+			return sessionCreatedMsg{owner: owner, err: err}
+		}
+		if label != "" {
+			if sqliteSvc, ok := svc.(*infraSession.SQLiteService); ok {
+				_ = sqliteSvc.SetContextLabel(ctx, resp.Session.ID(), label)
+			}
+		}
+		return sessionCreatedMsg{owner: owner, session: resp.Session}
+	}
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -397,21 +580,66 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEsc:
-			// In standalone mode, ESC in FocusMessages triggers back
-			// In embedded mode, AppModel handles this
-			if m.standalone && m.focusMode == FocusMessages {
-				m.wantsToGoBack = true
+			// While generating, ESC cancels the in-flight response.
+			if m.loading && m.cancelGen != nil {
+				m.cancelGen()
+				return m, nil
+			}
+			// First ESC leaves the input; second ESC leaves the screen.
+			if m.focusMode == FocusInput {
+				m.SetFocusMode(FocusMessages)
+				return m, nil
+			}
+			if m.standalone {
 				return m, tea.Quit
 			}
-			// ESC is now handled by AppModel for navigation
+			return m, common.NavigateCmd(common.NavigateBackMsg{})
+
+		case tea.KeyEnter:
+			if m.focusMode == FocusInput {
+				return m.submitInput()
+			}
 
 		case tea.KeyRunes:
-			// Handle 'y' for copy when in messages mode
-			if len(msg.Runes) > 0 && msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
-				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
-					content := (*m.msgs)[m.selectedMsg].Content
-					return m, copyToClipboard(content)
+			// Message-navigation keys, only when browsing messages
+			if m.focusMode == FocusMessages && len(msg.Runes) > 0 && m.msgs != nil && len(*m.msgs) > 0 {
+				switch msg.Runes[0] {
+				case 'y': // copy selected message
+					if m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+						content := (*m.msgs)[m.selectedMsg].Content
+						return m, copyToClipboard(content)
+					}
+				case 'g': // first message
+					m.selectedMsg = 0
+					m.viewport.SetContent(m.renderMessages())
+					m.viewport.GotoTop()
+					return m, nil
+				case 'G': // last message
+					m.selectedMsg = len(*m.msgs) - 1
+					m.viewport.SetContent(m.renderMessages())
+					m.viewport.GotoBottom()
+					return m, nil
 				}
+			}
+
+		case tea.KeyPgUp:
+			m.viewport.PageUp()
+			return m, nil
+
+		case tea.KeyPgDown:
+			m.viewport.PageDown()
+			return m, nil
+
+		case tea.KeyHome:
+			if m.focusMode == FocusMessages {
+				m.viewport.GotoTop()
+				return m, nil
+			}
+
+		case tea.KeyEnd:
+			if m.focusMode == FocusMessages {
+				m.viewport.GotoBottom()
+				return m, nil
 			}
 
 		case tea.KeyTab:
@@ -443,7 +671,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.focusMode == FocusInput {
 				// Scroll viewport up when focus is on input
-				m.viewport.LineUp(3)
+				m.viewport.ScrollUp(3)
 				return m, nil
 			}
 
@@ -457,38 +685,53 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.focusMode == FocusInput {
 				// Scroll viewport down when focus is on input
-				m.viewport.LineDown(3)
+				m.viewport.ScrollDown(3)
 				return m, nil
 			}
 
 		case tea.KeyCtrlD:
-			if m.loading {
-				return m, nil
+			// Kept as an alias for Enter for muscle memory
+			if m.focusMode == FocusInput {
+				return m.submitInput()
 			}
-			input := m.textarea.Value()
-			if strings.TrimSpace(input) == "" {
-				return m, nil
-			}
-
-			*m.msgs = append(*m.msgs, ChatMessage{Role: "user", Content: input})
-			m.viewport.SetContent(m.renderMessages())
-			m.textarea.Reset()
-			m.viewport.GotoBottom()
-			m.loading = true
-
-			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 
 		case tea.KeyCtrlS:
 			// Handle Ctrl+S for sessions modal when not loading
 			if !m.loading {
 				return m.openSessionsModal()
 			}
+
+		case tea.KeyCtrlR:
+			// Resume the previous conversation for this task context
+			if m.resumableID != "" && !m.loading {
+				resumeID := m.resumableID
+				m.resumableID = ""
+				return m.switchToSession(resumeID)
+			}
 		}
 
 	case ResponseMsg:
+		if msg.owner != nil && msg.owner != m.msgs {
+			// Response from a previous conversation; drop it.
+			return m, nil
+		}
 		m.loading = false
 		m.toolNotification = ""
-		if msg.Err != nil {
+		m.cancelGen = nil
+		if m.pendingFlush {
+			// Session attached mid-generation; history is stable now
+			m.flushHistory()
+		}
+		partialText := m.streamingText
+		m.streamingText = ""
+		if errors.Is(msg.Err, context.Canceled) {
+			// User cancelled: keep whatever streamed and say so.
+			if partialText != "" {
+				rendered := renderMarkdown(partialText, m.width-8)
+				*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: partialText, Rendered: rendered})
+			}
+			*m.msgs = append(*m.msgs, ChatMessage{Role: "notice", Content: "Generation cancelled"})
+		} else if msg.Err != nil {
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("%v", msg.Err)})
 		} else {
 			rendered := renderMarkdown(msg.Content, m.width-8)
@@ -521,7 +764,56 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.focusMode = FocusInput
 		return m, textarea.Blink
 
+	case sessionCreatedMsg:
+		if msg.owner != m.msgs {
+			return m, nil
+		}
+		m.sessionCreating = false
+		if msg.err != nil {
+			m.AppendNotice("Session persistence unavailable: " + msg.err.Error())
+			return m, nil
+		}
+		m.resumableID = "" // this conversation now has its own session
+		m.SetSession(msg.session)
+		return m, nil
+
+	case resumableFoundMsg:
+		if msg.owner != m.msgs || m.session != nil {
+			return m, nil
+		}
+		m.resumableID = msg.info.ID
+		desc := msg.info.Summary
+		if desc == "" {
+			desc = msg.info.ContextLabel
+		}
+		m.AppendNotice(fmt.Sprintf(
+			"Previous conversation for this task: %s (%d events, %s) — press ctrl+r to resume",
+			common.Truncate(desc, 50), msg.info.EventCount, formatAge(time.Since(msg.info.UpdatedAt)),
+		))
+		return m, nil
+
+	case streamChunkMsg:
+		if msg.owner != m.msgs || !m.loading {
+			return m, nil
+		}
+		m.streamingText = msg.text
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
+
+	case toolRecordMsg:
+		if msg.owner != m.msgs {
+			return m, nil
+		}
+		*m.msgs = append(*m.msgs, ChatMessage{Role: "tool", Content: msg.line})
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
+
 	case ToolNotificationMsg:
+		if msg.owner != nil && msg.owner != m.msgs {
+			return m, nil
+		}
 		if msg.Action != "" {
 			// Format params if present
 			paramsStr := ""
@@ -572,6 +864,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sessionSwitchedMsg:
 		m.activeModal = ModalNone
 		m.sessionsLoading = false
+		m.resumableID = ""
 		m.session = msg.session
 		m.history = &msg.history
 		// Rebuild msgs from history
@@ -700,28 +993,20 @@ func (m Model) renderInput() string {
 	return inputBox
 }
 
-// scrollToSelectedMsg scrolls the viewport to center the selected message
+// scrollToSelectedMsg scrolls the viewport so the selected message is
+// visible, using the real rendered line offsets tracked by renderMessages.
 func (m *Model) scrollToSelectedMsg() {
-	if m.msgs == nil || m.selectedMsg < 0 || m.selectedMsg >= len(*m.msgs) {
+	if m.msgs == nil || m.selectedMsg < 0 || m.selectedMsg >= len(*m.msgs) || m.selectedMsg >= len(m.msgOffsets) {
 		return
 	}
 
-	// Calculate approximate position based on message index
-	// Each message is roughly: role line (1) + content lines + spacing (2)
-	// We estimate ~6 lines per message on average for a good approximation
-	linesPerMsg := 6
-	targetLine := m.selectedMsg * linesPerMsg
-
-	// Center the message in the viewport
-	viewportHeight := m.viewport.Height
-	centeredOffset := targetLine - (viewportHeight / 2)
-
-	// Clamp to valid range
-	if centeredOffset < 0 {
-		centeredOffset = 0
+	// Place the message a third from the top: it reads naturally and leaves
+	// room for the following context.
+	offset := m.msgOffsets[m.selectedMsg] - m.viewport.Height/3
+	if offset < 0 {
+		offset = 0
 	}
-
-	m.viewport.SetYOffset(centeredOffset)
+	m.viewport.SetYOffset(offset)
 }
 
 func (m Model) renderFooter() string {
@@ -735,21 +1020,35 @@ func (m Model) renderFooter() string {
 		return common.KeyStyle.Render(key) + " " + common.DescStyle.Render(desc)
 	}
 	var hints []string
-	if m.focusMode == FocusMessages {
+	switch {
+	case m.loading:
+		hints = []string{
+			hint("esc", "cancel"),
+			hint("↑↓", "scroll"),
+		}
+	case m.focusMode == FocusMessages:
 		hints = []string{
 			hint("↑↓", "navigate"),
+			hint("pgup/pgdn", "page"),
+			hint("g/G", "first/last"),
 			hint("y", "copy"),
 			hint("tab", "type"),
 			hint("esc", escAction),
 		}
-	} else {
+	default:
 		hints = []string{
-			hint("ctrl+d", "send"),
+			hint("enter", "send"),
+			hint("ctrl+j", "newline"),
+		}
+		if m.resumableID != "" {
+			hints = append(hints, hint("ctrl+r", "resume previous"))
+		}
+		hints = append(hints,
 			hint("ctrl+s", "sessions"),
 			hint("↑↓", "scroll"),
 			hint("tab", "navigate msgs"),
-			hint("esc", escAction),
-		}
+			hint("esc", "messages"),
+		)
 	}
 
 	// Show status message if present
@@ -766,9 +1065,11 @@ func (m Model) renderFooter() string {
 		Render(prefix + help)
 }
 
-func (m Model) renderMessages() string {
-	if m.msgs == nil || len(*m.msgs) == 0 {
-		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Ctrl+D to send.")
+func (m *Model) renderMessages() string {
+	hasMsgs := m.msgs != nil && len(*m.msgs) > 0
+	if !hasMsgs && m.streamingText == "" {
+		m.msgOffsets = nil
+		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Enter to send (ctrl+j for a new line).")
 	}
 
 	var sb strings.Builder
@@ -777,57 +1078,98 @@ func (m Model) renderMessages() string {
 		maxWidth = 80
 	}
 
-	// Style for selected message
+	// Track each message's rendered line offset for selection scrolling
+	lineCount := 0
+	offsets := make([]int, 0, 16)
+
+	if hasMsgs {
+		for i, msg := range *m.msgs {
+			block := m.renderMessageBlock(i, msg, maxWidth)
+			offsets = append(offsets, lineCount)
+			sb.WriteString(block)
+			lineCount += strings.Count(block, "\n")
+		}
+	}
+	m.msgOffsets = offsets
+
+	// Live response being streamed: plain text with a cursor block; the
+	// final ResponseMsg replaces it with the markdown-rendered message.
+	if m.loading && m.streamingText != "" {
+		sb.WriteString(agentStyle.Render("Pumbaa") + "\n")
+		sb.WriteString(messageStyle.Render(wrapText(m.streamingText, maxWidth) + " ▌"))
+		sb.WriteString("\n\n")
+	}
+
+	return sb.String()
+}
+
+// renderMessageBlock renders a single transcript message, including its
+// trailing spacing, so renderMessages can measure real line offsets.
+func (m *Model) renderMessageBlock(i int, msg ChatMessage, maxWidth int) string {
+	isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
 	selectedStyle := lipgloss.NewStyle().
 		Background(common.SubtleColor).
 		Padding(0, 1)
 
-	for i, msg := range *m.msgs {
-		var roleStyle lipgloss.Style
-		var roleName string
-		contentStyle := messageStyle
-
-		switch msg.Role {
-		case "user":
-			roleStyle = userStyle
-			roleName = "You"
-		case "agent":
-			roleStyle = agentStyle
-			roleName = "Pumbaa"
-		case "info":
-			roleStyle = infoStyle
-			roleName = "Context"
-			contentStyle = infoMessageStyle
-		default:
-			roleStyle = errorStyle
-			roleName = "Error"
-		}
-
-		// Highlight if selected
-		isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
-
-		// Render role with selection indicator
+	// Compact one-line roles: tool records and notices have no header
+	switch msg.Role {
+	case "tool":
+		line := common.MutedStyle.Render("🔧 " + msg.Content)
 		if isSelected {
-			sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
-		} else {
-			sb.WriteString(roleStyle.Render(roleName) + "\n")
+			line = selectedStyle.Render("▶ " + line)
 		}
-
-		// Render content
-		var content string
-		if msg.Role == "agent" && msg.Rendered != "" {
-			content = msg.Rendered
-		} else {
-			content = contentStyle.Render(wrapText(msg.Content, maxWidth))
-		}
-
+		return line + "\n\n"
+	case "notice":
+		line := common.MutedStyle.Italic(true).Render("· " + msg.Content)
 		if isSelected {
-			sb.WriteString(selectedStyle.Render(content))
-		} else {
-			sb.WriteString(content)
+			line = selectedStyle.Render("▶ " + line)
 		}
-		sb.WriteString("\n\n")
+		return line + "\n\n"
 	}
+
+	var roleStyle lipgloss.Style
+	var roleName string
+	contentStyle := messageStyle
+
+	switch msg.Role {
+	case "user":
+		roleStyle = userStyle
+		roleName = "You"
+	case "agent":
+		roleStyle = agentStyle
+		roleName = "Pumbaa"
+	case "info":
+		roleStyle = infoStyle
+		roleName = "Context"
+		contentStyle = infoMessageStyle
+	default:
+		roleStyle = errorStyle
+		roleName = "Error"
+	}
+
+	var sb strings.Builder
+
+	// Render role with selection indicator
+	if isSelected {
+		sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
+	} else {
+		sb.WriteString(roleStyle.Render(roleName) + "\n")
+	}
+
+	// Render content
+	var content string
+	if msg.Role == "agent" && msg.Rendered != "" {
+		content = msg.Rendered
+	} else {
+		content = contentStyle.Render(wrapText(msg.Content, maxWidth))
+	}
+
+	if isSelected {
+		sb.WriteString(selectedStyle.Render(content))
+	} else {
+		sb.WriteString(content)
+	}
+	sb.WriteString("\n\n")
 
 	return sb.String()
 }
@@ -935,6 +1277,20 @@ func wrapText(text string, width int) string {
 	return result.String()
 }
 
+// formatAge renders a duration as a compact age, e.g. "2d ago".
+func formatAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	}
+}
+
 // formatTokenCount formats a token count in a human-readable format (e.g., 1.2K, 3.4M)
 func formatTokenCount(count int) string {
 	if count >= 1000000 {
@@ -946,10 +1302,8 @@ func formatTokenCount(count int) string {
 	return fmt.Sprintf("%d", count)
 }
 
-func (m Model) generateResponse(input string) tea.Cmd {
+func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
-
 		userContent := &genai.Content{
 			Role: "user",
 			Parts: []*genai.Part{
@@ -972,6 +1326,10 @@ func (m Model) generateResponse(input string) tea.Cmd {
 		totalOutputTokens := 0
 
 		for currentTurn < maxTurns {
+			if ctx.Err() != nil {
+				return ResponseMsg{Err: ctx.Err(), owner: m.msgs}
+			}
+
 			req := &model.LLMRequest{
 				Contents: *m.history,
 				Config: &genai.GenerateContentConfig{
@@ -987,19 +1345,29 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				}
 			}
 
-			respSeq := m.llm.GenerateContent(ctx, req, false)
+			respSeq := m.llm.GenerateContent(ctx, req, true)
 
 			var lastResp *model.LLMResponse
+			var turnText strings.Builder
 
 			for r, e := range respSeq {
 				if e != nil {
-					return ResponseMsg{Err: e}
+					return ResponseMsg{Err: e, owner: m.msgs}
+				}
+				if r.Partial {
+					// Forward the accumulated turn text so the UI renders
+					// the response as it streams.
+					turnText.WriteString(extractText(r.Content))
+					if m.program != nil {
+						m.program.Send(streamChunkMsg{owner: m.msgs, text: turnText.String()})
+					}
+					continue
 				}
 				lastResp = r
 			}
 
 			if lastResp == nil || lastResp.Content == nil {
-				return ResponseMsg{Err: fmt.Errorf("empty response from model")}
+				return ResponseMsg{Err: fmt.Errorf("empty response from model"), owner: m.msgs}
 			}
 
 			// Accumulate token usage from this response
@@ -1042,10 +1410,18 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 					// Send notification to UI about tool being called
 					if m.program != nil {
-						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams})
+						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams, owner: m.msgs})
 					}
 
+					toolStart := time.Now()
 					result, err := m.executeTool(ctx, tc)
+					if m.program != nil {
+						// Persistent transcript record of what the agent did
+						m.program.Send(toolRecordMsg{
+							owner: m.msgs,
+							line:  formatToolRecord(tc.Name, action, otherParams, time.Since(toolStart), toolFailure(result, err)),
+						})
+					}
 					if err != nil {
 						toolParts = append(toolParts, &genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
@@ -1089,7 +1465,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 					text += part.Text
 				}
 			}
-			return ResponseMsg{Content: text, InputTokens: totalInputTokens, OutputTokens: totalOutputTokens}
+			return ResponseMsg{Content: text, InputTokens: totalInputTokens, OutputTokens: totalOutputTokens, owner: m.msgs}
 		}
 
 		// Max turns reached
@@ -1110,8 +1486,54 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		summary.WriteString("\nIf you need more information, please ask a more specific question or ask me to continue from where I left off.")
 
-		return ResponseMsg{Content: summary.String()}
+		return ResponseMsg{Content: summary.String(), owner: m.msgs}
 	}
+}
+
+// toolFailure extracts a short failure description from a tool execution:
+// either a transport error or a handler-level error output (success=false).
+// Returns "" when the call succeeded.
+func toolFailure(result map[string]any, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	if result != nil {
+		if success, ok := result["success"].(bool); ok && !success {
+			if msg, ok := result["error"].(string); ok && msg != "" {
+				return msg
+			}
+			return "failed"
+		}
+	}
+	return ""
+}
+
+// formatToolRecord builds the one-line transcript record of a tool call,
+// e.g. `pumbaa query (status=Failed) ✓ 0.8s`. Failures include a short
+// reason so the transcript explains itself.
+func formatToolRecord(name, action string, params map[string]any, dur time.Duration, failure string) string {
+	label := name
+	if action != "" {
+		label += " " + action
+	}
+
+	if len(params) > 0 {
+		keys := make([]string, 0, len(params))
+		for k := range params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		pairs := make([]string, 0, len(keys))
+		for _, k := range keys {
+			pairs = append(pairs, fmt.Sprintf("%s=%v", k, params[k]))
+		}
+		label += " (" + strings.Join(pairs, ", ") + ")"
+	}
+
+	if failure != "" {
+		return fmt.Sprintf("%s ✗ %.1fs — %s", label, dur.Seconds(), common.Truncate(failure, 80))
+	}
+	return fmt.Sprintf("%s ✓ %.1fs", label, dur.Seconds())
 }
 
 func getToolCalls(content *genai.Content) []*genai.FunctionCall {
@@ -1129,7 +1551,9 @@ func (m Model) executeTool(ctx context.Context, fc *genai.FunctionCall) (map[str
 		if td, ok := t.(toolWithDefinition); ok {
 			def := td.Declaration()
 			if def.Name == fc.Name {
-				return td.Run(nil, fc.Args)
+				// functiontool.Run dereferences the tool context (ADK v1.0.0
+				// panics on nil), so pass the minimal no-op context.
+				return td.Run(tools.NoopToolContext(), fc.Args)
 			}
 		}
 	}

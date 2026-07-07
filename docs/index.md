@@ -67,7 +67,7 @@ Pumbaa is a command-line tool that simplifies interaction with [Cromwell](https:
     Package your workflow with all dependencies into a single distributable file.
     
     ```bash
-    pumbaa bundle --workflow main.wdl
+    pumbaa bundle --workflow main.wdl --output bundle.zip
     ```
 
 </div>

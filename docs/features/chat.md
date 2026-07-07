@@ -93,21 +93,36 @@ Choose your preferred AI backend:
     
     Fetch files from Google Cloud Storage
 
+-   :material-file-edit: **Write Files**
+    
+    Save scripts or notes to the working directory
+
+-   :material-book-search: **WDL Knowledge Base**
+    
+    List, search, and inspect your indexed WDL workflows (`PUMBAA_WDL_DIR`)
+
 </div>
+
+!!! info "Streaming"
+    Responses stream in real time as the model generates them. Press ++esc++ during generation to cancel it.
 
 ## :material-keyboard: Controls
 
 | Key | Action |
 |:---:|--------|
-| ++ctrl+d++ | Send message |
+| ++enter++ | Send message |
+| ++ctrl+j++ | Insert line break |
 | ++up++ / ++down++ | Scroll messages (input mode) |
 | ++tab++ | Toggle navigation mode |
-| ++y++ | Copy selected message |
-| ++esc++ | Exit chat |
+| ++y++ | Copy selected message (navigation mode) |
+| ++g++ / ++shift+g++ | First / last message (navigation mode) |
+| ++ctrl+s++ | Browse and switch sessions |
+| ++ctrl+r++ | Resume previous session for the same task |
+| ++esc++ | Cancel generation · leave input · exit chat |
 
 ## :material-floppy: Session Management
 
-Conversations are persisted in SQLite for context retention.
+Conversations are persisted in SQLite (`~/.pumbaa/sessions.db`) for context retention.
 
 ```bash
 # List existing sessions
@@ -116,6 +131,12 @@ pumbaa chat --list
 # Resume a session
 pumbaa chat --session <SESSION_ID>
 ```
+
+Inside the TUI:
+
+- ++ctrl+s++ opens a session browser to switch conversations
+- ++ctrl+r++ resumes the most recent session for the current task
+- Opening the chat from the debug view for the same task automatically resumes that task's conversation
 
 ## :material-cog: Configuration
 
@@ -126,7 +147,7 @@ pumbaa chat --session <SESSION_ID>
     ```bash
     export PUMBAA_LLM_PROVIDER=gemini
     export GEMINI_API_KEY=<your-api-key>
-    export GEMINI_MODEL=gemini-2.0-flash  # optional
+    export GEMINI_MODEL=gemini-2.5-flash  # optional
     ```
 
 === ":material-server: Ollama"
@@ -143,7 +164,7 @@ pumbaa chat --session <SESSION_ID>
     export PUMBAA_LLM_PROVIDER=vertex
     export VERTEX_PROJECT=<project-id>
     export VERTEX_LOCATION=us-central1
-    export VERTEX_MODEL=gemini-2.0-flash
+    export VERTEX_MODEL=gemini-2.5-flash
     ```
 
 ### Session Storage

@@ -21,28 +21,16 @@ Get detailed workflow metadata.
 ## :material-rocket-launch: Quick Start
 
 ```bash
-pumbaa workflow metadata <workflow-id> [FLAGS]
+pumbaa workflow metadata <workflow-id>
 ```
 
-## :material-flag: Flags
+Aliases: `pumbaa wf m`, `pumbaa wf meta`
 
-| Flag | Alias | Description |
-|------|:-----:|-------------|
-| `--verbose` | `-v` | Show detailed call information |
+## :material-lightbulb: Example
 
-## :material-lightbulb: Examples
-
-=== "Basic"
-
-    ```bash
-    pumbaa workflow metadata abc12345
-    ```
-
-=== "Verbose"
-
-    ```bash
-    pumbaa workflow metadata abc12345 --verbose
-    ```
+```bash
+pumbaa workflow metadata abc12345-6789-0def-ghij-klmnopqrstuv
+```
 
 ## :material-file-document: Output
 
@@ -51,11 +39,13 @@ pumbaa workflow metadata <workflow-id> [FLAGS]
 | Workflow ID | Full UUID |
 | Name | WDL workflow name |
 | Status | Current state |
-| Timing | Start/end timestamps |
-| Inputs | Submitted inputs |
-| Outputs | Generated outputs |
+| Timing | Start/end timestamps and duration |
 | Labels | User labels |
-| Calls | Task execution details (with `-v`) |
+| Calls | Per-task status, timing, and attempts |
+| Failures | Error messages for failed workflows |
+
+!!! tip "Inputs and outputs"
+    Submitted inputs and generated outputs have their own commands: see [Inputs & Outputs](inputs-outputs.md).
 
 ## :material-wrench: Use Cases
 

@@ -18,4 +18,6 @@ const (
 	ModalBatchLogs
 	ModalCopyMenu
 	ModalFailureSummary
+	ModalError
+	ModalCost
 )

@@ -1,0 +1,46 @@
+package tools
+
+import (
+	"testing"
+
+	"google.golang.org/adk/tool"
+	"google.golang.org/genai"
+)
+
+// chatToolDefinition mirrors the private toolWithDefinition interface the
+// chat uses (internal/interfaces/tui/chat/model.go) to execute tools.
+type chatToolDefinition interface {
+	Declaration() *genai.FunctionDeclaration
+	Run(ctx tool.Context, args any) (map[string]any, error)
+}
+
+// TestChatExecutePathWDL exercises the exact call path the chat uses for a
+// tool call — functiontool.Run with a nil tool.Context and raw map args —
+// so a regression in this layer (not just the registry) fails loudly.
+func TestChatExecutePathWDL(t *testing.T) {
+	all := GetAllTools(nil, stubWDLRepo{})
+
+	var td chatToolDefinition
+	for _, tl := range all {
+		if c, ok := tl.(chatToolDefinition); ok && c.Declaration().Name == "pumbaa" {
+			td = c
+		}
+	}
+	if td == nil {
+		t.Fatal("pumbaa tool does not satisfy the chat's toolWithDefinition interface")
+	}
+
+	for _, args := range []map[string]any{
+		{"action": "wdl_list"},
+		{"action": "wdl_search", "query": "a"},
+	} {
+		result, err := td.Run(NoopToolContext(), args)
+		if err != nil {
+			t.Fatalf("Run(%v) returned error (chat would show ✗): %v", args, err)
+		}
+		if success, _ := result["success"].(bool); !success {
+			t.Fatalf("Run(%v) output not successful: %v", args, result["error"])
+		}
+		t.Logf("%v ok", args)
+	}
+}

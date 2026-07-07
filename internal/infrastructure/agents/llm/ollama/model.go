@@ -1,6 +1,7 @@
 package ollama
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"google.golang.org/adk/model"
+	"google.golang.org/genai"
 )
 
 // Model implements model.LLM for Ollama
@@ -77,7 +79,7 @@ func (m *Model) Name() string {
 
 // GenerateContent implements model.LLM.GenerateContent
 // Supports:
-// - Simple text generation
+// - Simple text generation (with optional streaming)
 // - Tool calls (function calling)
 // - System instructions
 func (m *Model) GenerateContent(
@@ -90,6 +92,12 @@ func (m *Model) GenerateContent(
 		ollamaReq, err := m.buildRequest(req)
 		if err != nil {
 			_ = yield(nil, fmt.Errorf("error building request: %w", err))
+			return
+		}
+		ollamaReq.Stream = stream
+
+		if stream {
+			m.streamRequest(ctx, ollamaReq, yield)
 			return
 		}
 
@@ -109,6 +117,93 @@ func (m *Model) GenerateContent(
 
 		_ = yield(adkResp, nil)
 	}
+}
+
+// streamRequest executes a streaming call to Ollama (NDJSON lines), yielding
+// each text delta as a Partial response and finishing with one aggregated
+// final response carrying the full message, tool calls and token counts.
+func (m *Model) streamRequest(ctx context.Context, req *ChatRequest, yield func(*model.LLMResponse, error) bool) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		_ = yield(nil, fmt.Errorf("error serializing request: %w", err))
+		return
+	}
+
+	url := m.baseURL + "/api/chat"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		_ = yield(nil, fmt.Errorf("error creating HTTP request: %w", err))
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := m.client.Do(httpReq)
+	if err != nil {
+		_ = yield(nil, fmt.Errorf("error calling Ollama: %w", err))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		_ = yield(nil, fmt.Errorf("Ollama returned status %d: %s", resp.StatusCode, string(body)))
+		return
+	}
+
+	var (
+		text      strings.Builder
+		toolCalls []ToolCall
+		final     ChatResponse
+	)
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+
+		var chunk ChatResponse
+		if err := json.Unmarshal(line, &chunk); err != nil {
+			_ = yield(nil, fmt.Errorf("error decoding stream chunk: %w", err))
+			return
+		}
+
+		if chunk.Message.Content != "" {
+			text.WriteString(chunk.Message.Content)
+			partial := &model.LLMResponse{
+				Content: &genai.Content{
+					Role:  "model",
+					Parts: []*genai.Part{genai.NewPartFromText(chunk.Message.Content)},
+				},
+				Partial: true,
+			}
+			if !yield(partial, nil) {
+				return
+			}
+		}
+		toolCalls = append(toolCalls, chunk.Message.ToolCalls...)
+
+		if chunk.Done {
+			final = chunk
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		_ = yield(nil, fmt.Errorf("error reading stream: %w", err))
+		return
+	}
+
+	final.Message.Role = "assistant"
+	final.Message.Content = text.String()
+	final.Message.ToolCalls = toolCalls
+
+	adkResp, err := m.buildResponse(&final)
+	if err != nil {
+		_ = yield(nil, fmt.Errorf("error building response: %w", err))
+		return
+	}
+	_ = yield(adkResp, nil)
 }
 
 // doRequest executes HTTP call to Ollama
