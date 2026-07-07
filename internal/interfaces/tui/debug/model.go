@@ -149,8 +149,12 @@ type Model struct {
 	lastError          string
 	errorModalViewport viewport.Model
 
-	// Cost breakdown modal state ($ key)
-	costViewport viewport.Model
+	// Cost breakdown modal state ($ key). costBreakdown caches the complete
+	// breakdown (all subworkflows included) once fetched; nil until then.
+	costViewport  viewport.Model
+	costBreakdown *workflow.CostBreakdown
+	costLoading   bool
+	costError     string
 
 	// Components
 	keys           KeyMap

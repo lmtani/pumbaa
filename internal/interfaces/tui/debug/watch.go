@@ -92,6 +92,10 @@ func (m *Model) applyRefreshedMetadata(wf *WorkflowMetadata) ([]string, []tea.Cm
 	m.metadata = wf
 	m.preemption = wf.CalculatePreemptionSummary()
 	m.tree = tree.BuildTree(wf)
+	// The cached cost breakdown reflected the previous snapshot; drop it so
+	// the next open recomputes (and re-fetches subworkflows if needed).
+	m.costBreakdown = nil
+	m.costError = ""
 
 	var changes []string
 	var cmds []tea.Cmd

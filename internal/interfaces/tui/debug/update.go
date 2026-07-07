@@ -268,6 +268,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.setStatusMessage("Error loading batch logs: " + errorMsg)
 		return m, getClearStatusCmd()
 
+	case costBreakdownLoadedMsg:
+		m.costLoading = false
+		m.costError = ""
+		m.costBreakdown = msg.breakdown
+		if m.activeModal == ModalCost {
+			m.costViewport.SetContent(m.buildCostContent())
+		}
+		return m, nil
+
+	case costBreakdownErrorMsg:
+		m.costLoading = false
+		m.costError = msg.err.Error()
+		m.lastError = msg.err.Error()
+		if m.activeModal == ModalCost {
+			m.costViewport.SetContent(m.buildCostContent())
+		}
+		return m, nil
+
 	case chatContextLoadedMsg:
 		return m.handleChatContextLoaded(msg)
 

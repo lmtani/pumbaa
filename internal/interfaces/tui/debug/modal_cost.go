@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -12,13 +13,69 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// openCostModal builds the per-task cost breakdown from the loaded metadata
-// and opens it in a scrollable modal.
+// costBreakdownLoadedMsg carries the complete cost breakdown after the fully
+// expanded metadata was fetched.
+type costBreakdownLoadedMsg struct {
+	breakdown *workflow.CostBreakdown
+}
+
+// costBreakdownErrorMsg reports a failure to load the expanded metadata for
+// the cost breakdown.
+type costBreakdownErrorMsg struct {
+	err error
+}
+
+// openCostModal opens the per-task cost breakdown. It shows the breakdown
+// from the already-loaded tree immediately, and — so subworkflow costs are
+// included by default — fetches the fully expanded metadata in the background
+// (one call) when some subworkflows haven't been loaded, then swaps in the
+// complete breakdown. The complete breakdown is cached until the metadata
+// changes (watch refresh).
 func (m Model) openCostModal() (tea.Model, tea.Cmd) {
 	m.activeModal = ModalCost
 	m.costViewport = viewport.New(m.width-10, m.height-8)
+
+	var cmd tea.Cmd
+	display := m.displayCostBreakdown()
+	if m.costBreakdown == nil && display.SubworkflowsPending > 0 && m.fetcher != nil && !m.costLoading {
+		m.costLoading = true
+		m.costError = ""
+		cmd = m.fetchExpandedCostBreakdown()
+	}
+
 	m.costViewport.SetContent(m.buildCostContent())
-	return m, nil
+	return m, cmd
+}
+
+// displayCostBreakdown returns the complete breakdown when it has been loaded,
+// otherwise the partial one computed from the currently loaded tree.
+func (m Model) displayCostBreakdown() *workflow.CostBreakdown {
+	if m.costBreakdown != nil {
+		return m.costBreakdown
+	}
+	if m.metadata == nil {
+		return &workflow.CostBreakdown{}
+	}
+	return m.metadata.CalculateCostBreakdown()
+}
+
+// fetchExpandedCostBreakdown fetches the fully expanded metadata and computes
+// the complete cost breakdown off the UI thread.
+func (m Model) fetchExpandedCostBreakdown() tea.Cmd {
+	fetcher := m.fetcher
+	workflowID := m.metadata.ID
+	return func() tea.Msg {
+		ctx := context.Background()
+		data, err := fetcher.GetRawMetadataWithOptions(ctx, workflowID, true)
+		if err != nil {
+			return costBreakdownErrorMsg{err: err}
+		}
+		wf, err := fetcher.ParseMetadata(data)
+		if err != nil {
+			return costBreakdownErrorMsg{err: err}
+		}
+		return costBreakdownLoadedMsg{breakdown: wf.CalculateCostBreakdown()}
+	}
 }
 
 func (m Model) renderCostModal() string {
@@ -40,15 +97,18 @@ func (m Model) handleCostModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // buildCostContent renders the cost breakdown table. It shows the API total
-// (authoritative) alongside the reconstructed per-task sum, so a gap from
-// unexpanded subworkflows is visible rather than silently wrong.
+// (authoritative) alongside the reconstructed per-task sum, and reports
+// whether subworkflow costs are still loading or missing.
 func (m Model) buildCostContent() string {
 	if m.metadata == nil {
 		return mutedStyle.Render("No metadata available")
 	}
 
-	breakdown := m.metadata.CalculateCostBreakdown()
+	breakdown := m.displayCostBreakdown()
 	if len(breakdown.Tasks) == 0 {
+		if m.costLoading {
+			return mutedStyle.Render("⏳ Loading subworkflow costs...")
+		}
 		return mutedStyle.Render("No per-task cost data available (tasks have no VM cost/timing yet)")
 	}
 
@@ -66,9 +126,16 @@ func (m Model) buildCostContent() string {
 		sb.WriteString(mutedStyle.Render("  (some values estimated from resources)"))
 	}
 	sb.WriteString("\n")
-	if breakdown.SubworkflowsPending > 0 {
+	switch {
+	case m.costLoading:
+		sb.WriteString(infoNoteStyle.Render("⏳ Loading subworkflow costs — totals will update shortly..."))
+		sb.WriteString("\n")
+	case m.costError != "":
+		sb.WriteString(infoNoteStyle.Render("⚠ Could not load subworkflow costs: " + common.Truncate(m.costError, 60)))
+		sb.WriteString("\n")
+	case breakdown.SubworkflowsPending > 0:
 		sb.WriteString(infoNoteStyle.Render(fmt.Sprintf(
-			"⚠ %d subworkflow(s) not expanded — their tasks are missing. Press f or open them to include.",
+			"⚠ %d subworkflow(s) not included (no server connection to expand).",
 			breakdown.SubworkflowsPending)))
 		sb.WriteString("\n")
 	}
