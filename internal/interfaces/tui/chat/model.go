@@ -23,6 +23,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
@@ -143,6 +144,10 @@ type Model struct {
 	// resumableID points at a previous session for the same task context,
 	// offered for resume via ctrl+r.
 	resumableID string
+
+	// msgOffsets holds the rendered line offset of each message, refreshed
+	// by renderMessages, so selection scrolling targets real positions.
+	msgOffsets []int
 
 	// Token usage tracking
 	inputTokens  int // Accumulated input tokens for the session
@@ -596,12 +601,45 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyRunes:
-			// Handle 'y' for copy when in messages mode
-			if len(msg.Runes) > 0 && msg.Runes[0] == 'y' && m.focusMode == FocusMessages {
-				if m.msgs != nil && m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
-					content := (*m.msgs)[m.selectedMsg].Content
-					return m, copyToClipboard(content)
+			// Message-navigation keys, only when browsing messages
+			if m.focusMode == FocusMessages && len(msg.Runes) > 0 && m.msgs != nil && len(*m.msgs) > 0 {
+				switch msg.Runes[0] {
+				case 'y': // copy selected message
+					if m.selectedMsg >= 0 && m.selectedMsg < len(*m.msgs) {
+						content := (*m.msgs)[m.selectedMsg].Content
+						return m, copyToClipboard(content)
+					}
+				case 'g': // first message
+					m.selectedMsg = 0
+					m.viewport.SetContent(m.renderMessages())
+					m.viewport.GotoTop()
+					return m, nil
+				case 'G': // last message
+					m.selectedMsg = len(*m.msgs) - 1
+					m.viewport.SetContent(m.renderMessages())
+					m.viewport.GotoBottom()
+					return m, nil
 				}
+			}
+
+		case tea.KeyPgUp:
+			m.viewport.PageUp()
+			return m, nil
+
+		case tea.KeyPgDown:
+			m.viewport.PageDown()
+			return m, nil
+
+		case tea.KeyHome:
+			if m.focusMode == FocusMessages {
+				m.viewport.GotoTop()
+				return m, nil
+			}
+
+		case tea.KeyEnd:
+			if m.focusMode == FocusMessages {
+				m.viewport.GotoBottom()
+				return m, nil
 			}
 
 		case tea.KeyTab:
@@ -633,7 +671,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.focusMode == FocusInput {
 				// Scroll viewport up when focus is on input
-				m.viewport.LineUp(3)
+				m.viewport.ScrollUp(3)
 				return m, nil
 			}
 
@@ -647,7 +685,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if m.focusMode == FocusInput {
 				// Scroll viewport down when focus is on input
-				m.viewport.LineDown(3)
+				m.viewport.ScrollDown(3)
 				return m, nil
 			}
 
@@ -955,28 +993,20 @@ func (m Model) renderInput() string {
 	return inputBox
 }
 
-// scrollToSelectedMsg scrolls the viewport to center the selected message
+// scrollToSelectedMsg scrolls the viewport so the selected message is
+// visible, using the real rendered line offsets tracked by renderMessages.
 func (m *Model) scrollToSelectedMsg() {
-	if m.msgs == nil || m.selectedMsg < 0 || m.selectedMsg >= len(*m.msgs) {
+	if m.msgs == nil || m.selectedMsg < 0 || m.selectedMsg >= len(*m.msgs) || m.selectedMsg >= len(m.msgOffsets) {
 		return
 	}
 
-	// Calculate approximate position based on message index
-	// Each message is roughly: role line (1) + content lines + spacing (2)
-	// We estimate ~6 lines per message on average for a good approximation
-	linesPerMsg := 6
-	targetLine := m.selectedMsg * linesPerMsg
-
-	// Center the message in the viewport
-	viewportHeight := m.viewport.Height
-	centeredOffset := targetLine - (viewportHeight / 2)
-
-	// Clamp to valid range
-	if centeredOffset < 0 {
-		centeredOffset = 0
+	// Place the message a third from the top: it reads naturally and leaves
+	// room for the following context.
+	offset := m.msgOffsets[m.selectedMsg] - m.viewport.Height/3
+	if offset < 0 {
+		offset = 0
 	}
-
-	m.viewport.SetYOffset(centeredOffset)
+	m.viewport.SetYOffset(offset)
 }
 
 func (m Model) renderFooter() string {
@@ -999,6 +1029,8 @@ func (m Model) renderFooter() string {
 	case m.focusMode == FocusMessages:
 		hints = []string{
 			hint("↑↓", "navigate"),
+			hint("pgup/pgdn", "page"),
+			hint("g/G", "first/last"),
 			hint("y", "copy"),
 			hint("tab", "type"),
 			hint("esc", escAction),
@@ -1033,9 +1065,10 @@ func (m Model) renderFooter() string {
 		Render(prefix + help)
 }
 
-func (m Model) renderMessages() string {
+func (m *Model) renderMessages() string {
 	hasMsgs := m.msgs != nil && len(*m.msgs) > 0
 	if !hasMsgs && m.streamingText == "" {
+		m.msgOffsets = nil
 		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Enter to send (ctrl+j for a new line).")
 	}
 
@@ -1045,76 +1078,19 @@ func (m Model) renderMessages() string {
 		maxWidth = 80
 	}
 
-	// Style for selected message
-	selectedStyle := lipgloss.NewStyle().
-		Background(common.SubtleColor).
-		Padding(0, 1)
+	// Track each message's rendered line offset for selection scrolling
+	lineCount := 0
+	offsets := make([]int, 0, 16)
 
 	if hasMsgs {
 		for i, msg := range *m.msgs {
-			isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
-
-			// Compact one-line roles: tool records and notices have no header
-			switch msg.Role {
-			case "tool":
-				line := common.MutedStyle.Render("🔧 " + msg.Content)
-				if isSelected {
-					line = selectedStyle.Render("▶ " + line)
-				}
-				sb.WriteString(line + "\n\n")
-				continue
-			case "notice":
-				line := common.MutedStyle.Italic(true).Render("· " + msg.Content)
-				if isSelected {
-					line = selectedStyle.Render("▶ " + line)
-				}
-				sb.WriteString(line + "\n\n")
-				continue
-			}
-
-			var roleStyle lipgloss.Style
-			var roleName string
-			contentStyle := messageStyle
-
-			switch msg.Role {
-			case "user":
-				roleStyle = userStyle
-				roleName = "You"
-			case "agent":
-				roleStyle = agentStyle
-				roleName = "Pumbaa"
-			case "info":
-				roleStyle = infoStyle
-				roleName = "Context"
-				contentStyle = infoMessageStyle
-			default:
-				roleStyle = errorStyle
-				roleName = "Error"
-			}
-
-			// Render role with selection indicator
-			if isSelected {
-				sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
-			} else {
-				sb.WriteString(roleStyle.Render(roleName) + "\n")
-			}
-
-			// Render content
-			var content string
-			if msg.Role == "agent" && msg.Rendered != "" {
-				content = msg.Rendered
-			} else {
-				content = contentStyle.Render(wrapText(msg.Content, maxWidth))
-			}
-
-			if isSelected {
-				sb.WriteString(selectedStyle.Render(content))
-			} else {
-				sb.WriteString(content)
-			}
-			sb.WriteString("\n\n")
+			block := m.renderMessageBlock(i, msg, maxWidth)
+			offsets = append(offsets, lineCount)
+			sb.WriteString(block)
+			lineCount += strings.Count(block, "\n")
 		}
 	}
+	m.msgOffsets = offsets
 
 	// Live response being streamed: plain text with a cursor block; the
 	// final ResponseMsg replaces it with the markdown-rendered message.
@@ -1123,6 +1099,77 @@ func (m Model) renderMessages() string {
 		sb.WriteString(messageStyle.Render(wrapText(m.streamingText, maxWidth) + " ▌"))
 		sb.WriteString("\n\n")
 	}
+
+	return sb.String()
+}
+
+// renderMessageBlock renders a single transcript message, including its
+// trailing spacing, so renderMessages can measure real line offsets.
+func (m *Model) renderMessageBlock(i int, msg ChatMessage, maxWidth int) string {
+	isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
+	selectedStyle := lipgloss.NewStyle().
+		Background(common.SubtleColor).
+		Padding(0, 1)
+
+	// Compact one-line roles: tool records and notices have no header
+	switch msg.Role {
+	case "tool":
+		line := common.MutedStyle.Render("🔧 " + msg.Content)
+		if isSelected {
+			line = selectedStyle.Render("▶ " + line)
+		}
+		return line + "\n\n"
+	case "notice":
+		line := common.MutedStyle.Italic(true).Render("· " + msg.Content)
+		if isSelected {
+			line = selectedStyle.Render("▶ " + line)
+		}
+		return line + "\n\n"
+	}
+
+	var roleStyle lipgloss.Style
+	var roleName string
+	contentStyle := messageStyle
+
+	switch msg.Role {
+	case "user":
+		roleStyle = userStyle
+		roleName = "You"
+	case "agent":
+		roleStyle = agentStyle
+		roleName = "Pumbaa"
+	case "info":
+		roleStyle = infoStyle
+		roleName = "Context"
+		contentStyle = infoMessageStyle
+	default:
+		roleStyle = errorStyle
+		roleName = "Error"
+	}
+
+	var sb strings.Builder
+
+	// Render role with selection indicator
+	if isSelected {
+		sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
+	} else {
+		sb.WriteString(roleStyle.Render(roleName) + "\n")
+	}
+
+	// Render content
+	var content string
+	if msg.Role == "agent" && msg.Rendered != "" {
+		content = msg.Rendered
+	} else {
+		content = contentStyle.Render(wrapText(msg.Content, maxWidth))
+	}
+
+	if isSelected {
+		sb.WriteString(selectedStyle.Render(content))
+	} else {
+		sb.WriteString(content)
+	}
+	sb.WriteString("\n\n")
 
 	return sb.String()
 }
@@ -1372,7 +1419,7 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 						// Persistent transcript record of what the agent did
 						m.program.Send(toolRecordMsg{
 							owner: m.msgs,
-							line:  formatToolRecord(tc.Name, action, otherParams, time.Since(toolStart), err),
+							line:  formatToolRecord(tc.Name, action, otherParams, time.Since(toolStart), toolFailure(result, err)),
 						})
 					}
 					if err != nil {
@@ -1443,9 +1490,28 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 	}
 }
 
+// toolFailure extracts a short failure description from a tool execution:
+// either a transport error or a handler-level error output (success=false).
+// Returns "" when the call succeeded.
+func toolFailure(result map[string]any, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	if result != nil {
+		if success, ok := result["success"].(bool); ok && !success {
+			if msg, ok := result["error"].(string); ok && msg != "" {
+				return msg
+			}
+			return "failed"
+		}
+	}
+	return ""
+}
+
 // formatToolRecord builds the one-line transcript record of a tool call,
-// e.g. `pumbaa query (status=Failed) ✓ 0.8s`.
-func formatToolRecord(name, action string, params map[string]any, dur time.Duration, err error) string {
+// e.g. `pumbaa query (status=Failed) ✓ 0.8s`. Failures include a short
+// reason so the transcript explains itself.
+func formatToolRecord(name, action string, params map[string]any, dur time.Duration, failure string) string {
 	label := name
 	if action != "" {
 		label += " " + action
@@ -1464,11 +1530,10 @@ func formatToolRecord(name, action string, params map[string]any, dur time.Durat
 		label += " (" + strings.Join(pairs, ", ") + ")"
 	}
 
-	mark := "✓"
-	if err != nil {
-		mark = "✗"
+	if failure != "" {
+		return fmt.Sprintf("%s ✗ %.1fs — %s", label, dur.Seconds(), common.Truncate(failure, 80))
 	}
-	return fmt.Sprintf("%s %s %.1fs", label, mark, dur.Seconds())
+	return fmt.Sprintf("%s ✓ %.1fs", label, dur.Seconds())
 }
 
 func getToolCalls(content *genai.Content) []*genai.FunctionCall {
@@ -1486,7 +1551,9 @@ func (m Model) executeTool(ctx context.Context, fc *genai.FunctionCall) (map[str
 		if td, ok := t.(toolWithDefinition); ok {
 			def := td.Declaration()
 			if def.Name == fc.Name {
-				return td.Run(nil, fc.Args)
+				// functiontool.Run dereferences the tool context (ADK v1.0.0
+				// panics on nil), so pass the minimal no-op context.
+				return td.Run(tools.NoopToolContext(), fc.Args)
 			}
 		}
 	}
