@@ -145,10 +145,8 @@ type Model struct {
 	sessionsSearching   bool
 	sessionsSearchInput textinput.Model
 
-	// Navigation state
-	wantsToGoBack bool
-	wantsToQuit   bool
-	standalone    bool // True when running directly from CLI (pumbaa chat), not embedded in TUI
+	// standalone is true when running directly from CLI (pumbaa chat), not embedded in TUI
+	standalone bool
 }
 
 type ChatMessage struct {
@@ -312,30 +310,15 @@ func (m *Model) AddInfoMessage(content string) {
 	*m.msgs = append([]ChatMessage{msg}, (*m.msgs)...)
 }
 
-// ShouldGoBack returns true if the user wants to navigate back.
-func (m *Model) ShouldGoBack() bool {
-	return m.wantsToGoBack
+// SetSession attaches a session created asynchronously after the screen
+// opened, so session creation never blocks the UI thread.
+func (m *Model) SetSession(sess session.Session) {
+	m.session = sess
 }
 
-// ClearNavigation clears the navigation state.
-func (m *Model) ClearNavigation() {
-	m.wantsToGoBack = false
-	m.wantsToQuit = false
-}
-
-// ShouldQuit returns true if the user wants to quit the program.
-func (m *Model) ShouldQuit() bool {
-	return m.wantsToQuit
-}
-
-// HasActiveModal returns true if there's an active modal being displayed.
-func (m *Model) HasActiveModal() bool {
-	return m.activeModal != ModalNone
-}
-
-// GetFocusMode returns the current focus mode.
-func (m *Model) GetFocusMode() FocusMode {
-	return m.focusMode
+// IsBusy reports whether a response is currently being generated.
+func (m *Model) IsBusy() bool {
+	return m.loading
 }
 
 // SetFocusMode sets the focus mode and updates UI state accordingly.
@@ -397,13 +380,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEsc:
-			// In standalone mode, ESC in FocusMessages triggers back
-			// In embedded mode, AppModel handles this
-			if m.standalone && m.focusMode == FocusMessages {
-				m.wantsToGoBack = true
+			// First ESC leaves the input; second ESC leaves the screen.
+			if m.focusMode == FocusInput {
+				m.SetFocusMode(FocusMessages)
+				return m, nil
+			}
+			if m.standalone {
 				return m, tea.Quit
 			}
-			// ESC is now handled by AppModel for navigation
+			return m, common.NavigateCmd(common.NavigateBackMsg{})
 
 		case tea.KeyRunes:
 			// Handle 'y' for copy when in messages mode
@@ -748,7 +733,7 @@ func (m Model) renderFooter() string {
 			hint("ctrl+s", "sessions"),
 			hint("↑↓", "scroll"),
 			hint("tab", "navigate msgs"),
-			hint("esc", escAction),
+			hint("esc", "messages"),
 		}
 	}
 

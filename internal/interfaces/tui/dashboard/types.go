@@ -21,6 +21,7 @@ type KeyMap struct {
 	LabelsManager key.Binding // Open labels modal for selected workflow
 	AutoRefresh   key.Binding
 	Help          key.Binding
+	ErrorDetail   key.Binding // Show full text of the last error
 }
 
 // DefaultKeyMap returns the default key bindings for the dashboard.
@@ -70,6 +71,10 @@ func DefaultKeyMap() KeyMap {
 		Help: key.NewBinding(
 			key.WithKeys("?"),
 			key.WithHelp("?", "help"),
+		),
+		ErrorDetail: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "error details"),
 		),
 	}
 }

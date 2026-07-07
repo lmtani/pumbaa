@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // handleChatContextLoaded handles the completion of context collection.
@@ -12,10 +14,40 @@ func (m Model) handleChatContextLoaded(msg chatContextLoadedMsg) (tea.Model, tea
 	m.isLoading = false
 	m.loadingMessage = ""
 
-	systemInstruction := fmt.Sprintf("%s\n\n---\n\n%s", taskDebugSystemInstruction, msg.context)
-	contextSummary := m.buildChatContextSummary(msg.errors)
-	m.SetPendingChatNavigation(systemInstruction, contextSummary)
-	return m, nil
+	navMsg := common.NavigateToChatMsg{
+		SystemInstruction: fmt.Sprintf("%s\n\n---\n\n%s", taskDebugSystemInstruction, msg.context),
+		ContextSummary:    m.buildChatContextSummary(msg.errors),
+		ContextLabel:      m.buildChatContextLabel(),
+	}
+	return m, common.NavigateCmd(navMsg)
+}
+
+// buildChatContextLabel builds the breadcrumb-style badge shown in the chat
+// header, e.g. "my-workflow ▸ align_reads".
+func (m Model) buildChatContextLabel() string {
+	var wfName string
+	if m.metadata != nil {
+		wfName = m.metadata.Name
+	}
+
+	var taskName string
+	if m.chatContextNode != nil {
+		taskName = m.chatContextNode.Name
+		if taskName == "" && m.chatContextNode.CallData != nil {
+			taskName = m.chatContextNode.CallData.Name
+		}
+	}
+
+	switch {
+	case wfName != "" && taskName != "":
+		return wfName + " ▸ " + taskName
+	case taskName != "":
+		return taskName
+	case wfName != "":
+		return wfName
+	default:
+		return "Task Context"
+	}
 }
 
 func (m Model) buildChatContextSummary(errors []string) string {

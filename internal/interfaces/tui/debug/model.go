@@ -142,12 +142,12 @@ type Model struct {
 	chatTools  []tool.Tool
 	sessionSvc adksession.Service
 
-	// Navigation state
-	NavigateToChatSystemInstruction string  // Deprecated: use pendingNavigation
-	NavigateToChatContextSummary    string  // Deprecated: use pendingNavigation
-	pendingNavigation               tea.Cmd // Pending navigation command for parent
-	wantsToGoBack                   bool    // True when user wants to go back to previous screen
-	canGoBack                       bool    // True if ESC should go back, false if ESC should quit
+	// canGoBack controls whether the footer advertises ESC as "back" or "quit"
+	canGoBack bool
+
+	// Error detail modal state (full text of the last error, e key)
+	lastError          string
+	errorModalViewport viewport.Model
 
 	// Components
 	keys           KeyMap
@@ -234,63 +234,13 @@ func (m Model) Init() tea.Cmd {
 	)
 }
 
-// NavigateToChatMsg is sent when user wants to navigate to chat screen.
-type NavigateToChatMsg struct {
-	SystemInstruction string
-	ContextSummary    string
-}
-
-// GetNavigationCmd returns a pending navigation command, if any.
-func (m *Model) GetNavigationCmd() tea.Cmd {
-	return m.pendingNavigation
-}
-
-// ClearNavigation clears the pending navigation state.
-func (m *Model) ClearNavigation() {
-	m.pendingNavigation = nil
-	m.NavigateToChatSystemInstruction = ""
-	m.NavigateToChatContextSummary = ""
-	m.wantsToGoBack = false
-}
-
-// ShouldGoBack returns true if the user wants to navigate back.
-func (m *Model) ShouldGoBack() bool {
-	return m.wantsToGoBack
-}
-
-// SetPendingChatNavigation sets a navigation command to open chat.
-func (m *Model) SetPendingChatNavigation(systemInstruction, contextSummary string) {
-	m.NavigateToChatSystemInstruction = systemInstruction
-	m.NavigateToChatContextSummary = contextSummary
-	m.pendingNavigation = func() tea.Msg {
-		return NavigateToChatMsg{
-			SystemInstruction: systemInstruction,
-			ContextSummary:    contextSummary,
-		}
-	}
-}
-
-// HasActiveModal returns true if there's an active modal being displayed.
-func (m *Model) HasActiveModal() bool {
-	return m.activeModal != ModalNone
-}
-
-// GetViewMode returns the current view mode.
-func (m *Model) GetViewMode() ViewMode {
-	return m.viewMode
-}
-
-// IsSearchActive returns true if search mode is active.
-func (m *Model) IsSearchActive() bool {
-	return m.searchActive
-}
-
 // SetCanGoBack sets whether ESC should show "back" or "quit" in the footer.
 func (m *Model) SetCanGoBack(canGoBack bool) {
 	m.canGoBack = canGoBack
 }
 
-// CanGoBack returns whether ESC should go back or quit.
-func (m *Model) CanGoBack() bool {
-	return m.canGoBack
+// HasOngoingWork reports whether background work (watch mode, an in-flight
+// fetch) would be interrupted by quitting.
+func (m *Model) HasOngoingWork() bool {
+	return m.watchActive || m.isLoading
 }

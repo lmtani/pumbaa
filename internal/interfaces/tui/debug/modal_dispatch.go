@@ -89,6 +89,12 @@ func (m Model) modalDispatches() []modalDispatch {
 			handle: Model.handleFailureSummaryModalKeys,
 			resize: func(m *Model) { m.resizeStandardModalViewport(&m.failureSummaryViewport) },
 		},
+		{
+			active: func(m Model) bool { return m.activeModal == ModalError },
+			view:   Model.renderErrorModal,
+			handle: Model.handleErrorModalKeys,
+			resize: func(m *Model) { m.resizeStandardModalViewport(&m.errorModalViewport) },
+		},
 	}
 }
 

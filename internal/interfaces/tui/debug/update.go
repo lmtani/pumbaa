@@ -106,6 +106,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.watchActive {
 			return m, nil
 		}
+		m.lastError = msg.err.Error()
 		m.setStatusMessage("Watch refresh failed: " + common.Truncate(msg.err.Error(), 60))
 		return m, tea.Batch(watchTick(), getClearStatusCmd())
 
@@ -138,6 +139,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case resourceAnalysisErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
+		m.lastError = msg.err.Error()
 		m.resourceError = msg.err.Error()
 		m.viewMode = ViewModeMonitor
 		m.updateDetailsContent()
@@ -169,7 +171,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case subWorkflowErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
-		m.setStatusMessage(fmt.Sprintf("Error loading subworkflow: %s", msg.err.Error()))
+		m.lastError = msg.err.Error()
+		m.setStatusMessage(fmt.Sprintf("Error loading subworkflow: %s", common.Truncate(msg.err.Error(), 60)))
 		if m.failureExpandActive {
 			return m, tea.Batch(getClearStatusCmd(), m.continueFailureExpansion())
 		}
@@ -197,6 +200,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
+		m.lastError = msg.err.Error()
 		// Show error as temporary status message instead of opening modal
 		errorMsg := msg.err.Error()
 		// Simplify common error messages
@@ -247,6 +251,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case batchLogsErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
+		m.lastError = msg.err.Error()
 		errorMsg := msg.err.Error()
 
 		// Simplify common error messages
@@ -269,6 +274,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case chatContextErrorMsg:
 		m.isLoading = false
 		m.loadingMessage = ""
+		m.lastError = msg.err.Error()
 		m.setStatusMessage(fmt.Sprintf("Failed to collect context: %v", msg.err))
 		return m, getClearStatusCmd()
 
@@ -383,10 +389,10 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateDetailsContent()
 
 	case key.Matches(msg, m.keys.Escape):
-		// If already in tree view, go back to previous screen
+		// If already in tree view there is nothing left to close here;
+		// hand the decision (back vs quit) to the app model.
 		if m.viewMode == ViewModeTree {
-			m.wantsToGoBack = true
-			return m, nil
+			return m, common.NavigateCmd(common.NavigateBackMsg{})
 		}
 		// Otherwise, return to tree view
 		m.viewMode = ViewModeTree
@@ -414,6 +420,19 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.FailureSummary):
 		return m.openFailureSummary()
+
+	case key.Matches(msg, m.keys.ErrorDetail):
+		return m.openErrorModal()
+
+	case key.Matches(msg, m.keys.NextMatch):
+		if m.searchQuery != "" {
+			m.jumpToSearchMatch(true)
+		}
+
+	case key.Matches(msg, m.keys.PrevMatch):
+		if m.searchQuery != "" {
+			m.jumpToSearchMatch(false)
+		}
 
 	case key.Matches(msg, m.keys.Home):
 		m.changeSelectedNode(0)

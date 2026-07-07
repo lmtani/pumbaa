@@ -82,6 +82,11 @@ func (m Model) renderFooter() string {
 		renderHint("enter", "debug"),
 		renderHint("/", "filter"),
 		renderHint("a", "abort"),
+	}
+	if m.LastError != nil {
+		hints = append(hints, renderHint("e", "error details"))
+	}
+	hints = append(hints,
 		renderHint("?", "help"),
 		renderHint("esc", "quit"),
 		renderHint("l", "label filter"),
@@ -90,7 +95,7 @@ func (m Model) renderFooter() string {
 		renderHint("s", "status"),
 		renderHint("r", "refresh"),
 		renderHint("w", "auto-refresh"),
-	}
+	)
 	prefix := strings.Join(parts, "")
 	hintBudget := m.width - 2 - lipgloss.Width(prefix)
 	help := common.FitParts(hintBudget, "  ", hints)

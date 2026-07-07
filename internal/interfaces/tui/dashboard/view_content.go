@@ -102,6 +102,41 @@ func (m Model) renderFilterInput() string {
 		Render(lipgloss.Place(m.width-4, m.contentHeight()-2, lipgloss.Center, lipgloss.Center, filterBox))
 }
 
+// renderErrorModal renders the full text of the last error, since footer
+// status messages truncate it.
+func (m Model) renderErrorModal() string {
+	width := minInt(m.width-8, 100)
+	if width < 40 {
+		width = maxInt(20, m.width-4)
+	}
+
+	detail := "No error details available"
+	if m.LastError != nil {
+		detail = m.LastError.Error()
+	}
+
+	modalContent := lipgloss.JoinVertical(lipgloss.Left,
+		common.TitleStyle.Render("⚠  Last Error"),
+		"",
+		lipgloss.NewStyle().Foreground(common.ErrorSoftColor).Width(width-6).Render(detail),
+		"",
+		common.MutedStyle.Render("esc close"),
+	)
+
+	modal := common.ModalStyle.
+		Width(width).
+		Render(modalContent)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		modal,
+		lipgloss.WithWhitespaceChars(" "),
+	)
+}
+
 // renderConfirmModal renders the abort confirmation modal.
 func (m Model) renderConfirmModal() string {
 	modalContent := lipgloss.JoinVertical(lipgloss.Center,

@@ -10,28 +10,17 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// loadingDuration is the expected duration for loading operations (for progress bar)
-const loadingDuration = 5 * time.Second
-
 // statusDuration is the duration for temporary status messages
 const statusDuration = 3 * time.Second
 
 func (m Model) renderFooter() string {
 	var parts []string
 
-	// Loading indicator with increasing progress bar (takes priority)
+	// Loading indicator with elapsed time (takes priority). Elapsed time is
+	// honest feedback; a synthetic progress bar would just guess.
 	if m.isLoading && m.loadingMessage != "" {
 		elapsed := time.Since(m.loadingStartTime)
-		percentage := int(elapsed.Seconds() * 100 / loadingDuration.Seconds())
-		if percentage > 100 {
-			percentage = 100
-		}
-
-		barLength := (percentage * 20) / 100 // 20 chars max
-		progressBar := " [" + strings.Repeat("━", barLength) + strings.Repeat("╌", 20-barLength) + "]"
-
-		loadingStyle := temporaryStatusStyle
-		parts = append(parts, loadingStyle.Render("⏳ "+m.loadingMessage+progressBar))
+		parts = append(parts, temporaryStatusStyle.Render(fmt.Sprintf("⏳ %s (%.1fs)", m.loadingMessage, elapsed.Seconds())))
 		parts = append(parts, " • ")
 	} else if m.statusMessage != "" {
 		// Status message with decreasing progress bar
@@ -88,28 +77,86 @@ func (m Model) renderSearchStatus() string {
 func (m Model) footerHints() []string {
 	hints := []string{
 		renderFooterHint("↑↓", "navigate"),
+	}
+
+	// Quick actions reflect what 1-5/a actually do for the selected node,
+	// instead of an opaque "1-6 actions".
+	hints = append(hints, m.quickActionHints()...)
+
+	hints = append(hints,
 		renderFooterHint("tab", "switch"),
-		renderFooterHint("d", "details"),
-		renderFooterHint("1-6", "actions"),
 		renderFooterHint("E/C", "expand/collapse"),
 		renderFooterHint("f", "failures"),
 		renderFooterHint("w", "watch"),
 		renderFooterHint("/", "search"),
-	}
+	)
 
 	if m.searchQuery != "" || m.searchActive {
+		hints = append(hints, renderFooterHint("n/N", "matches"))
 		hints = append(hints, renderFooterHint("ctrl+x", "clear"))
 	}
 
-	hints = append(hints, renderFooterHint("?", "help"))
-
-	// Show "back" or "quit" depending on whether we can go back
-	if m.canGoBack {
-		hints = append(hints, renderFooterHint("esc", "back"))
-	} else {
-		hints = append(hints, renderFooterHint("esc", "quit"))
+	if m.lastError != "" {
+		hints = append(hints, renderFooterHint("e", "error details"))
 	}
 
+	hints = append(hints, renderFooterHint("?", "help"))
+	hints = append(hints, renderFooterHint("esc", m.escHint()))
+
+	return hints
+}
+
+// escHint describes what ESC does right now, so the footer never lies.
+func (m Model) escHint() string {
+	switch {
+	case m.searchActive:
+		return "exit search"
+	case m.viewMode != ViewModeTree:
+		return "tree view"
+	case m.canGoBack:
+		return "back"
+	default:
+		return "quit"
+	}
+}
+
+// quickActionHints returns the numeric quick actions available for the
+// currently selected node.
+func (m Model) quickActionHints() []string {
+	if m.cursor >= len(m.nodes) {
+		return nil
+	}
+
+	node := m.nodes[m.cursor]
+	switch node.Type {
+	case NodeTypeWorkflow, NodeTypeSubWorkflow:
+		return []string{
+			renderFooterHint("1", "inputs"),
+			renderFooterHint("2", "outputs"),
+			renderFooterHint("3", "options"),
+			renderFooterHint("4", "timeline"),
+			renderFooterHint("5", "log"),
+		}
+	case NodeTypeCall:
+		if len(node.Children) > 0 {
+			// Scatter node: no quick actions
+			return nil
+		}
+	case NodeTypeShard:
+	default:
+		return nil
+	}
+
+	hints := []string{
+		renderFooterHint("1", "inputs"),
+		renderFooterHint("2", "outputs"),
+		renderFooterHint("3", "cmd"),
+		renderFooterHint("4", "logs"),
+		renderFooterHint("5", "efficiency"),
+	}
+	if m.llm != nil {
+		hints = append(hints, renderFooterHint("a", "chat"))
+	}
 	return hints
 }
 

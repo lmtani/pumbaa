@@ -17,12 +17,6 @@ import (
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// NavigateToDebugMsg is sent when user wants to navigate to debug screen.
-// This message is handled by the parent AppModel.
-type NavigateToDebugMsg struct {
-	Workflow *workflow.Workflow
-}
-
 // VersionCheckMsg is sent when version check completes.
 type VersionCheckMsg struct {
 	Info *version.VersionInfo
@@ -67,6 +61,9 @@ type Model struct {
 	// Help overlay
 	showHelp bool
 
+	// Error detail modal (full text of the last error)
+	showError bool
+
 	// Debug transition state
 	loadingDebug    bool
 	loadingDebugID  string
@@ -91,11 +88,8 @@ type Model struct {
 	labelsInput        textinput.Model
 	labelsMessage      string // In-modal feedback message
 
-	// Navigation state
-	ShouldQuit        bool
-	LastError         error              // Last error for telemetry capture
-	pendingNavigation tea.Cmd            // Pending navigation command for parent
-	pendingWorkflow   *workflow.Workflow // Workflow to navigate to
+	// LastError keeps the most recent error for telemetry and the error modal.
+	LastError error
 }
 
 // FilterState holds the current filter configuration
@@ -140,7 +134,7 @@ func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model
 
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError
 }
 
 // Init implements tea.Model.
@@ -226,15 +220,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case debugMetadataLoadedMsg:
 		m.loadingDebug = false
 		m.loadingDebugID = ""
-		// Parse metadata and set up navigation
+		// Parse metadata and hand navigation to the parent AppModel
 		wf, err := m.metadataFetcher.ParseMetadata(msg.metadata)
 		if err != nil {
 			m.setStatusMessage("✗ Failed to parse metadata")
 			m.LastError = err
 			return m, getClearStatusCmd()
 		}
-		m.SetPendingNavigation(wf)
-		return m, nil
+		return m, common.NavigateCmd(common.NavigateToDebugMsg{Workflow: wf})
 
 	case debugMetadataErrorMsg:
 		m.loadingDebug = false
@@ -303,6 +296,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Error detail modal
+		if m.showError {
+			return m.handleErrorModalKeys(msg)
+		}
+
 		// Handle confirmation modal first
 		if m.showConfirm {
 			return m.handleConfirmKeys(msg)
@@ -331,26 +329,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // - view_table.go: renderTable(), renderWorkflowRow(), getColumnWidths()
 // - view_footer.go: renderFooter()
 // Helper functions are in helpers.go
-
-// GetNavigationCmd returns a pending navigation command, if any.
-// This is used by the parent AppModel to check if the dashboard wants to navigate.
-func (m *Model) GetNavigationCmd() tea.Cmd {
-	return m.pendingNavigation
-}
-
-// ClearNavigation clears the pending navigation state.
-func (m *Model) ClearNavigation() {
-	m.pendingNavigation = nil
-	m.pendingWorkflow = nil
-}
-
-// SetPendingNavigation sets a navigation command to be executed by the parent.
-func (m *Model) SetPendingNavigation(wf *workflow.Workflow) {
-	m.pendingWorkflow = wf
-	m.pendingNavigation = func() tea.Msg {
-		return NavigateToDebugMsg{Workflow: wf}
-	}
-}
 
 // setStatusMessage sets a temporary status message that auto-clears after 3 seconds.
 func (m *Model) setStatusMessage(message string) {
