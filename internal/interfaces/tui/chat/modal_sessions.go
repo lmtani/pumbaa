@@ -52,10 +52,8 @@ func (m *Model) loadSessionsList() tea.Cmd {
 
 		// Cast sessionService to SQLiteService to access ListWithSummaries
 		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-			const appName = "pumbaa"
-			const defaultUserID = "default"
 
-			sessions, err := svc.ListWithSummaries(ctx, appName, defaultUserID)
+			sessions, err := svc.ListWithSummaries(ctx, infraSession.DefaultAppName, infraSession.DefaultUserID)
 			if err != nil {
 				return sessionListErrorMsg{err: err}
 			}
@@ -75,7 +73,8 @@ func (m *Model) getFilteredSessions() []infraSession.SessionInfo {
 	var filtered []infraSession.SessionInfo
 	for _, sess := range m.sessionsList {
 		if strings.Contains(strings.ToLower(sess.ID), search) ||
-			strings.Contains(strings.ToLower(sess.Summary), search) {
+			strings.Contains(strings.ToLower(sess.Summary), search) ||
+			strings.Contains(strings.ToLower(sess.ContextLabel), search) {
 			filtered = append(filtered, sess)
 		}
 	}
@@ -173,10 +172,13 @@ func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) 
 		idDisplay = common.Truncate(idDisplay, 16)
 	}
 
-	// Truncate summary to 30 chars
+	// Description: task context (when present) + summary, truncated to 30
 	summary := sess.Summary
 	if summary == "" {
 		summary = "(no summary)"
+	}
+	if sess.ContextLabel != "" {
+		summary = sess.ContextLabel + ": " + summary
 	}
 	if len(summary) > 30 {
 		summary = common.Truncate(summary, 30)
@@ -340,12 +342,10 @@ func (m *Model) switchToSession(sessionID string) (tea.Model, tea.Cmd) {
 
 		// Load new session
 		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-			const appName = "pumbaa"
-			const defaultUserID = "default"
 
 			resp, err := svc.Get(ctx, &session.GetRequest{
-				AppName:   appName,
-				UserID:    defaultUserID,
+				AppName:   infraSession.DefaultAppName,
+				UserID:    infraSession.DefaultUserID,
 				SessionID: sessionID,
 			})
 			if err != nil {
@@ -396,12 +396,10 @@ func (m *Model) createNewSession() (tea.Model, tea.Cmd) {
 
 		// Create new session
 		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-			const appName = "pumbaa"
-			const defaultUserID = "default"
 
 			resp, err := svc.Create(ctx, &session.CreateRequest{
-				AppName: appName,
-				UserID:  defaultUserID,
+				AppName: infraSession.DefaultAppName,
+				UserID:  infraSession.DefaultUserID,
 			})
 			if err != nil {
 				return sessionListErrorMsg{err: err}

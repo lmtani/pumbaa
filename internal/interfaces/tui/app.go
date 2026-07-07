@@ -2,12 +2,9 @@
 package tui
 
 import (
-	"context"
-
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	adksession "google.golang.org/adk/session"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
@@ -24,21 +21,6 @@ const (
 	ScreenDebug
 	ScreenChat
 )
-
-const (
-	debugChatAppName = "pumbaa-debug"
-	debugChatUserID  = "default"
-)
-
-// chatSessionCreatedMsg carries the result of the asynchronous chat session
-// creation started when navigating to the chat screen. target identifies the
-// chat instance that requested it, so a slow create from a previous visit
-// can never attach to a newer conversation.
-type chatSessionCreatedMsg struct {
-	target  *chat.Model
-	session adksession.Session
-	err     error
-}
 
 // AppModel is the root model that coordinates navigation between screens.
 //
@@ -166,16 +148,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case common.NavigateBackMsg:
 		return m.navigateBack()
-
-	case chatSessionCreatedMsg:
-		if m.chat != nil && m.chat == msg.target {
-			if msg.err != nil {
-				m.chat.AddInfoMessage("Session persistence unavailable: " + msg.err.Error())
-			} else {
-				m.chat.SetSession(msg.session)
-			}
-		}
-		return m, nil
 	}
 
 	// Keys and spinner frames concern only the focused screen. Everything
@@ -264,7 +236,7 @@ func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.C
 		m.deps.ChatDeps.Tools,
 		msg.SystemInstruction,
 		m.deps.ChatDeps.SessionSvc,
-		nil, // session attaches asynchronously via chatSessionCreatedMsg
+		nil, // the chat creates its session lazily on the first message
 	)
 	m.chat = &chatModel
 	m.chatContextLabel = msg.ContextLabel
@@ -279,26 +251,7 @@ func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.C
 		m.chat.AddInfoMessage(msg.ContextSummary)
 	}
 
-	return m, tea.Batch(m.chat.Init(), m.sizeCmd(), m.createChatSessionCmd(m.chat))
-}
-
-// createChatSessionCmd creates the chat session off the UI thread for the
-// given chat instance.
-func (m AppModel) createChatSessionCmd(target *chat.Model) tea.Cmd {
-	svc := m.deps.ChatDeps.SessionSvc
-	if svc == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		resp, err := svc.Create(context.Background(), &adksession.CreateRequest{
-			AppName: debugChatAppName,
-			UserID:  debugChatUserID,
-		})
-		if err != nil {
-			return chatSessionCreatedMsg{target: target, err: err}
-		}
-		return chatSessionCreatedMsg{target: target, session: resp.Session}
-	}
+	return m, tea.Batch(m.chat.Init(), m.sizeCmd())
 }
 
 // navigateBack pops the navigation stack; at the root it starts the quit flow.

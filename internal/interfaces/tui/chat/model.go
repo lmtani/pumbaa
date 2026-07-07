@@ -135,6 +135,15 @@ type Model struct {
 	// cancelGen aborts the in-flight generation (ESC while loading).
 	cancelGen context.CancelFunc
 
+	// Lazy session lifecycle: the session is created on the first message so
+	// abandoned chats never leave empty rows behind.
+	sessionCreating bool
+	pendingFlush    bool // persist history once the in-flight generation ends
+
+	// resumableID points at a previous session for the same task context,
+	// offered for resume via ctrl+r.
+	resumableID string
+
 	// Token usage tracking
 	inputTokens  int // Accumulated input tokens for the session
 	outputTokens int // Accumulated output tokens for the session
@@ -198,6 +207,19 @@ type streamChunkMsg struct {
 type toolRecordMsg struct {
 	owner *[]ChatMessage
 	line  string
+}
+
+// sessionCreatedMsg carries the result of the lazy session creation.
+type sessionCreatedMsg struct {
+	owner   *[]ChatMessage
+	session session.Session
+	err     error
+}
+
+// resumableFoundMsg reports a previous session for the same task context.
+type resumableFoundMsg struct {
+	owner *[]ChatMessage
+	info  infraSession.SessionInfo
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -351,18 +373,30 @@ func (m *Model) AddInfoMessage(content string) {
 // while the session was still being created are persisted retroactively.
 func (m *Model) SetSession(sess session.Session) {
 	m.session = sess
-	if sess == nil || m.sessionService == nil || m.history == nil || len(*m.history) == 0 {
+	if sess == nil {
 		return
 	}
 	if m.loading {
 		// A generation is appending to history from its own goroutine;
-		// copying it here would race. That in-flight turn stays unpersisted.
+		// copying it here would race. Flush once the response lands.
+		m.pendingFlush = true
+		return
+	}
+	m.flushHistory()
+}
+
+// flushHistory persists the whole in-memory history to the session. Used
+// when the session attaches after turns already happened (lazy creation).
+func (m *Model) flushHistory() {
+	m.pendingFlush = false
+	if m.session == nil || m.sessionService == nil || m.history == nil || len(*m.history) == 0 {
 		return
 	}
 
 	backlog := make([]*genai.Content, len(*m.history))
 	copy(backlog, *m.history)
 	svc := m.sessionService
+	sess := m.session
 	go func() {
 		ctx := context.Background()
 		for _, content := range backlog {
@@ -426,7 +460,15 @@ func (m *Model) submitInput() (tea.Model, tea.Cmd) {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancelGen = cancel
 
-	return m, tea.Batch(m.spinner.Tick, m.generateResponse(ctx, input))
+	cmds := []tea.Cmd{m.spinner.Tick, m.generateResponse(ctx, input)}
+
+	// Lazy session creation: the first message brings the session to life
+	if m.session == nil && m.sessionService != nil && !m.sessionCreating {
+		m.sessionCreating = true
+		cmds = append(cmds, m.createSessionCmd())
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // SetFocusMode sets the focus mode and updates UI state accordingly.
@@ -446,7 +488,52 @@ func (m *Model) SetFocusMode(mode FocusMode) {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, tea.EnterAltScreen)
+	return tea.Batch(textarea.Blink, tea.EnterAltScreen, m.findResumableCmd())
+}
+
+// findResumableCmd looks up a previous session for the same task context, so
+// the user can resume it with ctrl+r instead of starting over.
+func (m *Model) findResumableCmd() tea.Cmd {
+	if m.session != nil || m.contextLabel == "" {
+		return nil
+	}
+	svc, ok := m.sessionService.(*infraSession.SQLiteService)
+	if !ok {
+		return nil
+	}
+	label := m.contextLabel
+	owner := m.msgs
+	return func() tea.Msg {
+		info, err := svc.FindLatestByContextLabel(context.Background(), infraSession.DefaultAppName, infraSession.DefaultUserID, label)
+		if err != nil || info == nil {
+			return nil
+		}
+		return resumableFoundMsg{owner: owner, info: *info}
+	}
+}
+
+// createSessionCmd creates the persistent session on first use and tags it
+// with the task context for later resume-by-task lookups.
+func (m *Model) createSessionCmd() tea.Cmd {
+	svc := m.sessionService
+	label := m.contextLabel
+	owner := m.msgs
+	return func() tea.Msg {
+		ctx := context.Background()
+		resp, err := svc.Create(ctx, &session.CreateRequest{
+			AppName: infraSession.DefaultAppName,
+			UserID:  infraSession.DefaultUserID,
+		})
+		if err != nil {
+			return sessionCreatedMsg{owner: owner, err: err}
+		}
+		if label != "" {
+			if sqliteSvc, ok := svc.(*infraSession.SQLiteService); ok {
+				_ = sqliteSvc.SetContextLabel(ctx, resp.Session.ID(), label)
+			}
+		}
+		return sessionCreatedMsg{owner: owner, session: resp.Session}
+	}
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -575,6 +662,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.loading {
 				return m.openSessionsModal()
 			}
+
+		case tea.KeyCtrlR:
+			// Resume the previous conversation for this task context
+			if m.resumableID != "" && !m.loading {
+				resumeID := m.resumableID
+				m.resumableID = ""
+				return m.switchToSession(resumeID)
+			}
 		}
 
 	case ResponseMsg:
@@ -585,6 +680,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.toolNotification = ""
 		m.cancelGen = nil
+		if m.pendingFlush {
+			// Session attached mid-generation; history is stable now
+			m.flushHistory()
+		}
 		partialText := m.streamingText
 		m.streamingText = ""
 		if errors.Is(msg.Err, context.Canceled) {
@@ -626,6 +725,34 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.Focus()
 		m.focusMode = FocusInput
 		return m, textarea.Blink
+
+	case sessionCreatedMsg:
+		if msg.owner != m.msgs {
+			return m, nil
+		}
+		m.sessionCreating = false
+		if msg.err != nil {
+			m.AppendNotice("Session persistence unavailable: " + msg.err.Error())
+			return m, nil
+		}
+		m.resumableID = "" // this conversation now has its own session
+		m.SetSession(msg.session)
+		return m, nil
+
+	case resumableFoundMsg:
+		if msg.owner != m.msgs || m.session != nil {
+			return m, nil
+		}
+		m.resumableID = msg.info.ID
+		desc := msg.info.Summary
+		if desc == "" {
+			desc = msg.info.ContextLabel
+		}
+		m.AppendNotice(fmt.Sprintf(
+			"Previous conversation for this task: %s (%d events, %s) — press ctrl+r to resume",
+			common.Truncate(desc, 50), msg.info.EventCount, formatAge(time.Since(msg.info.UpdatedAt)),
+		))
+		return m, nil
 
 	case streamChunkMsg:
 		if msg.owner != m.msgs || !m.loading {
@@ -699,6 +826,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sessionSwitchedMsg:
 		m.activeModal = ModalNone
 		m.sessionsLoading = false
+		m.resumableID = ""
 		m.session = msg.session
 		m.history = &msg.history
 		// Rebuild msgs from history
@@ -879,11 +1007,16 @@ func (m Model) renderFooter() string {
 		hints = []string{
 			hint("enter", "send"),
 			hint("ctrl+j", "newline"),
+		}
+		if m.resumableID != "" {
+			hints = append(hints, hint("ctrl+r", "resume previous"))
+		}
+		hints = append(hints,
 			hint("ctrl+s", "sessions"),
 			hint("↑↓", "scroll"),
 			hint("tab", "navigate msgs"),
 			hint("esc", "messages"),
-		}
+		)
 	}
 
 	// Show status message if present
@@ -1095,6 +1228,20 @@ func wrapText(text string, width int) string {
 	}
 
 	return result.String()
+}
+
+// formatAge renders a duration as a compact age, e.g. "2d ago".
+func formatAge(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+	}
 }
 
 // formatTokenCount formats a token count in a human-readable format (e.g., 1.2K, 3.4M)
