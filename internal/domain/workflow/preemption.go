@@ -256,12 +256,28 @@ func analyzeTaskShard(attempts []Call) PreemptionTaskStats {
 	return stats
 }
 
+// billableHours returns the VM lifetime in hours — the basis Cromwell uses to
+// bill. It prefers vmStartTime/vmEndTime (actual VM uptime) and falls back to
+// the task's Start/End when VM timestamps are absent. Using the task wall-clock
+// overestimates cost, since it includes queueing and localization outside the
+// billed VM window.
+func billableHours(call Call) float64 {
+	if !call.VMStartTime.IsZero() && !call.VMEndTime.IsZero() {
+		return call.VMEndTime.Sub(call.VMStartTime).Hours()
+	}
+	if !call.Start.IsZero() && !call.End.IsZero() {
+		return call.End.Sub(call.Start).Hours()
+	}
+	return 0
+}
+
 // calculateAttemptCost calculates the estimated cost of a single attempt.
 func calculateAttemptCost(call Call) float64 {
-	// If we have actual VM cost per hour, use it
-	if call.VMCostPerHour > 0 && !call.Start.IsZero() && !call.End.IsZero() {
-		durationHours := call.End.Sub(call.Start).Hours()
-		return call.VMCostPerHour * durationHours
+	// If we have actual VM cost per hour, use it against the billed VM lifetime
+	if call.VMCostPerHour > 0 {
+		if hours := billableHours(call); hours > 0 {
+			return call.VMCostPerHour * hours
+		}
 	}
 
 	// Otherwise, estimate using resource-hours
@@ -274,10 +290,7 @@ func calculateAttemptCost(call Call) float64 {
 		mem = 1
 	}
 
-	var durationHours float64
-	if !call.Start.IsZero() && !call.End.IsZero() {
-		durationHours = call.End.Sub(call.Start).Hours()
-	}
+	durationHours := billableHours(call)
 	if durationHours <= 0 {
 		durationHours = 0.01 // Minimum 36 seconds
 	}
