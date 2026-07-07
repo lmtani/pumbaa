@@ -7,13 +7,13 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 ## Core Features
 
 - **Workflow Operations**: Submit, query, monitor, abort, and debug Cromwell workflows
-- **Interactive TUI Dashboard**: Real-time workflow monitoring with filtering and status tracking
-- **Debug TUI**: Visual tree navigation of workflow execution with call details and failure analysis
+- **Interactive TUI Dashboard**: Real-time workflow monitoring with filtering, status tracking, and run comparison (diff)
+- **Debug TUI**: Visual tree navigation of workflow execution with call details, failure analysis, and cost breakdown
 - **AI Chat Agent**: LLM-powered assistant for workflow analysis and troubleshooting (Gemini, Vertex AI, Ollama)
 - **WDL Bundle Creation**: Package WDL workflows with dependencies into distributable ZIP files
 - **WDL Indexing**: Fast search and discovery of WDL tasks and workflows
-- **Resource Monitoring**: Analyze resource usage from monitoring logs
-- **Telemetry**: Optional usage tracking with Sentry integration
+- **Resource Monitoring & Reports**: Analyze resource usage from monitoring logs and generate HTML reports with optimization recommendations
+- **Telemetry**: Optional anonymous usage tracking via a self-hosted Cloudflare Worker endpoint
 
 ## Project Structure
 
@@ -22,30 +22,41 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 ├── internal/                   # Private application code
 │   ├── application/            # Use cases (Application Layer)
 │   │   ├── errors.go           # Application layer error types
+│   │   ├── ports/              # Port interfaces (Hexagonal Architecture)
 │   │   ├── bundle/             # WDL bundle creation
 │   │   └── workflow/           # Workflow use cases (flat structure)
 │   │       ├── abort.go        # Abort running workflows
-│   │       ├── debug.go        # Debug info parsing
+│   │       ├── batchlogs.go    # Fetch batch/task logs
+│   │       ├── cache_resolver.go # Resolve call-cache hit chains
+│   │       ├── compare.go      # Diff two workflow runs
+│   │       ├── inputs.go       # Workflow inputs retrieval
 │   │       ├── metadata.go     # Metadata retrieval
 │   │       ├── monitoring.go   # Resource usage analysis
+│   │       ├── outputs.go      # Workflow outputs retrieval
 │   │       ├── query.go        # Workflow querying
+│   │       ├── resource_report.go # Aggregate resource usage report
+│   │       ├── resource_visualization.go # HTML resource report rendering
 │   │       ├── submit.go       # Workflow submission
 │   │       └── testutil_test.go # Shared test mocks
 │   ├── config/                 # Configuration management
 │   ├── container/              # Dependency injection container
-│   ├── domain/                 # Domain entities and interfaces (Domain Layer)
+│   ├── domain/                 # Domain entities (Domain Layer)
 │   │   ├── bundle/             # Bundle entities and errors
-│   │   ├── ports/              # Port interfaces and errors
 │   │   ├── wdlindex/           # WDL index entities
 │   │   └── workflow/           # Workflow entities and errors
 │   ├── infrastructure/         # External services adapters (Infrastructure Layer)
 │   │   ├── agents/             # LLM agent infrastructure
 │   │   │   ├── llm/            # LLM providers (Gemini, Vertex, Ollama)
-│   │   │   └── tools/          # Reusable tools for agents (Cromwell, GCS, WDL)
+│   │   │   └── tools/          # Reusable tools for agents (Cromwell, GCS, local FS, WDL)
+│   │   ├── cloudlogging/       # Google Cloud Logging adapter (batch logs)
 │   │   ├── cromwell/           # Cromwell API client
+│   │   ├── metrics/            # Task metrics TSV reader/writer
+│   │   ├── recommendation/     # LLM-based resource recommendations
 │   │   ├── session/            # SQLite session management
 │   │   ├── storage/            # File storage (local and GCS)
-│   │   ├── telemetry/          # Telemetry service (Sentry/NoOp)
+│   │   ├── telemetry/          # Telemetry service (Cloudflare Worker / NoOp)
+│   │   ├── templates/          # Embedded HTML templates for reports
+│   │   ├── version/            # Version update checker
 │   │   └── wdl/                # WDL indexer implementation
 │   └── interfaces/             # UI adapters (Interface Layer)
 │       ├── cli/handler/        # CLI command handlers
@@ -65,15 +76,9 @@ Pumbaa is a CLI tool for interacting with the Cromwell workflow engine and WDL f
 
 ### 1. Domain Layer (`internal/domain/`)
 
-Contains business entities, value objects, and port interfaces. This layer has no dependencies on external frameworks or libraries.
+Contains business entities and value objects. This layer has no dependencies on external frameworks or libraries.
 
 **Packages:**
-
-- **`ports/`**: **Port interfaces (Hexagonal Architecture)**
-  - `WorkflowRepository` - Primary port for all workflow operations (execution, metadata, health, labels)
-  - `FileProvider` - Port for file storage access (local and cloud)
-  - `WDLRepository` - Port for WDL indexing operations
-  - `errors.go` - Port-level errors (`ErrFileNotFound`, `ErrFileTooLarge`, `FileError`)
 
 - **`workflow/`**: Core workflow entities (`Workflow`, `Call`, `Status`, `HealthStatus`)
   - `errors.go` - Domain errors (`ErrWorkflowNotFound`, `ValidationError`, `APIError`)
@@ -83,7 +88,17 @@ Contains business entities, value objects, and port interfaces. This layer has n
 
 ### 2. Application Layer (`internal/application/`)
 
-Contains use cases that orchestrate domain logic. Each use case is a single business operation with a clear input and output.
+Contains use cases that orchestrate domain logic, plus the port interfaces they depend on. Each use case is a single business operation with a clear input and output.
+
+**Ports (`ports/` — Hexagonal Architecture):**
+
+- `workflow.go` - `WorkflowRepository`, a composition of smaller focused interfaces (`WorkflowQuerier`, `WorkflowMetadataFetcher`, `WorkflowSubmitter`, `WorkflowAborter`, `HealthChecker`, `LabelManager`, ...). Consumers depend on the smallest interface that meets their needs.
+- `storage.go` - `FileProvider` (file content access), `FileSizeCache`, `StorageBackend`
+- `wdlindex.go` - `WDLRepository` for WDL indexing operations
+- `batchlogs.go` - `BatchLogsRepository` for fetching task logs from external log stores
+- `metrics.go` - `TaskMetricsReader` / `TaskMetricsWriter` for task metrics I/O
+- `recommendation.go` - `RecommendationGenerator` and `LLMDebugWriter` for resource optimization recommendations
+- `errors.go` - Port-level errors (`ErrFileNotFound`, `ErrFileTooLarge`, `ErrInvalidPath`, `ErrAccessDenied`, `FileError`)
 
 **Error Handling:**
 
@@ -97,13 +112,18 @@ Contains use cases that orchestrate domain logic. Each use case is a single busi
 - `metadata.go` - Retrieve workflow execution metadata
 - `abort.go` - Abort running workflows
 - `query.go` - Query workflows with filters (status, name, dates)
-- `debug.go` - Parse metadata and build execution trees for debugging
+- `inputs.go` / `outputs.go` - Retrieve workflow inputs and outputs
+- `compare.go` - Compare two workflow runs (metadata diff in the domain layer)
+- `batchlogs.go` - Fetch batch/task logs
+- `cache_resolver.go` - Follow call-cache hit chains to the original execution
 - `monitoring.go` - Analyze resource usage from monitoring logs (CPU, memory, disk)
+- `resource_report.go` - Aggregate resource usage across tasks into a report
+- `resource_visualization.go` - Render the resource report as an HTML page
 - `bundle/` - Create WDL bundles with dependency resolution
 
 ### 3. Infrastructure Layer (`internal/infrastructure/`)
 
-Contains implementations of external services and adapters for domain interfaces.
+Contains implementations of external services and adapters for the application ports.
 
 **Implementations:**
 
@@ -118,12 +138,21 @@ Contains implementations of external services and adapters for domain interfaces
     - `ollama/` - Local Ollama integration
     - `gemini.go` - Google Gemini API client
     - `vertex.go` - Google Vertex AI client
+    - `genai_stream.go` - Streaming support for genai-based providers
     - `factory.go` - LLM provider factory pattern
   - **`tools/`**: Reusable tool registry for agents
     - **`cromwell/`**: Query, status, metadata, logs, outputs tools
     - **`gcs/`**: Google Cloud Storage file download
+    - **`localfs/`**: Local file system access (read/write in the working dir)
     - **`wdl/`**: WDL search, list, and info tools
+    - **`factory.go`**: `builtinActions` table — single source for action registration, descriptions, and schema enum
     - **`registry.go`**: Tool registration and schema generation
+
+- **`cloudlogging/`**: Google Cloud Logging client implementing `ports.BatchLogsRepository`
+
+- **`metrics/`**: TSV-based implementations of `ports.TaskMetricsReader` / `ports.TaskMetricsWriter`
+
+- **`recommendation/`**: LLM-backed implementation of `ports.RecommendationGenerator` for resource optimization suggestions (plus a mock for tests)
 
 - **`wdl/`**: WDL indexer implementing `ports.WDLRepository`
   - File system traversal
@@ -138,9 +167,14 @@ Contains implementations of external services and adapters for domain interfaces
   - Uses Google ADK session interface
   - Persistent conversation state
 
-- **`telemetry/`**: Usage tracking and error reporting
-  - Sentry integration for production
-  - NoOp implementation for privacy/development
+- **`telemetry/`**: Anonymous usage tracking
+  - `cloudflare.go` - Sends events to a Cloudflare Worker endpoint (endpoint and key injected at build time via `-ldflags`)
+  - `noop.go` - NoOp implementation for privacy/development
+  - `service.go` - Service interface
+
+- **`templates/`**: Embedded HTML templates (`report.html`) used by the resource visualization use case
+
+- **`version/`**: Checks for newer pumbaa releases
 
 ### 4. Interface Layer (`internal/interfaces/`)
 
@@ -148,7 +182,9 @@ Contains adapters for user interaction. This layer depends on the application la
 
 **CLI Handlers:**
 
-- `submit`, `metadata`, `abort`, `query` - Standard workflow operations
+- `submit`, `metadata`, `abort`, `query`, `inputs`, `outputs` - Standard workflow operations
+- `diff` - Compare two workflow runs
+- `analyze`, `resource_report` - Resource analysis and reports
 - `bundle` - WDL packaging
 - `debug`, `dashboard` - Launch TUI applications
 - `chat` - Launch AI chat agent TUI
@@ -216,18 +252,16 @@ The container wires all dependencies together following the dependency inversion
                    ▼
 ┌──────────────────────────────────────────────────────┐
 │                 Application Layer                     │
-│           (Use Cases - Business Logic)                │
-└──────────────────┬───────────────────────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────────────────────┐
-│                   Domain Layer                        │
-│      (Entities, Interfaces, Business Rules)           │
-└──────────────────▲───────────────────────────────────┘
-                   │
-                   │ implements interfaces
-                   │
-┌──────────────────┴───────────────────────────────────┐
+│      (Use Cases + Ports - Business Orchestration)     │
+└──────────────────┬───────────────▲───────────────────┘
+                   │               │
+                   ▼               │ implements ports
+┌──────────────────────────────┐   │
+│         Domain Layer         │   │
+│ (Entities, Business Rules)   │   │
+└──────────────────────────────┘   │
+                                   │
+┌──────────────────────────────────┴───────────────────┐
 │              Infrastructure Layer                     │
 │    (Cromwell Client, LLM Providers, Storage, etc)    │
 └──────────────────────────────────────────────────────┘
@@ -238,13 +272,13 @@ The container wires all dependencies together following the dependency inversion
 **Key Principles:**
 - Dependencies point inward (toward domain)
 - Domain has zero external dependencies
-- Infrastructure implements domain interfaces
+- Port interfaces live in `application/ports/`; infrastructure implements them
 - Interface layer depends only on application layer
 
 ## Key Design Patterns
 
 ### 1. Ports & Adapters (Hexagonal Architecture)
-Domain defines port interfaces in `domain/ports/`, implemented by adapters in `infrastructure/`. This inverts dependencies and allows business logic to remain independent of technical details.
+The application layer defines port interfaces in `application/ports/`, implemented by adapters in `infrastructure/`. This inverts dependencies and allows business logic to remain independent of technical details.
 
 ### 2. Use Case Pattern
 Each business operation is encapsulated in a use case with:
@@ -263,7 +297,7 @@ The `container.Container` manages object lifecycle and dependency wiring using c
 Different LLM providers implement a common interface, allowing runtime provider selection.
 
 ### 6. Adapter Pattern
-Infrastructure adapters translate between external APIs and domain interfaces.
+Infrastructure adapters translate between external APIs and application ports.
 
 ## Testing Strategy
 
@@ -274,27 +308,21 @@ Infrastructure adapters translate between external APIs and domain interfaces.
 
 ## Known Architecture Considerations
 
-### Current Simplifications
-
-1. **debuginfo package** contains both parsing and tree building logic
-   - **Reason**: Tree building is tightly coupled to metadata structure and not reused elsewhere
-   - **Impact**: Slightly mixed responsibilities, but isolated to one package
-
 ### Design Decisions
 
-- **Centralized Ports Package**: All port interfaces are defined in `domain/ports/` following Hexagonal Architecture. This makes it easy to see all external dependencies and maintains a clear boundary between domain and infrastructure.
+- **Centralized Ports Package**: All port interfaces are defined in `application/ports/` following Hexagonal Architecture. This makes it easy to see all external dependencies and maintains a clear boundary between application logic and infrastructure.
 
-- **Unified WorkflowRepository**: Single comprehensive interface for all workflow operations (execution, metadata, health, labels, costs). This eliminates interface redundancy and provides a complete contract for workflow management. Both CLI use cases and TUI handlers use the same port.
+- **Composed WorkflowRepository**: `WorkflowRepository` is a composition of small, focused interfaces (Interface Segregation Principle). Use cases depend on the narrowest interface they need (e.g. `WorkflowMetadataReader`), while the Cromwell client satisfies the full contract.
 
 - **FileProvider abstraction**: Single interface (`ports.FileProvider`) for file access, allowing implementations for local files, GCS, S3, or any other storage backend. Application layer depends only on the port.
 
 - **WDLRepository**: Dedicated port for WDL indexing operations, separating concerns between workflow execution (Cromwell) and workflow discovery (WDL index).
 
-- **Chat agent tools in infrastructure**: Tools are adapters to external services (Cromwell API, GCS, WDL files), implementing domain ports where appropriate.
+- **Chat agent tools in infrastructure**: Tools are adapters to external services (Cromwell API, GCS, local FS, WDL files), implementing application ports where appropriate.
 
 - **Session management**: Delegates to Google ADK interfaces for compatibility with future storage backends.
 
-- **Telemetry service**: Interface-based design allows NoOp implementation for privacy and development.
+- **Telemetry service**: Interface-based design with a Cloudflare Worker backend and a NoOp implementation for privacy and development. The endpoint and API key are injected at build time, so development builds send nothing.
 
 ## CI/CD Pipeline
 
@@ -325,23 +353,24 @@ The project uses GitHub Actions for continuous integration and releases:
 
 ### Core Libraries
 - **`urfave/cli/v2`**: CLI framework and command routing
-- **`charmbracelet/bubbletea`**: TUI framework (Elm architecture)
+- **`charmbracelet/bubbletea`** + **`bubbles`**: TUI framework (Elm architecture) and components
 - **`charmbracelet/lipgloss`**: TUI styling and layout
-- **`antlr4`**: WDL parsing (via generated parser)
+- **`charmbracelet/glamour`**: Markdown rendering in the chat TUI
+- **`antlr4-go/antlr/v4`**: WDL parsing (via generated parser)
 
 ### Cloud & AI
-- **`google.golang.org/genai`**: Gemini API client
-- **`cloud.google.com/go/vertexai`**: Vertex AI client
+- **`google.golang.org/genai`**: Gemini and Vertex AI clients (single SDK for both)
 - **`cloud.google.com/go/storage`**: GCS file access
+- **`cloud.google.com/go/logging`**: Google Cloud Logging (batch logs)
 - **Ollama**: Local LLM via HTTP API
 
 ### Infrastructure
-- **`getsentry/sentry-go`**: Error tracking and telemetry
 - **`google.golang.org/adk`**: Agent Development Kit (sessions, tools)
-- **`mattn/go-sqlite3`**: Session storage
+- **`modernc.org/sqlite`**: Session storage (pure-Go SQLite driver, no CGO)
+- **Telemetry**: In-house HTTP client posting to a Cloudflare Worker (no third-party tracking SDK)
 
 ---
 
-**Last Updated**: 2025-12-26
-**Document Version**: 2.1
+**Last Updated**: 2026-07-07
+**Document Version**: 2.2
 **Project Version**: See [releases](https://github.com/lmtani/pumbaa/releases)

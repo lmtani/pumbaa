@@ -24,28 +24,32 @@ pumbaa dashboard     # Launch interactive TUI
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.25+
 
 ### Build
 
 ```bash
-go build -o pumbaa ./cmd/pumbaa
+make build           # outputs dist/pumbaa
+# or: go build -o pumbaa ./cmd/cli
 
 # Run tests
-go test ./...
+make test
 ```
 
 ### Project Structure
 
 ```
-cmd/pumbaa/           # CLI entrypoint
+cmd/cli/              # CLI entrypoint
 internal/
-  ├── domain/         # Business entities and ports
-  ├── application/    # Use cases
+  ├── domain/         # Business entities
+  ├── application/    # Use cases and ports (hexagonal architecture)
   ├── infrastructure/ # External services (Cromwell, GCS, LLM)
   └── interfaces/     # CLI commands and TUI
+pkg/wdl/              # WDL parser (ANTLR)
 docs/                 # MkDocs documentation
 ```
+
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Contributing
 

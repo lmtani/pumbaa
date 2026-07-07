@@ -21,8 +21,10 @@ Package WDL workflows with dependencies into ZIP files.
 ## :material-rocket-launch: Quick Start
 
 ```bash
-pumbaa bundle create --workflow FILE --output FILE
+pumbaa bundle --workflow FILE --output FILE
 ```
+
+Aliases: `pumbaa b`, `pumbaa pack`
 
 ## :material-flag: Flags
 
@@ -59,7 +61,7 @@ tasks/
 === "Create Bundle"
 
     ```bash
-    pumbaa bundle create \
+    pumbaa bundle \
       --workflow pipeline.wdl \
       --output bundle.zip
     ```

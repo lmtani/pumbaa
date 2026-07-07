@@ -23,6 +23,8 @@ Stop running workflows.
 pumbaa workflow abort <workflow-id>
 ```
 
+Aliases: `pumbaa wf a`, `pumbaa wf kill`
+
 ## :material-lightbulb: Example
 
 ```bash

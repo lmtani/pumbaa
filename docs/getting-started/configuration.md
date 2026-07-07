@@ -52,11 +52,36 @@ pumbaa config path
 | `ollama_host` | Ollama server URL | `http://localhost:11434` |
 | `ollama_model` | Ollama model name | `llama3.2:3b` |
 | `gemini_api_key` | Gemini API key | `AIza...` |
-| `gemini_model` | Gemini model | `gemini-2.0-flash` |
+| `gemini_model` | Gemini model | `gemini-2.5-flash` |
 | `vertex_project` | GCP project ID | `my-project` |
 | `vertex_location` | Vertex AI region | `us-central1` |
-| `vertex_model` | Vertex AI model | `gemini-2.0-flash` |
+| `vertex_model` | Vertex AI model | `gemini-2.5-flash` |
 | `wdl_directory` | WDL files for context | `/path/to/workflows` |
+
+---
+
+## :material-application-variable: Environment Variables
+
+Every setting can also be provided via environment variable. Env vars override the config file.
+
+| Variable | Equivalent config key | Default |
+|----------|----------------------|---------|
+| `CROMWELL_HOST` | `cromwell_host` | `http://localhost:8000` |
+| `PUMBAA_LLM_PROVIDER` | `llm_provider` | `ollama` |
+| `OLLAMA_HOST` | `ollama_host` | `http://localhost:11434` |
+| `OLLAMA_MODEL` | `ollama_model` | `llama3.2:3b` |
+| `GEMINI_API_KEY` | `gemini_api_key` | — |
+| `GEMINI_MODEL` | `gemini_model` | `gemini-2.5-flash` |
+| `VERTEX_PROJECT` | `vertex_project` | — |
+| `VERTEX_LOCATION` | `vertex_location` | `us-central1` |
+| `VERTEX_MODEL` | `vertex_model` | `gemini-2.5-flash` |
+| `PUMBAA_WDL_DIR` | `wdl_directory` | — |
+| `PUMBAA_WDL_INDEX` | — (WDL index cache path) | `~/.pumbaa/wdl_index.json` |
+| `PUMBAA_SESSION_DB` | — (chat sessions database) | `~/.pumbaa/sessions.db` |
+| `PUMBAA_TELEMETRY_ENABLED` | `telemetry_enabled` | `true` |
+
+!!! warning "Prefix inconsistency"
+    Provider variables follow their ecosystem's conventions and do **not** use the `PUMBAA_` prefix: it is `OLLAMA_HOST`, `GEMINI_API_KEY`, `VERTEX_PROJECT` — not `PUMBAA_OLLAMA_HOST`.
 
 ---
 

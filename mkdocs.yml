@@ -49,6 +49,8 @@ nav:
     - Submit Workflow: features/submit.md
     - Query Workflows: features/query.md
     - Workflow Metadata: features/metadata.md
+    - Inputs & Outputs: features/inputs-outputs.md
+    - Diff Two Runs: features/diff.md
     - Abort Workflow: features/abort.md
     - Bundle WDL: features/bundle.md
   - AI Chat:
@@ -56,7 +58,10 @@ nav:
   - Advanced:
     - Resource Monitoring: features/resource-monitoring.md
     - Resource Analysis: features/resource-analysis.md
-  - Contributing: contributing.md
+  - Development:
+    - Contributing: contributing.md
+    - Architecture: ARCHITECTURE.md
+    - Testing Guidelines: testing-guidelines.md
 
 markdown_extensions:
   - admonition

@@ -24,6 +24,8 @@ Submit WDL workflows to Cromwell.
 pumbaa workflow submit --workflow FILE [OPTIONS]
 ```
 
+Alias: `pumbaa wf s`
+
 ## :material-flag: Flags
 
 | Flag | Alias | Required | Description |
@@ -98,7 +100,7 @@ Configure workflow execution:
 For workflows with imports, create ZIP with imported files:
 
 ```bash
-pumbaa bundle create --workflow workflow.wdl --output deps.zip
+pumbaa bundle --workflow workflow.wdl --output deps.zip
 ```
 
 Then submit:
@@ -124,19 +126,18 @@ pumbaa workflow submit \
 
 ## :material-check-circle: Response
 
-```json
-{
-  "id": "abc12345-6789-0def-ghij-klmnopqrstuv",
-  "status": "Submitted"
-}
+```text
+✓ Workflow submitted successfully!
+  Workflow ID: abc12345-6789-0def-ghij-klmnopqrstuv
+  Status: Submitted
 ```
 
 Use the ID to monitor:
 
 ```bash
 pumbaa dashboard                    # Interactive
-pumbaa workflow debug <id>          # Debug view  
-pumbaa workflow query --id <id>     # CLI query
+pumbaa workflow debug --id <id>     # Debug view
+pumbaa workflow metadata <id>       # CLI metadata
 ```
 
 ## :material-book-open-variant: See Also
