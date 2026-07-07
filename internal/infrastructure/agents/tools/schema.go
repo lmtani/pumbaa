@@ -12,7 +12,7 @@ func GetParametersSchema() map[string]any {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "The action to perform",
-				"enum":        []string{"query", "status", "metadata", "outputs", "logs", "gcs_download", "wdl_list", "wdl_search", "wdl_info"},
+				"enum":        builtinActionNames(),
 			},
 			"workflow_id": map[string]any{
 				"type":        "string",
@@ -47,6 +47,17 @@ func GetParametersSchema() map[string]any {
 		},
 		"required": []string{"action"},
 	}
+}
+
+// builtinActionNames returns the names of all built-in actions for the
+// schema enum, derived from the same table that drives registration.
+func builtinActionNames() []string {
+	specs := builtinActions()
+	names := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		names = append(names, spec.name)
+	}
+	return names
 }
 
 // Re-export types for backward compatibility with external packages

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"google.golang.org/adk/tool"
+
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
@@ -14,7 +16,10 @@ import (
 
 // initChatDependencies creates the optional chat dependencies for TUI screens.
 // Returns nil if LLM or session initialization fails (chat is silently disabled).
-func initChatDependencies(cfg *config.Config, repo ports.WorkflowReader) *tui.ChatDependencies {
+//
+// extraTools is the extension point for adding standalone ADK tools to the
+// chat agent beyond the built-in pumbaa tool; see the tools package docs.
+func initChatDependencies(cfg *config.Config, repo ports.WorkflowReader, extraTools ...tool.Tool) *tui.ChatDependencies {
 	llmModel, err := llm.NewLLM(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Chat disabled - LLM initialization failed: %v\n", err)
@@ -27,7 +32,7 @@ func initChatDependencies(cfg *config.Config, repo ports.WorkflowReader) *tui.Ch
 		return nil
 	}
 
-	agentTools := tools.GetAllTools(repo, nil)
+	agentTools := tools.GetAllTools(repo, nil, extraTools...)
 
 	return &tui.ChatDependencies{
 		LLM:        llmModel,
