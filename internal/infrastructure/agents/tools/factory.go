@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/localfs"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
@@ -72,6 +73,13 @@ func builtinActions() []actionSpec {
 			description: "Read file from Google Cloud Storage. Required: path (gs://bucket/file).",
 			build: func(_ ports.WorkflowReader, _ wdl.Repository) types.Handler {
 				return gcs.NewDownloadHandler()
+			},
+		},
+		{
+			name:        "write_file",
+			description: "Write a text file (e.g. a bash script to reproduce/debug a task locally) into the user's current working directory. Required: path (relative), content. Optional: executable (true for scripts), overwrite (must be true to replace an existing file).",
+			build: func(_ ports.WorkflowReader, _ wdl.Repository) types.Handler {
+				return localfs.NewWriteHandler()
 			},
 		},
 		{

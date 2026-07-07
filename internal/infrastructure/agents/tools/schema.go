@@ -29,7 +29,19 @@ func GetParametersSchema() map[string]any {
 			},
 			"path": map[string]any{
 				"type":        "string",
-				"description": "GCS path (gs://bucket/file) for gcs_download action",
+				"description": "GCS path (gs://bucket/file) for gcs_download, or relative file path for write_file",
+			},
+			"content": map[string]any{
+				"type":        "string",
+				"description": "File body for write_file action",
+			},
+			"executable": map[string]any{
+				"type":        "boolean",
+				"description": "Mark the written file as executable (write_file action)",
+			},
+			"overwrite": map[string]any{
+				"type":        "boolean",
+				"description": "Allow write_file to replace an existing file",
 			},
 			"query": map[string]any{
 				"type":        "string",

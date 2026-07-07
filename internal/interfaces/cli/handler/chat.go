@@ -65,9 +65,22 @@ status, failures, logs, outputs, or runtime metadata.
 
 Use **only** to read real files produced by executions.
 
-- action="gcs_download"  
-  Read file from GCS  
+- action="gcs_download"
+  Read file from GCS
   Required: path (gs://bucket/file)
+
+---
+
+## 2b. Local files (user's working directory)
+
+Use to save scripts or files the user asks for — e.g. a bash script that
+fetches a task's inputs with gsutil and reruns the analysis locally with
+docker for debugging.
+
+- action="write_file"
+  Write a text file relative to the current working directory
+  Required: path (relative), content
+  Optional: executable=true for scripts, overwrite=true to replace
 
 ---
 
