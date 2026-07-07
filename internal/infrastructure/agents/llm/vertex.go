@@ -50,41 +50,16 @@ func (m *VertexModel) Name() string {
 	return fmt.Sprintf("vertex/%s", m.modelName)
 }
 
-// GenerateContent implements model.LLM.GenerateContent.
+// GenerateContent implements model.LLM.GenerateContent. Streaming yields
+// Partial responses per chunk followed by one aggregated final response.
 func (m *VertexModel) GenerateContent(
 	ctx context.Context,
 	req *model.LLMRequest,
 	stream bool,
 ) iter.Seq2[*model.LLMResponse, error] {
-	return func(yield func(*model.LLMResponse, error) bool) {
-		// Build the genai request
-		genaiReq := &genai.GenerateContentConfig{}
-
-		if req.Config != nil {
-			genaiReq = req.Config
-		}
-
-		// Use the genai client to generate content
-		resp, err := m.client.Models.GenerateContent(ctx, m.modelName, req.Contents, genaiReq)
-		if err != nil {
-			_ = yield(nil, fmt.Errorf("vertex AI generation failed: %w", err))
-			return
-		}
-
-		// Convert response
-		if len(resp.Candidates) == 0 {
-			_ = yield(nil, fmt.Errorf("no candidates in response"))
-			return
-		}
-
-		candidate := resp.Candidates[0]
-		adkResp := &model.LLMResponse{
-			Content:       candidate.Content,
-			UsageMetadata: resp.UsageMetadata,
-		}
-
-		_ = yield(adkResp, nil)
-	}
+	return generateGenaiContent(ctx, m.client, m.modelName, req, stream, func(err error) error {
+		return fmt.Errorf("vertex AI generation failed: %w", err)
+	})
 }
 
 // Close closes the client connection.

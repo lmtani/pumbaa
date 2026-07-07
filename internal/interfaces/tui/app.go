@@ -54,6 +54,12 @@ type AppModel struct {
 	debug        debug.Model
 	chat         *chat.Model
 
+	// chatContextLabel/chatInstruction identify the conversation currently
+	// loaded in the chat screen, so re-entering the chat for the same task
+	// resumes it instead of starting over.
+	chatContextLabel string
+	chatInstruction  string
+
 	// debugWorkflow is the workflow currently loaded in the debug screen; it
 	// lets navigateToDebug reuse the model (preserving cursor, expansion,
 	// search and watch state) when the target workflow hasn't changed.
@@ -225,6 +231,10 @@ func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
 
 // navigateToChat switches to the chat screen. The chat session is created
 // asynchronously so the UI never blocks on network or disk.
+//
+// Re-entering the chat for the same task (same context label) resumes the
+// live conversation instead of starting a new one; freshly collected context
+// only replaces the system instruction.
 func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.Cmd) {
 	if !m.deps.HasChat() {
 		// Screens guard against this before emitting the message; ignore.
@@ -234,6 +244,21 @@ func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.C
 	m.stack = append(m.stack, m.currentScreen)
 	m.currentScreen = ScreenChat
 
+	label := msg.ContextLabel
+	if label == "" {
+		label = "Task Context"
+	}
+
+	// Same task: resume the existing conversation
+	if m.chat != nil && msg.ContextLabel != "" && msg.ContextLabel == m.chatContextLabel {
+		if msg.SystemInstruction != m.chatInstruction {
+			m.chatInstruction = msg.SystemInstruction
+			m.chat.SetSystemInstruction(msg.SystemInstruction)
+			m.chat.AppendNotice("Context refreshed for " + label)
+		}
+		return m, tea.Batch(m.sizeCmd(), m.chat.ResumeCmd())
+	}
+
 	chatModel := chat.NewModel(
 		m.deps.ChatDeps.LLM,
 		m.deps.ChatDeps.Tools,
@@ -242,10 +267,12 @@ func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.C
 		nil, // session attaches asynchronously via chatSessionCreatedMsg
 	)
 	m.chat = &chatModel
+	m.chatContextLabel = msg.ContextLabel
+	m.chatInstruction = msg.SystemInstruction
 
-	label := msg.ContextLabel
-	if label == "" {
-		label = "Task Context"
+	if m.deps.Program != nil {
+		// Enables streaming and tool records pushed from the generation goroutine
+		m.chat.SetProgram(m.deps.Program)
 	}
 	m.chat.SetContextLabel(label)
 	if msg.ContextSummary != "" {

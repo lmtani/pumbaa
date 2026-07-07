@@ -2,6 +2,7 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	adkmodel "google.golang.org/adk/model"
 	adksession "google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
@@ -26,6 +27,11 @@ type Dependencies struct {
 
 	// Chat dependencies (optional - nil if LLM not configured)
 	ChatDeps *ChatDependencies
+
+	// Program is the running Bubble Tea program. Handlers set it right after
+	// tea.NewProgram (Dependencies is shared by pointer), so screens created
+	// later can push messages from goroutines (streaming, tool records).
+	Program *tea.Program
 }
 
 // ChatDependencies holds optional dependencies for chat functionality.

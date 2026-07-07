@@ -2,12 +2,15 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -125,6 +128,13 @@ type Model struct {
 	statusMessage    string    // Temporary status message (e.g., "Copied!")
 	statusExpires    time.Time // When status message expires
 
+	// Streaming state: text of the in-progress response, shown live at the
+	// end of the transcript until the final ResponseMsg replaces it.
+	streamingText string
+
+	// cancelGen aborts the in-flight generation (ESC while loading).
+	cancelGen context.CancelFunc
+
 	// Token usage tracking
 	inputTokens  int // Accumulated input tokens for the session
 	outputTokens int // Accumulated output tokens for the session
@@ -176,6 +186,20 @@ type ToolNotificationMsg struct {
 	owner *[]ChatMessage // See ResponseMsg.owner
 }
 
+// streamChunkMsg carries the accumulated text of the current turn while the
+// response is streaming.
+type streamChunkMsg struct {
+	owner *[]ChatMessage
+	text  string
+}
+
+// toolRecordMsg appends a persistent record of an executed tool call to the
+// transcript (unlike ToolNotificationMsg, which is transient).
+type toolRecordMsg struct {
+	owner *[]ChatMessage
+	line  string
+}
+
 // ClearNotificationMsg is sent to clear the tool notification
 type ClearNotificationMsg struct{}
 
@@ -222,6 +246,11 @@ func NewModel(llm model.LLM, tools []tool.Tool, systemInstruction string, svc se
 	ta.ShowLineNumbers = false
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	ta.BlurredStyle.CursorLine = lipgloss.NewStyle()
+	// Enter submits (handled in Update); newlines are inserted with ctrl+j
+	ta.KeyMap.InsertNewline = key.NewBinding(
+		key.WithKeys("ctrl+j"),
+		key.WithHelp("ctrl+j", "newline"),
+	)
 
 	vp := viewport.New(80, 20)
 
@@ -350,6 +379,56 @@ func (m *Model) IsBusy() bool {
 	return m.loading
 }
 
+// ResumeCmd re-arms the spinner when the screen becomes current again while
+// a response is still being generated (spinner ticks are focus-only).
+func (m *Model) ResumeCmd() tea.Cmd {
+	if m.loading {
+		return m.spinner.Tick
+	}
+	return nil
+}
+
+// SetSystemInstruction replaces the system instruction for future turns.
+// Used when the user re-enters the chat for the same task with freshly
+// collected context.
+func (m *Model) SetSystemInstruction(instruction string) {
+	m.systemInstruction = instruction
+}
+
+// AppendNotice appends a muted one-line notice to the end of the transcript.
+func (m *Model) AppendNotice(content string) {
+	if m.msgs == nil || strings.TrimSpace(content) == "" {
+		return
+	}
+	*m.msgs = append(*m.msgs, ChatMessage{Role: "notice", Content: content})
+	if m.ready {
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+	}
+}
+
+// submitInput sends the current textarea content to the LLM.
+func (m *Model) submitInput() (tea.Model, tea.Cmd) {
+	if m.loading {
+		return m, nil
+	}
+	input := m.textarea.Value()
+	if strings.TrimSpace(input) == "" {
+		return m, nil
+	}
+
+	*m.msgs = append(*m.msgs, ChatMessage{Role: "user", Content: input})
+	m.viewport.SetContent(m.renderMessages())
+	m.textarea.Reset()
+	m.viewport.GotoBottom()
+	m.loading = true
+
+	ctx, cancel := context.WithCancel(context.Background())
+	m.cancelGen = cancel
+
+	return m, tea.Batch(m.spinner.Tick, m.generateResponse(ctx, input))
+}
+
 // SetFocusMode sets the focus mode and updates UI state accordingly.
 func (m *Model) SetFocusMode(mode FocusMode) {
 	m.focusMode = mode
@@ -409,6 +488,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEsc:
+			// While generating, ESC cancels the in-flight response.
+			if m.loading && m.cancelGen != nil {
+				m.cancelGen()
+				return m, nil
+			}
 			// First ESC leaves the input; second ESC leaves the screen.
 			if m.focusMode == FocusInput {
 				m.SetFocusMode(FocusMessages)
@@ -418,6 +502,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			return m, common.NavigateCmd(common.NavigateBackMsg{})
+
+		case tea.KeyEnter:
+			if m.focusMode == FocusInput {
+				return m.submitInput()
+			}
 
 		case tea.KeyRunes:
 			// Handle 'y' for copy when in messages mode
@@ -476,21 +565,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case tea.KeyCtrlD:
-			if m.loading {
-				return m, nil
+			// Kept as an alias for Enter for muscle memory
+			if m.focusMode == FocusInput {
+				return m.submitInput()
 			}
-			input := m.textarea.Value()
-			if strings.TrimSpace(input) == "" {
-				return m, nil
-			}
-
-			*m.msgs = append(*m.msgs, ChatMessage{Role: "user", Content: input})
-			m.viewport.SetContent(m.renderMessages())
-			m.textarea.Reset()
-			m.viewport.GotoBottom()
-			m.loading = true
-
-			return m, tea.Batch(m.spinner.Tick, m.generateResponse(input))
 
 		case tea.KeyCtrlS:
 			// Handle Ctrl+S for sessions modal when not loading
@@ -506,7 +584,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.loading = false
 		m.toolNotification = ""
-		if msg.Err != nil {
+		m.cancelGen = nil
+		partialText := m.streamingText
+		m.streamingText = ""
+		if errors.Is(msg.Err, context.Canceled) {
+			// User cancelled: keep whatever streamed and say so.
+			if partialText != "" {
+				rendered := renderMarkdown(partialText, m.width-8)
+				*m.msgs = append(*m.msgs, ChatMessage{Role: "agent", Content: partialText, Rendered: rendered})
+			}
+			*m.msgs = append(*m.msgs, ChatMessage{Role: "notice", Content: "Generation cancelled"})
+		} else if msg.Err != nil {
 			*m.msgs = append(*m.msgs, ChatMessage{Role: "error", Content: fmt.Sprintf("%v", msg.Err)})
 		} else {
 			rendered := renderMarkdown(msg.Content, m.width-8)
@@ -538,6 +626,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.Focus()
 		m.focusMode = FocusInput
 		return m, textarea.Blink
+
+	case streamChunkMsg:
+		if msg.owner != m.msgs || !m.loading {
+			return m, nil
+		}
+		m.streamingText = msg.text
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
+
+	case toolRecordMsg:
+		if msg.owner != m.msgs {
+			return m, nil
+		}
+		*m.msgs = append(*m.msgs, ChatMessage{Role: "tool", Content: msg.line})
+		m.viewport.SetContent(m.renderMessages())
+		m.viewport.GotoBottom()
+		return m, nil
 
 	case ToolNotificationMsg:
 		if msg.owner != nil && msg.owner != m.msgs {
@@ -756,16 +862,23 @@ func (m Model) renderFooter() string {
 		return common.KeyStyle.Render(key) + " " + common.DescStyle.Render(desc)
 	}
 	var hints []string
-	if m.focusMode == FocusMessages {
+	switch {
+	case m.loading:
+		hints = []string{
+			hint("esc", "cancel"),
+			hint("↑↓", "scroll"),
+		}
+	case m.focusMode == FocusMessages:
 		hints = []string{
 			hint("↑↓", "navigate"),
 			hint("y", "copy"),
 			hint("tab", "type"),
 			hint("esc", escAction),
 		}
-	} else {
+	default:
 		hints = []string{
-			hint("ctrl+d", "send"),
+			hint("enter", "send"),
+			hint("ctrl+j", "newline"),
 			hint("ctrl+s", "sessions"),
 			hint("↑↓", "scroll"),
 			hint("tab", "navigate msgs"),
@@ -788,8 +901,9 @@ func (m Model) renderFooter() string {
 }
 
 func (m Model) renderMessages() string {
-	if m.msgs == nil || len(*m.msgs) == 0 {
-		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Ctrl+D to send.")
+	hasMsgs := m.msgs != nil && len(*m.msgs) > 0
+	if !hasMsgs && m.streamingText == "" {
+		return common.MutedStyle.Render("Welcome to Pumbaa Chat! 🐗\n\nType your message and press Enter to send (ctrl+j for a new line).")
 	}
 
 	var sb strings.Builder
@@ -803,50 +917,77 @@ func (m Model) renderMessages() string {
 		Background(common.SubtleColor).
 		Padding(0, 1)
 
-	for i, msg := range *m.msgs {
-		var roleStyle lipgloss.Style
-		var roleName string
-		contentStyle := messageStyle
+	if hasMsgs {
+		for i, msg := range *m.msgs {
+			isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
 
-		switch msg.Role {
-		case "user":
-			roleStyle = userStyle
-			roleName = "You"
-		case "agent":
-			roleStyle = agentStyle
-			roleName = "Pumbaa"
-		case "info":
-			roleStyle = infoStyle
-			roleName = "Context"
-			contentStyle = infoMessageStyle
-		default:
-			roleStyle = errorStyle
-			roleName = "Error"
+			// Compact one-line roles: tool records and notices have no header
+			switch msg.Role {
+			case "tool":
+				line := common.MutedStyle.Render("🔧 " + msg.Content)
+				if isSelected {
+					line = selectedStyle.Render("▶ " + line)
+				}
+				sb.WriteString(line + "\n\n")
+				continue
+			case "notice":
+				line := common.MutedStyle.Italic(true).Render("· " + msg.Content)
+				if isSelected {
+					line = selectedStyle.Render("▶ " + line)
+				}
+				sb.WriteString(line + "\n\n")
+				continue
+			}
+
+			var roleStyle lipgloss.Style
+			var roleName string
+			contentStyle := messageStyle
+
+			switch msg.Role {
+			case "user":
+				roleStyle = userStyle
+				roleName = "You"
+			case "agent":
+				roleStyle = agentStyle
+				roleName = "Pumbaa"
+			case "info":
+				roleStyle = infoStyle
+				roleName = "Context"
+				contentStyle = infoMessageStyle
+			default:
+				roleStyle = errorStyle
+				roleName = "Error"
+			}
+
+			// Render role with selection indicator
+			if isSelected {
+				sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
+			} else {
+				sb.WriteString(roleStyle.Render(roleName) + "\n")
+			}
+
+			// Render content
+			var content string
+			if msg.Role == "agent" && msg.Rendered != "" {
+				content = msg.Rendered
+			} else {
+				content = contentStyle.Render(wrapText(msg.Content, maxWidth))
+			}
+
+			if isSelected {
+				sb.WriteString(selectedStyle.Render(content))
+			} else {
+				sb.WriteString(content)
+			}
+			sb.WriteString("\n\n")
 		}
+	}
 
-		// Highlight if selected
-		isSelected := m.focusMode == FocusMessages && i == m.selectedMsg
-
-		// Render role with selection indicator
-		if isSelected {
-			sb.WriteString(selectedStyle.Render("▶ "+roleStyle.Render(roleName)) + "\n")
-		} else {
-			sb.WriteString(roleStyle.Render(roleName) + "\n")
-		}
-
-		// Render content
-		var content string
-		if msg.Role == "agent" && msg.Rendered != "" {
-			content = msg.Rendered
-		} else {
-			content = contentStyle.Render(wrapText(msg.Content, maxWidth))
-		}
-
-		if isSelected {
-			sb.WriteString(selectedStyle.Render(content))
-		} else {
-			sb.WriteString(content)
-		}
+	// Live response being streamed: plain text with a cursor block; the
+	// final ResponseMsg replaces it with the markdown-rendered message.
+	if m.loading && m.streamingText != "" {
+		sb.WriteString(agentStyle.Render("Pumbaa") + "\n")
+		sb.WriteString(messageStyle.Render(wrapText(m.streamingText, maxWidth) + " ▌"))
 		sb.WriteString("\n\n")
 	}
 
@@ -967,10 +1108,8 @@ func formatTokenCount(count int) string {
 	return fmt.Sprintf("%d", count)
 }
 
-func (m Model) generateResponse(input string) tea.Cmd {
+func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
-
 		userContent := &genai.Content{
 			Role: "user",
 			Parts: []*genai.Part{
@@ -993,6 +1132,10 @@ func (m Model) generateResponse(input string) tea.Cmd {
 		totalOutputTokens := 0
 
 		for currentTurn < maxTurns {
+			if ctx.Err() != nil {
+				return ResponseMsg{Err: ctx.Err(), owner: m.msgs}
+			}
+
 			req := &model.LLMRequest{
 				Contents: *m.history,
 				Config: &genai.GenerateContentConfig{
@@ -1008,13 +1151,23 @@ func (m Model) generateResponse(input string) tea.Cmd {
 				}
 			}
 
-			respSeq := m.llm.GenerateContent(ctx, req, false)
+			respSeq := m.llm.GenerateContent(ctx, req, true)
 
 			var lastResp *model.LLMResponse
+			var turnText strings.Builder
 
 			for r, e := range respSeq {
 				if e != nil {
 					return ResponseMsg{Err: e, owner: m.msgs}
+				}
+				if r.Partial {
+					// Forward the accumulated turn text so the UI renders
+					// the response as it streams.
+					turnText.WriteString(extractText(r.Content))
+					if m.program != nil {
+						m.program.Send(streamChunkMsg{owner: m.msgs, text: turnText.String()})
+					}
+					continue
 				}
 				lastResp = r
 			}
@@ -1066,7 +1219,15 @@ func (m Model) generateResponse(input string) tea.Cmd {
 						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams, owner: m.msgs})
 					}
 
+					toolStart := time.Now()
 					result, err := m.executeTool(ctx, tc)
+					if m.program != nil {
+						// Persistent transcript record of what the agent did
+						m.program.Send(toolRecordMsg{
+							owner: m.msgs,
+							line:  formatToolRecord(tc.Name, action, otherParams, time.Since(toolStart), err),
+						})
+					}
 					if err != nil {
 						toolParts = append(toolParts, &genai.Part{
 							FunctionResponse: &genai.FunctionResponse{
@@ -1133,6 +1294,34 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		return ResponseMsg{Content: summary.String(), owner: m.msgs}
 	}
+}
+
+// formatToolRecord builds the one-line transcript record of a tool call,
+// e.g. `pumbaa query (status=Failed) ✓ 0.8s`.
+func formatToolRecord(name, action string, params map[string]any, dur time.Duration, err error) string {
+	label := name
+	if action != "" {
+		label += " " + action
+	}
+
+	if len(params) > 0 {
+		keys := make([]string, 0, len(params))
+		for k := range params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		pairs := make([]string, 0, len(keys))
+		for _, k := range keys {
+			pairs = append(pairs, fmt.Sprintf("%s=%v", k, params[k]))
+		}
+		label += " (" + strings.Join(pairs, ", ") + ")"
+	}
+
+	mark := "✓"
+	if err != nil {
+		mark = "✗"
+	}
+	return fmt.Sprintf("%s %s %.1fs", label, mark, dur.Seconds())
 }
 
 func getToolCalls(content *genai.Content) []*genai.FunctionCall {
