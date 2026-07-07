@@ -424,6 +424,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.ErrorDetail):
 		return m.openErrorModal()
 
+	case key.Matches(msg, m.keys.Cost):
+		return m.openCostModal()
+
 	case key.Matches(msg, m.keys.NextMatch):
 		if m.searchQuery != "" {
 			m.jumpToSearchMatch(true)

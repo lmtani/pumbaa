@@ -149,6 +149,9 @@ type Model struct {
 	lastError          string
 	errorModalViewport viewport.Model
 
+	// Cost breakdown modal state ($ key)
+	costViewport viewport.Model
+
 	// Components
 	keys           KeyMap
 	help           help.Model

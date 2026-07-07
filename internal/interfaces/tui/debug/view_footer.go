@@ -88,6 +88,7 @@ func (m Model) footerHints() []string {
 		renderFooterHint("E/C", "expand/collapse"),
 		renderFooterHint("f", "failures"),
 		renderFooterHint("w", "watch"),
+		renderFooterHint("$", "cost"),
 		renderFooterHint("/", "search"),
 	)
 

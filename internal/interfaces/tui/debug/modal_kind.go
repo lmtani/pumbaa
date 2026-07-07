@@ -19,4 +19,5 @@ const (
 	ModalCopyMenu
 	ModalFailureSummary
 	ModalError
+	ModalCost
 )
