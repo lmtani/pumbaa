@@ -154,6 +154,11 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, getClearStatusCmd())
 		}
 
+	case key.Matches(msg, m.keys.Compare):
+		if cmd := m.handleCompareKey(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+
 	case key.Matches(msg, m.keys.Escape):
 		// Nothing to close here; let the app decide (dashboard is the root,
 		// so this triggers the quit confirmation).

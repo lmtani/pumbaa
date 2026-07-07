@@ -42,8 +42,18 @@ func (m Model) renderHeader() string {
 
 	left := brand + " " + breadcrumbs + "  " + status
 
-	// Right side: update notice, workflow count, last refresh
+	// Right side: compare-base badge, update notice, workflow count, last refresh
 	var right []string
+	if m.compareBaseID != "" {
+		base := m.compareBaseName
+		if base == "" {
+			base = truncateID(m.compareBaseID)
+		}
+		right = append(right, common.BadgeStyle.
+			Foreground(common.BadgeFg).
+			Background(common.BadgeWarnBg).
+			Render("⇄ base: "+base))
+	}
 	if m.updateInfo != nil && m.updateInfo.UpdateAvailable {
 		right = append(right, common.BadgeStyle.
 			Foreground(common.BadgeFg).

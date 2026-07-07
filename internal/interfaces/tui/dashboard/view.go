@@ -26,6 +26,10 @@ func (m Model) View() string {
 		return m.renderErrorModal()
 	}
 
+	if m.showDiff {
+		return m.renderDiffModal()
+	}
+
 	sections := []string{m.renderHeader()}
 	if m.filterBarVisible() {
 		sections = append(sections, m.renderFilterBar())

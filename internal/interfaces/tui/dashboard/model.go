@@ -11,7 +11,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/charmbracelet/bubbles/viewport"
+
 	"github.com/lmtani/pumbaa/internal/application/ports"
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
@@ -63,6 +66,16 @@ type Model struct {
 
 	// Error detail modal (full text of the last error)
 	showError bool
+
+	// Compare / diff state
+	compareUC       *workflowapp.CompareUseCase
+	compareBaseID   string // Workflow marked as the comparison base ("" if none)
+	compareBaseName string
+	showDiff        bool
+	diffLoading     bool
+	diffViewport    viewport.Model
+	diffResult      *workflow.RunDiff
+	diffError       string
 
 	// Debug transition state
 	loadingDebug    bool
@@ -119,14 +132,16 @@ func NewModel() Model {
 
 // NewModelWithRepository creates a new dashboard model with all repository capabilities.
 // The repository satisfies WorkflowQuerier, WorkflowAborter, WorkflowMetadataFetcher,
-// HealthChecker, and LabelManager through interface composition.
-func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model {
+// HealthChecker, and LabelManager through interface composition. compareUC may be
+// nil, in which case the compare feature is disabled.
+func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, version string) Model {
 	m := NewModel()
 	m.querier = repo
 	m.aborter = repo
 	m.metadataFetcher = repo
 	m.healthChecker = repo
 	m.labelManager = repo
+	m.compareUC = compareUC
 	m.currentVersion = version
 	m.loading = true
 	return m
@@ -144,7 +159,7 @@ func (m *Model) ResumeCmd() tea.Cmd {
 
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff
 }
 
 // Init implements tea.Model.
@@ -188,10 +203,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.statusMsg != "" {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.statusMsg != "" {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
+
+	case diffLoadedMsg:
+		m.diffLoading = false
+		m.diffResult = msg.diff
+		m.setDiffContent()
+		return m, nil
+
+	case diffErrorMsg:
+		m.diffLoading = false
+		m.diffError = friendlyError(msg.err)
+		m.LastError = msg.err
+		return m, nil
 
 	case workflowsLoadedMsg:
 		m.loading = false
@@ -309,6 +336,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Error detail modal
 		if m.showError {
 			return m.handleErrorModalKeys(msg)
+		}
+
+		// Diff modal
+		if m.showDiff {
+			return m.handleDiffModalKeys(msg)
 		}
 
 		// Handle confirmation modal first

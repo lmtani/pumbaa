@@ -109,6 +109,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		FileProvider:   h.fileProvider,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
+		CompareUC:      workflowapp.NewCompareUseCase(h.repository),
 		CurrentVersion: h.version,
 	}
 

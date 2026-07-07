@@ -24,6 +24,7 @@ type Dependencies struct {
 	// Use cases
 	MonitoringUC *workflowapp.MonitoringUseCase
 	BatchLogsUC  *workflowapp.GetBatchLogsUseCase
+	CompareUC    *workflowapp.CompareUseCase
 
 	// Chat dependencies (optional - nil if LLM not configured)
 	ChatDeps *ChatDependencies
