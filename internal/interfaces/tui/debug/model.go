@@ -244,3 +244,13 @@ func (m *Model) SetCanGoBack(canGoBack bool) {
 func (m *Model) HasOngoingWork() bool {
 	return m.watchActive || m.isLoading
 }
+
+// ResumeCmd re-arms self-perpetuating timers (the loading spinner) whose
+// tick chain dies while the screen is hidden, since spinner ticks are only
+// routed to the focused screen.
+func (m *Model) ResumeCmd() tea.Cmd {
+	if m.isLoading {
+		return m.loadingSpinner.Tick
+	}
+	return nil
+}

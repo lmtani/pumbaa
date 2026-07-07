@@ -31,8 +31,11 @@ const (
 )
 
 // chatSessionCreatedMsg carries the result of the asynchronous chat session
-// creation started when navigating to the chat screen.
+// creation started when navigating to the chat screen. target identifies the
+// chat instance that requested it, so a slow create from a previous visit
+// can never attach to a newer conversation.
 type chatSessionCreatedMsg struct {
+	target  *chat.Model
 	session adksession.Session
 	err     error
 }
@@ -127,9 +130,11 @@ func (m AppModel) Init() tea.Cmd {
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		// Only the visible screen needs to re-layout; hidden screens get the
+		// size replayed (sizeCmd) when they become current again.
 		m.width = msg.Width
 		m.height = msg.Height
-		return m.broadcast(msg)
+		return m.updateCurrentScreen(msg)
 
 	case tea.KeyMsg:
 		// Handle quit confirmation modal first
@@ -157,7 +162,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.navigateBack()
 
 	case chatSessionCreatedMsg:
-		if m.chat != nil {
+		if m.chat != nil && m.chat == msg.target {
 			if msg.err != nil {
 				m.chat.AddInfoMessage("Session persistence unavailable: " + msg.err.Error())
 			} else {
@@ -209,12 +214,11 @@ func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
 	// Reuse the existing model when the workflow is unchanged so tree
 	// expansion, cursor, search and watch state survive the round trip.
 	if wf == m.debugWorkflow {
-		return m, m.sizeCmd()
+		return m, tea.Batch(m.sizeCmd(), m.debug.ResumeCmd())
 	}
 
 	m.debugWorkflow = wf
 	m.debug = newDebugModel(m.deps, wf)
-	m.debug.SetCanGoBack(true)
 
 	return m, tea.Batch(m.debug.Init(), m.sizeCmd())
 }
@@ -248,11 +252,12 @@ func (m AppModel) navigateToChat(msg common.NavigateToChatMsg) (tea.Model, tea.C
 		m.chat.AddInfoMessage(msg.ContextSummary)
 	}
 
-	return m, tea.Batch(m.chat.Init(), m.sizeCmd(), m.createChatSessionCmd())
+	return m, tea.Batch(m.chat.Init(), m.sizeCmd(), m.createChatSessionCmd(m.chat))
 }
 
-// createChatSessionCmd creates the chat session off the UI thread.
-func (m AppModel) createChatSessionCmd() tea.Cmd {
+// createChatSessionCmd creates the chat session off the UI thread for the
+// given chat instance.
+func (m AppModel) createChatSessionCmd(target *chat.Model) tea.Cmd {
 	svc := m.deps.ChatDeps.SessionSvc
 	if svc == nil {
 		return nil
@@ -263,9 +268,9 @@ func (m AppModel) createChatSessionCmd() tea.Cmd {
 			UserID:  debugChatUserID,
 		})
 		if err != nil {
-			return chatSessionCreatedMsg{err: err}
+			return chatSessionCreatedMsg{target: target, err: err}
 		}
-		return chatSessionCreatedMsg{session: resp.Session}
+		return chatSessionCreatedMsg{target: target, session: resp.Session}
 	}
 }
 
@@ -279,8 +284,16 @@ func (m AppModel) navigateBack() (tea.Model, tea.Cmd) {
 	m.currentScreen = m.stack[len(m.stack)-1]
 	m.stack = m.stack[:len(m.stack)-1]
 
-	// Returning screens kept their state; they only need the current size.
-	return m, m.sizeCmd()
+	// Returning screens kept their state; they only need the current size
+	// and, if they were mid-load, a fresh spinner tick.
+	var resume tea.Cmd
+	switch m.currentScreen {
+	case ScreenDashboard:
+		resume = m.dashboard.ResumeCmd()
+	case ScreenDebug:
+		resume = m.debug.ResumeCmd()
+	}
+	return m, tea.Batch(m.sizeCmd(), resume)
 }
 
 // sizeCmd replays the last known window size to the (new) current screen.
@@ -294,15 +307,13 @@ func (m AppModel) sizeCmd() tea.Cmd {
 	}
 }
 
-// hasOngoingWork reports whether quitting now would interrupt background work.
+// hasOngoingWork reports whether quitting now would interrupt background
+// work on any screen — hidden screens keep working after navigation.
 func (m AppModel) hasOngoingWork() bool {
-	switch m.currentScreen {
-	case ScreenDebug:
-		return m.debug.HasOngoingWork()
-	case ScreenChat:
-		return m.chat != nil && m.chat.IsBusy()
+	if m.debugWorkflow != nil && m.debug.HasOngoingWork() {
+		return true
 	}
-	return false
+	return m.chat != nil && m.chat.IsBusy()
 }
 
 // updateCurrentScreen delegates the update to the current screen.

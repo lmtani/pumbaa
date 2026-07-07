@@ -120,42 +120,20 @@ func (m Model) escHint() string {
 	}
 }
 
-// quickActionHints returns the numeric quick actions available for the
-// currently selected node.
+// quickActionHints renders the quick actions available for the selected
+// node, straight from the same table that dispatches the keys.
 func (m Model) quickActionHints() []string {
 	if m.cursor >= len(m.nodes) {
 		return nil
 	}
 
-	node := m.nodes[m.cursor]
-	switch node.Type {
-	case NodeTypeWorkflow, NodeTypeSubWorkflow:
-		return []string{
-			renderFooterHint("1", "inputs"),
-			renderFooterHint("2", "outputs"),
-			renderFooterHint("3", "options"),
-			renderFooterHint("4", "timeline"),
-			renderFooterHint("5", "log"),
+	actions := m.quickActionsFor(m.nodes[m.cursor])
+	hints := make([]string, 0, len(actions))
+	for _, action := range actions {
+		if action.visible != nil && !action.visible(m) {
+			continue
 		}
-	case NodeTypeCall:
-		if len(node.Children) > 0 {
-			// Scatter node: no quick actions
-			return nil
-		}
-	case NodeTypeShard:
-	default:
-		return nil
-	}
-
-	hints := []string{
-		renderFooterHint("1", "inputs"),
-		renderFooterHint("2", "outputs"),
-		renderFooterHint("3", "cmd"),
-		renderFooterHint("4", "logs"),
-		renderFooterHint("5", "efficiency"),
-	}
-	if m.llm != nil {
-		hints = append(hints, renderFooterHint("a", "chat"))
+		hints = append(hints, renderFooterHint(action.key, action.label))
 	}
 	return hints
 }

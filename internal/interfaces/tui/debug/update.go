@@ -566,161 +566,19 @@ func (m Model) handleExpandOrOpenLog() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleQuickActions dispatches numeric quick actions through the shared
+// quickAction table (see quick_actions.go), which also drives the footer.
 func (m Model) handleQuickActions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.cursor >= len(m.nodes) {
 		return m, nil
 	}
 
 	node := m.nodes[m.cursor]
-	keyNum := msg.String()
-
-	// Dispatch based on node type
-	switch node.Type {
-	case NodeTypeWorkflow, NodeTypeSubWorkflow:
-		return m.handleWorkflowQuickAction(keyNum, node)
-	case NodeTypeCall:
-		// Check if it's a scatter (has children) or a simple task
-		if len(node.Children) > 0 {
-			// Scatter node - no quick actions
-			return m, nil
+	pressed := msg.String()
+	for _, action := range m.quickActionsFor(node) {
+		if action.key == pressed || (action.alias != "" && action.alias == pressed) {
+			return action.run(m, node)
 		}
-		return m.handleTaskQuickAction(keyNum, node)
-	case NodeTypeShard:
-		return m.handleTaskQuickAction(keyNum, node)
-	}
-
-	return m, nil
-}
-
-// handleWorkflowQuickAction handles quick actions for Workflow and SubWorkflow nodes.
-// 1=Inputs [modal], 2=Outputs [modal], 3=Options [modal], 4=Timeline [modal], 5=Workflow Log [modal]
-func (m Model) handleWorkflowQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
-	// Get the appropriate metadata
-	var meta *WorkflowMetadata
-	if node.Type == NodeTypeWorkflow {
-		meta = m.metadata
-	} else if node.CallData != nil && node.CallData.SubWorkflowMetadata != nil {
-		meta = node.CallData.SubWorkflowMetadata
-	} else {
-		meta = m.metadata // Fallback to root
-	}
-
-	switch keyNum {
-	case "1": // Inputs
-		if meta.SubmittedInputs != "" {
-			m.activeModal = ModalInputs
-			m.inputsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.inputsModalViewport.SetContent(m.formatWorkflowInputsForModal())
-		} else {
-			m.setStatusMessage("No inputs available")
-			return m, getClearStatusCmd()
-		}
-	case "2": // Outputs
-		if len(meta.Outputs) > 0 {
-			m.activeModal = ModalOutputs
-			m.outputsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.outputsModalViewport.SetContent(m.formatWorkflowOutputsForModal())
-		} else {
-			m.setStatusMessage("No outputs available")
-			return m, getClearStatusCmd()
-		}
-	case "3": // Options
-		if meta.SubmittedOptions != "" {
-			m.activeModal = ModalOptions
-			m.optionsModalViewport = viewport.New(m.width-10, m.height-8)
-			m.optionsModalViewport.SetContent(m.formatOptionsForModal())
-		} else {
-			m.setStatusMessage("No options available")
-			return m, getClearStatusCmd()
-		}
-	case "4": // Timeline
-		m.activeModal = ModalGlobalTimeline
-		m.globalTimelineTitle = meta.Name
-		m.globalTimelineViewport = viewport.New(m.width-10, m.height-8)
-		m.globalTimelineViewport.SetContent(m.buildGlobalTimelineContentForMetadata(meta))
-	case "5": // Workflow Log
-		if meta.WorkflowLog != "" {
-			m.isLoading = true
-			m.loadingMessage = "Loading workflow log..."
-			m.loadingStartTime = time.Now()
-			return m, m.openWorkflowLog(meta.WorkflowLog)
-		}
-		m.setStatusMessage("No workflow log available")
-		return m, getClearStatusCmd()
-	}
-
-	return m, nil
-}
-
-// handleTaskQuickAction handles quick actions for Task and Shard nodes.
-// 1=Inputs [modal], 2=Outputs [modal], 3=Command [modal], 4=Logs [inline], 5=Efficiency [inline], 6=Chat
-func (m Model) handleTaskQuickAction(keyNum string, node *TreeNode) (tea.Model, tea.Cmd) {
-	if node.CallData == nil {
-		return m, nil
-	}
-
-	switch keyNum {
-	case "1": // Inputs
-		if len(node.CallData.Inputs) > 0 {
-			m.activeModal = ModalCallInputs
-			m.callInputsViewport = viewport.New(m.width-10, m.height-8)
-			m.callInputsViewport.SetContent(m.formatCallInputsForModal(node))
-		} else {
-			m.setStatusMessage("No inputs available")
-			return m, getClearStatusCmd()
-		}
-	case "2": // Outputs
-		if len(node.CallData.Outputs) > 0 {
-			m.activeModal = ModalCallOutputs
-			m.callOutputsViewport = viewport.New(m.width-10, m.height-8)
-			m.callOutputsViewport.SetContent(m.formatCallOutputsForModal(node))
-		} else {
-			m.setStatusMessage("No outputs available")
-			return m, getClearStatusCmd()
-		}
-	case "3": // Command
-		if node.CallData.CommandLine != "" {
-			m.activeModal = ModalCallCommand
-			m.callCommandViewport = viewport.New(m.width-10, m.height-8)
-			m.callCommandViewport.SetContent(m.formatCallCommandForModal(node))
-		} else {
-			m.setStatusMessage("No command available")
-			return m, getClearStatusCmd()
-		}
-	case "4": // Logs (inline)
-		if node.CallData.Stdout != "" || node.CallData.Stderr != "" || node.CallData.MonitoringLog != "" || m.canShowBatchLogs(node) {
-			m.viewMode = ViewModeLogs
-			m.logCursor = 1 // Start at stderr
-			m.updateDetailsContent()
-			m.focus = FocusDetails
-		} else {
-			m.setStatusMessage("No logs available")
-			return m, getClearStatusCmd()
-		}
-	case "5": // Efficiency (inline)
-		if node.CallData.MonitoringLog != "" {
-			// Check cache first
-			if node.CallData.EfficiencyReport != nil {
-				m.resourceReport = node.CallData.EfficiencyReport
-				m.resourceError = ""
-				m.viewMode = ViewModeMonitor
-				m.updateDetailsContent()
-				return m, nil
-			}
-			// Not cached, load it
-			m.viewMode = ViewModeMonitor
-			m.resourceReport = nil
-			m.resourceError = ""
-			m.isLoading = true
-			m.loadingMessage = "Analyzing resource efficiency..."
-			m.loadingStartTime = time.Now()
-			m.updateDetailsContent()
-			return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
-		}
-		m.setStatusMessage("No monitoring data available")
-		return m, getClearStatusCmd()
-	case "6", "a": // Chat with AI
-		return m.openChatSelectionModal(node)
 	}
 
 	return m, nil

@@ -160,6 +160,11 @@ type ResponseMsg struct {
 	Err          error
 	InputTokens  int // Input tokens used in this response
 	OutputTokens int // Output tokens generated in this response
+
+	// owner identifies the conversation that produced this response (the
+	// model's msgs pointer is unique per instance), so an in-flight response
+	// from a previous chat can never be appended to a newer conversation.
+	owner *[]ChatMessage
 }
 
 // ToolNotificationMsg is sent when a tool is being called
@@ -167,6 +172,8 @@ type ToolNotificationMsg struct {
 	ToolName string
 	Action   string
 	Params   map[string]any // Additional parameters
+
+	owner *[]ChatMessage // See ResponseMsg.owner
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -311,9 +318,31 @@ func (m *Model) AddInfoMessage(content string) {
 }
 
 // SetSession attaches a session created asynchronously after the screen
-// opened, so session creation never blocks the UI thread.
+// opened, so session creation never blocks the UI thread. Turns exchanged
+// while the session was still being created are persisted retroactively.
 func (m *Model) SetSession(sess session.Session) {
 	m.session = sess
+	if sess == nil || m.sessionService == nil || m.history == nil || len(*m.history) == 0 {
+		return
+	}
+	if m.loading {
+		// A generation is appending to history from its own goroutine;
+		// copying it here would race. That in-flight turn stays unpersisted.
+		return
+	}
+
+	backlog := make([]*genai.Content, len(*m.history))
+	copy(backlog, *m.history)
+	svc := m.sessionService
+	go func() {
+		ctx := context.Background()
+		for _, content := range backlog {
+			ev := session.NewEvent("")
+			ev.Content = content
+			ev.Author = content.Role
+			svc.AppendEvent(ctx, sess, ev)
+		}
+	}()
 }
 
 // IsBusy reports whether a response is currently being generated.
@@ -471,6 +500,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case ResponseMsg:
+		if msg.owner != nil && msg.owner != m.msgs {
+			// Response from a previous conversation; drop it.
+			return m, nil
+		}
 		m.loading = false
 		m.toolNotification = ""
 		if msg.Err != nil {
@@ -507,6 +540,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, textarea.Blink
 
 	case ToolNotificationMsg:
+		if msg.owner != nil && msg.owner != m.msgs {
+			return m, nil
+		}
 		if msg.Action != "" {
 			// Format params if present
 			paramsStr := ""
@@ -978,13 +1014,13 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 			for r, e := range respSeq {
 				if e != nil {
-					return ResponseMsg{Err: e}
+					return ResponseMsg{Err: e, owner: m.msgs}
 				}
 				lastResp = r
 			}
 
 			if lastResp == nil || lastResp.Content == nil {
-				return ResponseMsg{Err: fmt.Errorf("empty response from model")}
+				return ResponseMsg{Err: fmt.Errorf("empty response from model"), owner: m.msgs}
 			}
 
 			// Accumulate token usage from this response
@@ -1027,7 +1063,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 					// Send notification to UI about tool being called
 					if m.program != nil {
-						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams})
+						m.program.Send(ToolNotificationMsg{ToolName: tc.Name, Action: action, Params: otherParams, owner: m.msgs})
 					}
 
 					result, err := m.executeTool(ctx, tc)
@@ -1074,7 +1110,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 					text += part.Text
 				}
 			}
-			return ResponseMsg{Content: text, InputTokens: totalInputTokens, OutputTokens: totalOutputTokens}
+			return ResponseMsg{Content: text, InputTokens: totalInputTokens, OutputTokens: totalOutputTokens, owner: m.msgs}
 		}
 
 		// Max turns reached
@@ -1095,7 +1131,7 @@ func (m Model) generateResponse(input string) tea.Cmd {
 
 		summary.WriteString("\nIf you need more information, please ask a more specific question or ask me to continue from where I left off.")
 
-		return ResponseMsg{Content: summary.String()}
+		return ResponseMsg{Content: summary.String(), owner: m.msgs}
 	}
 }
 

@@ -132,6 +132,16 @@ func NewModelWithRepository(repo ports.WorkflowRepository, version string) Model
 	return m
 }
 
+// ResumeCmd re-arms self-perpetuating timers (the spinner) whose tick chain
+// dies while the screen is hidden, since spinner ticks are only routed to
+// the focused screen.
+func (m *Model) ResumeCmd() tea.Cmd {
+	if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating {
+		return m.spinner.Tick
+	}
+	return nil
+}
+
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
 	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError
