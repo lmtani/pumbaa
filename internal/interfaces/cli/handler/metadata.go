@@ -34,14 +34,7 @@ func (h *MetadataHandler) Command() *cli.Command {
 		Aliases:   []string{"m", "meta"},
 		Usage:     "Get workflow metadata and display status",
 		ArgsUsage: "<workflow-id>",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "verbose",
-				Aliases: []string{"v"},
-				Usage:   "[optional] Show detailed call information",
-			},
-		},
-		Action: h.handle,
+		Action:    h.handle,
 	}
 }
 
@@ -64,12 +57,12 @@ func (h *MetadataHandler) handle(c *cli.Context) error {
 		return err
 	}
 
-	h.displayMetadata(output, c.Bool("verbose"))
+	h.displayMetadata(output)
 
 	return nil
 }
 
-func (h *MetadataHandler) displayMetadata(wf *workflowdomain.Workflow, verbose bool) {
+func (h *MetadataHandler) displayMetadata(wf *workflowdomain.Workflow) {
 	// Workflow overview
 	h.presenter.Title("Workflow Details")
 	h.presenter.KeyValue("ID", wf.ID)
