@@ -19,6 +19,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// DefaultAppName and DefaultUserID scope all Pumbaa chat sessions. Every
+// entry point (standalone chat, embedded TUI chat, session lists) must use
+// these constants so conversations are visible and resumable everywhere.
+const (
+	DefaultAppName = "pumbaa"
+	DefaultUserID  = "default"
+)
+
 // SQLiteService implements session.Service using SQLite for persistence.
 type SQLiteService struct {
 	db *sql.DB
@@ -174,6 +182,16 @@ func (s *SQLiteService) initSchema() error {
 
 	// Migration: add summary column if it doesn't exist (for existing databases)
 	s.db.Exec(`ALTER TABLE sessions ADD COLUMN summary TEXT DEFAULT ''`)
+
+	// Migration: add context_label (which workflow ▸ task the chat was
+	// opened for) to support resume-by-task lookups
+	s.db.Exec(`ALTER TABLE sessions ADD COLUMN context_label TEXT DEFAULT ''`)
+
+	// Hygiene: purge day-old sessions that never got a single event
+	// (artifacts of sessions being created on screen open, pre-lazy-create)
+	s.db.Exec(`DELETE FROM sessions
+		WHERE created_at < datetime('now', '-1 day')
+		  AND id NOT IN (SELECT DISTINCT session_id FROM events)`)
 
 	return nil
 }
@@ -449,11 +467,53 @@ func (s *SQLiteService) UpdateTokenUsage(ctx context.Context, sessionID string, 
 type SessionInfo struct {
 	ID           string
 	Summary      string
+	ContextLabel string // Which workflow ▸ task the chat was opened for
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	InputTokens  int
 	OutputTokens int
 	EventCount   int
+}
+
+// SetContextLabel tags a session with the task context it was opened for
+// (e.g. "my-workflow ▸ align_reads"), enabling resume-by-task lookups.
+func (s *SQLiteService) SetContextLabel(ctx context.Context, sessionID, label string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET context_label = ? WHERE id = ?`, label, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to set context label: %w", err)
+	}
+	return nil
+}
+
+// FindLatestByContextLabel returns the most recent session that has events
+// for the given context label, or nil if there is none.
+func (s *SQLiteService) FindLatestByContextLabel(ctx context.Context, appName, userID, label string) (*SessionInfo, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	row := s.db.QueryRowContext(ctx, `
+		SELECT s.id, s.summary, s.context_label, s.created_at, s.updated_at, s.input_tokens, s.output_tokens,
+		       (SELECT COUNT(*) FROM events e WHERE e.session_id = s.id) AS event_count
+		FROM sessions s
+		WHERE s.app_name = ? AND s.user_id = ? AND s.context_label = ?
+		  AND EXISTS (SELECT 1 FROM events e WHERE e.session_id = s.id)
+		ORDER BY s.updated_at DESC
+		LIMIT 1`,
+		appName, userID, label,
+	)
+
+	var info SessionInfo
+	err := row.Scan(&info.ID, &info.Summary, &info.ContextLabel, &info.CreatedAt, &info.UpdatedAt, &info.InputTokens, &info.OutputTokens, &info.EventCount)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to find session by context: %w", err)
+	}
+	return &info, nil
 }
 
 // UpdateSummary updates the summary for a session.
@@ -478,7 +538,7 @@ func (s *SQLiteService) ListWithSummaries(ctx context.Context, appName, userID s
 	defer s.mu.RUnlock()
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, summary, created_at, updated_at, input_tokens, output_tokens FROM sessions WHERE app_name = ? AND user_id = ? ORDER BY updated_at DESC`,
+		`SELECT id, summary, context_label, created_at, updated_at, input_tokens, output_tokens FROM sessions WHERE app_name = ? AND user_id = ? ORDER BY updated_at DESC`,
 		appName, userID,
 	)
 	if err != nil {
@@ -489,7 +549,7 @@ func (s *SQLiteService) ListWithSummaries(ctx context.Context, appName, userID s
 	var sessions []SessionInfo
 	for rows.Next() {
 		var info SessionInfo
-		if err := rows.Scan(&info.ID, &info.Summary, &info.CreatedAt, &info.UpdatedAt, &info.InputTokens, &info.OutputTokens); err != nil {
+		if err := rows.Scan(&info.ID, &info.Summary, &info.ContextLabel, &info.CreatedAt, &info.UpdatedAt, &info.InputTokens, &info.OutputTokens); err != nil {
 			return nil, fmt.Errorf("failed to scan session: %w", err)
 		}
 
