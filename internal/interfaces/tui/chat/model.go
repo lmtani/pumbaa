@@ -23,8 +23,7 @@ import (
 	"google.golang.org/adk/tool"
 	"google.golang.org/genai"
 
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -161,7 +160,7 @@ type Model struct {
 
 	// Modal state
 	activeModal         ModalKind
-	sessionsList        []infraSession.SessionInfo
+	sessionsList        []ports.ChatSessionInfo
 	sessionsCursor      int
 	sessionsLoading     bool
 	sessionsError       string
@@ -224,7 +223,7 @@ type sessionCreatedMsg struct {
 // resumableFoundMsg reports a previous session for the same task context.
 type resumableFoundMsg struct {
 	owner *[]ChatMessage
-	info  infraSession.SessionInfo
+	info  ports.ChatSessionInfo
 }
 
 // ClearNotificationMsg is sent to clear the tool notification
@@ -241,7 +240,7 @@ type clearStatusMsg struct{}
 
 // sessionListLoadedMsg is sent when session list is loaded
 type sessionListLoadedMsg struct {
-	sessions []infraSession.SessionInfo
+	sessions []ports.ChatSessionInfo
 }
 
 // sessionListErrorMsg is sent when session loading fails
@@ -502,14 +501,14 @@ func (m *Model) findResumableCmd() tea.Cmd {
 	if m.session != nil || m.contextLabel == "" {
 		return nil
 	}
-	svc, ok := m.sessionService.(*infraSession.SQLiteService)
+	svc, ok := m.sessionService.(ports.ChatSessionStore)
 	if !ok {
 		return nil
 	}
 	label := m.contextLabel
 	owner := m.msgs
 	return func() tea.Msg {
-		info, err := svc.FindLatestByContextLabel(context.Background(), infraSession.DefaultAppName, infraSession.DefaultUserID, label)
+		info, err := svc.FindLatestByContextLabel(context.Background(), ports.DefaultChatAppName, ports.DefaultChatUserID, label)
 		if err != nil || info == nil {
 			return nil
 		}
@@ -526,15 +525,15 @@ func (m *Model) createSessionCmd() tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 		resp, err := svc.Create(ctx, &session.CreateRequest{
-			AppName: infraSession.DefaultAppName,
-			UserID:  infraSession.DefaultUserID,
+			AppName: ports.DefaultChatAppName,
+			UserID:  ports.DefaultChatUserID,
 		})
 		if err != nil {
 			return sessionCreatedMsg{owner: owner, err: err}
 		}
 		if label != "" {
-			if sqliteSvc, ok := svc.(*infraSession.SQLiteService); ok {
-				_ = sqliteSvc.SetContextLabel(ctx, resp.Session.ID(), label)
+			if store, ok := svc.(ports.ChatSessionStore); ok {
+				_ = store.SetContextLabel(ctx, resp.Session.ID(), label)
 			}
 		}
 		return sessionCreatedMsg{owner: owner, session: resp.Session}
@@ -743,10 +742,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Persist token usage to session
 			if m.session != nil && m.sessionService != nil {
-				if sqliteSvc, ok := m.sessionService.(interface {
-					UpdateTokenUsage(ctx context.Context, sessionID string, inputTokens, outputTokens int) error
-				}); ok {
-					go sqliteSvc.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
+				if store, ok := m.sessionService.(ports.ChatSessionStore); ok {
+					go store.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
 				}
 			}
 
@@ -1553,7 +1550,7 @@ func (m Model) executeTool(ctx context.Context, fc *genai.FunctionCall) (map[str
 			if def.Name == fc.Name {
 				// functiontool.Run dereferences the tool context (ADK v1.0.0
 				// panics on nil), so pass the minimal no-op context.
-				return td.Run(tools.NoopToolContext(), fc.Args)
+				return td.Run(noopToolContext{}, fc.Args)
 			}
 		}
 	}

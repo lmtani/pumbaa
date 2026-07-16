@@ -4,8 +4,16 @@ import (
 	"testing"
 
 	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/toolconfirmation"
 	"google.golang.org/genai"
 )
+
+// chatNoopToolContext mirrors the chat's private noopToolContext
+// (internal/interfaces/tui/chat/toolcontext.go): a minimal tool.Context for
+// running function tools outside an ADK runner.
+type chatNoopToolContext struct{ tool.Context }
+
+func (chatNoopToolContext) ToolConfirmation() *toolconfirmation.ToolConfirmation { return nil }
 
 // chatToolDefinition mirrors the private toolWithDefinition interface the
 // chat uses (internal/interfaces/tui/chat/model.go) to execute tools.
@@ -34,7 +42,7 @@ func TestChatExecutePathWDL(t *testing.T) {
 		{"action": "wdl_list"},
 		{"action": "wdl_search", "query": "a"},
 	} {
-		result, err := td.Run(NoopToolContext(), args)
+		result, err := td.Run(chatNoopToolContext{}, args)
 		if err != nil {
 			t.Fatalf("Run(%v) returned error (chat would show ✗): %v", args, err)
 		}

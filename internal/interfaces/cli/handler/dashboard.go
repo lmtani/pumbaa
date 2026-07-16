@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
@@ -22,6 +23,7 @@ type DashboardHandler struct {
 	batchLogsUC  *workflowapp.GetBatchLogsUseCase
 	config       *config.Config
 	version      string
+	chatDeps     ChatDepsProvider
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -33,6 +35,7 @@ func NewDashboardHandler(
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cfg *config.Config,
 	version string,
+	chatDeps ChatDepsProvider,
 ) *DashboardHandler {
 	return &DashboardHandler{
 		repository:   client,
@@ -41,6 +44,7 @@ func NewDashboardHandler(
 		fileProvider: fp,
 		batchLogsUC:  bluc,
 		config:       cfg,
+		chatDeps:     chatDeps,
 		version:      version,
 	}
 }
@@ -113,9 +117,15 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		CurrentVersion: h.version,
 	}
 
-	// Initialize chat dependencies if LLM is configured
-	if h.config != nil && h.config.LLMProvider != "" {
-		deps.ChatDeps = initChatDependencies(h.config, h.repository)
+	// Initialize chat dependencies if LLM is configured; failures only
+	// disable chat, they never block the TUI.
+	if h.chatDeps != nil {
+		chatDeps, err := h.chatDeps(false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Chat disabled - %v\n", err)
+		} else {
+			deps.ChatDeps = chatDeps
+		}
 	}
 
 	return deps
