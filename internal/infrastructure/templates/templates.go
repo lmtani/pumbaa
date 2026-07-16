@@ -6,6 +6,8 @@ import (
 	"embed"
 	"encoding/base64"
 	"html/template"
+
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 //go:embed report.html favicon.png
@@ -39,4 +41,22 @@ func RenderReport(data ReportData) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// HTMLRenderer renders the resource report as HTML using the embedded template.
+// It implements ports.ResourceReportRenderer.
+type HTMLRenderer struct{}
+
+// NewHTMLRenderer creates a new HTML report renderer.
+func NewHTMLRenderer() *HTMLRenderer {
+	return &HTMLRenderer{}
+}
+
+func (r *HTMLRenderer) Render(data ports.ResourceReportData) (string, error) {
+	return RenderReport(ReportData{
+		DataJSON:            template.JS(data.DataJSON),
+		WorkflowsJSON:       template.JS(data.WorkflowsJSON),
+		RecommendationsJSON: template.JS(data.RecommendationsJSON),
+		LLMModelInfo:        data.LLMModelInfo,
+	})
 }

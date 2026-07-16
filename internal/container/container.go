@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/lmtani/pumbaa/internal/application/bundle"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
@@ -14,6 +15,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
+	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
@@ -123,7 +125,10 @@ func New(cfg *config.Config, version string) *Container {
 		}
 	}
 	recommendationGenerator := recommendation.NewLLMGenerator(cfg, wdlTools)
-	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator)
+	llmDebugWriterFactory := func(path string) (ports.LLMDebugWriter, error) {
+		return recommendation.NewFileDebugWriter(path)
+	}
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator, templates.NewHTMLRenderer(), llmDebugWriterFactory)
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
