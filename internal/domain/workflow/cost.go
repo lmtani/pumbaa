@@ -5,6 +5,7 @@ package workflow
 
 import (
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -40,7 +41,7 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 	type agg struct {
 		cost       float64
 		vmHours    float64
-		shards     map[int]bool
+		shards     map[string]bool
 		attempts   int
 		preempt    bool
 		fromActual bool
@@ -53,13 +54,17 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 	// cost up to this instant.
 	now := time.Now()
 
-	var walk func(calls map[string][]Call)
-	walk = func(calls map[string][]Call) {
+	// scope identifies the (sub)workflow instance a call belongs to, so that
+	// shards of same-named tasks in different subworkflow instances are not
+	// collapsed together (a scattered subworkflow runs the same task many
+	// times, each at shard -1 of its own instance).
+	var walk func(calls map[string][]Call, scope string)
+	walk = func(calls map[string][]Call, scope string) {
 		for callName, callList := range calls {
 			short := preemptionShortTaskName(callName)
 			for _, call := range callList {
 				if call.SubWorkflowMetadata != nil {
-					walk(call.SubWorkflowMetadata.Calls)
+					walk(call.SubWorkflowMetadata.Calls, subworkflowScope(scope, callName, call.ShardIndex))
 					continue
 				}
 				if call.SubWorkflowID != "" {
@@ -70,14 +75,14 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 
 				a := aggregations[short]
 				if a == nil {
-					a = &agg{shards: make(map[int]bool), allActual: true}
+					a = &agg{shards: make(map[string]bool), allActual: true}
 					aggregations[short] = a
 					order = append(order, short)
 				}
 				cost := calculateAttemptCost(call, now)
 				a.cost += cost
 				a.attempts++
-				a.shards[call.ShardIndex] = true
+				a.shards[scope+strconv.Itoa(call.ShardIndex)] = true
 				if IsPreemptible(call.Preemptible) {
 					a.preempt = true
 				}
@@ -90,7 +95,7 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 			}
 		}
 	}
-	walk(w.Calls)
+	walk(w.Calls, "")
 
 	breakdown := &CostBreakdown{
 		FromActual:          true,
@@ -124,4 +129,11 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 	})
 
 	return breakdown
+}
+
+// subworkflowScope extends a scope with one subworkflow call instance —
+// name plus the call's own shard index, so each element of a scattered
+// subworkflow is a distinct instance.
+func subworkflowScope(scope, callName string, shardIndex int) string {
+	return scope + callName + "#" + strconv.Itoa(shardIndex) + "/"
 }
