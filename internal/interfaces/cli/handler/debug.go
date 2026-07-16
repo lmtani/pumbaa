@@ -9,7 +9,6 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
@@ -21,7 +20,6 @@ type DebugHandler struct {
 	monitoringUC *workflowapp.MonitoringUseCase
 	fileProvider ports.FileProvider
 	batchLogsUC  *workflowapp.GetBatchLogsUseCase
-	config       *config.Config
 	chatDeps     ChatDepsProvider
 }
 
@@ -32,7 +30,6 @@ func NewDebugHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
-	cfg *config.Config,
 	chatDeps ChatDepsProvider,
 ) *DebugHandler {
 	return &DebugHandler{
@@ -41,7 +38,6 @@ func NewDebugHandler(
 		monitoringUC: muc,
 		fileProvider: fp,
 		batchLogsUC:  bluc,
-		config:       cfg,
 		chatDeps:     chatDeps,
 	}
 }

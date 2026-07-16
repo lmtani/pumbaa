@@ -22,11 +22,15 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
+	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
+
+// githubRepo is the GitHub repository used for release update checks.
+const githubRepo = "lmtani/pumbaa"
 
 // Container holds all application dependencies.
 type Container struct {
@@ -70,7 +74,7 @@ type Container struct {
 }
 
 // New creates a new dependency injection container.
-func New(cfg *config.Config, version string) *Container {
+func New(cfg *config.Config, appVersion string) *Container {
 	c := &Container{
 		Config: cfg,
 	}
@@ -91,7 +95,7 @@ func New(cfg *config.Config, version string) *Container {
 
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
-		ts := telemetry.NewCloudflareService(cfg.ClientID, version)
+		ts := telemetry.NewCloudflareService(cfg.ClientID, appVersion)
 		if ts == nil {
 			// Fallback to NoOp if failed or endpoint not configured
 			c.TelemetryService = telemetry.NewNoOpService()
@@ -147,8 +151,8 @@ func New(cfg *config.Config, version string) *Container {
 	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
 	c.ResourceReportHandler = handler.NewResourceReportHandler(c.ResourceReportUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.Config, c.ChatDependencies)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.Config, version, c.ChatDependencies)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.ChatDependencies)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, version.NewGitHubChecker(githubRepo), appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
 	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)

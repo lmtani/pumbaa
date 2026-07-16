@@ -9,21 +9,21 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	repository   ports.WorkflowRepository
-	telemetry    telemetry.Service
-	monitoringUC *workflowapp.MonitoringUseCase
-	fileProvider ports.FileProvider
-	batchLogsUC  *workflowapp.GetBatchLogsUseCase
-	config       *config.Config
-	version      string
-	chatDeps     ChatDepsProvider
+	repository    ports.WorkflowRepository
+	telemetry     telemetry.Service
+	monitoringUC  *workflowapp.MonitoringUseCase
+	fileProvider  ports.FileProvider
+	batchLogsUC   *workflowapp.GetBatchLogsUseCase
+	compareUC     *workflowapp.CompareUseCase
+	updateChecker ports.UpdateChecker
+	version       string
+	chatDeps      ChatDepsProvider
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -33,19 +33,21 @@ func NewDashboardHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
-	cfg *config.Config,
+	cuc *workflowapp.CompareUseCase,
+	updateChecker ports.UpdateChecker,
 	version string,
 	chatDeps ChatDepsProvider,
 ) *DashboardHandler {
 	return &DashboardHandler{
-		repository:   client,
-		telemetry:    ts,
-		monitoringUC: muc,
-		fileProvider: fp,
-		batchLogsUC:  bluc,
-		config:       cfg,
-		chatDeps:     chatDeps,
-		version:      version,
+		repository:    client,
+		telemetry:     ts,
+		monitoringUC:  muc,
+		fileProvider:  fp,
+		batchLogsUC:   bluc,
+		compareUC:     cuc,
+		updateChecker: updateChecker,
+		chatDeps:      chatDeps,
+		version:       version,
 	}
 }
 
@@ -113,7 +115,8 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		FileProvider:   h.fileProvider,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
-		CompareUC:      workflowapp.NewCompareUseCase(h.repository),
+		CompareUC:      h.compareUC,
+		UpdateChecker:  h.updateChecker,
 		CurrentVersion: h.version,
 	}
 
