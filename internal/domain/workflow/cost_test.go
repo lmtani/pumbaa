@@ -85,3 +85,75 @@ func TestCalculateCostBreakdownRecursesLoadedSubworkflowAndCountsPending(t *test
 		t.Errorf("expected 2 pending subworkflows, got %d", b.SubworkflowsPending)
 	}
 }
+
+func TestBillableHoursRunningAttemptAccruesToNow(t *testing.T) {
+	now, _ := time.Parse(time.RFC3339, "2026-07-16T13:00:00Z")
+
+	running := Call{Status: StatusRunning, VMStartTime: now.Add(-2 * time.Hour)}
+	if h := billableHours(running, now); h != 2.0 {
+		t.Errorf("running attempt should accrue vmStart→now, got %v hours", h)
+	}
+
+	// Without VM timestamps it falls back to the task start.
+	runningNoVM := Call{Status: StatusRunning, Start: now.Add(-30 * time.Minute)}
+	if h := billableHours(runningNoVM, now); h != 0.5 {
+		t.Errorf("running attempt without VM times should accrue start→now, got %v hours", h)
+	}
+
+	// A non-running attempt with a missing end has no billable window: it
+	// must not accrue forever.
+	stale := Call{Status: StatusFailed, VMStartTime: now.Add(-2 * time.Hour)}
+	if h := billableHours(stale, now); h != 0 {
+		t.Errorf("non-running attempt without end should be 0, got %v hours", h)
+	}
+}
+
+func TestCalculateAttemptCostRunningUsesRealRate(t *testing.T) {
+	now, _ := time.Parse(time.RFC3339, "2026-07-16T13:00:00Z")
+
+	// A running attempt with a real vmCostPerHour must be charged for the
+	// time consumed so far — not the cpu×mem resource estimate (the bug that
+	// inflated running workflows: 12 CPU × 54 GB × 0.01 = 6.48 pseudo-$).
+	call := Call{
+		Status:        StatusRunning,
+		VMStartTime:   now.Add(-2 * time.Hour),
+		VMCostPerHour: 0.20,
+		CPU:           "12",
+		Memory:        "54 GB",
+	}
+	if cost := calculateAttemptCost(call, now); cost != 0.40 {
+		t.Errorf("running attempt cost = %v, want 0.40 (rate × accrued hours)", cost)
+	}
+}
+
+func TestCalculateCostBreakdownIncludesRunningTasks(t *testing.T) {
+	wf := &Workflow{
+		Calls: map[string][]Call{
+			"WF.Live": {{
+				Name:          "WF.Live",
+				ShardIndex:    -1,
+				Attempt:       1,
+				Status:        StatusRunning,
+				VMStartTime:   time.Now().Add(-2 * time.Hour),
+				VMCostPerHour: 0.10,
+				Preemptible:   "false",
+			}},
+		},
+	}
+
+	b := wf.CalculateCostBreakdown()
+
+	if len(b.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %+v", b.Tasks)
+	}
+	got := b.Tasks[0]
+	if got.TotalCost < 0.19 || got.TotalCost > 0.21 {
+		t.Errorf("running task cost = %v, want ≈0.20 (0.10/h × 2h accrued)", got.TotalCost)
+	}
+	if got.VMHours < 1.9 || got.VMHours > 2.1 {
+		t.Errorf("running task VMHours = %v, want ≈2", got.VMHours)
+	}
+	if !got.FromActual {
+		t.Errorf("cost from real vmCostPerHour should be FromActual")
+	}
+}

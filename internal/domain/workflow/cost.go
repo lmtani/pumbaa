@@ -3,7 +3,10 @@
 // every task (preemptible or not) so users can see where the money goes.
 package workflow
 
-import "sort"
+import (
+	"sort"
+	"time"
+)
 
 // TaskCost is a Value Object with the aggregated cost of one task (summed
 // across its shards and attempts).
@@ -46,6 +49,9 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 	aggregations := make(map[string]*agg)
 	var order []string
 	pending := 0
+	// A single anchor for the whole traversal: running attempts accrue their
+	// cost up to this instant.
+	now := time.Now()
 
 	var walk func(calls map[string][]Call)
 	walk = func(calls map[string][]Call) {
@@ -68,15 +74,15 @@ func (w *Workflow) CalculateCostBreakdown() *CostBreakdown {
 					aggregations[short] = a
 					order = append(order, short)
 				}
-				cost := calculateAttemptCost(call)
+				cost := calculateAttemptCost(call, now)
 				a.cost += cost
 				a.attempts++
 				a.shards[call.ShardIndex] = true
 				if IsPreemptible(call.Preemptible) {
 					a.preempt = true
 				}
-				if call.VMCostPerHour > 0 && billableHours(call) > 0 {
-					a.vmHours += billableHours(call)
+				if call.VMCostPerHour > 0 && billableHours(call, now) > 0 {
+					a.vmHours += billableHours(call, now)
 					a.fromActual = true
 				} else {
 					a.allActual = false

@@ -5,6 +5,7 @@ package workflow
 import (
 	"sort"
 	"strings"
+	"time"
 )
 
 // PreemptionTaskStats is a Value Object containing preemption statistics for a single task/shard.
@@ -62,6 +63,7 @@ type PreemptionSummary struct {
 
 // CalculatePreemptionSummary analyzes preemption statistics for this workflow and returns a summary.
 func (w *Workflow) CalculatePreemptionSummary() *PreemptionSummary {
+	now := time.Now()
 	summary := &PreemptionSummary{
 		WorkflowID:       w.ID,
 		WorkflowName:     w.Name,
@@ -105,7 +107,7 @@ func (w *Workflow) CalculatePreemptionSummary() *PreemptionSummary {
 			}
 			seen[key] = true
 
-			stats := analyzeTaskShard(attempts)
+			stats := analyzeTaskShard(attempts, now)
 			summary.TotalTasks++
 
 			if stats.IsPreemptible {
@@ -191,7 +193,8 @@ func (w *Workflow) CalculatePreemptionSummary() *PreemptionSummary {
 }
 
 // analyzeTaskShard analyzes preemption stats for a single task/shard.
-func analyzeTaskShard(attempts []Call) PreemptionTaskStats {
+// now anchors the accrued cost of attempts that are still running.
+func analyzeTaskShard(attempts []Call, now time.Time) PreemptionTaskStats {
 	stats := PreemptionTaskStats{}
 
 	if len(attempts) == 0 {
@@ -215,7 +218,7 @@ func analyzeTaskShard(attempts []Call) PreemptionTaskStats {
 
 	// Calculate costs for all attempts
 	for i, attempt := range attempts {
-		cost := calculateAttemptCost(attempt)
+		cost := calculateAttemptCost(attempt, now)
 		stats.TotalCost += cost
 
 		// All attempts except the last one are "wasted" (preempted)
@@ -258,24 +261,39 @@ func analyzeTaskShard(attempts []Call) PreemptionTaskStats {
 
 // billableHours returns the VM lifetime in hours — the basis Cromwell uses to
 // bill. It prefers vmStartTime/vmEndTime (actual VM uptime) and falls back to
-// the task's Start/End when VM timestamps are absent. Using the task wall-clock
-// overestimates cost, since it includes queueing and localization outside the
-// billed VM window.
-func billableHours(call Call) float64 {
-	if !call.VMStartTime.IsZero() && !call.VMEndTime.IsZero() {
-		return call.VMEndTime.Sub(call.VMStartTime).Hours()
+// the task's Start/End when VM timestamps are absent. An attempt still running
+// has no end timestamp yet: its window is open, so hours accrue up to now —
+// the cost of a running task is what it has consumed so far. Using the task
+// wall-clock overestimates cost, since it includes queueing and localization
+// outside the billed VM window.
+func billableHours(call Call, now time.Time) float64 {
+	if h := windowHours(call.VMStartTime, call.VMEndTime, call.Status, now); h > 0 {
+		return h
 	}
-	if !call.Start.IsZero() && !call.End.IsZero() {
-		return call.End.Sub(call.Start).Hours()
+	return windowHours(call.Start, call.End, call.Status, now)
+}
+
+// windowHours measures a time window in hours. A window with a start but no
+// end is still open when the attempt is running, so it is measured up to now;
+// for any other status the missing end means there is no billable length.
+func windowHours(start, end time.Time, status Status, now time.Time) float64 {
+	if start.IsZero() {
+		return 0
 	}
-	return 0
+	if end.IsZero() {
+		if status != StatusRunning {
+			return 0
+		}
+		end = now
+	}
+	return end.Sub(start).Hours()
 }
 
 // calculateAttemptCost calculates the estimated cost of a single attempt.
-func calculateAttemptCost(call Call) float64 {
+func calculateAttemptCost(call Call, now time.Time) float64 {
 	// If we have actual VM cost per hour, use it against the billed VM lifetime
 	if call.VMCostPerHour > 0 {
-		if hours := billableHours(call); hours > 0 {
+		if hours := billableHours(call, now); hours > 0 {
 			return call.VMCostPerHour * hours
 		}
 	}
@@ -290,7 +308,7 @@ func calculateAttemptCost(call Call) float64 {
 		mem = 1
 	}
 
-	durationHours := billableHours(call)
+	durationHours := billableHours(call, now)
 	if durationHours <= 0 {
 		durationHours = 0.01 // Minimum 36 seconds
 	}
