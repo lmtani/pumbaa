@@ -34,7 +34,7 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 			ev := session.NewEvent("")
 			ev.Content = userContent
 			ev.Author = "user"
-			m.sessionService.AppendEvent(ctx, m.session, ev)
+			_ = m.sessionService.AppendEvent(ctx, m.session, ev)
 		}
 
 		maxTurns := 15
@@ -99,7 +99,7 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 				ev := session.NewEvent("")
 				ev.Content = lastResp.Content
 				ev.Author = "model"
-				m.sessionService.AppendEvent(ctx, m.session, ev)
+				_ = m.sessionService.AppendEvent(ctx, m.session, ev)
 			}
 
 			toolCalls := getToolCalls(lastResp.Content)
@@ -169,7 +169,7 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 					ev := session.NewEvent("")
 					ev.Content = toolContent
 					ev.Author = "tool"
-					m.sessionService.AppendEvent(ctx, m.session, ev)
+					_ = m.sessionService.AppendEvent(ctx, m.session, ev)
 				}
 
 				currentTurn++
@@ -198,7 +198,7 @@ func (m Model) generateResponse(ctx context.Context, input string) tea.Cmd {
 		}
 
 		if toolResultCount > 0 {
-			summary.WriteString(fmt.Sprintf("- Executed %d tool calls\n", toolResultCount))
+			fmt.Fprintf(&summary, "- Executed %d tool calls\n", toolResultCount)
 		}
 
 		summary.WriteString("\nIf you need more information, please ask a more specific question or ask me to continue from where I left off.")

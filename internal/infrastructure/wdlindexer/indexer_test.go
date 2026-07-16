@@ -31,8 +31,8 @@ func TestNewIndexer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	_ = tmpFile.Close()
 
 	// Test indexer creation
 	indexer, err := NewIndexer(testDir, tmpFile.Name(), true)
@@ -96,8 +96,8 @@ func TestSearchCaseInsensitive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	_ = tmpFile.Close()
 
 	indexer, err := NewIndexer(testDir, tmpFile.Name(), true)
 	if err != nil {

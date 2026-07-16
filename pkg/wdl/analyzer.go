@@ -290,18 +290,18 @@ func (g *DependencyGraph) HasCyclicDependency() bool {
 func (g *DependencyGraph) PrintGraph() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Root: %s\n", g.Root))
+	fmt.Fprintf(&sb, "Root: %s\n", g.Root)
 	sb.WriteString("Dependencies:\n")
 
 	for _, path := range g.Imports {
 		node := g.Dependencies[path]
 		relPath, _ := filepath.Rel(filepath.Dir(g.Root), path)
-		sb.WriteString(fmt.Sprintf("  - %s\n", relPath))
+		fmt.Fprintf(&sb, "  - %s\n", relPath)
 		if len(node.DirectDeps) > 0 {
 			sb.WriteString("    imports:\n")
 			for _, dep := range node.DirectDeps {
 				depRel, _ := filepath.Rel(filepath.Dir(g.Root), dep)
-				sb.WriteString(fmt.Sprintf("      - %s\n", depRel))
+				fmt.Fprintf(&sb, "      - %s\n", depRel)
 			}
 		}
 	}

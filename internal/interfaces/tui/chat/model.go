@@ -249,7 +249,7 @@ func (m *Model) flushHistory() {
 			ev := session.NewEvent("")
 			ev.Content = content
 			ev.Author = content.Role
-			svc.AppendEvent(ctx, sess, ev)
+			_ = svc.AppendEvent(ctx, sess, ev)
 		}
 	}()
 }

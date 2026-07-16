@@ -228,9 +228,10 @@ func TestTaskMetricsCollection_CalculateEfficiencyStats(t *testing.T) {
 	// Find each task's stats
 	var efficientStats, inefficientStats *TaskEfficiencyStats
 	for i := range stats {
-		if stats[i].TaskName == "efficient_task" {
+		switch stats[i].TaskName {
+		case "efficient_task":
 			efficientStats = &stats[i]
-		} else if stats[i].TaskName == "inefficient_task" {
+		case "inefficient_task":
 			inefficientStats = &stats[i]
 		}
 	}

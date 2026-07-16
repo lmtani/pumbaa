@@ -15,7 +15,7 @@ func newTestService(t *testing.T) *SQLiteService {
 	if err != nil {
 		t.Fatalf("failed to create service: %v", err)
 	}
-	t.Cleanup(func() { svc.Close() })
+	t.Cleanup(func() { _ = svc.Close() })
 	return svc
 }
 

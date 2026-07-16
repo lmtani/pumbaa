@@ -56,7 +56,7 @@ func (r *TSVReader) parseFile(filename, workflowID string) ([]workflow.TaskMetri
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var metrics []workflow.TaskMetrics
 	scanner := bufio.NewScanner(file)

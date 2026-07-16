@@ -16,7 +16,6 @@ type DirectoryPickerModel struct {
 	filepicker   filepicker.Model
 	selectedPath string
 	quitting     bool
-	err          error
 }
 
 // NewDirectoryPicker creates a new directory picker starting at the given path.
@@ -25,7 +24,7 @@ func NewDirectoryPicker(startPath string) DirectoryPickerModel {
 	fp.DirAllowed = true
 	fp.FileAllowed = false
 	fp.ShowHidden = false
-	fp.Height = 15
+	fp.SetHeight(15)
 
 	// Start at home directory if no path specified
 	if startPath == "" {

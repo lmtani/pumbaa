@@ -251,7 +251,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Persist token usage to session
 			if m.session != nil && m.sessionService != nil {
 				if store, ok := m.sessionService.(ports.ChatSessionStore); ok {
-					go store.UpdateTokenUsage(context.Background(), m.session.ID(), m.inputTokens, m.outputTokens)
+					sessionID := m.session.ID()
+					inputTokens, outputTokens := m.inputTokens, m.outputTokens
+					go func() { _ = store.UpdateTokenUsage(context.Background(), sessionID, inputTokens, outputTokens) }()
 				}
 			}
 

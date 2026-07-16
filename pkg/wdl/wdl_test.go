@@ -442,7 +442,7 @@ func TestAnalyzeDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create test files
 	mainWDL := `version 1.0
@@ -532,7 +532,7 @@ func TestAnalyzeDependenciesCircular(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create circular dependency
 	fileA := `version 1.0
@@ -564,7 +564,7 @@ func TestCreateBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create test files
 	mainWDL := `version 1.0
@@ -652,7 +652,7 @@ func TestCreateBundleNoDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	mainWDL := `version 1.0
 

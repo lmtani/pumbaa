@@ -113,7 +113,7 @@ func (h *ResourceReportHandler) displayResults(output *workflow.ResourceReportOu
 			shardStr = fmt.Sprintf("%d", task.ShardIndex)
 		}
 
-		table.Append([]string{
+		_ = table.Append([]string{
 			task.TaskName,
 			shardStr,
 			task.CPURequest,
@@ -128,7 +128,7 @@ func (h *ResourceReportHandler) displayResults(output *workflow.ResourceReportOu
 		})
 	}
 
-	table.Render()
+	_ = table.Render()
 
 	if errorCount > 0 {
 		h.presenter.Newline()

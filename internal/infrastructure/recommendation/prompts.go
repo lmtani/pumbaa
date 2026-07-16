@@ -174,20 +174,20 @@ func buildPrompt(tasks []ports.TaskAnalysisData) string {
 			meanDuration /= float64(len(task.DurationSeconds))
 		}
 
-		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
-		sb.WriteString(fmt.Sprintf("**Cost Contribution: %.1f%%** (prioritize if high)\n", costPct))
-		sb.WriteString(fmt.Sprintf("- Samples: %d | Avg Duration: %.0f seconds\n", task.SampleCount, meanDuration))
+		fmt.Fprintf(&sb, "## Task: %s\n", task.TaskName)
+		fmt.Fprintf(&sb, "**Cost Contribution: %.1f%%** (prioritize if high)\n", costPct)
+		fmt.Fprintf(&sb, "- Samples: %d | Avg Duration: %.0f seconds\n", task.SampleCount, meanDuration)
 
 		// Resource requests
-		sb.WriteString(fmt.Sprintf("- CPU Request: %s cores\n", task.CPURequest))
-		sb.WriteString(fmt.Sprintf("- Memory Request: %.1f GB\n", task.MemoryReqGB))
-		sb.WriteString(fmt.Sprintf("- Disk Request: %.1f GB\n\n", task.DiskReqGB))
+		fmt.Fprintf(&sb, "- CPU Request: %s cores\n", task.CPURequest)
+		fmt.Fprintf(&sb, "- Memory Request: %.1f GB\n", task.MemoryReqGB)
+		fmt.Fprintf(&sb, "- Disk Request: %.1f GB\n\n", task.DiskReqGB)
 
 		// Actual usage
 		sb.WriteString("### Actual Usage:\n")
-		sb.WriteString(fmt.Sprintf("- CPU means (%%): %v\n", task.CPUMeans))
-		sb.WriteString(fmt.Sprintf("- Memory peaks (MB): %v\n", task.MemoryPeaksMB))
-		sb.WriteString(fmt.Sprintf("- Disk peaks (GB): %v\n", task.DiskPeaksGB))
+		fmt.Fprintf(&sb, "- CPU means (%%): %v\n", task.CPUMeans)
+		fmt.Fprintf(&sb, "- Memory peaks (MB): %v\n", task.MemoryPeaksMB)
+		fmt.Fprintf(&sb, "- Disk peaks (GB): %v\n", task.DiskPeaksGB)
 
 		// Short task warning
 		if meanDuration < 60 {
@@ -198,7 +198,7 @@ func buildPrompt(tasks []ports.TaskAnalysisData) string {
 		if len(task.InputSizes) > 0 {
 			sb.WriteString("\n### Input Sizes (bytes per sample):\n")
 			for name, sizes := range task.InputSizes {
-				sb.WriteString(fmt.Sprintf("- %s: %v\n", name, sizes))
+				fmt.Fprintf(&sb, "- %s: %v\n", name, sizes)
 			}
 		}
 
@@ -240,8 +240,8 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 
 	sb.WriteString("Generate an Executive Summary for the workflow resource analysis based on the following aggregate data.\n\n")
 	sb.WriteString("**Global Stats**:\n")
-	sb.WriteString(fmt.Sprintf("- Total Tasks Analyzed: %d\n", len(tasks)))
-	sb.WriteString(fmt.Sprintf("- Optimization Status: %d Critical, %d Warnings, %d Good (including %d tasks with no issues found)\n", criticalCount, warningCount, goodCount, tasksWithoutRecs))
+	fmt.Fprintf(&sb, "- Total Tasks Analyzed: %d\n", len(tasks))
+	fmt.Fprintf(&sb, "- Optimization Status: %d Critical, %d Warnings, %d Good (including %d tasks with no issues found)\n", criticalCount, warningCount, goodCount, tasksWithoutRecs)
 	sb.WriteString("\n**Top 10 Tasks by Resource Cost**:\n")
 
 	// Sort tasks by cost (they should be already sorted, but let's be safe or just take top 10 if input is sorted)
@@ -257,7 +257,7 @@ func buildSummaryPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 		if totalCost > 0 {
 			costPct = (t.ResourceCost / totalCost) * 100
 		}
-		sb.WriteString(fmt.Sprintf("%d. %s (%.1f%% of cost)\n", i+1, t.TaskName, costPct))
+		fmt.Fprintf(&sb, "%d. %s (%.1f%% of cost)\n", i+1, t.TaskName, costPct)
 	}
 
 	sb.WriteString("\n**Instructions**:\n")
@@ -289,15 +289,15 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf("## Task: %s\n", task.TaskName))
-		sb.WriteString(fmt.Sprintf("Samples: %d\n", task.SampleCount))
+		fmt.Fprintf(&sb, "## Task: %s\n", task.TaskName)
+		fmt.Fprintf(&sb, "Samples: %d\n", task.SampleCount)
 
 		// Inject Optimization Context
 		if rec, ok := recMap[task.TaskName]; ok {
-			sb.WriteString(fmt.Sprintf("\n### Optimization Context (from previous analysis):\n"))
-			sb.WriteString(fmt.Sprintf("- Overall Status: %s\n", rec.OverallStatus))
+			sb.WriteString("\n### Optimization Context (from previous analysis):\n")
+			fmt.Fprintf(&sb, "- Overall Status: %s\n", rec.OverallStatus)
 			for _, item := range rec.Recommendations {
-				sb.WriteString(fmt.Sprintf("- [%s] %s\n", item.Severity, item.Message))
+				fmt.Fprintf(&sb, "- [%s] %s\n", item.Severity, item.Message)
 			}
 		}
 		sb.WriteString("\n")
@@ -318,7 +318,7 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 				continue
 			}
 			var sum float64
-			var minVal, maxVal float64 = float64(sizes[0]), float64(sizes[0])
+			minVal, maxVal := float64(sizes[0]), float64(sizes[0])
 			for _, s := range sizes {
 				gb := float64(s) / (1024 * 1024 * 1024)
 				sum += gb
@@ -362,8 +362,8 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 				if inp.variance > 0.01 {
 					varianceLabel = "VARIES"
 				}
-				sb.WriteString(fmt.Sprintf("- **%s**: min=%.2f GB, max=%.2f GB, avg=%.2f GB [%s]\n",
-					inp.name, inp.minGB, inp.maxGB, inp.avgGB, varianceLabel))
+				fmt.Fprintf(&sb, "- **%s**: min=%.2f GB, max=%.2f GB, avg=%.2f GB [%s]\n",
+					inp.name, inp.minGB, inp.maxGB, inp.avgGB, varianceLabel)
 			}
 			sb.WriteString("\n")
 
@@ -373,7 +373,7 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 			// Build header
 			sb.WriteString("| sample |")
 			for _, inp := range inputs {
-				sb.WriteString(fmt.Sprintf(" %s_gb |", inp.name))
+				fmt.Fprintf(&sb, " %s_gb |", inp.name)
 			}
 			sb.WriteString(" disk_peak_gb | memory_peak_gb |\n")
 
@@ -397,14 +397,14 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 
 			// Build data rows
 			for i := 0; i < numSamples; i++ {
-				sb.WriteString(fmt.Sprintf("| %d |", i+1))
+				fmt.Fprintf(&sb, "| %d |", i+1)
 				for _, inp := range inputs {
 					inputGB := float64(inp.sizes[i]) / (1024 * 1024 * 1024)
-					sb.WriteString(fmt.Sprintf(" %.2f |", inputGB))
+					fmt.Fprintf(&sb, " %.2f |", inputGB)
 				}
 				diskGB := task.DiskPeaksGB[i]
 				memGB := task.MemoryPeaksMB[i] / 1024
-				sb.WriteString(fmt.Sprintf(" %.2f | %.2f |\n", diskGB, memGB))
+				fmt.Fprintf(&sb, " %.2f | %.2f |\n", diskGB, memGB)
 			}
 		} else {
 			// No input sizes available
@@ -420,7 +420,7 @@ func buildFormulaPrompt(tasks []ports.TaskAnalysisData, recommendations []ports.
 			for i := 0; i < numSamples; i++ {
 				diskGB := task.DiskPeaksGB[i]
 				memGB := task.MemoryPeaksMB[i] / 1024
-				sb.WriteString(fmt.Sprintf("| %d | %.2f | %.2f |\n", i+1, diskGB, memGB))
+				fmt.Fprintf(&sb, "| %d | %.2f | %.2f |\n", i+1, diskGB, memGB)
 			}
 			sb.WriteString("\n*Note: Use fixed values based on peak usage since no input correlation is available.*\n")
 		}
