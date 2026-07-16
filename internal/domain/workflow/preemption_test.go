@@ -318,3 +318,44 @@ func TestParseMemoryGBFromString(t *testing.T) {
 		})
 	}
 }
+
+func TestPreemptionSummaryRecursesIntoLoadedSubworkflows(t *testing.T) {
+	s1, e1 := hoursApart("2026-07-06T06:00:00Z", 1)
+	s2, e2 := hoursApart("2026-07-06T07:30:00Z", 1)
+
+	// A preempted-then-succeeded chain inside a loaded subworkflow: attempt 1
+	// preempted (RetryableFailure), attempt 2 done.
+	makeSub := func() *Workflow {
+		return &Workflow{
+			Calls: map[string][]Call{
+				"Sub.Inner": {
+					{Name: "Sub.Inner", ShardIndex: -1, Attempt: 1, Status: "RetryableFailure", Start: s1, End: e1, VMCostPerHour: 0.10, Preemptible: "2"},
+					{Name: "Sub.Inner", ShardIndex: -1, Attempt: 2, Status: "Done", Start: s2, End: e2, VMCostPerHour: 0.10, Preemptible: "2"},
+				},
+			},
+		}
+	}
+
+	wf := &Workflow{
+		Calls: map[string][]Call{
+			"WF.SubA":    {{Name: "WF.SubA", ShardIndex: 0, SubWorkflowID: "sub-a", SubWorkflowMetadata: makeSub()}},
+			"WF.SubB":    {{Name: "WF.SubB", ShardIndex: 1, SubWorkflowID: "sub-b", SubWorkflowMetadata: makeSub()}},
+			"WF.Pending": {{Name: "WF.Pending", SubWorkflowID: "sub-c"}}, // not loaded
+		},
+	}
+
+	sum := wf.CalculatePreemptionSummary()
+
+	// Two instances × one task/shard chain each. Before recursion existed,
+	// subworkflow tasks were invisible here (TotalTasks counted the wrapper
+	// calls instead).
+	if sum.TotalTasks != 2 {
+		t.Errorf("TotalTasks = %d, want 2 (one chain per subworkflow instance)", sum.TotalTasks)
+	}
+	if sum.TotalAttempts != 4 {
+		t.Errorf("TotalAttempts = %d, want 4", sum.TotalAttempts)
+	}
+	if sum.TotalPreemptions != 2 {
+		t.Errorf("TotalPreemptions = %d, want 2 (one per instance — chains must not merge)", sum.TotalPreemptions)
+	}
+}

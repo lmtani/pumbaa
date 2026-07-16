@@ -223,3 +223,39 @@ func TestCalculateCostBreakdownPercentFallsBackToEstimates(t *testing.T) {
 		t.Errorf("Big percent = %v, want ~75 (3 of 4 resource-hours)", p)
 	}
 }
+
+func TestCalculateCostBreakdownCountsShardsPerSubworkflowInstance(t *testing.T) {
+	s, e := hoursApart("2026-07-06T06:00:00Z", 1)
+
+	// Two instances of the same scattered subworkflow, each running Inner at
+	// shard -1 of its own instance. They are distinct executions and must
+	// count as distinct shards, not collapse into one.
+	makeSub := func() *Workflow {
+		return &Workflow{
+			Calls: map[string][]Call{
+				"Sub.Inner": {{Name: "Sub.Inner", ShardIndex: -1, Attempt: 1, Start: s, End: e, VMCostPerHour: 0.10, Preemptible: "true"}},
+			},
+		}
+	}
+
+	wf := &Workflow{
+		Calls: map[string][]Call{
+			"WF.Scattered": {
+				{Name: "WF.Scattered", ShardIndex: 0, SubWorkflowID: "sub-a", SubWorkflowMetadata: makeSub()},
+				{Name: "WF.Scattered", ShardIndex: 1, SubWorkflowID: "sub-b", SubWorkflowMetadata: makeSub()},
+			},
+		},
+	}
+
+	b := wf.CalculateCostBreakdown()
+
+	if len(b.Tasks) != 1 || b.Tasks[0].Name != "Inner" {
+		t.Fatalf("expected one aggregated Inner task, got %+v", b.Tasks)
+	}
+	if b.Tasks[0].ShardCount != 2 {
+		t.Errorf("ShardCount = %d, want 2 (one per subworkflow instance)", b.Tasks[0].ShardCount)
+	}
+	if b.Tasks[0].AttemptCount != 2 {
+		t.Errorf("AttemptCount = %d, want 2", b.Tasks[0].AttemptCount)
+	}
+}
