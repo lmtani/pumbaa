@@ -1,0 +1,47 @@
+// Package ports defines the interfaces for external dependencies (repositories, services).
+// This file defines the telemetry sink used by the interface layers.
+package ports
+
+import "time"
+
+// TelemetryEvent represents a tracked user action.
+type TelemetryEvent struct {
+	Command   string
+	Duration  int64 // milliseconds
+	Success   bool
+	Error     string
+	Version   string
+	OS        string
+	Arch      string
+	Timestamp int64
+}
+
+// TelemetryCommandContext holds context for command execution tracking.
+type TelemetryCommandContext struct {
+	AppName   string
+	Args      []string
+	StartTime time.Time
+}
+
+// Telemetry defines the interface for telemetry collection.
+type Telemetry interface {
+	// Track captures an event. It should be non-blocking.
+	Track(event TelemetryEvent)
+
+	// TrackCommand tracks a command execution with automatic event creation.
+	// It handles duration calculation, command name extraction, and error details.
+	TrackCommand(ctx TelemetryCommandContext, err error)
+
+	// CaptureError captures an error with operation context.
+	// Use this for errors that occur outside the normal command flow,
+	// such as errors in TUI interactions or background operations.
+	CaptureError(operation string, err error)
+
+	// AddBreadcrumb logs an event that will appear as context when an error occurs.
+	// Breadcrumbs create a trail of events leading up to an error.
+	// Categories: "app", "navigation", "user", "http", "query"
+	AddBreadcrumb(category, message string)
+
+	// Close flushes any pending events.
+	Close()
+}

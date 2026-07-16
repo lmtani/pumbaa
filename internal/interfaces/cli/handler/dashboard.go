@@ -9,14 +9,13 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
 	repository    ports.WorkflowRepository
-	telemetry     telemetry.Service
+	telemetry     ports.Telemetry
 	monitoringUC  *workflowapp.MonitoringUseCase
 	fileProvider  ports.FileProvider
 	batchLogsUC   *workflowapp.GetBatchLogsUseCase
@@ -29,7 +28,7 @@ type DashboardHandler struct {
 // NewDashboardHandler creates a new dashboard handler.
 func NewDashboardHandler(
 	client ports.WorkflowRepository,
-	ts telemetry.Service,
+	ts ports.Telemetry,
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,

@@ -12,7 +12,6 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 )
@@ -136,12 +135,12 @@ Use **only** to understand or explain WDL definitions.
 
 type ChatHandler struct {
 	config       *config.Config
-	telemetry    telemetry.Service
+	telemetry    ports.Telemetry
 	chatDeps     ChatDepsProvider
 	sessionStore SessionStoreProvider
 }
 
-func NewChatHandler(cfg *config.Config, ts telemetry.Service, chatDeps ChatDepsProvider, sessionStore SessionStoreProvider) *ChatHandler {
+func NewChatHandler(cfg *config.Config, ts ports.Telemetry, chatDeps ChatDepsProvider, sessionStore SessionStoreProvider) *ChatHandler {
 	return &ChatHandler{config: cfg, telemetry: ts, chatDeps: chatDeps, sessionStore: sessionStore}
 }
 
