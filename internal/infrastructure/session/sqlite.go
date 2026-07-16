@@ -16,16 +16,24 @@ import (
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 
+	"github.com/lmtani/pumbaa/internal/application/ports"
+
 	_ "modernc.org/sqlite"
 )
 
 // DefaultAppName and DefaultUserID scope all Pumbaa chat sessions. Every
 // entry point (standalone chat, embedded TUI chat, session lists) must use
 // these constants so conversations are visible and resumable everywhere.
+// The canonical values live in ports so interface layers need not import
+// this package.
 const (
-	DefaultAppName = "pumbaa"
-	DefaultUserID  = "default"
+	DefaultAppName = ports.DefaultChatAppName
+	DefaultUserID  = ports.DefaultChatUserID
 )
+
+// Compile-time check: SQLiteService provides the extended chat-session
+// queries consumed by the interface layers.
+var _ ports.ChatSessionStore = (*SQLiteService)(nil)
 
 // SQLiteService implements session.Service using SQLite for persistence.
 type SQLiteService struct {
@@ -464,16 +472,9 @@ func (s *SQLiteService) UpdateTokenUsage(ctx context.Context, sessionID string, 
 }
 
 // SessionInfo contains summary information for displaying sessions in lists.
-type SessionInfo struct {
-	ID           string
-	Summary      string
-	ContextLabel string // Which workflow ▸ task the chat was opened for
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	InputTokens  int
-	OutputTokens int
-	EventCount   int
-}
+// It is an alias of the port type so the extended query methods satisfy
+// ports.ChatSessionStore directly.
+type SessionInfo = ports.ChatSessionInfo
 
 // SetContextLabel tags a session with the task context it was opened for
 // (e.g. "my-workflow ▸ align_reads"), enabling resume-by-task lookups.

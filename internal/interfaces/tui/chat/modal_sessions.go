@@ -12,7 +12,7 @@ import (
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 
-	infraSession "github.com/lmtani/pumbaa/internal/infrastructure/session"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
@@ -50,10 +50,10 @@ func (m *Model) loadSessionsList() tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		// Cast sessionService to SQLiteService to access ListWithSummaries
-		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
+		// The extended session queries live behind ports.ChatSessionStore
+		if svc, ok := m.sessionService.(ports.ChatSessionStore); ok {
 
-			sessions, err := svc.ListWithSummaries(ctx, infraSession.DefaultAppName, infraSession.DefaultUserID)
+			sessions, err := svc.ListWithSummaries(ctx, ports.DefaultChatAppName, ports.DefaultChatUserID)
 			if err != nil {
 				return sessionListErrorMsg{err: err}
 			}
@@ -64,13 +64,13 @@ func (m *Model) loadSessionsList() tea.Cmd {
 }
 
 // getFilteredSessions returns sessions filtered by search term
-func (m *Model) getFilteredSessions() []infraSession.SessionInfo {
+func (m *Model) getFilteredSessions() []ports.ChatSessionInfo {
 	if m.sessionsSearch == "" {
 		return m.sessionsList
 	}
 
 	search := strings.ToLower(m.sessionsSearch)
-	var filtered []infraSession.SessionInfo
+	var filtered []ports.ChatSessionInfo
 	for _, sess := range m.sessionsList {
 		if strings.Contains(strings.ToLower(sess.ID), search) ||
 			strings.Contains(strings.ToLower(sess.Summary), search) ||
@@ -165,7 +165,7 @@ func (m *Model) renderSessionsModal() string {
 }
 
 // formatSessionLine formats a single session entry for display
-func (m *Model) formatSessionLine(sess infraSession.SessionInfo, selected bool) string {
+func (m *Model) formatSessionLine(sess ports.ChatSessionInfo, selected bool) string {
 	// Truncate ID to 16 chars
 	idDisplay := sess.ID
 	if len(idDisplay) > 16 {
@@ -340,12 +340,11 @@ func (m *Model) switchToSession(sessionID string) (tea.Model, tea.Cmd) {
 			m.generateAndSaveSummaryForSession(ctx, currentSessionID, currentMsgs)
 		}
 
-		// Load new session
-		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-
+		// Load new session (Get is part of the plain ADK session.Service)
+		if svc := m.sessionService; svc != nil {
 			resp, err := svc.Get(ctx, &session.GetRequest{
-				AppName:   infraSession.DefaultAppName,
-				UserID:    infraSession.DefaultUserID,
+				AppName:   ports.DefaultChatAppName,
+				UserID:    ports.DefaultChatUserID,
 				SessionID: sessionID,
 			})
 			if err != nil {
@@ -394,12 +393,11 @@ func (m *Model) createNewSession() (tea.Model, tea.Cmd) {
 			m.generateAndSaveSummaryForSession(ctx, currentSessionID, currentMsgs)
 		}
 
-		// Create new session
-		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
-
+		// Create new session (Create is part of the plain ADK session.Service)
+		if svc := m.sessionService; svc != nil {
 			resp, err := svc.Create(ctx, &session.CreateRequest{
-				AppName: infraSession.DefaultAppName,
-				UserID:  infraSession.DefaultUserID,
+				AppName: ports.DefaultChatAppName,
+				UserID:  ports.DefaultChatUserID,
 			})
 			if err != nil {
 				return sessionListErrorMsg{err: err}
@@ -469,7 +467,7 @@ func (m *Model) generateAndSaveSummaryForSession(ctx context.Context, sessionID 
 
 	// Save summary to database (synchronously, not in goroutine)
 	if summary != "" {
-		if svc, ok := m.sessionService.(*infraSession.SQLiteService); ok {
+		if svc, ok := m.sessionService.(ports.ChatSessionStore); ok {
 			_ = svc.UpdateSummary(context.Background(), sessionID, summary)
 		}
 		// Notify UI to update header

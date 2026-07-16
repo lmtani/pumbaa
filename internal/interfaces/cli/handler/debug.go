@@ -9,7 +9,6 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
@@ -21,7 +20,7 @@ type DebugHandler struct {
 	monitoringUC *workflowapp.MonitoringUseCase
 	fileProvider ports.FileProvider
 	batchLogsUC  *workflowapp.GetBatchLogsUseCase
-	config       *config.Config
+	chatDeps     ChatDepsProvider
 }
 
 // NewDebugHandler creates a new debug handler.
@@ -31,7 +30,7 @@ func NewDebugHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
-	cfg *config.Config,
+	chatDeps ChatDepsProvider,
 ) *DebugHandler {
 	return &DebugHandler{
 		repository:   client,
@@ -39,7 +38,7 @@ func NewDebugHandler(
 		monitoringUC: muc,
 		fileProvider: fp,
 		batchLogsUC:  bluc,
-		config:       cfg,
+		chatDeps:     chatDeps,
 	}
 }
 
@@ -158,9 +157,15 @@ func (h *DebugHandler) createDependencies() *tui.Dependencies {
 		BatchLogsUC:  h.batchLogsUC,
 	}
 
-	// Initialize chat dependencies if LLM is configured
-	if h.config != nil && h.config.LLMProvider != "" {
-		deps.ChatDeps = initChatDependencies(h.config, h.repository)
+	// Initialize chat dependencies if LLM is configured; failures only
+	// disable chat, they never block the TUI.
+	if h.chatDeps != nil {
+		chatDeps, err := h.chatDeps(false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Chat disabled - %v\n", err)
+		} else {
+			deps.ChatDeps = chatDeps
+		}
 	}
 
 	return deps

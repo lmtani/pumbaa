@@ -1,5 +1,5 @@
-// Package wdl provides WDL indexing infrastructure.
-package wdl
+// Package wdlindexer provides WDL indexing infrastructure.
+package wdlindexer
 
 import (
 	"encoding/json"

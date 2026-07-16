@@ -1,4 +1,4 @@
-package tools
+package chat
 
 import (
 	"google.golang.org/adk/tool"
@@ -6,7 +6,7 @@ import (
 )
 
 // noopToolContext is a minimal tool.Context for invoking function tools
-// outside an ADK runner — the TUI chat drives its own agent loop instead of
+// outside an ADK runner — this chat drives its own agent loop instead of
 // using the ADK Runner, which normally supplies the context.
 //
 // Only the methods touched by functiontool.Run's happy path are implemented:
@@ -17,7 +17,3 @@ import (
 type noopToolContext struct{ tool.Context }
 
 func (noopToolContext) ToolConfirmation() *toolconfirmation.ToolConfirmation { return nil }
-
-// NoopToolContext returns the context to use when executing tools directly
-// (outside an ADK runner).
-func NoopToolContext() tool.Context { return noopToolContext{} }

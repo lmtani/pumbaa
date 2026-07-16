@@ -16,13 +16,12 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/infrastructure/version"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
 // VersionCheckMsg is sent when version check completes.
 type VersionCheckMsg struct {
-	Info *version.VersionInfo
+	Info *ports.VersionInfo
 }
 
 // Model represents the dashboard screen state.
@@ -47,7 +46,8 @@ type Model struct {
 	lastRefresh          time.Time
 
 	// Version check
-	updateInfo     *version.VersionInfo
+	updateInfo     *ports.VersionInfo
+	updateChecker  ports.UpdateChecker
 	currentVersion string
 
 	// Filtering
@@ -134,7 +134,7 @@ func NewModel() Model {
 // The repository satisfies WorkflowQuerier, WorkflowAborter, WorkflowMetadataFetcher,
 // HealthChecker, and LabelManager through interface composition. compareUC may be
 // nil, in which case the compare feature is disabled.
-func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, version string) Model {
+func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, version string, updateChecker ports.UpdateChecker) Model {
 	m := NewModel()
 	m.querier = repo
 	m.aborter = repo
@@ -143,6 +143,7 @@ func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowap
 	m.labelManager = repo
 	m.compareUC = compareUC
 	m.currentVersion = version
+	m.updateChecker = updateChecker
 	m.loading = true
 	return m
 }

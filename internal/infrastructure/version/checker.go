@@ -7,20 +7,16 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
-// VersionInfo contains version comparison results.
-type VersionInfo struct {
-	Current         string
-	Latest          string
-	UpdateAvailable bool
-	ReleaseURL      string
-}
+// VersionInfo contains version comparison results. It is an alias of the
+// port type so GitHubChecker satisfies ports.UpdateChecker directly.
+type VersionInfo = ports.VersionInfo
 
-// Checker checks for version updates asynchronously.
-type Checker interface {
-	Check(currentVersion string) <-chan *VersionInfo
-}
+// Compile-time check: GitHubChecker implements the update-check port.
+var _ ports.UpdateChecker = (*GitHubChecker)(nil)
 
 // GitHubChecker checks for updates using GitHub releases API.
 type GitHubChecker struct {

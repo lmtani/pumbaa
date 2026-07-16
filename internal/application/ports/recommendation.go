@@ -82,6 +82,10 @@ type RecommendationGenerator interface {
 	SetDebugWriter(w LLMDebugWriter)
 }
 
+// LLMDebugWriterFactory creates an LLMDebugWriter that logs to the given path.
+// Implementations decide the destination (file, stdout, etc).
+type LLMDebugWriterFactory func(path string) (LLMDebugWriter, error)
+
 // LLMDebugWriter writes debug information about LLM interactions.
 // Implementations can write to files, stdout, or other destinations.
 type LLMDebugWriter interface {

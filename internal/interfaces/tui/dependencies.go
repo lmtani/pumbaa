@@ -26,6 +26,9 @@ type Dependencies struct {
 	BatchLogsUC  *workflowapp.GetBatchLogsUseCase
 	CompareUC    *workflowapp.CompareUseCase
 
+	// UpdateChecker checks for newer releases (optional - nil disables it)
+	UpdateChecker ports.UpdateChecker
+
 	// Chat dependencies (optional - nil if LLM not configured)
 	ChatDeps *ChatDependencies
 

@@ -9,7 +9,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
-	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/wdlindexer"
 )
 
 // TestToolsE2E exercises every built-in agent action against a real Cromwell

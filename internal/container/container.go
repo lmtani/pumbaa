@@ -2,22 +2,35 @@
 package container
 
 import (
+	"fmt"
 	"os"
 
+	"google.golang.org/adk/tool"
+
 	"github.com/lmtani/pumbaa/internal/application/bundle"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/config"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
+	wdltools "github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/metrics"
 	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
+	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
-	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
+	"github.com/lmtani/pumbaa/internal/infrastructure/version"
+	"github.com/lmtani/pumbaa/internal/infrastructure/wdlindexer"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
+
+// githubRepo is the GitHub repository used for release update checks.
+const githubRepo = "lmtani/pumbaa"
 
 // Container holds all application dependencies.
 type Container struct {
@@ -61,7 +74,7 @@ type Container struct {
 }
 
 // New creates a new dependency injection container.
-func New(cfg *config.Config, version string) *Container {
+func New(cfg *config.Config, appVersion string) *Container {
 	c := &Container{
 		Config: cfg,
 	}
@@ -82,7 +95,7 @@ func New(cfg *config.Config, version string) *Container {
 
 	// Initialize Telemetry
 	if cfg.TelemetryEnabled {
-		ts := telemetry.NewCloudflareService(cfg.ClientID, version)
+		ts := telemetry.NewCloudflareService(cfg.ClientID, appVersion)
 		if ts == nil {
 			// Fallback to NoOp if failed or endpoint not configured
 			c.TelemetryService = telemetry.NewNoOpService()
@@ -123,7 +136,10 @@ func New(cfg *config.Config, version string) *Container {
 		}
 	}
 	recommendationGenerator := recommendation.NewLLMGenerator(cfg, wdlTools)
-	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator)
+	llmDebugWriterFactory := func(path string) (ports.LLMDebugWriter, error) {
+		return recommendation.NewFileDebugWriter(path)
+	}
+	c.ResourceVisualizationUseCase = workflow.NewResourceVisualizationUseCase(metricsReader, recommendationGenerator, templates.NewHTMLRenderer(), llmDebugWriterFactory)
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
@@ -135,11 +151,63 @@ func New(cfg *config.Config, version string) *Container {
 	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
 	c.ResourceReportHandler = handler.NewResourceReportHandler(c.ResourceReportUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.Config)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.Config, version)
-	c.ChatHandler = handler.NewChatHandler(c.CromwellClient, c.Config, c.TelemetryService)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.ChatDependencies)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, version.NewGitHubChecker(githubRepo), appVersion, c.ChatDependencies)
+	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
 	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)
 
 	return c
+}
+
+// SessionStore opens the SQLite chat session store. It does not require an
+// LLM, so session listing works even when chat is not configured. Callers
+// own Close.
+func (c *Container) SessionStore() (ports.ChatSessionStore, error) {
+	svc, err := session.NewSQLiteService(c.Config.SessionDBPath)
+	if err != nil {
+		return nil, err
+	}
+	return svc, nil
+}
+
+// initWDLRepository builds the WDL index repository from config. Returns nil
+// (WDL actions disabled) when no directory is configured or indexing fails.
+// The index is cached at cfg.WDLIndexPath, so subsequent startups are instant.
+func (c *Container) initWDLRepository(forceRebuild bool) wdltools.Repository {
+	if c.Config.WDLDirectory == "" {
+		return nil
+	}
+	indexer, err := wdlindexer.NewIndexer(c.Config.WDLDirectory, c.Config.WDLIndexPath, forceRebuild)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: WDL tools disabled - indexing failed: %v\n", err)
+		return nil
+	}
+	if idx, err := indexer.List(); err == nil {
+		fmt.Printf("WDL index: %d tasks, %d workflows\n", len(idx.Tasks), len(idx.Workflows))
+	}
+	return indexer
+}
+
+// ChatDependencies builds the chat dependency bundle (LLM, agent tools,
+// session service) shared by the standalone chat command and the TUI screens.
+// It returns (nil, nil) when no LLM provider is configured — chat features
+// are simply disabled.
+//
+// extraTools is the extension point for adding standalone ADK tools to the
+// chat agent beyond the built-in pumbaa tool; see the tools package docs.
+func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.Tool) (*tui.ChatDependencies, error) {
+	if c.Config.LLMProvider == "" {
+		return nil, nil
+	}
+	llmModel, err := llm.NewLLM(c.Config)
+	if err != nil {
+		return nil, fmt.Errorf("LLM initialization failed: %w", err)
+	}
+	svc, err := session.NewSQLiteService(c.Config.SessionDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("session service initialization failed: %w", err)
+	}
+	agentTools := tools.GetAllTools(c.CromwellClient, c.initWDLRepository(rebuildWDLIndex), extraTools...)
+	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

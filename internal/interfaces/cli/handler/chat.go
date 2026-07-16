@@ -8,19 +8,30 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
 	adksession "google.golang.org/adk/session"
+	"google.golang.org/adk/tool"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/config"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/llm"
-	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
-	"github.com/lmtani/pumbaa/internal/infrastructure/session"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
+	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/chat"
 )
 
-// Session scope shared with the embedded TUI chat (see session package).
-const appName = session.DefaultAppName
-const defaultUserID = session.DefaultUserID
+// ChatDepsProvider builds the chat dependency bundle (LLM, agent tools,
+// session service). rebuildWDLIndex forces a rebuild of the WDL index cache,
+// and extraTools is the extension point for standalone ADK tools. It returns
+// nil deps and no error when the LLM is not configured, and an error when
+// initialization fails. Wired to Container.ChatDependencies.
+type ChatDepsProvider func(rebuildWDLIndex bool, extraTools ...tool.Tool) (*tui.ChatDependencies, error)
+
+// SessionStoreProvider opens the chat session store; it does not require an
+// LLM, so session listing works even when chat is not configured. Wired to
+// Container.SessionStore.
+type SessionStoreProvider func() (ports.ChatSessionStore, error)
+
+// Session scope shared with the embedded TUI chat (see ports package).
+const appName = ports.DefaultChatAppName
+const defaultUserID = ports.DefaultChatUserID
 
 const systemInstruction = `You are Pumbaa, a helpful assistant specialized in bioinformatics workflows and Cromwell/WDL.
 
@@ -124,13 +135,14 @@ Use **only** to understand or explain WDL definitions.
 `
 
 type ChatHandler struct {
-	repository ports.WorkflowReader
-	config     *config.Config
-	telemetry  telemetry.Service
+	config       *config.Config
+	telemetry    telemetry.Service
+	chatDeps     ChatDepsProvider
+	sessionStore SessionStoreProvider
 }
 
-func NewChatHandler(repo ports.WorkflowReader, cfg *config.Config, ts telemetry.Service) *ChatHandler {
-	return &ChatHandler{repository: repo, config: cfg, telemetry: ts}
+func NewChatHandler(cfg *config.Config, ts telemetry.Service, chatDeps ChatDepsProvider, sessionStore SessionStoreProvider) *ChatHandler {
+	return &ChatHandler{config: cfg, telemetry: ts, chatDeps: chatDeps, sessionStore: sessionStore}
 }
 
 func (h *ChatHandler) Command() *cli.Command {
@@ -223,14 +235,14 @@ func (h *ChatHandler) Command() *cli.Command {
 }
 
 func (h *ChatHandler) ListSessions() error {
-	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
+	store, err := h.sessionStore()
 	if err != nil {
 		return fmt.Errorf("failed to initialize session service: %w", err)
 	}
-	defer svc.Close()
+	defer store.Close()
 
 	ctx := context.Background()
-	sessions, err := svc.ListWithSummaries(ctx, appName, defaultUserID)
+	sessions, err := store.ListWithSummaries(ctx, appName, defaultUserID)
 	if err != nil {
 		return fmt.Errorf("failed to list sessions: %w", err)
 	}
@@ -263,11 +275,17 @@ func (h *ChatHandler) ListSessions() error {
 }
 
 func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
-	svc, err := session.NewSQLiteService(h.config.SessionDBPath)
+	deps, err := h.chatDeps(rebuildIndex)
 	if err != nil {
-		return fmt.Errorf("failed to initialize session service: %w", err)
+		return err
 	}
-	defer svc.Close()
+	if deps == nil {
+		return fmt.Errorf("LLM not configured: set PUMBAA_LLM_PROVIDER (ollama, vertex or gemini)")
+	}
+	svc := deps.SessionSvc
+	if store, ok := svc.(ports.ChatSessionStore); ok {
+		defer store.Close()
+	}
 
 	ctx := context.Background()
 
@@ -290,15 +308,10 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 		fmt.Printf("Created new session: %s\n", sess.ID())
 	}
 
-	llmModel, err := llm.NewLLM(h.config)
-	if err != nil {
-		return fmt.Errorf("failed to initialize LLM: %w", err)
-	}
 	h.telemetry.AddBreadcrumb("chat", fmt.Sprintf("using LLM provider: %s", h.config.LLMProvider))
-	fmt.Printf("Using LLM: %s | Cromwell: %s\n", llmModel.Name(), h.config.CromwellHost)
+	fmt.Printf("Using LLM: %s | Cromwell: %s\n", deps.LLM.Name(), h.config.CromwellHost)
 
-	agentTools := tools.GetAllTools(h.repository, initWDLRepository(h.config, rebuildIndex))
-	m := chat.NewModel(llmModel, agentTools, systemInstruction, svc, sess)
+	m := chat.NewModel(deps.LLM, deps.Tools, systemInstruction, svc, sess)
 	m.SetStandalone(true) // Running directly from CLI, not embedded in TUI
 
 	p := tea.NewProgram(&m, tea.WithAltScreen())

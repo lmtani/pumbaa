@@ -101,7 +101,7 @@ func TestUseCase_Execute_NotFound(t *testing.T) {
 
 	input := Input{
 		MainWorkflowPath: "non-existent.wdl",
-		OutputPath:       "out",
+		OutputPath:       filepath.Join(t.TempDir(), "out"),
 	}
 
 	_, err := uc.Execute(ctx, input)

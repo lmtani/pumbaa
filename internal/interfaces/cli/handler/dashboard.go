@@ -2,26 +2,28 @@ package handler
 
 import (
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/urfave/cli/v2"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
-	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
 // DashboardHandler handles the dashboard TUI command.
 type DashboardHandler struct {
-	repository   ports.WorkflowRepository
-	telemetry    telemetry.Service
-	monitoringUC *workflowapp.MonitoringUseCase
-	fileProvider ports.FileProvider
-	batchLogsUC  *workflowapp.GetBatchLogsUseCase
-	config       *config.Config
-	version      string
+	repository    ports.WorkflowRepository
+	telemetry     telemetry.Service
+	monitoringUC  *workflowapp.MonitoringUseCase
+	fileProvider  ports.FileProvider
+	batchLogsUC   *workflowapp.GetBatchLogsUseCase
+	compareUC     *workflowapp.CompareUseCase
+	updateChecker ports.UpdateChecker
+	version       string
+	chatDeps      ChatDepsProvider
 }
 
 // NewDashboardHandler creates a new dashboard handler.
@@ -31,17 +33,21 @@ func NewDashboardHandler(
 	muc *workflowapp.MonitoringUseCase,
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
-	cfg *config.Config,
+	cuc *workflowapp.CompareUseCase,
+	updateChecker ports.UpdateChecker,
 	version string,
+	chatDeps ChatDepsProvider,
 ) *DashboardHandler {
 	return &DashboardHandler{
-		repository:   client,
-		telemetry:    ts,
-		monitoringUC: muc,
-		fileProvider: fp,
-		batchLogsUC:  bluc,
-		config:       cfg,
-		version:      version,
+		repository:    client,
+		telemetry:     ts,
+		monitoringUC:  muc,
+		fileProvider:  fp,
+		batchLogsUC:   bluc,
+		compareUC:     cuc,
+		updateChecker: updateChecker,
+		chatDeps:      chatDeps,
+		version:       version,
 	}
 }
 
@@ -109,13 +115,20 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		FileProvider:   h.fileProvider,
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
-		CompareUC:      workflowapp.NewCompareUseCase(h.repository),
+		CompareUC:      h.compareUC,
+		UpdateChecker:  h.updateChecker,
 		CurrentVersion: h.version,
 	}
 
-	// Initialize chat dependencies if LLM is configured
-	if h.config != nil && h.config.LLMProvider != "" {
-		deps.ChatDeps = initChatDependencies(h.config, h.repository)
+	// Initialize chat dependencies if LLM is configured; failures only
+	// disable chat, they never block the TUI.
+	if h.chatDeps != nil {
+		chatDeps, err := h.chatDeps(false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Chat disabled - %v\n", err)
+		} else {
+			deps.ChatDeps = chatDeps
+		}
 	}
 
 	return deps

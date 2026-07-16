@@ -4,7 +4,6 @@ package workflow
 import (
 	"context"
 	"encoding/json"
-	"html/template"
 	"log"
 	"os"
 	"sort"
@@ -12,22 +11,25 @@ import (
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
-	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 )
 
 // ResourceVisualizationUseCase handles resource visualization report generation.
 type ResourceVisualizationUseCase struct {
 	metricsReader           ports.TaskMetricsReader
 	recommendationGenerator ports.RecommendationGenerator
+	reportRenderer          ports.ResourceReportRenderer
+	debugWriterFactory      ports.LLMDebugWriterFactory
 }
 
 // NewResourceVisualizationUseCase creates a new resource visualization use case.
-// metricsReader is required; generator can be nil if LLM is not configured.
-func NewResourceVisualizationUseCase(metricsReader ports.TaskMetricsReader, generator ports.RecommendationGenerator) *ResourceVisualizationUseCase {
+// metricsReader and renderer are required; generator can be nil if LLM is not
+// configured, and debugWriterFactory can be nil to disable LLM debug logging.
+func NewResourceVisualizationUseCase(metricsReader ports.TaskMetricsReader, generator ports.RecommendationGenerator, renderer ports.ResourceReportRenderer, debugWriterFactory ports.LLMDebugWriterFactory) *ResourceVisualizationUseCase {
 	return &ResourceVisualizationUseCase{
 		metricsReader:           metricsReader,
 		recommendationGenerator: generator,
+		reportRenderer:          renderer,
+		debugWriterFactory:      debugWriterFactory,
 	}
 }
 
@@ -127,9 +129,9 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 
 		// Set up debug writer if configured
 		var debugWriter ports.LLMDebugWriter
-		if input.LLMDebugFile != "" {
+		if input.LLMDebugFile != "" && uc.debugWriterFactory != nil {
 			var debugErr error
-			debugWriter, debugErr = recommendation.NewFileDebugWriter(input.LLMDebugFile)
+			debugWriter, debugErr = uc.debugWriterFactory(input.LLMDebugFile)
 			if debugErr != nil {
 				log.Printf("[resource_visualization] Warning: failed to create debug writer: %v", debugErr)
 			} else {
@@ -176,12 +178,12 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 		return nil, application.NewUseCaseError("resource_visualization", "failed to encode recommendations as JSON", err)
 	}
 
-	// 7. Render HTML template
+	// 7. Render report
 	log.Printf("[resource_visualization] Rendering HTML report...")
-	html, err := templates.RenderReport(templates.ReportData{
-		DataJSON:            template.JS(dataJSON),
-		WorkflowsJSON:       template.JS(workflowsJSON),
-		RecommendationsJSON: template.JS(recommendationsJSON),
+	html, err := uc.reportRenderer.Render(ports.ResourceReportData{
+		DataJSON:            dataJSON,
+		WorkflowsJSON:       workflowsJSON,
+		RecommendationsJSON: recommendationsJSON,
 		LLMModelInfo:        llmModelInfo,
 	})
 	if err != nil {
