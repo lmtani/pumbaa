@@ -23,7 +23,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/telemetry"
 	"github.com/lmtani/pumbaa/internal/infrastructure/templates"
 	"github.com/lmtani/pumbaa/internal/infrastructure/version"
-	wdlindexer "github.com/lmtani/pumbaa/internal/infrastructure/wdl"
+	"github.com/lmtani/pumbaa/internal/infrastructure/wdlindexer"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/handler"
 	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"

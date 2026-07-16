@@ -1,4 +1,4 @@
-package wdl
+package wdlindexer
 
 import (
 	"os"
