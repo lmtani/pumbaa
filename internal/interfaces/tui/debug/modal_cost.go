@@ -120,12 +120,21 @@ func (m Model) buildCostContent() string {
 		sb.WriteString(costBadgeStyle.Render(fmt.Sprintf("$%.2f", m.totalCost)))
 		sb.WriteString("\n")
 	}
-	sb.WriteString(mutedStyle.Render(fmt.Sprintf("Accounted here: $%.2f across %d task(s)",
-		breakdown.TotalCost, len(breakdown.Tasks))))
-	if !breakdown.FromActual {
-		sb.WriteString(mutedStyle.Render("  (some values estimated from resources)"))
+	if breakdown.ActualTotal > 0 {
+		sb.WriteString(mutedStyle.Render(fmt.Sprintf("Accounted here: $%.2f across %d task(s)",
+			breakdown.ActualTotal, len(breakdown.Tasks))))
+		sb.WriteString("\n")
 	}
-	sb.WriteString("\n")
+	if breakdown.HasEstimates() {
+		estimated := fmt.Sprintf("~%.1f", breakdown.EstimatedTotal)
+		if breakdown.EstimatedTotal < 0.1 {
+			estimated = "<0.1"
+		}
+		sb.WriteString(mutedStyle.Render(fmt.Sprintf(
+			"No cost data for some attempts: %s resource-hours estimated (marked ~, not added to $)",
+			estimated)))
+		sb.WriteString("\n")
+	}
 	switch {
 	case m.costLoading:
 		sb.WriteString(infoNoteStyle.Render("⏳ Loading subworkflow costs — totals will update shortly..."))
@@ -152,10 +161,20 @@ func (m Model) buildCostContent() string {
 		maxNameLen = 44
 	}
 
-	maxCost := breakdown.Tasks[0].TotalCost // sorted desc
+	// Bars are scaled within each unit: dollar rows against the biggest
+	// dollar value, estimate-only rows against the biggest estimate.
+	var maxActual, maxEstimated float64
+	for _, t := range breakdown.Tasks {
+		if t.ActualCost > maxActual {
+			maxActual = t.ActualCost
+		}
+		if t.EstimatedCost > maxEstimated {
+			maxEstimated = t.EstimatedCost
+		}
+	}
 
 	for _, t := range breakdown.Tasks {
-		sb.WriteString(m.formatCostRow(t, maxNameLen, maxCost))
+		sb.WriteString(m.formatCostRow(t, maxNameLen, maxActual, maxEstimated))
 		sb.WriteString("\n")
 	}
 
@@ -169,17 +188,30 @@ func (m Model) buildCostContent() string {
 	return sb.String()
 }
 
-func (m Model) formatCostRow(t workflow.TaskCost, maxNameLen int, maxCost float64) string {
+func (m Model) formatCostRow(t workflow.TaskCost, maxNameLen int, maxActual, maxEstimated float64) string {
 	name := common.PadRight(t.Name, maxNameLen)
 
-	cost := fmt.Sprintf("$%7.2f", t.TotalCost)
+	// A task is shown in the unit it has data for: real dollars, or the
+	// resource-hours estimate (marked with ~) when no attempt reported cost.
+	// Tasks with dollars AND an estimated remainder keep the ~ as a hint.
+	var cost string
+	value, maxValue := t.ActualCost, maxActual
+	switch {
+	case t.ActualCost > 0 && t.EstimatedCost > 0:
+		cost = fmt.Sprintf("$%6.2f~", t.ActualCost)
+	case t.ActualCost > 0:
+		cost = fmt.Sprintf("$%6.2f ", t.ActualCost)
+	default:
+		cost = fmt.Sprintf("~%5.1frh", t.EstimatedCost)
+		value, maxValue = t.EstimatedCost, maxEstimated
+	}
 	pct := fmt.Sprintf("%5.1f%%", t.Percent)
 
-	// Cost bar proportional to the most expensive task
+	// Cost bar proportional to the most expensive task in the same unit
 	barWidth := 20
 	filled := 0
-	if maxCost > 0 {
-		filled = int(t.TotalCost / maxCost * float64(barWidth))
+	if maxValue > 0 {
+		filled = int(value / maxValue * float64(barWidth))
 	}
 	if filled > barWidth {
 		filled = barWidth

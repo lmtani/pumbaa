@@ -305,30 +305,12 @@ func windowHours(start, end time.Time, status Status, now time.Time) float64 {
 }
 
 // calculateAttemptCost calculates the estimated cost of a single attempt.
+// Note: the preemption summary intentionally blends real dollars and
+// resource-hours into a single relative number (see PreemptionSummary.CostUnit);
+// the cost breakdown keeps the two units apart via attemptCostParts.
 func calculateAttemptCost(call Call, now time.Time) float64 {
-	// If we have actual VM cost per hour, use it against the billed VM lifetime
-	if call.VMCostPerHour > 0 {
-		if hours := billableHours(call, now); hours > 0 {
-			return call.VMCostPerHour * hours
-		}
-	}
-
-	// Otherwise, estimate using resource-hours
-	cpu := parseCPUFromString(call.CPU)
-	if cpu <= 0 {
-		cpu = 1
-	}
-	mem := parseMemoryGBFromString(call.Memory)
-	if mem <= 0 {
-		mem = 1
-	}
-
-	durationHours := billableHours(call, now)
-	if durationHours <= 0 {
-		durationHours = 0.01 // Minimum 36 seconds
-	}
-
-	return cpu * mem * durationHours
+	actual, estimated := attemptCostParts(call, now)
+	return actual + estimated
 }
 
 // IsPreemptible checks if a task is configured as preemptible.
