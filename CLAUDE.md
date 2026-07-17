@@ -46,8 +46,9 @@ compile-time checks); interfaces → ports/domain/application, **zero** infra.
 
 ## Guided submit
 
-`pkg/wdl` owns everything decidable from the WDL + inputs JSON alone
-(`WorkflowInputs`, `ScaffoldInputs`, `CheckInputs` — no IO); the
+`pkg/wdl` owns everything decidable from the WDL + inputs JSON + deps zip
+alone (`WorkflowInputs`, `ScaffoldInputs`, `CheckInputs`, `CheckDependencies`
+— no IO; the last checks imports resolve, transitively, by basename); the
 `PreflightUseCase` adds what needs the outside world (server health, file
 existence via `FileProvider.GetSize`). `submit` runs the same checks before
 sending. Design: `docs/design/guided-submit.md`.

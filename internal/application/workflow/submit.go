@@ -83,7 +83,7 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 	// The server check is skipped: submitting is about to contact it anyway.
 	var report *PreflightReport
 	if uc.preflight != nil && !input.SkipPreflight {
-		report = uc.preflight.check(ctx, workflowSource, inputsData, true, false)
+		report = uc.preflight.check(ctx, workflowSource, inputsData, depsData, true, false)
 		if report.HasErrors() {
 			return nil, &PreflightFailedError{Report: report}
 		}

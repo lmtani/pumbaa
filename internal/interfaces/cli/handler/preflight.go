@@ -42,6 +42,11 @@ func (h *PreflightHandler) Command() *cli.Command {
 				Aliases: []string{"i"},
 				Usage:   "[optional] Path to the inputs JSON file",
 			},
+			&cli.StringFlag{
+				Name:    "dependencies",
+				Aliases: []string{"d"},
+				Usage:   "[optional] Path to the dependencies ZIP; its imports are checked",
+			},
 			&cli.BoolFlag{
 				Name:  "skip-paths",
 				Usage: "[optional] Do not check that input files exist",
@@ -57,10 +62,11 @@ func (h *PreflightHandler) Command() *cli.Command {
 
 func (h *PreflightHandler) handle(c *cli.Context) error {
 	report, err := h.useCase.Execute(context.Background(), workflow.PreflightInput{
-		WorkflowFile: c.String("workflow"),
-		InputsFile:   c.String("inputs"),
-		SkipPaths:    c.Bool("skip-paths"),
-		SkipServer:   c.Bool("skip-server"),
+		WorkflowFile:     c.String("workflow"),
+		InputsFile:       c.String("inputs"),
+		DependenciesFile: c.String("dependencies"),
+		SkipPaths:        c.Bool("skip-paths"),
+		SkipServer:       c.Bool("skip-server"),
 	})
 	if err != nil {
 		return err

@@ -118,6 +118,14 @@ failure — the newcomer wants the whole list):
 4. **File paths** — `FileProvider.GetSize` for every `File`-typed value
    (metadata-only on GCS, no data transfer), concurrently with a small
    worker cap; skipped with `--skip-paths`.
+5. **Dependencies** — only when a `-d` imports zip is given: every `import`
+   in the main WDL and, transitively, in each WDL inside the zip must
+   resolve to a file present in the zip. `pkg/wdl/CheckDependencies` reads
+   the zip from bytes and matches by basename (the flattening convention
+   `pumbaa bundle` produces, and the most lenient one — a structural
+   difference must not block a valid bundle). A missing import is a hard
+   Cromwell parse failure, so it is an error; a zip that cannot be read is a
+   warning.
 
 Path check semantics matter: **not found is an error, anything else is a
 warning**. A user without local GCP credentials must not be blocked from

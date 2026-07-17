@@ -107,6 +107,9 @@ type PreflightInput struct {
 	SkipServer bool
 	// SkipPaths skips verifying that File inputs exist.
 	SkipPaths bool
+	// DependenciesFile is an optional imports zip; its contents are checked
+	// against the workflow's imports.
+	DependenciesFile string
 }
 
 // Execute runs every check and returns the full report. It does not stop at
@@ -129,12 +132,20 @@ func (uc *PreflightUseCase) Execute(ctx context.Context, input PreflightInput) (
 		}
 	}
 
-	return uc.check(ctx, source, inputsData, input.SkipServer, input.SkipPaths), nil
+	var depsData []byte
+	if input.DependenciesFile != "" {
+		depsData, err = uc.fileProvider.ReadBytes(ctx, input.DependenciesFile)
+		if err != nil {
+			return nil, application.NewUseCaseError("preflight", "failed to read dependencies file", err)
+		}
+	}
+
+	return uc.check(ctx, source, inputsData, depsData, input.SkipServer, input.SkipPaths), nil
 }
 
 // check runs the checklist over already-read sources, so callers that hold
 // the bytes (submit) do not read them twice.
-func (uc *PreflightUseCase) check(ctx context.Context, source, inputsData []byte, skipServer, skipPaths bool) *PreflightReport {
+func (uc *PreflightUseCase) check(ctx context.Context, source, inputsData, depsData []byte, skipServer, skipPaths bool) *PreflightReport {
 	report := &PreflightReport{}
 	report.Checks = append(report.Checks, uc.checkServer(ctx, skipServer))
 
@@ -143,6 +154,7 @@ func (uc *PreflightUseCase) check(ctx context.Context, source, inputsData []byte
 	report.Checks = append(report.Checks, syntaxCheck(inputsReport), inputsCheck(inputsReport))
 
 	report.Checks = append(report.Checks, uc.checkPaths(ctx, inputsReport.Files, skipPaths))
+	report.Checks = append(report.Checks, dependenciesCheck(source, depsData))
 
 	return report
 }
@@ -299,4 +311,33 @@ func hasSeverity(items []PreflightItem, s wdl.Severity) bool {
 		}
 	}
 	return false
+}
+
+// dependenciesCheck verifies the imports resolve inside the dependencies zip.
+// Skipped when no zip is provided (a self-contained workflow needs none).
+func dependenciesCheck(source, depsData []byte) PreflightCheck {
+	check := PreflightCheck{Name: "Dependencies"}
+	if len(depsData) == 0 {
+		check.Status = CheckSkipped
+		check.Detail = "no dependencies zip"
+		return check
+	}
+
+	report := wdl.CheckDependencies(source, depsData)
+	for _, f := range report.Findings {
+		check.Items = append(check.Items, PreflightItem{Severity: string(f.Severity), Message: f.Message})
+	}
+
+	switch {
+	case report.HasErrors():
+		check.Status = CheckFailed
+		check.Detail = "missing imports"
+	case !report.ZipRead:
+		check.Status = CheckWarning
+		check.Detail = "could not read the zip"
+	default:
+		check.Status = CheckOK
+		check.Detail = fmt.Sprintf("%d file(s), all imports resolve", report.WDLFiles)
+	}
+	return check
 }

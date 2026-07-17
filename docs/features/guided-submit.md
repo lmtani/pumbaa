@@ -87,6 +87,7 @@ Alias: `pumbaa wf check`
 |------|:-----:|:--------:|-------------|
 | `--workflow` | `-w` | :material-check: | WDL workflow file |
 | `--inputs` | `-i` | | Inputs JSON file |
+| `--dependencies` | `-d` | | Imports ZIP — checks that every import resolves |
 | `--skip-paths` | | | Do not check that input files exist |
 | `--skip-server` | | | Do not check that Cromwell is reachable |
 
@@ -118,6 +119,7 @@ CI job.
 | Types match declarations | :material-check: | Only clear mismatches; coercible values warn instead |
 | Keys declared by the workflow | | Usually a typo, so a warning |
 | `File` inputs exist | :material-check: | Missing is an error; **unverifiable** (no credentials) is only a warning |
+| Imports resolve in the ZIP | :material-check: | Only when `-d` is given; checks the whole import tree, including transitive imports |
 
 !!! note "Missing vs. unverifiable"
     If a path cannot be checked — no local cloud credentials, for instance —

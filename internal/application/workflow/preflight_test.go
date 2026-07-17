@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -78,8 +80,9 @@ func TestPreflightAllGreen(t *testing.T) {
 		t.Errorf("WorkflowName = %q, want Align", report.WorkflowName)
 	}
 	for _, c := range report.Checks {
-		if c.Status != CheckOK {
-			t.Errorf("check %q = %s (%s), want ok", c.Name, c.Status, c.Detail)
+		// Dependencies is legitimately skipped when no zip is provided.
+		if c.Status != CheckOK && c.Status != CheckSkipped {
+			t.Errorf("check %q = %s (%s), want ok or skipped", c.Name, c.Status, c.Detail)
 		}
 	}
 	errCount, warnCount := report.Counts()
@@ -287,4 +290,106 @@ func TestPreflightUnreadableFilesAreHardErrors(t *testing.T) {
 	if _, err := uc.Execute(context.Background(), PreflightInput{WorkflowFile: "nope.wdl"}); err == nil {
 		t.Error("a missing workflow file should fail outright, not as a check")
 	}
+}
+
+// makeDepsZip builds an in-memory dependencies zip for preflight tests.
+func makeDepsZip(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, content := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+const depsWDL = `version 1.0
+import "helper.wdl"
+workflow Pipe {
+    input { String sample }
+}
+`
+
+func TestPreflightChecksDependencies(t *testing.T) {
+	t.Run("missing import blocks", func(t *testing.T) {
+		zipData := makeDepsZip(t, map[string]string{"other.wdl": "version 1.0\ntask t {}\n"})
+		fp := &mockFileProvider{
+			readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+				switch path {
+				case "pipe.wdl":
+					return []byte(depsWDL), nil
+				case "inputs.json":
+					return []byte(`{"Pipe.sample": "NA12878"}`), nil
+				case "deps.zip":
+					return zipData, nil
+				}
+				return nil, errors.New("unexpected path: " + path)
+			},
+		}
+		uc := NewPreflightUseCase(fp, nil)
+
+		report, err := uc.Execute(context.Background(), PreflightInput{
+			WorkflowFile:     "pipe.wdl",
+			InputsFile:       "inputs.json",
+			DependenciesFile: "deps.zip",
+		})
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		deps := checkByName(t, report, "Dependencies")
+		if deps.Status != CheckFailed || !report.HasErrors() {
+			t.Errorf("a missing import must fail preflight: %+v", deps)
+		}
+		if len(deps.Items) != 1 || !strings.Contains(deps.Items[0].Message, "helper.wdl") {
+			t.Errorf("the missing import should be named: %+v", deps.Items)
+		}
+	})
+
+	t.Run("complete bundle passes", func(t *testing.T) {
+		zipData := makeDepsZip(t, map[string]string{"helper.wdl": "version 1.0\ntask h {}\n"})
+		fp := &mockFileProvider{
+			readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+				switch path {
+				case "pipe.wdl":
+					return []byte(depsWDL), nil
+				case "deps.zip":
+					return zipData, nil
+				}
+				return nil, errors.New("unexpected path: " + path)
+			},
+		}
+		uc := NewPreflightUseCase(fp, nil)
+
+		report, err := uc.Execute(context.Background(), PreflightInput{WorkflowFile: "pipe.wdl", DependenciesFile: "deps.zip"})
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+		if s := checkByName(t, report, "Dependencies").Status; s != CheckOK {
+			t.Errorf("a complete bundle should pass, got %s", s)
+		}
+	})
+
+	t.Run("no zip skips the check", func(t *testing.T) {
+		fp := preflightFiles(preflightWDL, `{"Align.reads": "gs://b/r.fastq", "Align.sample": "NA12878"}`,
+			func(ctx context.Context, path string) (int64, error) { return 1, nil })
+		uc := NewPreflightUseCase(fp, nil)
+
+		report, err := uc.Execute(context.Background(), PreflightInput{WorkflowFile: "align.wdl", InputsFile: "inputs.json"})
+		if err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+		if s := checkByName(t, report, "Dependencies").Status; s != CheckSkipped {
+			t.Errorf("without a zip the dependencies check should be skipped, got %s", s)
+		}
+	})
 }
