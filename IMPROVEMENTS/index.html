@@ -1197,10 +1197,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
       
         <li class="md-nav__item">
-  <a href="#1-separar-custo-real-de-custo-estimado-no-costbreakdown" class="md-nav__link">
+  <a href="#1-extrair-o-loop-de-agente-do-chat-para-um-componente-testavel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Separar custo real de custo estimado no CostBreakdown
+        1. Extrair o loop de agente do chat para um componente testável
       
     </span>
   </a>
@@ -1208,10 +1208,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-agregacao-de-shards-colapsa-subworkflows-diferentes" class="md-nav__link">
+  <a href="#2-resumo-de-preempcao-ainda-mistura-unidades" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Agregação de shards colapsa subworkflows diferentes
+        2. Resumo de preempção ainda mistura unidades
       
     </span>
   </a>
@@ -1219,10 +1219,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-zerar-o-lint-e-passar-a-roda-lo-no-ci" class="md-nav__link">
+  <a href="#3-boilerplate-do-cliente-cromwell" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Zerar o lint e passar a rodá-lo no CI
+        3. Boilerplate do cliente Cromwell
       
     </span>
   </a>
@@ -1230,10 +1230,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-cobertura-de-testes-na-camada-de-interfaces" class="md-nav__link">
+  <a href="#4-testes-de-integracao-reais-adormecidos" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Cobertura de testes na camada de interfaces
+        4. Testes de integração reais adormecidos
       
     </span>
   </a>
@@ -1241,10 +1241,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-menores" class="md-nav__link">
+  <a href="#5-falha-de-persistencia-de-sessao-e-invisivel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Menores
+        5. Falha de persistência de sessão é invisível
       
     </span>
   </a>
@@ -1252,10 +1252,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ordem-recomendada" class="md-nav__link">
+  <a href="#6-menores" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ordem recomendada
+        6. Menores
       
     </span>
   </a>
@@ -1283,78 +1283,63 @@
 
 
 <h1 id="oportunidades-de-melhoria-backlog-tecnico">Oportunidades de melhoria (backlog técnico)</h1>
-<p>Levantamento feito em 2026-07-16, após o refactor de organização do <code>internal/</code>
-(branch <code>refactor/internal-organization</code>: ports para chat/report/version,
-composition root unificado no container, split do <code>tui/chat</code>, fix do custo de
-tasks em execução). Estas são as pendências identificadas na segunda varredura,
-em ordem recomendada de ataque.</p>
-<h2 id="1-separar-custo-real-de-custo-estimado-no-costbreakdown">1. Separar custo real de custo estimado no CostBreakdown</h2>
-<p><strong>Problema:</strong> tasks sem <code>vmCostPerHour</code> caem no estimador <code>cpu × mem × horas</code>
-(<code>calculateAttemptCost</code> em <code>internal/domain/workflow/preemption.go</code>), e esse
-valor — que é "resource-hours", não dinheiro — é somado no mesmo
-<code>CostBreakdown.TotalCost</code> exibido com <code>$</code> no modal de custo. Num backend sem
-custo reportado (ex.: local), o total inteiro vira ficção com cifrão. O
-disclaimer "(some values estimated from resources)" não resolve a mistura de
-unidades.</p>
-<p><strong>Proposta:</strong> <code>TaskCost.FromActual</code> já existe por task. Fazer o
-<code>CostBreakdown</code> acumular <code>ActualCost</code> e <code>EstimatedCost</code> separados e o modal
-(<code>internal/interfaces/tui/debug/modal_cost.go</code>) exibir os dois sem somá-los.</p>
-<p><strong>Esforço:</strong> pequeno. <strong>Impacto:</strong> confiança nos números exibidos.</p>
-<h2 id="2-agregacao-de-shards-colapsa-subworkflows-diferentes">2. Agregação de shards colapsa subworkflows diferentes</h2>
-<p><strong>Problema:</strong> o <code>walk</code> de <code>CalculateCostBreakdown</code>
-(<code>internal/domain/workflow/cost.go</code>) agrega por <code>ShardIndex</code> global, então
-instâncias da mesma task em subworkflows distintos são fundidas: no metadado
-real de exemplo, Bwamem2Align aparecia como "shards=2, attempts=59". O mesmo
-padrão existe na análise de preempção (<code>taskKey{name, shard}</code> em
-<code>preemption.go</code>, <code>CalculatePreemptionSummary</code>).</p>
-<p><strong>Proposta:</strong> incluir o caminho do subworkflow na chave de agregação de shard
-durante a recursão (ex.: <code>subPath + shardIndex</code>).</p>
-<p><strong>Esforço:</strong> pequeno. Casar com o item 1 (mesmos arquivos).</p>
-<h2 id="3-zerar-o-lint-e-passar-a-roda-lo-no-ci">3. Zerar o lint e passar a rodá-lo no CI</h2>
-<p><strong>Problema:</strong> <code>make lint</code> falha com 71 issues (50 errcheck, 19 staticcheck,
-2 unused) e o <code>.github/workflows/ci.yml</code> roda apenas testes e build — o lint
-está permanentemente vermelho e não protege contra regressões.</p>
-<p>Concentrações: <code>interfaces/cli/presenter/presenter.go</code> (11),
-<code>infrastructure/session/sqlite.go</code> (9), <code>pkg/wdl/bundle.go</code> (5), deprecations
-<code>.Copy()</code> do lipgloss espalhadas na TUI.</p>
-<p><strong>Proposta:</strong> (a) zerar as 71 issues — maioria mecânica; (b) adicionar
-golangci-lint como step do CI para travar no zero.</p>
-<p><strong>Esforço:</strong> médio-mecânico. <strong>Impacto:</strong> CI passa a segurar qualidade.</p>
-<h2 id="4-cobertura-de-testes-na-camada-de-interfaces">4. Cobertura de testes na camada de interfaces</h2>
-<p><strong>Números (go test -cover, 2026-07-16):</strong> domain 89–100%, application
-63–100%, mas <code>interfaces/tui/chat</code> tem <strong>zero testes</strong> (~2.100 linhas,
-incluindo o loop de agente/streaming), <code>cli/handler</code> 12.9%,
-<code>tui/dashboard</code> 15.3%, <code>tui/common</code> 14.4%, <code>tui/debug</code> 20.4%.</p>
-<p><strong>Proposta:</strong> começar pelo <code>tui/chat</code> — o split em arquivos
-(<code>stream.go</code>, <code>update.go</code>, <code>sessions.go</code>) e o port <code>ports.ChatSessionStore</code>
-(mockável) tornaram isso barato. Prioridade: fluxo de streaming/tool-call
-(<code>stream.go</code>) e transições de estado do <code>update.go</code>. Depois, handlers via
-mocks de ports.</p>
-<p><strong>Esforço:</strong> contínuo. <strong>Impacto:</strong> rede de proteção onde hoje não há nenhuma.</p>
-<h2 id="5-menores">5. Menores</h2>
+<p>Segunda geração deste backlog (2026-07-17). A primeira (review de organização
+do <code>internal/</code>, 2026-07-16) foi integralmente resolvida nos PRs #46–#51:
+separação custo real/estimado, shards por instância de subworkflow, lint
+zerado + CI, testes do tui/chat, telemetry port + prompts consolidados +
+testes do mapper, e as ações failures/read_log/cost/preemption do agente.</p>
+<p>Itens abaixo foram identificados durante esses trabalhos, em ordem
+recomendada.</p>
+<h2 id="1-extrair-o-loop-de-agente-do-chat-para-um-componente-testavel">1. Extrair o loop de agente do chat para um componente testável</h2>
+<p><code>generateResponse</code> (<code>tui/chat/stream.go</code>) é uma função de ~190 linhas que
+dirige a conversa inteira: muta <code>*m.history</code> de dentro de goroutine (com
+workaround explícito <code>pendingFlush</code> em <code>SetSession</code> para não correr race), e
+o descarte de mensagens de conversas abandonadas depende de comparações de
+ponteiro (<code>owner *[]ChatMessage</code>) espalhadas pelo <code>Update</code>. Os testes cobrem
+as costuras, mas o loop em si não é testável de ponta a ponta por estar
+soldado ao bubbletea.</p>
+<p><strong>Proposta:</strong> extrair um "conversation engine" em Go puro — dono do
+histórico, emitindo eventos — testável com um LLM fake roteirizado
+(tool-call no meio de streaming, cancelamento entre turnos, sessão anexando
+no meio da geração). Maior impacto de confiabilidade do projeto.</p>
+<h2 id="2-resumo-de-preempcao-ainda-mistura-unidades">2. Resumo de preempção ainda mistura unidades</h2>
+<p>O breakdown de custo separa dólares de resource-hours (#46), mas
+<code>PreemptionSummary.TotalCost/WastedCost</code> seguem somando os dois com
+<code>CostUnit: "resource-hours"</code> fixo. O "custo desperdiçado" do debug view tem
+o defeito que o modal de custo corrigiu. <code>attemptCostParts</code> já existe —
+aplicar o mesmo padrão.</p>
+<h2 id="3-boilerplate-do-cliente-cromwell">3. Boilerplate do cliente Cromwell</h2>
+<p><code>cromwell/client.go</code> tem 12 métodos com o mesmo esqueleto (montar request,
+GET/POST, checar status, decodificar JSON, <code>defer resp.Body.Close()</code>). Um
+helper único (<code>doJSON(ctx, method, path, &amp;out)</code>) cortaria ~200 linhas e
+centralizaria timeout/retry/tratamento de status.</p>
+<h2 id="4-testes-de-integracao-reais-adormecidos">4. Testes de integração reais adormecidos</h2>
+<p>Dois testes valiosos nunca rodam em CI: o E2E das tools
+(<code>PUMBAA_TOOLS_E2E=1</code>, agora cobrindo as ações novas) e a validação de custo
+contra a API (<code>PUMBAA_COST_VALIDATE</code>). Um workflow manual/agendado com
+Cromwell em Docker cobriria o primeiro; o segundo pode rodar sempre com um
+metadado expandido anonimizado commitado como fixture + valor esperado —
+teria pego o bug do custo de tasks em execução antes de chegar à tela.</p>
+<h2 id="5-falha-de-persistencia-de-sessao-e-invisivel">5. Falha de persistência de sessão é invisível</h2>
+<p>Se o SQLite falhar no meio de uma conversa (disco cheio, lock), cada
+<code>AppendEvent</code> é descartado silenciosamente (<code>_ =</code> deliberado) e o usuário só
+descobre ao tentar retomar a sessão. Um aviso único no transcript na
+primeira falha resolve — o mecanismo de <code>notice</code> já existe.</p>
+<h2 id="6-menores">6. Menores</h2>
 <ul>
-<li><strong><code>telemetry.Service</code></strong> — último edge <code>interfaces → infrastructure</code>. Mover a
-  interface (+ <code>Event</code>/<code>CommandContext</code>) para <code>application/ports</code> com alias na
-  infra, mesmo padrão aplicado em <code>session</code> (<code>ports.ChatSessionStore</code>) e
-  <code>version</code> (<code>ports.UpdateChecker</code>).</li>
-<li><strong>Prompts de sistema espalhados</strong> — ~100 linhas inline em
-  <code>interfaces/cli/handler/chat.go</code> (<code>systemInstruction</code>), outro em
-  <code>interfaces/tui/debug/chat_context.go</code> (<code>taskDebugSystemInstruction</code>), outros
-  em <code>infrastructure/recommendation/prompts.go</code>. Consolidar num pacote de
-  prompts para facilitar iteração.</li>
-<li><strong><code>infrastructure/cromwell</code> a 46% de cobertura</strong> — o cliente é wrapper de
-  API, mas o <code>mapper.go</code> é lógica pura de parsing de metadado (onde bugs como
-  o do custo nascem) e merece mais casos: timestamps ausentes, attempts
-  Running, subworkflows aninhados.</li>
-<li><strong><code>application/errors.go</code></strong> — avaliado e mantido de propósito: é a taxonomia
-  de erros de use case (distinta de <code>ports/errors.go</code>, que cobre erros de
-  ports). Renomear o pacote geraria churn sem ganho real. Registrado aqui para
-  não rediscutir.</li>
+<li><strong>Ações de escrita para o agente (abort/submit)</strong> — bloqueadas pela falta
+  de UX de confirmação no loop do chat (<code>noopToolContext</code> pula a confirmação
+  do ADK). Desenhar a confirmação primeiro.</li>
+<li><strong><code>ARCHITECTURE.md</code> desatualizado</strong> — não acompanhou os refactors de
+  2026-07 (ports novos, composition root, pacote prompts, wdlindexer).</li>
+<li><strong>Migrações do SQLite</strong> — <code>ALTER TABLE</code> com erro ignorado funciona, mas
+  <code>PRAGMA user_version</code> seria explícito.</li>
+<li><strong>Custo cacheado no modal congela para workflows running</strong> — sem watch
+  mode, o valor acumulado exibido fica no instante da abertura.</li>
+<li><strong>Cobertura da camada de interfaces (contínuo)</strong> — handler 12.9%,
+  dashboard 15.3%, common 14.4%, debug ~20%; o padrão dos testes do chat
+  (#49) se aplica.</li>
 </ul>
-<h2 id="ordem-recomendada">Ordem recomendada</h2>
-<p>1 → 2 (fecham a história de custo, pequenos e nos mesmos arquivos), depois 3
-(habilita o CI a segurar o resto), e 4 como esforço contínuo começando pelo
-chat. Item 5 conforme oportunidade.</p>
 
 
 
