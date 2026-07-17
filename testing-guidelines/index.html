@@ -1713,17 +1713,18 @@
 </span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="p">}</span>
 </span></code></pre></div>
 <h3 id="test-data">Test Data</h3>
-<p>Shared fixtures live in the top-level <code>test_data/</code> directory:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>test_data/
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── metadata.json           # Cromwell workflow metadata
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>└── wdl/                    # Sample WDL files for indexer/parser tests
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    ├── hello.wdl
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    ├── subworkflow/
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    └── tasks/
+<p>Fixtures live in a <code>testdata/</code> directory next to the package that uses them
+(the Go convention — the toolchain ignores directories with that name).
+Duplicating a few small fixtures between packages is preferred over sharing
+a top-level directory: it keeps each package self-contained, which matters
+especially for <code>pkg/wdl</code> since it is a public library.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>internal/infrastructure/cromwell/testdata/metadata.json   # Cromwell workflow metadata
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pkg/wdl/testdata/                                         # Sample WDLs for parser tests
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>internal/infrastructure/wdlindexer/testdata/              # Sample WDLs for indexer tests
 </span></code></pre></div>
-<p>Fixtures used by a single package are kept next to that package (package-local test data), not in <code>test_data/</code>.</p>
-<p>Load test data with relative paths:</p>
-<div class="language-go highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">os</span><span class="p">.</span><span class="nx">ReadFile</span><span class="p">(</span><span class="s">"../../test_data/metadata.json"</span><span class="p">)</span>
+<p><code>go test</code> runs with the package directory as the working directory, so load
+fixtures with plain relative paths:</p>
+<div class="language-go highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">os</span><span class="p">.</span><span class="nx">ReadFile</span><span class="p">(</span><span class="s">"testdata/metadata.json"</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="assertions">Assertions</h3>
 <p>Use standard library comparisons. For complex structs, consider:</p>

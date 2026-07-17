@@ -1,0 +1,8 @@
+Picked up _JAVA_OPTIONS: -Djava.io.tmpdir=/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/execution/tmp.TS9JMG
+20:08:38.193 INFO  NativeLibraryLoader - Loading libgkl_compression.so from jar:file:/usr/picard/picard.jar!/com/intel/gkl/native/libgkl_compression.so
+[Fri Jul 17 20:08:38 GMT 2026] FastqToSam --FASTQ /cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/inputs/-1254224753/NA12878_clean_R1.fq.gz --FASTQ2 /cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/inputs/-1254224753/NA12878_clean_R2.fq.gz --OUTPUT NA12878_clean_R1.unmapped.bam --READ_GROUP_NAME rg1 --SAMPLE_NAME NA12878 --LIBRARY_NAME UNKNOWN --PLATFORM ILLUMINA --USE_SEQUENTIAL_FASTQS false --SORT_ORDER queryname --MIN_Q 0 --MAX_Q 93 --STRIP_UNPAIRED_MATE_NUMBER false --ALLOW_AND_IGNORE_EMPTY_LINES false --VERBOSITY INFO --QUIET false --VALIDATION_STRINGENCY STRICT --COMPRESSION_LEVEL 5 --MAX_RECORDS_IN_RAM 500000 --CREATE_INDEX false --CREATE_MD5_FILE false --GA4GH_CLIENT_SECRETS client_secrets.json --help false --version false --showHidden false --USE_JDK_DEFLATER false --USE_JDK_INFLATER false
+[Fri Jul 17 20:08:38 GMT 2026] Executing as root@8953ba17992f on Linux 7.1.3-200.fc44.x86_64 amd64; OpenJDK 64-Bit Server VM 1.8.0_292-b10; Deflater: Intel; Inflater: Intel; Provider GCS is not available; Picard version: Version:2.27.4-SNAPSHOT
+INFO	2026-07-17 20:08:38	FastqToSam	Auto-detected quality format as: Standard.
+INFO	2026-07-17 20:08:39	FastqToSam	Processed 161428 fastq reads
+[Fri Jul 17 20:08:42 GMT 2026] picard.sam.FastqToSam done. Elapsed time: 0.07 minutes.
+Runtime.totalMemory()=479199232

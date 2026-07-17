@@ -1,0 +1,155 @@
+{
+  "workflowName": "BamToCram",
+  "workflowProcessingEvents": [
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "Finished",
+      "timestamp": "2026-07-17T20:09:05.181Z",
+      "cromwellVersion": "91"
+    },
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "PickedUp",
+      "timestamp": "2026-07-17T20:08:45.769Z",
+      "cromwellVersion": "91"
+    }
+  ],
+  "actualWorkflowLanguageVersion": "1.0",
+  "submittedFiles": {
+    "workflow": "version 1.0\n\n## Compress a BAM into the reference-based CRAM format, which stores aligned\n## reads far more compactly. Uses samtools view -C.\n\nworkflow BamToCram {\n  input {\n    File input_bam\n    File ref_fasta\n    File ref_fasta_index\n    String output_basename\n  }\n\n  call ConvertToCram {\n    input:\n      input_bam = input_bam,\n      ref_fasta = ref_fasta,\n      ref_fasta_index = ref_fasta_index,\n      output_basename = output_basename\n  }\n\n  output {\n    File cram = ConvertToCram.output_cram\n    File cram_index = ConvertToCram.output_cram_index\n  }\n\n  parameter_meta {\n    input_bam: \"Coordinate-sorted BAM to compress.\"\n    ref_fasta: \"Reference FASTA the reads were aligned to (must match the BAM).\"\n    ref_fasta_index: \"The .fai index for ref_fasta.\"\n    output_basename: \"Basename for the output .cram/.crai files.\"\n  }\n}\n\ntask ConvertToCram {\n  input {\n    File input_bam\n    File ref_fasta\n    File ref_fasta_index\n    String output_basename\n    String docker = \"quay.io/biocontainers/samtools:1.21--h96c455f_1\"\n  }\n\n  command <<<\n    set -e -o pipefail\n    samtools view -C -T ~{ref_fasta} ~{input_bam} -o ~{output_basename}.cram\n    samtools index ~{output_basename}.cram\n  >>>\n\n  runtime {\n    docker: docker\n    cpu: 1\n    memory: \"1 GiB\"\n    disks: \"local-disk 10 HDD\"\n  }\n\n  output {\n    File output_cram = \"~{output_basename}.cram\"\n    File output_cram_index = \"~{output_basename}.cram.crai\"\n  }\n}\n",
+    "root": "",
+    "options": "{\n\n}",
+    "inputs": "{\"BamToCram.input_bam\":\"__FIXROOT__/data/chrM.bam\",\"BamToCram.output_basename\":\"chrM\",\"BamToCram.ref_fasta\":\"__FIXROOT__/data/mito_genome.fasta\",\"BamToCram.ref_fasta_index\":\"__FIXROOT__/data/mito_genome.fasta.fai\"}",
+    "workflowUrl": "",
+    "labels": "{}"
+  },
+  "calls": {
+    "BamToCram.ConvertToCram": [
+      {
+        "executionStatus": "Done",
+        "stdout": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/stdout",
+        "commandLine": "set -e -o pipefail\nsamtools view -C -T /cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/inputs/-1254224753/mito_genome.fasta /cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/inputs/-1254224753/chrM.bam -o chrM.cram\nsamtools index chrM.cram",
+        "shardIndex": -1,
+        "outputs": {
+          "output_cram": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/chrM.cram",
+          "output_cram_index": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/chrM.cram.crai"
+        },
+        "runtimeAttributes": {
+          "maxRetries": "0",
+          "failOnStderr": "false",
+          "continueOnReturnCode": "0",
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1"
+        },
+        "callCaching": {
+          "allowResultReuse": true,
+          "hashes": {
+            "output count": "C81E728D9D4C2F636F067F89CC14862C",
+            "runtime attribute": {
+              "docker": "10AFA830B2B8A213FD84AD06930EF1C8",
+              "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
+              "failOnStderr": "68934A3E9455FA72420237EB05902327"
+            },
+            "output expression": {
+              "File output_cram_index": "9389AFF70E6ABF775E5708A057039FB6",
+              "File output_cram": "8B5C26D205480E059E1FE9F74A0E014F"
+            },
+            "input count": "E4DA3B7FBBCE2345D7772B0674A318D5",
+            "backend name": "509820290D57F333403F490DDE7316F4",
+            "command template": "1553BD78E8D96E2515C4A0578FEA9FB4",
+            "input": {
+              "File input_bam": "7f00adaaf4b9b7243190a427149e8dde",
+              "String docker": "381DF0411FBC13F2B1423E4F9FA5F636",
+              "File ref_fasta_index": "5340dc8203d9bf0824846e3241e00c53",
+              "File ref_fasta": "0eac45d6f4b7582ce5c8beb1358b1fd1",
+              "String output_basename": "4A8385B4D27A8EEDB503793999FE2D1B"
+            }
+          },
+          "effectiveCallCachingMode": "ReadAndWriteCache",
+          "hit": false,
+          "result": "Cache Miss"
+        },
+        "inputs": {
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+          "input_bam": "__FIXROOT__/data/chrM.bam",
+          "ref_fasta": "__FIXROOT__/data/mito_genome.fasta",
+          "ref_fasta_index": "__FIXROOT__/data/mito_genome.fasta.fai",
+          "output_basename": "chrM"
+        },
+        "returnCode": 0,
+        "jobId": "1164104",
+        "backend": "Local",
+        "start": "2026-07-17T20:08:47.841Z",
+        "backendStatus": "Done",
+        "compressedDockerSize": 26454986,
+        "end": "2026-07-17T20:09:03.222Z",
+        "dockerImageUsed": "quay.io/biocontainers/samtools@sha256:d1585753f42f3b89a3c64bcb4bf8f5553befd15c1b388d954a8b995e21ecf9a1",
+        "stderr": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/stderr",
+        "callRoot": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram",
+        "attempt": 1,
+        "executionEvents": [
+          {
+            "startTime": "2026-07-17T20:09:02.251Z",
+            "description": "UpdatingJobStore",
+            "endTime": "2026-07-17T20:09:03.222Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:47.842Z",
+            "description": "RequestingExecutionToken",
+            "endTime": "2026-07-17T20:08:55.349Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:55.349Z",
+            "description": "WaitingForValueStore",
+            "endTime": "2026-07-17T20:08:55.350Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:56.101Z",
+            "description": "RunningJob",
+            "endTime": "2026-07-17T20:09:00.197Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:47.841Z",
+            "description": "Pending",
+            "endTime": "2026-07-17T20:08:47.842Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:56.097Z",
+            "description": "CallCacheReading",
+            "endTime": "2026-07-17T20:08:56.101Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:55.350Z",
+            "description": "PreparingJob",
+            "endTime": "2026-07-17T20:08:56.097Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:00.197Z",
+            "description": "UpdatingCallCache",
+            "endTime": "2026-07-17T20:09:02.251Z"
+          }
+        ]
+      }
+    ]
+  },
+  "outputs": {
+    "BamToCram.cram_index": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/chrM.cram.crai",
+    "BamToCram.cram": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5/call-ConvertToCram/execution/chrM.cram"
+  },
+  "workflowRoot": "__FIXROOT__/cromwell-executions/BamToCram/07babfa1-acb7-4eb0-8524-d796e11661e5",
+  "actualWorkflowLanguage": "WDL",
+  "status": "Succeeded",
+  "end": "2026-07-17T20:09:05.181Z",
+  "start": "2026-07-17T20:08:45.770Z",
+  "id": "07babfa1-acb7-4eb0-8524-d796e11661e5",
+  "inputs": {
+    "BamToCram.ConvertToCram.docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+    "input_bam": "__FIXROOT__/data/chrM.bam",
+    "ref_fasta": "__FIXROOT__/data/mito_genome.fasta",
+    "ref_fasta_index": "__FIXROOT__/data/mito_genome.fasta.fai",
+    "output_basename": "chrM"
+  },
+  "labels": {
+    "cromwell-workflow-id": "cromwell-07babfa1-acb7-4eb0-8524-d796e11661e5"
+  },
+  "submission": "2026-07-17T20:08:19.490Z"
+}

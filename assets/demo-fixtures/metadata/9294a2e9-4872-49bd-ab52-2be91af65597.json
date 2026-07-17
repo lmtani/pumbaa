@@ -1,0 +1,159 @@
+{
+  "workflowName": "FastqToUnmappedBam",
+  "workflowProcessingEvents": [
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "Finished",
+      "timestamp": "2026-07-17T20:08:46.877Z",
+      "cromwellVersion": "91"
+    },
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "PickedUp",
+      "timestamp": "2026-07-17T20:08:25.742Z",
+      "cromwellVersion": "91"
+    }
+  ],
+  "actualWorkflowLanguageVersion": "1.0",
+  "submittedFiles": {
+    "workflow": "version 1.0\n\n## Convert a pair of FASTQ files into an unmapped BAM (uBAM), the first step of\n## most short-read alignment pipelines. Uses Picard FastqToSam.\n\nworkflow FastqToUnmappedBam {\n  input {\n    File r1_fastq\n    File r2_fastq\n    String sample_name\n    String read_group = \"rg1\"\n  }\n\n  call FastqToSam {\n    input:\n      r1_fastq = r1_fastq,\n      r2_fastq = r2_fastq,\n      sample_name = sample_name,\n      read_group = read_group\n  }\n\n  output {\n    File unmapped_bam = FastqToSam.unmapped_bam\n  }\n\n  parameter_meta {\n    r1_fastq: \"Gzipped FASTQ with the forward (R1) reads.\"\n    r2_fastq: \"Gzipped FASTQ with the reverse (R2) reads.\"\n    sample_name: \"Sample name stored in the SM read-group field.\"\n    read_group: \"Read-group identifier (ID).\"\n  }\n}\n\ntask FastqToSam {\n  input {\n    File r1_fastq\n    File r2_fastq\n    String sample_name\n    String read_group\n    String docker = \"broadinstitute/picard:2.27.4\"\n    Int memory_mb = 3500\n  }\n\n  Int java_heap_mb = memory_mb - 500\n  String output_basename = sub(sub(basename(r1_fastq), \".fastq.gz$\", \"\"), \".fq.gz$\", \"\")\n\n  command <<<\n    set -e\n    java -Xmx~{java_heap_mb}m -jar /usr/picard/picard.jar FastqToSam \\\n      -FASTQ \"~{r1_fastq}\" \\\n      -FASTQ2 \"~{r2_fastq}\" \\\n      -READ_GROUP_NAME \"~{read_group}\" \\\n      -SAMPLE_NAME \"~{sample_name}\" \\\n      -LIBRARY_NAME \"UNKNOWN\" \\\n      -PLATFORM \"ILLUMINA\" \\\n      -OUTPUT \"~{output_basename}.unmapped.bam\"\n  >>>\n\n  runtime {\n    docker: docker\n    cpu: 1\n    memory: \"~{memory_mb} MiB\"\n    disks: \"local-disk 10 HDD\"\n  }\n\n  output {\n    File unmapped_bam = \"~{output_basename}.unmapped.bam\"\n  }\n}\n",
+    "root": "",
+    "options": "{\n\n}",
+    "inputs": "{\"FastqToUnmappedBam.r1_fastq\":\"__FIXROOT__/data/NA12878_clean_R1.fq.gz\",\"FastqToUnmappedBam.r2_fastq\":\"__FIXROOT__/data/NA12878_clean_R2.fq.gz\",\"FastqToUnmappedBam.sample_name\":\"NA12878\"}",
+    "workflowUrl": "",
+    "labels": "{}"
+  },
+  "calls": {
+    "FastqToUnmappedBam.FastqToSam": [
+      {
+        "executionStatus": "Done",
+        "stdout": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/execution/stdout",
+        "commandLine": "set -e\njava -Xmx3000m -jar /usr/picard/picard.jar FastqToSam \\\n  -FASTQ \"/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/inputs/-1254224753/NA12878_clean_R1.fq.gz\" \\\n  -FASTQ2 \"/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/inputs/-1254224753/NA12878_clean_R2.fq.gz\" \\\n  -READ_GROUP_NAME \"rg1\" \\\n  -SAMPLE_NAME \"NA12878\" \\\n  -LIBRARY_NAME \"UNKNOWN\" \\\n  -PLATFORM \"ILLUMINA\" \\\n  -OUTPUT \"NA12878_clean_R1.unmapped.bam\"",
+        "shardIndex": -1,
+        "outputs": {
+          "unmapped_bam": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/execution/NA12878_clean_R1.unmapped.bam"
+        },
+        "runtimeAttributes": {
+          "maxRetries": "0",
+          "failOnStderr": "false",
+          "continueOnReturnCode": "0",
+          "docker": "broadinstitute/picard:2.27.4"
+        },
+        "callCaching": {
+          "allowResultReuse": true,
+          "hashes": {
+            "output count": "C4CA4238A0B923820DCC509A6F75849B",
+            "runtime attribute": {
+              "docker": "5014B6EAD60CF2E93E0E6AB2790A8F0C",
+              "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
+              "failOnStderr": "68934A3E9455FA72420237EB05902327"
+            },
+            "output expression": {
+              "File unmapped_bam": "DAADC0AE9DC80326A86F06C66DEE41BF"
+            },
+            "input count": "C9F0F895FB98AB9159F51FD0297E236D",
+            "backend name": "509820290D57F333403F490DDE7316F4",
+            "command template": "39EFEDB35689AD2165427B163D0B4891",
+            "input": {
+              "String sample_name": "1B5BE2D031348FBA1A6E8624811B57E3",
+              "File r1_fastq": "d4ac164e0de95bdfb55ebf373cc5186a",
+              "String docker": "0357C7A116327280299925A1D37C0487",
+              "Int java_heap_mb": "E93028BDC1AACDFB3687181F2031765D",
+              "File r2_fastq": "1591ba019b96e345aad14d1ef4588139",
+              "Int memory_mb": "E2065CB56F5533494522C46A72F1DFB0",
+              "String output_basename": "0FC3F0D2A892554802EA7D1CD31EDD46",
+              "String read_group": "FB730D14A7AB3BCCA401BC625DBF9B7B"
+            }
+          },
+          "effectiveCallCachingMode": "ReadAndWriteCache",
+          "hit": false,
+          "result": "Cache Miss"
+        },
+        "inputs": {
+          "r2_fastq": "__FIXROOT__/data/NA12878_clean_R2.fq.gz",
+          "read_group": "rg1",
+          "docker": "broadinstitute/picard:2.27.4",
+          "memory_mb": 3500,
+          "r1_fastq": "__FIXROOT__/data/NA12878_clean_R1.fq.gz",
+          "java_heap_mb": 3000,
+          "sample_name": "NA12878",
+          "output_basename": "NA12878_clean_R1"
+        },
+        "returnCode": 0,
+        "jobId": "1163643",
+        "backend": "Local",
+        "start": "2026-07-17T20:08:28.490Z",
+        "backendStatus": "Done",
+        "compressedDockerSize": 814630010,
+        "end": "2026-07-17T20:08:45.229Z",
+        "dockerImageUsed": "broadinstitute/picard@sha256:caea76d899860823d4f92d692b390b283d531e74a8c712c48b08d557ed6728cf",
+        "stderr": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/execution/stderr",
+        "callRoot": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam",
+        "attempt": 1,
+        "executionEvents": [
+          {
+            "startTime": "2026-07-17T20:08:42.808Z",
+            "description": "UpdatingCallCache",
+            "endTime": "2026-07-17T20:08:44.272Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:36.928Z",
+            "description": "RunningJob",
+            "endTime": "2026-07-17T20:08:42.808Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:35.366Z",
+            "description": "PreparingJob",
+            "endTime": "2026-07-17T20:08:36.888Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:28.514Z",
+            "description": "RequestingExecutionToken",
+            "endTime": "2026-07-17T20:08:35.358Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:44.272Z",
+            "description": "UpdatingJobStore",
+            "endTime": "2026-07-17T20:08:45.230Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:35.358Z",
+            "description": "WaitingForValueStore",
+            "endTime": "2026-07-17T20:08:35.366Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:36.888Z",
+            "description": "CallCacheReading",
+            "endTime": "2026-07-17T20:08:36.928Z"
+          },
+          {
+            "startTime": "2026-07-17T20:08:28.504Z",
+            "description": "Pending",
+            "endTime": "2026-07-17T20:08:28.514Z"
+          }
+        ]
+      }
+    ]
+  },
+  "outputs": {
+    "FastqToUnmappedBam.unmapped_bam": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597/call-FastqToSam/execution/NA12878_clean_R1.unmapped.bam"
+  },
+  "workflowRoot": "__FIXROOT__/cromwell-executions/FastqToUnmappedBam/9294a2e9-4872-49bd-ab52-2be91af65597",
+  "actualWorkflowLanguage": "WDL",
+  "status": "Succeeded",
+  "end": "2026-07-17T20:08:46.877Z",
+  "start": "2026-07-17T20:08:25.772Z",
+  "id": "9294a2e9-4872-49bd-ab52-2be91af65597",
+  "inputs": {
+    "r2_fastq": "__FIXROOT__/data/NA12878_clean_R2.fq.gz",
+    "read_group": "rg1",
+    "FastqToUnmappedBam.FastqToSam.memory_mb": 3500,
+    "sample_name": "NA12878",
+    "r1_fastq": "__FIXROOT__/data/NA12878_clean_R1.fq.gz",
+    "FastqToUnmappedBam.FastqToSam.docker": "broadinstitute/picard:2.27.4"
+  },
+  "labels": {
+    "cromwell-workflow-id": "cromwell-9294a2e9-4872-49bd-ab52-2be91af65597"
+  },
+  "submission": "2026-07-17T20:08:19.239Z"
+}
