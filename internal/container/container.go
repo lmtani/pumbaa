@@ -44,6 +44,8 @@ type Container struct {
 
 	// Use cases
 	SubmitUseCase                *workflow.SubmitUseCase
+	PreflightUseCase             *workflow.PreflightUseCase
+	ScaffoldInputsUseCase        *workflow.ScaffoldInputsUseCase
 	MetadataUseCase              *workflow.MetadataUseCase
 	CompareUseCase               *workflow.CompareUseCase
 	AbortUseCase                 *workflow.AbortUseCase
@@ -58,6 +60,8 @@ type Container struct {
 
 	// Handlers
 	SubmitHandler         *handler.SubmitHandler
+	PreflightHandler      *handler.PreflightHandler
+	ScaffoldHandler       *handler.ScaffoldHandler
 	MetadataHandler       *handler.MetadataHandler
 	DiffHandler           *handler.DiffHandler
 	AbortHandler          *handler.AbortHandler
@@ -110,7 +114,9 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.CloudLoggingRepo = cloudlogging.NewCloudLoggingRepository()
 
 	// Initialize use cases
-	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider)
+	c.PreflightUseCase = workflow.NewPreflightUseCase(fileProvider, c.CromwellClient)
+	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
@@ -143,6 +149,8 @@ func New(cfg *config.Config, appVersion string) *Container {
 
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
+	c.PreflightHandler = handler.NewPreflightHandler(c.PreflightUseCase, c.Presenter)
+	c.ScaffoldHandler = handler.NewScaffoldHandler(c.ScaffoldInputsUseCase, c.Presenter)
 	c.MetadataHandler = handler.NewMetadataHandler(c.MetadataUseCase, c.Presenter)
 	c.DiffHandler = handler.NewDiffHandler(c.CompareUseCase, c.Presenter)
 	c.AbortHandler = handler.NewAbortHandler(c.AbortUseCase, c.Presenter)
@@ -209,9 +217,10 @@ func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.To
 		return nil, fmt.Errorf("session service initialization failed: %w", err)
 	}
 	agentTools := tools.GetAllTools(tools.Deps{
-		Repo:    c.CromwellClient,
-		Fetcher: c.CromwellClient,
-		WDLRepo: c.initWDLRepository(rebuildWDLIndex),
+		Repo:         c.CromwellClient,
+		Fetcher:      c.CromwellClient,
+		WDLRepo:      c.initWDLRepository(rebuildWDLIndex),
+		FileProvider: storage.NewFileProvider(),
 	}, extraTools...)
 	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

@@ -52,6 +52,15 @@ type Input struct {
 
 	// Lines is how many tail lines read_log returns (default 100, max 500).
 	Lines int `json:"lines,omitempty"`
+
+	// WorkflowFile is the local WDL path for the scaffold and preflight actions.
+	WorkflowFile string `json:"workflow_file,omitempty"`
+
+	// InputsFile is the local inputs JSON path for the preflight action.
+	InputsFile string `json:"inputs_file,omitempty"`
+
+	// IncludeOptional adds optional inputs to the scaffold template.
+	IncludeOptional bool `json:"include_optional,omitempty"`
 }
 
 // Output represents the standardized output for all actions.

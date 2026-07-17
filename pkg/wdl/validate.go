@@ -40,12 +40,10 @@ func ValidateInputs(wdlSource []byte, inputsJSON []byte) error {
 		return fmt.Errorf("failed to parse inputs JSON: %w", err)
 	}
 
-	prefix := doc.Workflow.Name + "."
 	var missing []string
 	for _, name := range required {
-		qualified := prefix + name
-		if _, ok := provided[qualified]; !ok {
-			missing = append(missing, qualified)
+		if _, ok := provided[name]; !ok {
+			missing = append(missing, name)
 		}
 	}
 
@@ -56,13 +54,13 @@ func ValidateInputs(wdlSource []byte, inputsJSON []byte) error {
 	return nil
 }
 
-// requiredInputNames returns the names of inputs that are required
-// (non-optional type and no default expression).
+// requiredInputNames returns the qualified names of the inputs that must be
+// provided, using the same notion of "required" as InputSpec.
 func requiredInputNames(wf *ast.Workflow) []string {
 	var names []string
-	for _, input := range wf.Inputs {
-		if input.Type != nil && !input.Type.Optional && input.Expression == nil {
-			names = append(names, input.Name)
+	for _, spec := range workflowInputSpecs(wf) {
+		if spec.Required() {
+			names = append(names, spec.Name)
 		}
 	}
 	return names

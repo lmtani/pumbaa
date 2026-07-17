@@ -46,6 +46,7 @@ nav:
     - Dashboard: features/dashboard.md
     - Debug View: features/debug.md
   - CLI Commands:
+    - Prepare a Submission: features/guided-submit.md
     - Submit Workflow: features/submit.md
     - Query Workflows: features/query.md
     - Workflow Metadata: features/metadata.md
@@ -61,6 +62,7 @@ nav:
   - Development:
     - Contributing: contributing.md
     - Architecture: ARCHITECTURE.md
+    - "Design: guided submit": design/guided-submit.md
     - Testing Guidelines: testing-guidelines.md
 
 markdown_extensions:

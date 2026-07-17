@@ -12,6 +12,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/localfs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/submit"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 )
@@ -31,16 +32,20 @@ type actionSpec struct {
 	// requiresFetcher marks actions that need expanded-metadata access and
 	// are skipped when no fetcher is wired (e.g. WDL-only registries).
 	requiresFetcher bool
-	build           func(deps Deps) types.Handler
+	// requiresFileProvider marks actions that read/verify local or cloud
+	// files and are skipped when no file provider is wired.
+	requiresFileProvider bool
+	build                func(deps Deps) types.Handler
 }
 
 // Deps carries the external dependencies handlers can draw from. Any of the
 // fields may be nil; actions that need a missing dependency are not
 // registered.
 type Deps struct {
-	Repo    ports.WorkflowReader
-	Fetcher ports.WorkflowMetadataFetcher
-	WDLRepo wdl.Repository
+	Repo         ports.WorkflowReader
+	Fetcher      ports.WorkflowMetadataFetcher
+	WDLRepo      wdl.Repository
+	FileProvider ports.FileProvider
 }
 
 func builtinActions() []actionSpec {
@@ -78,6 +83,21 @@ func builtinActions() []actionSpec {
 			description: "Get log file paths for debugging. Required: workflow_id.",
 			build: func(deps Deps) types.Handler {
 				return cromwell.NewLogsHandler(deps.Repo)
+			},
+		},
+		{
+			name:        "scaffold",
+			description: "Show a workflow's declared inputs and an inputs-JSON template to fill in. Answers \"what does this workflow need to run?\". Required: workflow_file (a .wdl path in the working directory). Optional: include_optional.",
+			build: func(_ Deps) types.Handler {
+				return submit.NewScaffoldHandler()
+			},
+		},
+		{
+			name:                 "preflight",
+			description:          "Check an inputs JSON against a WDL before submitting: required inputs present, well-typed, and their file paths existing. Required: workflow_file. Optional: inputs_file (both .wdl/.json paths in the working directory).",
+			requiresFileProvider: true,
+			build: func(deps Deps) types.Handler {
+				return submit.NewPreflightHandler(deps.FileProvider)
 			},
 		},
 		{
@@ -163,6 +183,9 @@ func NewDefaultRegistry(deps Deps) *Registry {
 			continue
 		}
 		if spec.requiresFetcher && deps.Fetcher == nil {
+			continue
+		}
+		if spec.requiresFileProvider && deps.FileProvider == nil {
 			continue
 		}
 		r.Register(spec.name, spec.description, spec.build(deps))

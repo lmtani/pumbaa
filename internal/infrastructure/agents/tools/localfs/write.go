@@ -29,7 +29,7 @@ func (h *WriteHandler) Handle(_ context.Context, input types.Input) (types.Outpu
 		return types.NewErrorOutput(action, "content is required"), nil
 	}
 
-	fullPath, err := resolveWorkingDirPath(input.Path)
+	fullPath, err := ResolveWorkingDirPath(input.Path)
 	if err != nil {
 		return types.NewErrorOutput(action, err.Error()), nil
 	}
@@ -66,10 +66,10 @@ func (h *WriteHandler) Handle(_ context.Context, input types.Input) (types.Outpu
 	}), nil
 }
 
-// resolveWorkingDirPath validates that the requested path stays inside the
+// ResolveWorkingDirPath validates that the requested path stays inside the
 // user's current working directory and returns its absolute form. The agent
 // must never write outside the directory pumbaa was launched from.
-func resolveWorkingDirPath(path string) (string, error) {
+func ResolveWorkingDirPath(path string) (string, error) {
 	if strings.TrimSpace(path) == "" {
 		return "", fmt.Errorf("path is required (relative to the current working directory)")
 	}

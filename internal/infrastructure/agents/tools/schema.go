@@ -73,6 +73,18 @@ func GetParametersSchema() map[string]any {
 				"type":        "integer",
 				"description": "Tail lines for read_log (default 100, max 500)",
 			},
+			"workflow_file": map[string]any{
+				"type":        "string",
+				"description": "Local WDL path (working directory) for scaffold and preflight",
+			},
+			"inputs_file": map[string]any{
+				"type":        "string",
+				"description": "Local inputs JSON path (working directory) for preflight",
+			},
+			"include_optional": map[string]any{
+				"type":        "boolean",
+				"description": "Include optional inputs in the scaffold template",
+			},
 		},
 		"required": []string{"action"},
 	}

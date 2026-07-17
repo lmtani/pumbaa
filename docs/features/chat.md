@@ -101,6 +101,14 @@ Choose your preferred AI backend:
     
     List, search, and inspect your indexed WDL workflows (`PUMBAA_WDL_DIR`)
 
+-   :material-airplane-check: **Prepare a Submission**
+    
+    Scaffold an inputs template from a WDL and preflight it before running
+
+-   :material-alert-circle: **Diagnose Failures**
+    
+    Summarize root causes and read the failing task's log
+
 </div>
 
 !!! info "Streaming"
@@ -182,3 +190,6 @@ export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db
     - "Show me the outputs of workflow xyz-456"
     - "Read gs://bucket/path/to/file.txt"
     - "Query last 5 failed workflows"
+    - "What inputs does main.wdl need?"
+    - "Check my inputs.json against main.wdl before I submit"
+    - "Why did workflow abc-123 fail?"
