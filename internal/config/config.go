@@ -201,14 +201,3 @@ func Load() *Config {
 		ClientID:          clientID,
 	}
 }
-
-// FromFlags creates a config from CLI flags, with env vars as fallback.
-func FromFlags(host string) *Config {
-	cfg := Load()
-
-	if host != "" {
-		cfg.CromwellHost = host
-	}
-
-	return cfg
-}

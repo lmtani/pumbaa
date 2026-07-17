@@ -43,11 +43,6 @@ func (r *Registry) Register(action, description string, handler types.Handler) {
 	r.entries[action] = entry{handler: handler, description: description}
 }
 
-// RegisterFunc is a convenience method to register a function as a handler.
-func (r *Registry) RegisterFunc(action, description string, fn types.HandlerFunc) {
-	r.Register(action, description, fn)
-}
-
 // Get returns the handler for the given action.
 // Returns nil and false if no handler is registered.
 func (r *Registry) Get(action string) (types.Handler, bool) {
@@ -91,9 +86,4 @@ func (r *Registry) Docs() []ActionDoc {
 	}
 	sort.Slice(docs, func(i, j int) bool { return docs[i].Action < docs[j].Action })
 	return docs
-}
-
-// Count returns the number of registered handlers.
-func (r *Registry) Count() int {
-	return len(r.entries)
 }

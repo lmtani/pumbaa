@@ -227,50 +227,6 @@ func TestParseDockerSize(t *testing.T) {
 	}
 }
 
-func TestParseCPU(t *testing.T) {
-	tests := []struct {
-		input string
-		want  float64
-	}{
-		{"", 0},
-		{"1", 1},
-		{"4", 4},
-		{"4.0", 4},
-		{"2.5", 2.5},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := parseCPU(tt.input)
-			if got != tt.want {
-				t.Errorf("parseCPU(%q) = %f, want %f", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestParseMemoryGB(t *testing.T) {
-	tests := []struct {
-		input string
-		want  float64
-	}{
-		{"", 0},
-		{"8 GB", 8},
-		{"8GB", 8},
-		{"4096 MB", 4}, // 4096MB = 4GB
-		{"16", 16},     // Assume GB if no unit
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := parseMemoryGB(tt.input)
-			if got != tt.want {
-				t.Errorf("parseMemoryGB(%q) = %f, want %f", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 // TestParseDetailedMetadata_RunningAttempt guards the metadata shape that
 // produced the running-cost bug: an in-flight attempt has start/vmStartTime
 // and a cost rate but no end timestamps yet. The mapper must carry all of it

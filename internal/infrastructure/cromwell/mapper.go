@@ -3,7 +3,6 @@ package cromwell
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
@@ -247,73 +246,4 @@ func parseDockerSize(v any) int64 {
 	default:
 		return 0
 	}
-}
-
-// parseCPU parses CPU string (e.g., "4", "4.0") to float64.
-func parseCPU(s string) float64 {
-	if s == "" {
-		return 0
-	}
-	var cpu float64
-	for i, c := range s {
-		if c == '.' {
-			var decimal float64
-			var divisor float64 = 10
-			for _, d := range s[i+1:] {
-				if d < '0' || d > '9' {
-					break
-				}
-				decimal += float64(d-'0') / divisor
-				divisor *= 10
-			}
-			return cpu + decimal
-		}
-		if c < '0' || c > '9' {
-			break
-		}
-		cpu = cpu*10 + float64(c-'0')
-	}
-	return cpu
-}
-
-// parseMemoryGB parses memory string (e.g., "8 GB", "8GB", "8192 MB") to GB.
-func parseMemoryGB(s string) float64 {
-	if s == "" {
-		return 0
-	}
-
-	var num float64
-	var i int
-	for i = 0; i < len(s); i++ {
-		c := s[i]
-		if c == '.' {
-			var decimal float64
-			var divisor float64 = 10
-			for j := i + 1; j < len(s); j++ {
-				d := s[j]
-				if d < '0' || d > '9' {
-					i = j
-					break
-				}
-				decimal += float64(d-'0') / divisor
-				divisor *= 10
-				i = j + 1
-			}
-			num += decimal
-			break
-		}
-		if c < '0' || c > '9' {
-			break
-		}
-		num = num*10 + float64(c-'0')
-	}
-
-	rest := strings.ToUpper(strings.TrimSpace(s[i:]))
-	if strings.HasPrefix(rest, "MB") {
-		return num / 1024
-	}
-	if strings.HasPrefix(rest, "TB") {
-		return num * 1024
-	}
-	return num
 }
