@@ -1,0 +1,155 @@
+{
+  "workflowName": "CramToBam",
+  "workflowProcessingEvents": [
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "PickedUp",
+      "timestamp": "2026-07-17T20:09:05.799Z",
+      "cromwellVersion": "91"
+    },
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "Finished",
+      "timestamp": "2026-07-17T20:09:23.162Z",
+      "cromwellVersion": "91"
+    }
+  ],
+  "actualWorkflowLanguageVersion": "1.0",
+  "submittedFiles": {
+    "workflow": "version 1.0\n\n## Decompress a CRAM back into a BAM. Uses samtools view -b, providing the same\n## reference the CRAM was encoded against.\n\nworkflow CramToBam {\n  input {\n    File input_cram\n    File ref_fasta\n    File ref_fasta_index\n    String output_basename\n  }\n\n  call ConvertToBam {\n    input:\n      input_cram = input_cram,\n      ref_fasta = ref_fasta,\n      ref_fasta_index = ref_fasta_index,\n      output_basename = output_basename\n  }\n\n  output {\n    File bam = ConvertToBam.output_bam\n    File bam_index = ConvertToBam.output_bam_index\n  }\n\n  parameter_meta {\n    input_cram: \"CRAM to decompress.\"\n    ref_fasta: \"Reference FASTA the CRAM was encoded against (must match).\"\n    ref_fasta_index: \"The .fai index for ref_fasta.\"\n    output_basename: \"Basename for the output .bam/.bai files.\"\n  }\n}\n\ntask ConvertToBam {\n  input {\n    File input_cram\n    File ref_fasta\n    File ref_fasta_index\n    String output_basename\n    String docker = \"quay.io/biocontainers/samtools:1.21--h96c455f_1\"\n  }\n\n  command <<<\n    set -e\n    samtools view -b -T ~{ref_fasta} ~{input_cram} -o ~{output_basename}.bam\n    samtools index ~{output_basename}.bam\n  >>>\n\n  runtime {\n    docker: docker\n    cpu: 1\n    memory: \"1 GiB\"\n    disks: \"local-disk 10 HDD\"\n  }\n\n  output {\n    File output_bam = \"~{output_basename}.bam\"\n    File output_bam_index = \"~{output_basename}.bam.bai\"\n  }\n}\n",
+    "root": "",
+    "options": "{\n\n}",
+    "inputs": "{\"CramToBam.input_cram\":\"__FIXROOT__/data/NA12878.mitochondria.cram\",\"CramToBam.output_basename\":\"NA12878.mitochondria\",\"CramToBam.ref_fasta\":\"__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta\",\"CramToBam.ref_fasta_index\":\"__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta.fai\"}",
+    "workflowUrl": "",
+    "labels": "{}"
+  },
+  "calls": {
+    "CramToBam.ConvertToBam": [
+      {
+        "executionStatus": "Done",
+        "stdout": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/stdout",
+        "commandLine": "set -e\nsamtools view -b -T /cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/inputs/-1254224753/Homo_sapiens_assembly38.chrM.fasta /cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/inputs/-1254224753/NA12878.mitochondria.cram -o NA12878.mitochondria.bam\nsamtools index NA12878.mitochondria.bam",
+        "shardIndex": -1,
+        "outputs": {
+          "output_bam": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/NA12878.mitochondria.bam",
+          "output_bam_index": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/NA12878.mitochondria.bam.bai"
+        },
+        "runtimeAttributes": {
+          "maxRetries": "0",
+          "failOnStderr": "false",
+          "continueOnReturnCode": "0",
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1"
+        },
+        "callCaching": {
+          "allowResultReuse": true,
+          "hashes": {
+            "output count": "C81E728D9D4C2F636F067F89CC14862C",
+            "runtime attribute": {
+              "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
+              "docker": "10AFA830B2B8A213FD84AD06930EF1C8",
+              "failOnStderr": "68934A3E9455FA72420237EB05902327"
+            },
+            "output expression": {
+              "File output_bam_index": "092BD9E1D811D8424052D06DDA44759E",
+              "File output_bam": "3C53D2D8764D7F4B2E25D46ABAE0D251"
+            },
+            "input count": "E4DA3B7FBBCE2345D7772B0674A318D5",
+            "backend name": "509820290D57F333403F490DDE7316F4",
+            "command template": "04C66E9138A94F6A868C1C2B99629C87",
+            "input": {
+              "File input_cram": "c8db9658f9c6fd0296f9a89e9474e58f",
+              "String docker": "381DF0411FBC13F2B1423E4F9FA5F636",
+              "File ref_fasta_index": "b169b3777e520dd645eb8f06191e013f",
+              "File ref_fasta": "fec5eec2086dba60eb82fc0b975d80d9",
+              "String output_basename": "E69EED0C8725CF23A6CAA94BED8ECAF1"
+            }
+          },
+          "effectiveCallCachingMode": "ReadAndWriteCache",
+          "hit": false,
+          "result": "Cache Miss"
+        },
+        "inputs": {
+          "ref_fasta": "__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta",
+          "input_cram": "__FIXROOT__/data/NA12878.mitochondria.cram",
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+          "ref_fasta_index": "__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta.fai",
+          "output_basename": "NA12878.mitochondria"
+        },
+        "returnCode": 0,
+        "jobId": "1164509",
+        "backend": "Local",
+        "start": "2026-07-17T20:09:07.859Z",
+        "backendStatus": "Done",
+        "compressedDockerSize": 26454986,
+        "end": "2026-07-17T20:09:21.221Z",
+        "dockerImageUsed": "quay.io/biocontainers/samtools@sha256:d1585753f42f3b89a3c64bcb4bf8f5553befd15c1b388d954a8b995e21ecf9a1",
+        "stderr": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/stderr",
+        "callRoot": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam",
+        "attempt": 1,
+        "executionEvents": [
+          {
+            "startTime": "2026-07-17T20:09:15.356Z",
+            "description": "CallCacheReading",
+            "endTime": "2026-07-17T20:09:15.360Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:15.349Z",
+            "description": "WaitingForValueStore",
+            "endTime": "2026-07-17T20:09:15.350Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:07.859Z",
+            "description": "Pending",
+            "endTime": "2026-07-17T20:09:07.860Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:07.860Z",
+            "description": "RequestingExecutionToken",
+            "endTime": "2026-07-17T20:09:15.349Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:20.196Z",
+            "description": "UpdatingCallCache",
+            "endTime": "2026-07-17T20:09:20.255Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:20.255Z",
+            "description": "UpdatingJobStore",
+            "endTime": "2026-07-17T20:09:21.221Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:15.360Z",
+            "description": "RunningJob",
+            "endTime": "2026-07-17T20:09:20.196Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:15.350Z",
+            "description": "PreparingJob",
+            "endTime": "2026-07-17T20:09:15.356Z"
+          }
+        ]
+      }
+    ]
+  },
+  "outputs": {
+    "CramToBam.bam": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/NA12878.mitochondria.bam",
+    "CramToBam.bam_index": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e/call-ConvertToBam/execution/NA12878.mitochondria.bam.bai"
+  },
+  "workflowRoot": "__FIXROOT__/cromwell-executions/CramToBam/4cc534f2-b866-44b4-8975-c3a88010c68e",
+  "actualWorkflowLanguage": "WDL",
+  "status": "Succeeded",
+  "end": "2026-07-17T20:09:23.161Z",
+  "start": "2026-07-17T20:09:05.799Z",
+  "id": "4cc534f2-b866-44b4-8975-c3a88010c68e",
+  "inputs": {
+    "ref_fasta": "__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta",
+    "CramToBam.ConvertToBam.docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+    "input_cram": "__FIXROOT__/data/NA12878.mitochondria.cram",
+    "ref_fasta_index": "__FIXROOT__/data/Homo_sapiens_assembly38.chrM.fasta.fai",
+    "output_basename": "NA12878.mitochondria"
+  },
+  "labels": {
+    "cromwell-workflow-id": "cromwell-4cc534f2-b866-44b4-8975-c3a88010c68e"
+  },
+  "submission": "2026-07-17T20:08:19.727Z"
+}

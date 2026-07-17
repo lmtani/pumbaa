@@ -29,3 +29,7 @@ dist/
 pumbaa
 .vscode/
 releases
+
+# Python bytecode (demo fixture scripts)
+__pycache__/
+*.pyc

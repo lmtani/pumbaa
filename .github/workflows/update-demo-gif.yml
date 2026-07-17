@@ -1,0 +1,57 @@
+name: Update demo GIF
+
+# Manual trigger: regenerate docs/assets/demo.gif from docs/assets/demo.tape and
+# open a PR with the result. Run it after editing the tape (or the fixtures).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-gif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build pumbaa
+        run: |
+          CGO_ENABLED=0 go build -o dist/pumbaa ./cmd/cli
+          echo "$PWD/dist" >> "$GITHUB_PATH"
+
+      # Start the replay Cromwell in the background; it keeps running into the
+      # render step below. The tape exports CROMWELL_HOST=http://localhost:8010.
+      - name: Start the replay Cromwell
+        run: |
+          nohup python3 docs/assets/demo-fixtures/replay-cromwell.py 8010 >/tmp/stub.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8010/engine/v1/status >/dev/null && break
+            sleep 1
+          done
+          echo "replay Cromwell is up"
+
+      # vhs-action installs vhs plus ttyd/ffmpeg/fonts and renders the tape
+      # natively on the runner, so it reaches the stub on localhost and pumbaa
+      # on PATH.
+      - name: Render the GIF
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/assets/demo.tape
+
+      - name: Open a PR with the updated GIF
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: docs/assets/demo.gif
+          branch: chore/update-demo-gif
+          delete-branch: true
+          title: "docs: regenerate demo GIF"
+          commit-message: "docs(readme): regenerate demo GIF from demo.tape"
+          body: |
+            Regenerated `docs/assets/demo.gif` from `docs/assets/demo.tape` via the
+            **Update demo GIF** workflow (replays recorded Cromwell fixtures — see
+            `docs/assets/demo-fixtures/`).
