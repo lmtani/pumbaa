@@ -76,23 +76,23 @@ func TestCalculatePreemptionSummary(t *testing.T) {
 
 ### Test Data
 
-Shared fixtures live in the top-level `test_data/` directory:
+Fixtures live in a `testdata/` directory next to the package that uses them
+(the Go convention — the toolchain ignores directories with that name).
+Duplicating a few small fixtures between packages is preferred over sharing
+a top-level directory: it keeps each package self-contained, which matters
+especially for `pkg/wdl` since it is a public library.
 
 ```
-test_data/
-├── metadata.json           # Cromwell workflow metadata
-└── wdl/                    # Sample WDL files for indexer/parser tests
-    ├── hello.wdl
-    ├── subworkflow/
-    └── tasks/
+internal/infrastructure/cromwell/testdata/metadata.json   # Cromwell workflow metadata
+pkg/wdl/testdata/                                         # Sample WDLs for parser tests
+internal/infrastructure/wdlindexer/testdata/              # Sample WDLs for indexer tests
 ```
 
-Fixtures used by a single package are kept next to that package (package-local test data), not in `test_data/`.
-
-Load test data with relative paths:
+`go test` runs with the package directory as the working directory, so load
+fixtures with plain relative paths:
 
 ```go
-data, err := os.ReadFile("../../test_data/metadata.json")
+data, err := os.ReadFile("testdata/metadata.json")
 ```
 
 ### Assertions

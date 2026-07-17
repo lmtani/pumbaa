@@ -1,0 +1,50 @@
+{
+  "results": [
+    {
+      "end": "2026-07-17T20:14:27.565Z",
+      "id": "a6b2bbe8-5435-4490-98f8-16ab5afd7436",
+      "metadataArchiveStatus": "Unarchived",
+      "name": "VcfIndexAndStats",
+      "start": "2026-07-17T20:14:00.000Z",
+      "status": "Succeeded",
+      "submission": "2026-07-17T20:14:00.000Z"
+    },
+    {
+      "end": "2026-07-17T20:13:18.390Z",
+      "id": "e9946327-a7af-4835-8508-3e2f86856411",
+      "metadataArchiveStatus": "Unarchived",
+      "name": "BamQualityCheck",
+      "start": "2026-07-17T20:13:00.000Z",
+      "status": "Succeeded",
+      "submission": "2026-07-17T20:13:00.000Z"
+    },
+    {
+      "end": "2026-07-17T20:12:17.362Z",
+      "id": "4cc534f2-b866-44b4-8975-c3a88010c68e",
+      "metadataArchiveStatus": "Unarchived",
+      "name": "CramToBam",
+      "start": "2026-07-17T20:12:00.000Z",
+      "status": "Succeeded",
+      "submission": "2026-07-17T20:12:00.000Z"
+    },
+    {
+      "end": "2026-07-17T20:11:19.411Z",
+      "id": "07babfa1-acb7-4eb0-8524-d796e11661e5",
+      "metadataArchiveStatus": "Unarchived",
+      "name": "BamToCram",
+      "start": "2026-07-17T20:11:00.000Z",
+      "status": "Succeeded",
+      "submission": "2026-07-17T20:11:00.000Z"
+    },
+    {
+      "end": "2026-07-17T20:10:21.105Z",
+      "id": "9294a2e9-4872-49bd-ab52-2be91af65597",
+      "metadataArchiveStatus": "Unarchived",
+      "name": "FastqToUnmappedBam",
+      "start": "2026-07-17T20:10:00.000Z",
+      "status": "Succeeded",
+      "submission": "2026-07-17T20:10:00.000Z"
+    }
+  ],
+  "totalResultsCount": 5
+}

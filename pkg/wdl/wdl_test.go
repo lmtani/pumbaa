@@ -137,7 +137,7 @@ workflow Invalid {
 
 func TestParseFile(t *testing.T) {
 	// Test with existing test data
-	testFile := "../../test_data/wdl/hello.wdl"
+	testFile := "testdata/hello.wdl"
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Skip("test file not found, skipping")
 	}
@@ -699,7 +699,7 @@ workflow Simple {
 
 func TestParseExistingTestData(t *testing.T) {
 	// Test with existing test data in the repository
-	testFile := "../../test_data/wdl/hello.wdl"
+	testFile := "testdata/hello.wdl"
 	if _, err := os.Stat(testFile); os.IsNotExist(err) {
 		t.Skip("test file not found, skipping")
 	}

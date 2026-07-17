@@ -1,0 +1,248 @@
+{
+  "workflowName": "BamQualityCheck",
+  "workflowProcessingEvents": [
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "Finished",
+      "timestamp": "2026-07-17T20:09:44.231Z",
+      "cromwellVersion": "91"
+    },
+    {
+      "cromwellId": "cromid-aa78fb8",
+      "description": "PickedUp",
+      "timestamp": "2026-07-17T20:09:25.839Z",
+      "cromwellVersion": "91"
+    }
+  ],
+  "actualWorkflowLanguageVersion": "1.0",
+  "submittedFiles": {
+    "workflow": "version 1.0\n\n## Two-step alignment QC over a BAM: samtools flagstat (mapping summary) and\n## samtools stats (detailed metrics). Two tasks, so the call tree is richer in\n## the debug view.\n\nworkflow BamQualityCheck {\n  input {\n    File input_bam\n    String output_basename\n  }\n\n  call Flagstat {\n    input:\n      input_bam = input_bam,\n      output_basename = output_basename\n  }\n\n  call Stats {\n    input:\n      input_bam = input_bam,\n      output_basename = output_basename\n  }\n\n  output {\n    File flagstat_report = Flagstat.report\n    File stats_report = Stats.report\n  }\n\n  parameter_meta {\n    input_bam: \"BAM to summarize.\"\n    output_basename: \"Basename for the two report files.\"\n  }\n}\n\ntask Flagstat {\n  input {\n    File input_bam\n    String output_basename\n    String docker = \"quay.io/biocontainers/samtools:1.21--h96c455f_1\"\n  }\n\n  command <<<\n    set -e\n    samtools flagstat ~{input_bam} > ~{output_basename}.flagstat.txt\n  >>>\n\n  runtime {\n    docker: docker\n    cpu: 1\n    memory: \"512 MiB\"\n    disks: \"local-disk 10 HDD\"\n  }\n\n  output {\n    File report = \"~{output_basename}.flagstat.txt\"\n  }\n}\n\ntask Stats {\n  input {\n    File input_bam\n    String output_basename\n    String docker = \"quay.io/biocontainers/samtools:1.21--h96c455f_1\"\n  }\n\n  command <<<\n    set -e\n    samtools stats ~{input_bam} > ~{output_basename}.stats.txt\n  >>>\n\n  runtime {\n    docker: docker\n    cpu: 1\n    memory: \"512 MiB\"\n    disks: \"local-disk 10 HDD\"\n  }\n\n  output {\n    File report = \"~{output_basename}.stats.txt\"\n  }\n}\n",
+    "root": "",
+    "options": "{\n\n}",
+    "inputs": "{\"BamQualityCheck.input_bam\":\"__FIXROOT__/data/chrM.bam\",\"BamQualityCheck.output_basename\":\"chrM\"}",
+    "workflowUrl": "",
+    "labels": "{}"
+  },
+  "calls": {
+    "BamQualityCheck.Flagstat": [
+      {
+        "executionStatus": "Done",
+        "stdout": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat/execution/stdout",
+        "commandLine": "set -e\nsamtools flagstat /cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat/inputs/-1254224753/chrM.bam > chrM.flagstat.txt",
+        "shardIndex": -1,
+        "outputs": {
+          "report": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat/execution/chrM.flagstat.txt"
+        },
+        "runtimeAttributes": {
+          "maxRetries": "0",
+          "failOnStderr": "false",
+          "continueOnReturnCode": "0",
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1"
+        },
+        "callCaching": {
+          "allowResultReuse": true,
+          "hashes": {
+            "output count": "C4CA4238A0B923820DCC509A6F75849B",
+            "runtime attribute": {
+              "docker": "10AFA830B2B8A213FD84AD06930EF1C8",
+              "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
+              "failOnStderr": "68934A3E9455FA72420237EB05902327"
+            },
+            "output expression": {
+              "File report": "0850C4F68FA4C828BB3C35C7F0E67E23"
+            },
+            "input count": "ECCBC87E4B5CE2FE28308FD9F2A7BAF3",
+            "backend name": "509820290D57F333403F490DDE7316F4",
+            "command template": "6B715FFF7422B3F37D08E755B008690D",
+            "input": {
+              "String docker": "381DF0411FBC13F2B1423E4F9FA5F636",
+              "File input_bam": "7f00adaaf4b9b7243190a427149e8dde",
+              "String output_basename": "4A8385B4D27A8EEDB503793999FE2D1B"
+            }
+          },
+          "effectiveCallCachingMode": "ReadAndWriteCache",
+          "hit": false,
+          "result": "Cache Miss"
+        },
+        "inputs": {
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+          "output_basename": "chrM",
+          "input_bam": "__FIXROOT__/data/chrM.bam"
+        },
+        "returnCode": 0,
+        "jobId": "1164879",
+        "backend": "Local",
+        "start": "2026-07-17T20:09:27.912Z",
+        "backendStatus": "Done",
+        "compressedDockerSize": 26454986,
+        "end": "2026-07-17T20:09:42.225Z",
+        "dockerImageUsed": "quay.io/biocontainers/samtools@sha256:d1585753f42f3b89a3c64bcb4bf8f5553befd15c1b388d954a8b995e21ecf9a1",
+        "stderr": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat/execution/stderr",
+        "callRoot": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat",
+        "attempt": 1,
+        "executionEvents": [
+          {
+            "startTime": "2026-07-17T20:09:27.912Z",
+            "description": "Pending",
+            "endTime": "2026-07-17T20:09:27.913Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.350Z",
+            "description": "PreparingJob",
+            "endTime": "2026-07-17T20:09:35.355Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:41.248Z",
+            "description": "UpdatingJobStore",
+            "endTime": "2026-07-17T20:09:42.223Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:40.195Z",
+            "description": "UpdatingCallCache",
+            "endTime": "2026-07-17T20:09:41.248Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.349Z",
+            "description": "WaitingForValueStore",
+            "endTime": "2026-07-17T20:09:35.350Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.360Z",
+            "description": "RunningJob",
+            "endTime": "2026-07-17T20:09:40.195Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.355Z",
+            "description": "CallCacheReading",
+            "endTime": "2026-07-17T20:09:35.360Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:27.913Z",
+            "description": "RequestingExecutionToken",
+            "endTime": "2026-07-17T20:09:35.349Z"
+          }
+        ]
+      }
+    ],
+    "BamQualityCheck.Stats": [
+      {
+        "executionStatus": "Done",
+        "stdout": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats/execution/stdout",
+        "commandLine": "set -e\nsamtools stats /cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats/inputs/-1254224753/chrM.bam > chrM.stats.txt",
+        "shardIndex": -1,
+        "outputs": {
+          "report": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats/execution/chrM.stats.txt"
+        },
+        "runtimeAttributes": {
+          "maxRetries": "0",
+          "failOnStderr": "false",
+          "continueOnReturnCode": "0",
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1"
+        },
+        "callCaching": {
+          "allowResultReuse": true,
+          "hashes": {
+            "output count": "C4CA4238A0B923820DCC509A6F75849B",
+            "runtime attribute": {
+              "docker": "10AFA830B2B8A213FD84AD06930EF1C8",
+              "continueOnReturnCode": "CFCD208495D565EF66E7DFF9F98764DA",
+              "failOnStderr": "68934A3E9455FA72420237EB05902327"
+            },
+            "output expression": {
+              "File report": "4F9822D693E2EFA36EA6AEDDA1E69795"
+            },
+            "input count": "ECCBC87E4B5CE2FE28308FD9F2A7BAF3",
+            "backend name": "509820290D57F333403F490DDE7316F4",
+            "command template": "1683CE723BE46AE20623B2AD642233EA",
+            "input": {
+              "String docker": "381DF0411FBC13F2B1423E4F9FA5F636",
+              "File input_bam": "7f00adaaf4b9b7243190a427149e8dde",
+              "String output_basename": "4A8385B4D27A8EEDB503793999FE2D1B"
+            }
+          },
+          "effectiveCallCachingMode": "ReadAndWriteCache",
+          "hit": false,
+          "result": "Cache Miss"
+        },
+        "inputs": {
+          "docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+          "output_basename": "chrM",
+          "input_bam": "__FIXROOT__/data/chrM.bam"
+        },
+        "returnCode": 0,
+        "jobId": "1164878",
+        "backend": "Local",
+        "start": "2026-07-17T20:09:27.911Z",
+        "backendStatus": "Done",
+        "compressedDockerSize": 26454986,
+        "end": "2026-07-17T20:09:42.223Z",
+        "dockerImageUsed": "quay.io/biocontainers/samtools@sha256:d1585753f42f3b89a3c64bcb4bf8f5553befd15c1b388d954a8b995e21ecf9a1",
+        "stderr": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats/execution/stderr",
+        "callRoot": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats",
+        "attempt": 1,
+        "executionEvents": [
+          {
+            "startTime": "2026-07-17T20:09:40.195Z",
+            "description": "UpdatingCallCache",
+            "endTime": "2026-07-17T20:09:41.248Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.359Z",
+            "description": "RunningJob",
+            "endTime": "2026-07-17T20:09:40.195Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:27.912Z",
+            "description": "RequestingExecutionToken",
+            "endTime": "2026-07-17T20:09:35.349Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.349Z",
+            "description": "WaitingForValueStore",
+            "endTime": "2026-07-17T20:09:35.350Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.350Z",
+            "description": "PreparingJob",
+            "endTime": "2026-07-17T20:09:35.356Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:35.356Z",
+            "description": "CallCacheReading",
+            "endTime": "2026-07-17T20:09:35.359Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:27.911Z",
+            "description": "Pending",
+            "endTime": "2026-07-17T20:09:27.912Z"
+          },
+          {
+            "startTime": "2026-07-17T20:09:41.248Z",
+            "description": "UpdatingJobStore",
+            "endTime": "2026-07-17T20:09:42.223Z"
+          }
+        ]
+      }
+    ]
+  },
+  "outputs": {
+    "BamQualityCheck.flagstat_report": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Flagstat/execution/chrM.flagstat.txt",
+    "BamQualityCheck.stats_report": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411/call-Stats/execution/chrM.stats.txt"
+  },
+  "workflowRoot": "__FIXROOT__/cromwell-executions/BamQualityCheck/e9946327-a7af-4835-8508-3e2f86856411",
+  "actualWorkflowLanguage": "WDL",
+  "status": "Succeeded",
+  "end": "2026-07-17T20:09:44.231Z",
+  "start": "2026-07-17T20:09:25.841Z",
+  "id": "e9946327-a7af-4835-8508-3e2f86856411",
+  "inputs": {
+    "BamQualityCheck.Flagstat.docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1",
+    "output_basename": "chrM",
+    "input_bam": "__FIXROOT__/data/chrM.bam",
+    "BamQualityCheck.Stats.docker": "quay.io/biocontainers/samtools:1.21--h96c455f_1"
+  },
+  "labels": {
+    "cromwell-workflow-id": "cromwell-e9946327-a7af-4835-8508-3e2f86856411"
+  },
+  "submission": "2026-07-17T20:08:19.963Z"
+}

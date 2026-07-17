@@ -2,24 +2,11 @@ package wdlindexer
 
 import (
 	"os"
-	"path/filepath"
-	"runtime"
 	"testing"
 )
 
-// getProjectRoot returns the project root directory
-func getProjectRoot() string {
-	_, filename, _, _ := runtime.Caller(0)
-	// indexer_test.go is in internal/infrastructure/wdl/
-	// so we need to go up 3 levels to get to project root
-	dir := filepath.Dir(filename)
-	return filepath.Join(dir, "..", "..", "..")
-}
-
 func TestNewIndexer(t *testing.T) {
-	// Get the test_data directory using absolute path
-	projectRoot := getProjectRoot()
-	testDir := filepath.Join(projectRoot, "test_data", "wdl")
+	testDir := "testdata"
 
 	// Verify test directory exists
 	if _, err := os.Stat(testDir); os.IsNotExist(err) {
@@ -89,8 +76,7 @@ func TestNewIndexer(t *testing.T) {
 }
 
 func TestSearchCaseInsensitive(t *testing.T) {
-	projectRoot := getProjectRoot()
-	testDir := filepath.Join(projectRoot, "test_data", "wdl")
+	testDir := "testdata"
 
 	tmpFile, err := os.CreateTemp("", "wdl_index_*.json")
 	if err != nil {
