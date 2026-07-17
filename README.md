@@ -19,7 +19,7 @@ natural language.
 📖 **[Documentation](https://lmtani.github.io/pumbaa/)**
 
 <p align="center">
-  <img src="docs/assets/demo.gif" alt="Pumbaa dashboard: browsing workflows and drilling into a run's call tree" width="900">
+  <img src="docs/assets/demo.gif" alt="Pumbaa dashboard: browsing workflows, then drilling into a run's call tree, task command and execution log" width="900">
 </p>
 
 ## Features

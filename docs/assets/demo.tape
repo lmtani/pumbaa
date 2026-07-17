@@ -31,20 +31,29 @@ Sleep 800ms
 Enter
 Sleep 3.5s
 
-# Move the selection down to a two-task workflow.
+# Select the FASTQ→uBAM workflow (its task has a real execution log) and open
+# its debug view.
+Down@550ms 4
+Sleep 1.2s
+Enter
+Sleep 3s
+
+# Drill into the task, then show its command and its execution log.
 Down@600ms 1
 Sleep 1.2s
-
-# Open the debug view: its call tree, statuses and timings.
-Enter
+Type "3"
 Sleep 3.5s
-Down@500ms 2
-Sleep 1.5s
+Escape
+Sleep 800ms
+Type "4"
+Sleep 1.2s
+Enter
+Sleep 4s
+Escape
+Sleep 1s
 
 # Back to the list, then quit.
 Escape
-Sleep 1.2s
-Down@500ms 2
-Sleep 1.2s
+Sleep 1s
 Escape
-Sleep 800ms
+Sleep 600ms
