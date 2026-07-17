@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
+	"github.com/lmtani/pumbaa/internal/prompts"
 )
 
 // handleChatContextLoaded handles the completion of context collection.
@@ -15,7 +16,7 @@ func (m Model) handleChatContextLoaded(msg chatContextLoadedMsg) (tea.Model, tea
 	m.loadingMessage = ""
 
 	navMsg := common.NavigateToChatMsg{
-		SystemInstruction: fmt.Sprintf("%s\n\n---\n\n%s", taskDebugSystemInstruction, msg.context),
+		SystemInstruction: fmt.Sprintf("%s\n\n---\n\n%s", prompts.TaskDebug, msg.context),
 		ContextSummary:    m.buildChatContextSummary(msg.errors),
 		ContextLabel:      m.buildChatContextLabel(),
 	}
