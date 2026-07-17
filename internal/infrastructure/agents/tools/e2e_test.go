@@ -9,6 +9,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/storage"
 	"github.com/lmtani/pumbaa/internal/infrastructure/wdlindexer"
 )
 
@@ -39,7 +40,7 @@ func TestToolsE2E(t *testing.T) {
 		}
 	}
 
-	registry := tools.NewDefaultRegistry(tools.Deps{Repo: reader, Fetcher: reader, WDLRepo: wdlRepo})
+	registry := tools.NewDefaultRegistry(tools.Deps{Repo: reader, Fetcher: reader, WDLRepo: wdlRepo, FileProvider: storage.NewFileProvider()})
 	ctx := context.Background()
 
 	handle := func(t *testing.T, input types.Input) types.Output {

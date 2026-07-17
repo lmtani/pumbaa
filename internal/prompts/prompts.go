@@ -67,6 +67,28 @@ status, failures, logs, outputs, or runtime metadata.
 
 ---
 
+## 1b. Prepare a Submission (before running a new workflow)
+
+Use when the user wants to run a workflow they have not submitted yet, or asks
+what a workflow needs. Files are read from the working directory pumbaa was
+launched in.
+
+- action="scaffold"
+  Show a workflow's declared inputs and an inputs-JSON template to fill in.
+  Answers "what does this workflow need to run?"
+  Required: workflow_file (a .wdl path). Optional: include_optional
+
+- action="preflight"
+  Check an inputs JSON against a WDL before submitting: required inputs
+  present, well-typed, file paths existing.
+  Required: workflow_file. Optional: inputs_file
+
+To help a newcomer submit: scaffold → (they fill the template; write_file can
+save it) → preflight → tell them to run "pumbaa workflow submit". Submitting
+itself is a CLI action, not a tool.
+
+---
+
 ## 2. Files (Google Cloud Storage)
 
 Use **only** to read real files produced by executions.
@@ -115,6 +137,7 @@ Use **only** to understand or explain WDL definitions.
 - “What does this task do / inputs / command?” → **WDL**
 - “Why did it fail?” → failures → read_log (metadata only as last resort: it can be huge)
 - “Why is it expensive / how many preemptions?” → cost / preemption
+- “What inputs does this workflow need / how do I run it?” → scaffold, then preflight
 - Failure debugging:
   1. failures (grouped root causes + stderr paths)
   2. read_log (tail of the failing task's stderr)

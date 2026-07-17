@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -116,5 +118,51 @@ func TestRegistryHandleUnknownActionListsValidOnes(t *testing.T) {
 	}
 	if !strings.Contains(out.Error, "query") {
 		t.Errorf("error should list valid actions, got: %s", out.Error)
+	}
+}
+
+// stubFileProvider is a no-op ports.FileProvider for registry wiring tests.
+type stubFileProvider struct{}
+
+func (stubFileProvider) Read(context.Context, string) (string, error)      { return "", nil }
+func (stubFileProvider) ReadBytes(context.Context, string) ([]byte, error) { return nil, nil }
+func (stubFileProvider) GetSize(context.Context, string) (int64, error)    { return 0, nil }
+
+func TestScaffoldAlwaysAvailablePreflightNeedsFileProvider(t *testing.T) {
+	// scaffold reads a local WDL and needs nothing else, so it is always on.
+	bare := NewDefaultRegistry(Deps{})
+	if _, ok := bare.Get("scaffold"); !ok {
+		t.Error("scaffold should be registered without any dependency")
+	}
+	if _, ok := bare.Get("preflight"); ok {
+		t.Error("preflight should be omitted without a file provider")
+	}
+
+	withFP := NewDefaultRegistry(Deps{FileProvider: stubFileProvider{}})
+	if _, ok := withFP.Get("preflight"); !ok {
+		t.Error("preflight should be registered when a file provider is wired")
+	}
+}
+
+func TestScaffoldActionDispatchesThroughRegistry(t *testing.T) {
+	dir := t.TempDir()
+	old, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(old) })
+
+	wdlSrc := "version 1.0\n\nworkflow W {\n  input {\n    File x\n  }\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "w.wdl"), []byte(wdlSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	r := NewDefaultRegistry(Deps{})
+	out, err := r.Handle(context.Background(), types.Input{Action: "scaffold", WorkflowFile: "w.wdl"})
+	if err != nil || !out.Success {
+		t.Fatalf("scaffold through the registry failed: err=%v out=%+v", err, out)
+	}
+	if data, ok := out.Data.(map[string]any); !ok || data["workflow"] != "W" {
+		t.Errorf("unexpected scaffold output: %+v", out.Data)
 	}
 }

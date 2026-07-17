@@ -217,9 +217,10 @@ func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.To
 		return nil, fmt.Errorf("session service initialization failed: %w", err)
 	}
 	agentTools := tools.GetAllTools(tools.Deps{
-		Repo:    c.CromwellClient,
-		Fetcher: c.CromwellClient,
-		WDLRepo: c.initWDLRepository(rebuildWDLIndex),
+		Repo:         c.CromwellClient,
+		Fetcher:      c.CromwellClient,
+		WDLRepo:      c.initWDLRepository(rebuildWDLIndex),
+		FileProvider: storage.NewFileProvider(),
 	}, extraTools...)
 	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

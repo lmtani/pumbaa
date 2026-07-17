@@ -104,7 +104,9 @@ Running tasks at `time.Now()`:
   struct — actions with a missing dependency are simply not registered.
 - Actions: query, status, metadata, outputs, logs, **failures** (root-cause
   summary — prefer over metadata for debugging), **read_log** (stderr/stdout
-  tail), **cost**, **preemption**, gcs_download, write_file, wdl_*.
+  tail), **cost**, **preemption**, **scaffold**/**preflight** (submission prep,
+  read WDL/inputs sandboxed to cwd — pkg `agents/tools/submit`), gcs_download,
+  write_file, wdl_*.
 - No write actions (abort/submit) until the chat has a confirmation UX.
 - Agent prompts live in `internal/prompts` (update them when actions change).
 - Live E2E: `PUMBAA_TOOLS_E2E=1 CROMWELL_HOST=... go test ./internal/infrastructure/agents/tools/ -run TestToolsE2E`

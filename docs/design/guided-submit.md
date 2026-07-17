@@ -29,9 +29,9 @@ case: it detects missing required inputs and nothing else.
 3. **Fail in 2 seconds, not 20 minutes**: submit runs the preflight checks
    automatically.
 
-Non-goals (for this iteration): fixing anything automatically, estimating
-cost (separate design), and exposing these through the chat agent (see
-Follow-ups).
+Non-goals (for this iteration): fixing anything automatically and estimating
+cost (separate design). Exposing scaffold/preflight through the chat agent
+was a follow-up, now done (see Follow-ups).
 
 ## Why the data is already there
 
@@ -161,10 +161,12 @@ teaching moment). `--all` includes optional inputs; `--force` overwrites.
 
 ## Follow-ups
 
-- **Agent actions** (`scaffold`/`preflight` in the chat tool): the natural
-  front door for a newcomer, who will ask "what do I need to run this?"
-  rather than discover a CLI flag. Needs the tools to read local WDL files
-  (today `localfs` only writes), so it is its own change.
+- ~~**Agent actions** (`scaffold`/`preflight` in the chat tool)~~ — done. The
+  chat agent can scaffold a template and preflight it, reading local WDL and
+  inputs files sandboxed to the working directory (the shared helper
+  `localfs.ResolveWorkingDirPath`). The agent's preflight skips the server
+  check (it already reaches Cromwell for other actions) and reuses the same
+  pure `wdl.CheckInputs`, so the meaningful logic cannot drift from the CLI.
 - **Cost estimate** in preflight: `ast.Task.Runtime` is already parsed, so a
   price band and resource sanity checks ("512 GB of memory — typo?") fit
   naturally as another check. Separate design.
