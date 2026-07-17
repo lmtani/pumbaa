@@ -127,7 +127,16 @@ CI job.
 ## :material-shield-check: Submit runs it for you
 
 `pumbaa workflow submit` runs the same checks before sending anything, so a
-broken submission fails in seconds instead of minutes:
+broken submission fails in seconds instead of minutes. It always reports the
+outcome, so you can see the checks happened:
+
+```text
+✓ Preflight passed.
+✓ Workflow submitted successfully!
+```
+
+When there are non-blocking warnings, the full checklist is shown before the
+submission proceeds; when there are errors, nothing is submitted:
 
 ```text
 ✗ 1 problem(s) must be fixed before this run can start
@@ -136,7 +145,8 @@ broken submission fails in seconds instead of minutes:
 ```
 
 The server check is skipped there (submitting contacts the server anyway).
-Use `--skip-preflight` to bypass the checks entirely.
+Use `--skip-preflight` to bypass the checks entirely (it prints
+`Preflight skipped.` so the bypass is explicit).
 
 ## :material-book-open-variant: See Also
 

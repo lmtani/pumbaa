@@ -300,6 +300,14 @@ workflow Hello {
 	if output.WorkflowID != "wf-123" {
 		t.Errorf("expected WorkflowID wf-123, got %s", output.WorkflowID)
 	}
+	// The report comes back on success too, so the caller can confirm the
+	// checks ran instead of leaving them invisible.
+	if output.Preflight == nil {
+		t.Fatal("a successful submit should carry its preflight report")
+	}
+	if output.Preflight.HasErrors() {
+		t.Errorf("a clean submit should have no preflight errors: %+v", output.Preflight.Checks)
+	}
 }
 
 func TestSubmitUseCase_Execute_PreflightBlocksBadPath(t *testing.T) {
@@ -381,5 +389,8 @@ workflow Hello {
 	}
 	if output.WorkflowID != "wf-1" {
 		t.Errorf("expected the submission to go through, got %+v", output)
+	}
+	if output.Preflight != nil {
+		t.Errorf("--skip-preflight should leave no report, got %+v", output.Preflight)
 	}
 }

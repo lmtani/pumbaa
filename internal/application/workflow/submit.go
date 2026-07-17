@@ -37,6 +37,10 @@ type SubmitInput struct {
 type SubmitOutput struct {
 	WorkflowID string
 	Status     string
+	// Preflight is the report of the checks run before submitting, so the
+	// caller can confirm they happened (and surface any warnings). Nil when
+	// preflight was skipped.
+	Preflight *PreflightReport
 }
 
 // Execute submits a workflow to Cromwell.
@@ -77,8 +81,9 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 
 	// Catch what Cromwell would only tell us minutes (and dollars) later.
 	// The server check is skipped: submitting is about to contact it anyway.
+	var report *PreflightReport
 	if uc.preflight != nil && !input.SkipPreflight {
-		report := uc.preflight.check(ctx, workflowSource, inputsData, true, false)
+		report = uc.preflight.check(ctx, workflowSource, inputsData, true, false)
 		if report.HasErrors() {
 			return nil, &PreflightFailedError{Report: report}
 		}
@@ -100,5 +105,6 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 	return &SubmitOutput{
 		WorkflowID: resp.ID,
 		Status:     string(resp.Status),
+		Preflight:  report,
 	}, nil
 }
