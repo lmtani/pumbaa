@@ -2,10 +2,12 @@
 #
 # Prerequisites:
 #   - `vhs` installed and `pumbaa` on PATH
-#   - a reachable Cromwell server with a few workflows (CROMWELL_HOST)
+#   - a reachable Cromwell server with a few workflows. The easiest way to get
+#     one is the showcase: see example/showcase/README.md — start the local
+#     Cromwell, run ./run.sh, then export CROMWELL_HOST=http://localhost:8010.
 #
 # Record from the repository root:
-#   vhs docs/assets/demo.tape
+#   CROMWELL_HOST=http://localhost:8010 vhs docs/assets/demo.tape
 #
 # Then embed docs/assets/demo.gif in the README (there is a TODO marker).
 
