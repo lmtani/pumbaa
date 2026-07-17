@@ -9,7 +9,7 @@ import (
 
 func TestParseDetailedMetadata_ValidJSON(t *testing.T) {
 	// Load test data
-	data, err := os.ReadFile("../../../test_data/metadata.json")
+	data, err := os.ReadFile("testdata/metadata.json")
 	if err != nil {
 		t.Skipf("Skipping test: test data not found: %v", err)
 	}
