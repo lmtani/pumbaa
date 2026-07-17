@@ -28,7 +28,19 @@ type actionSpec struct {
 	name        string
 	description string
 	requiresWDL bool
-	build       func(repo ports.WorkflowReader, wdlRepo wdl.Repository) types.Handler
+	// requiresFetcher marks actions that need expanded-metadata access and
+	// are skipped when no fetcher is wired (e.g. WDL-only registries).
+	requiresFetcher bool
+	build           func(deps Deps) types.Handler
+}
+
+// Deps carries the external dependencies handlers can draw from. Any of the
+// fields may be nil; actions that need a missing dependency are not
+// registered.
+type Deps struct {
+	Repo    ports.WorkflowReader
+	Fetcher ports.WorkflowMetadataFetcher
+	WDLRepo wdl.Repository
 }
 
 func builtinActions() []actionSpec {
@@ -36,49 +48,80 @@ func builtinActions() []actionSpec {
 		{
 			name:        "query",
 			description: "Search Cromwell workflows. Optional: status (Running, Succeeded, Failed, Submitted, Aborted), name.",
-			build: func(repo ports.WorkflowReader, _ wdl.Repository) types.Handler {
-				return cromwell.NewQueryHandler(repo)
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewQueryHandler(deps.Repo)
 			},
 		},
 		{
 			name:        "status",
 			description: "Get workflow status. Required: workflow_id.",
-			build: func(repo ports.WorkflowReader, _ wdl.Repository) types.Handler {
-				return cromwell.NewStatusHandler(repo)
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewStatusHandler(deps.Repo)
 			},
 		},
 		{
 			name:        "metadata",
 			description: "Get workflow metadata (calls, inputs, outputs). Required: workflow_id.",
-			build: func(repo ports.WorkflowReader, _ wdl.Repository) types.Handler {
-				return cromwell.NewMetadataHandler(repo)
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewMetadataHandler(deps.Repo)
 			},
 		},
 		{
 			name:        "outputs",
 			description: "Get workflow output files. Required: workflow_id.",
-			build: func(repo ports.WorkflowReader, _ wdl.Repository) types.Handler {
-				return cromwell.NewOutputsHandler(repo)
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewOutputsHandler(deps.Repo)
 			},
 		},
 		{
 			name:        "logs",
 			description: "Get log file paths for debugging. Required: workflow_id.",
-			build: func(repo ports.WorkflowReader, _ wdl.Repository) types.Handler {
-				return cromwell.NewLogsHandler(repo)
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewLogsHandler(deps.Repo)
+			},
+		},
+		{
+			name:            "failures",
+			description:     "Compact summary of what failed and why: root causes deduplicated across shards/subworkflows, with affected tasks and stderr paths. Prefer this over metadata to debug failures. Required: workflow_id.",
+			requiresFetcher: true,
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewFailuresHandler(deps.Fetcher)
+			},
+		},
+		{
+			name:        "read_log",
+			description: "Read the tail of a task's log in one call. Either path (a stderr/stdout path from failures/logs), or workflow_id + task (optional: shard, stream=stderr|stdout, lines<=500).",
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewReadLogHandler(deps.Repo)
+			},
+		},
+		{
+			name:            "cost",
+			description:     "Per-task cost breakdown (subworkflows included): real dollars from VM rates, resource-hour estimates kept separate, most expensive first. Required: workflow_id.",
+			requiresFetcher: true,
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewCostHandler(deps.Fetcher)
+			},
+		},
+		{
+			name:            "preemption",
+			description:     "Preemption efficiency: attempts, preemptions and the tasks losing the most work to preempted VMs. Required: workflow_id.",
+			requiresFetcher: true,
+			build: func(deps Deps) types.Handler {
+				return cromwell.NewPreemptionHandler(deps.Fetcher)
 			},
 		},
 		{
 			name:        "gcs_download",
 			description: "Read file from Google Cloud Storage. Required: path (gs://bucket/file).",
-			build: func(_ ports.WorkflowReader, _ wdl.Repository) types.Handler {
+			build: func(deps Deps) types.Handler {
 				return gcs.NewDownloadHandler()
 			},
 		},
 		{
 			name:        "write_file",
 			description: "Write a text file (e.g. a bash script to reproduce/debug a task locally) into the user's current working directory. Required: path (relative), content. Optional: executable (true for scripts), overwrite (must be true to replace an existing file).",
-			build: func(_ ports.WorkflowReader, _ wdl.Repository) types.Handler {
+			build: func(deps Deps) types.Handler {
 				return localfs.NewWriteHandler()
 			},
 		},
@@ -86,24 +129,24 @@ func builtinActions() []actionSpec {
 			name:        "wdl_list",
 			description: "List all indexed WDL tasks and workflows.",
 			requiresWDL: true,
-			build: func(_ ports.WorkflowReader, wdlRepo wdl.Repository) types.Handler {
-				return wdl.NewListHandler(wdlRepo)
+			build: func(deps Deps) types.Handler {
+				return wdl.NewListHandler(deps.WDLRepo)
 			},
 		},
 		{
 			name:        "wdl_search",
 			description: "Search tasks/workflows by name or command content. Required: query.",
 			requiresWDL: true,
-			build: func(_ ports.WorkflowReader, wdlRepo wdl.Repository) types.Handler {
-				return wdl.NewSearchHandler(wdlRepo)
+			build: func(deps Deps) types.Handler {
+				return wdl.NewSearchHandler(deps.WDLRepo)
 			},
 		},
 		{
 			name:        "wdl_info",
 			description: `Get detailed info about a task or workflow. Required: name, type ("task" or "workflow").`,
 			requiresWDL: true,
-			build: func(_ ports.WorkflowReader, wdlRepo wdl.Repository) types.Handler {
-				return wdl.NewInfoHandler(wdlRepo)
+			build: func(deps Deps) types.Handler {
+				return wdl.NewInfoHandler(deps.WDLRepo)
 			},
 		},
 	}
@@ -113,13 +156,16 @@ func builtinActions() []actionSpec {
 // wdlRepo can be nil if WDL indexing is not configured; WDL actions are then
 // omitted. Callers can Register additional actions on the returned registry
 // before passing it to GetPumbaaTool.
-func NewDefaultRegistry(repo ports.WorkflowReader, wdlRepo wdl.Repository) *Registry {
+func NewDefaultRegistry(deps Deps) *Registry {
 	r := NewRegistry()
 	for _, spec := range builtinActions() {
-		if spec.requiresWDL && wdlRepo == nil {
+		if spec.requiresWDL && deps.WDLRepo == nil {
 			continue
 		}
-		r.Register(spec.name, spec.description, spec.build(repo, wdlRepo))
+		if spec.requiresFetcher && deps.Fetcher == nil {
+			continue
+		}
+		r.Register(spec.name, spec.description, spec.build(deps))
 	}
 	return r
 }
@@ -152,7 +198,7 @@ func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
 	if wdlRepo != nil {
 		for _, spec := range builtinActions() {
 			if spec.requiresWDL {
-				r.Register(spec.name, spec.description, spec.build(nil, wdlRepo))
+				r.Register(spec.name, spec.description, spec.build(Deps{WDLRepo: wdlRepo}))
 			}
 		}
 	}
@@ -166,8 +212,8 @@ func GetWDLOnlyTools(wdlRepo wdl.Repository) []tool.Tool {
 // index repository (nil if not configured). extra is the extension point for
 // adding standalone tools to the agent — each must be an ADK tool exposing
 // Declaration()/Run (e.g. built with functiontool.New).
-func GetAllTools(repo ports.WorkflowReader, wdlRepo wdl.Repository, extra ...tool.Tool) []tool.Tool {
-	registry := NewDefaultRegistry(repo, wdlRepo)
+func GetAllTools(deps Deps, extra ...tool.Tool) []tool.Tool {
+	registry := NewDefaultRegistry(deps)
 	return append([]tool.Tool{GetPumbaaTool(registry)}, extra...)
 }
 

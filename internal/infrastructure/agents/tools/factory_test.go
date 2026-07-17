@@ -22,7 +22,7 @@ func (stubWDLRepo) GetTask(string) (*wdlindex.IndexedTask, error)               
 func (stubWDLRepo) GetWorkflow(string) (*wdlindex.IndexedWorkflow, error)       { return nil, nil }
 
 func TestNewDefaultRegistryOmitsWDLActionsWithoutRepo(t *testing.T) {
-	r := NewDefaultRegistry(nil, nil)
+	r := NewDefaultRegistry(Deps{})
 
 	for _, action := range []string{"query", "status", "metadata", "outputs", "logs", "gcs_download"} {
 		if _, ok := r.Get(action); !ok {
@@ -37,7 +37,7 @@ func TestNewDefaultRegistryOmitsWDLActionsWithoutRepo(t *testing.T) {
 }
 
 func TestNewDefaultRegistryIncludesWDLActionsWithRepo(t *testing.T) {
-	r := NewDefaultRegistry(nil, stubWDLRepo{})
+	r := NewDefaultRegistry(Deps{WDLRepo: stubWDLRepo{}})
 
 	for _, action := range []string{"wdl_list", "wdl_search", "wdl_info"} {
 		if _, ok := r.Get(action); !ok {
@@ -47,7 +47,7 @@ func TestNewDefaultRegistryIncludesWDLActionsWithRepo(t *testing.T) {
 }
 
 func TestBuildDescriptionListsRegisteredActions(t *testing.T) {
-	r := NewDefaultRegistry(nil, nil)
+	r := NewDefaultRegistry(Deps{})
 	r.Register("custom_action", "Does something custom. Required: foo.", types.HandlerFunc(
 		func(ctx context.Context, input types.Input) (types.Output, error) {
 			return types.Output{}, nil
@@ -75,7 +75,7 @@ func TestSchemaEnumCoversAllRegisteredActions(t *testing.T) {
 
 	// Every action a fully-configured registry exposes must be in the enum,
 	// otherwise providers using the explicit schema (Ollama) reject it.
-	r := NewDefaultRegistry(nil, stubWDLRepo{})
+	r := NewDefaultRegistry(Deps{WDLRepo: stubWDLRepo{}})
 	for _, action := range r.Actions() {
 		if !inEnum[action] {
 			t.Errorf("action %q registered but missing from schema enum", action)
@@ -94,7 +94,7 @@ func TestGetAllToolsAppendsExtras(t *testing.T) {
 		t.Fatalf("failed to build extra tool: %v", err)
 	}
 
-	all := GetAllTools(nil, nil, extra)
+	all := GetAllTools(Deps{}, extra)
 
 	if len(all) != 2 {
 		t.Fatalf("expected pumbaa tool + 1 extra, got %d tools", len(all))
@@ -105,7 +105,7 @@ func TestGetAllToolsAppendsExtras(t *testing.T) {
 }
 
 func TestRegistryHandleUnknownActionListsValidOnes(t *testing.T) {
-	r := NewDefaultRegistry(nil, nil)
+	r := NewDefaultRegistry(Deps{})
 
 	out, err := r.Handle(context.Background(), types.Input{Action: "nope"})
 	if err != nil {

@@ -99,3 +99,24 @@ func downloadObject(ctx context.Context, client *storage.Client, bucket, object 
 
 	return string(content), attrs, nil
 }
+
+// Fetch reads a gs:// object and returns its content, enforcing the same
+// size limit as the download action. Used by other actions (e.g. read_log)
+// that need GCS content without going through the tool interface.
+func Fetch(ctx context.Context, path string) (string, error) {
+	if !strings.HasPrefix(path, "gs://") {
+		return "", fmt.Errorf("path must start with gs://")
+	}
+	bucket, object, err := parsePath(path)
+	if err != nil {
+		return "", err
+	}
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCS client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	content, _, err := downloadObject(ctx, client, bucket, object)
+	return content, err
+}
