@@ -56,6 +56,23 @@ func GetParametersSchema() map[string]any {
 				"type":        "integer",
 				"description": "Number of results to return for query action (default: 10)",
 			},
+			"task": map[string]any{
+				"type":        "string",
+				"description": "Task name for read_log (short name or full call name)",
+			},
+			"shard": map[string]any{
+				"type":        "integer",
+				"description": "Scatter shard for read_log (default -1 for non-scattered tasks)",
+			},
+			"stream": map[string]any{
+				"type":        "string",
+				"description": "Log stream for read_log",
+				"enum":        []string{"stderr", "stdout"},
+			},
+			"lines": map[string]any{
+				"type":        "integer",
+				"description": "Tail lines for read_log (default 100, max 500)",
+			},
 		},
 		"required": []string{"action"},
 	}

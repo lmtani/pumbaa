@@ -133,23 +133,23 @@ func formatTaskContext(call *workflow.Call, data CollectedChatData) string {
 	// Task Information
 	if data.Metadata != nil {
 		sb.WriteString("## Task Information\n\n")
-		sb.WriteString(fmt.Sprintf("- **Name**: %s\n", call.Name))
-		sb.WriteString(fmt.Sprintf("- **Status**: %s\n", call.Status))
-		sb.WriteString(fmt.Sprintf("- **Backend**: %s\n", call.Backend))
+		fmt.Fprintf(&sb, "- **Name**: %s\n", call.Name)
+		fmt.Fprintf(&sb, "- **Status**: %s\n", call.Status)
+		fmt.Fprintf(&sb, "- **Backend**: %s\n", call.Backend)
 
 		if call.ReturnCode != nil && *call.ReturnCode != 0 {
-			sb.WriteString(fmt.Sprintf("- **Return Code**: %d\n", *call.ReturnCode))
+			fmt.Fprintf(&sb, "- **Return Code**: %d\n", *call.ReturnCode)
 		}
 
 		// Timing
 		if !call.Start.IsZero() {
-			sb.WriteString(fmt.Sprintf("- **Started**: %s\n", call.Start.Format(time.RFC3339)))
+			fmt.Fprintf(&sb, "- **Started**: %s\n", call.Start.Format(time.RFC3339))
 		}
 		if !call.End.IsZero() {
-			sb.WriteString(fmt.Sprintf("- **Ended**: %s\n", call.End.Format(time.RFC3339)))
+			fmt.Fprintf(&sb, "- **Ended**: %s\n", call.End.Format(time.RFC3339))
 			if !call.Start.IsZero() {
 				duration := call.End.Sub(call.Start)
-				sb.WriteString(fmt.Sprintf("- **Duration**: %s\n", formatChatDuration(duration)))
+				fmt.Fprintf(&sb, "- **Duration**: %s\n", formatChatDuration(duration))
 			}
 		}
 
@@ -157,29 +157,29 @@ func formatTaskContext(call *workflow.Call, data CollectedChatData) string {
 		if call.CPU != "" || call.Memory != "" || call.Disk != "" {
 			sb.WriteString("\n### Resources\n")
 			if call.CPU != "" {
-				sb.WriteString(fmt.Sprintf("- **CPU**: %s\n", call.CPU))
+				fmt.Fprintf(&sb, "- **CPU**: %s\n", call.CPU)
 			}
 			if call.Memory != "" {
-				sb.WriteString(fmt.Sprintf("- **Memory**: %s\n", call.Memory))
+				fmt.Fprintf(&sb, "- **Memory**: %s\n", call.Memory)
 			}
 			if call.Disk != "" {
-				sb.WriteString(fmt.Sprintf("- **Disk**: %s\n", call.Disk))
+				fmt.Fprintf(&sb, "- **Disk**: %s\n", call.Disk)
 			}
 		}
 
 		// Docker
 		if call.DockerImage != "" {
-			sb.WriteString(fmt.Sprintf("\n### Docker Image\n%s\n", call.DockerImage))
+			fmt.Fprintf(&sb, "\n### Docker Image\n%s\n", call.DockerImage)
 		}
 
 		// Failures
 		if len(call.Failures) > 0 {
 			sb.WriteString("\n### Failures\n")
 			for _, f := range call.Failures {
-				sb.WriteString(fmt.Sprintf("- **Message**: %s\n", f.Message))
+				fmt.Fprintf(&sb, "- **Message**: %s\n", f.Message)
 				if len(f.CausedBy) > 0 {
 					for _, cause := range f.CausedBy {
-						sb.WriteString(fmt.Sprintf("  - **Caused by**: %s\n", cause.Message))
+						fmt.Fprintf(&sb, "  - **Caused by**: %s\n", cause.Message)
 					}
 				}
 			}
@@ -211,27 +211,27 @@ func formatTaskContext(call *workflow.Call, data CollectedChatData) string {
 	if data.MonitoringReport != nil {
 		sb.WriteString("\n## Resource Efficiency Analysis\n\n")
 		report := data.MonitoringReport
-		sb.WriteString(fmt.Sprintf("- **Duration**: %s\n", formatChatDuration(report.Duration)))
-		sb.WriteString(fmt.Sprintf("- **Data Points**: %d\n", report.DataPoints))
+		fmt.Fprintf(&sb, "- **Duration**: %s\n", formatChatDuration(report.Duration))
+		fmt.Fprintf(&sb, "- **Data Points**: %d\n", report.DataPoints)
 
 		if report.CPU.Peak > 0 {
 			sb.WriteString("\n### CPU Usage\n")
-			sb.WriteString(fmt.Sprintf("- Peak: %.1f%%\n", report.CPU.Peak))
-			sb.WriteString(fmt.Sprintf("- Avg: %.1f%%\n", report.CPU.Avg))
-			sb.WriteString(fmt.Sprintf("- Efficiency: %.1f%%\n", report.CPU.Efficiency*100))
+			fmt.Fprintf(&sb, "- Peak: %.1f%%\n", report.CPU.Peak)
+			fmt.Fprintf(&sb, "- Avg: %.1f%%\n", report.CPU.Avg)
+			fmt.Fprintf(&sb, "- Efficiency: %.1f%%\n", report.CPU.Efficiency*100)
 		}
 
 		if report.Mem.Peak > 0 {
 			sb.WriteString("\n### Memory Usage\n")
-			sb.WriteString(fmt.Sprintf("- Peak: %.1f MB\n", report.Mem.Peak))
-			sb.WriteString(fmt.Sprintf("- Avg: %.1f MB\n", report.Mem.Avg))
-			sb.WriteString(fmt.Sprintf("- Efficiency: %.1f%%\n", report.Mem.Efficiency*100))
+			fmt.Fprintf(&sb, "- Peak: %.1f MB\n", report.Mem.Peak)
+			fmt.Fprintf(&sb, "- Avg: %.1f MB\n", report.Mem.Avg)
+			fmt.Fprintf(&sb, "- Efficiency: %.1f%%\n", report.Mem.Efficiency*100)
 		}
 
 		if len(report.Recommendations) > 0 {
 			sb.WriteString("\n### Recommendations\n")
 			for _, rec := range report.Recommendations {
-				sb.WriteString(fmt.Sprintf("- %s\n", rec))
+				fmt.Fprintf(&sb, "- %s\n", rec)
 			}
 		}
 	}
@@ -244,10 +244,10 @@ func formatTaskContext(call *workflow.Call, data CollectedChatData) string {
 			entries = entries[len(entries)-50:]
 		}
 		for _, entry := range entries {
-			sb.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
+			fmt.Fprintf(&sb, "[%s] [%s] %s\n",
 				entry.Timestamp.Format("15:04:05"),
 				entry.Severity,
-				entry.Message))
+				entry.Message)
 		}
 		sb.WriteString("```\n")
 	}
@@ -257,7 +257,7 @@ func formatTaskContext(call *workflow.Call, data CollectedChatData) string {
 		sb.WriteString("\n## Data Collection Notes\n\n")
 		sb.WriteString("Some data could not be collected:\n")
 		for _, err := range data.Errors {
-			sb.WriteString(fmt.Sprintf("- %s\n", err))
+			fmt.Fprintf(&sb, "- %s\n", err)
 		}
 	}
 

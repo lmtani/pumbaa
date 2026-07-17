@@ -46,6 +46,25 @@ status, failures, logs, outputs, or runtime metadata.
   Get log file paths for debugging  
   Required: workflow_id
 
+- action="failures"  
+  Compact root-cause summary of a failed workflow: errors deduplicated
+  across shards/subworkflows, with affected tasks and stderr paths.
+  **Always prefer this over metadata when debugging failures.**  
+  Required: workflow_id
+
+- action="read_log"  
+  Read the tail of a task log in one call  
+  Either: path (stderr/stdout path from failures/logs)  
+  Or: workflow_id, task (optional: shard, stream=stderr|stdout, lines)
+
+- action="cost"  
+  Per-task cost breakdown, most expensive first (subworkflows included)  
+  Required: workflow_id
+
+- action="preemption"  
+  Preemption efficiency and the tasks losing the most work to preemptions  
+  Required: workflow_id
+
 ---
 
 ## 2. Files (Google Cloud Storage)
@@ -94,9 +113,11 @@ Use **only** to understand or explain WDL definitions.
 
 - “Status / failed / logs / outputs?” → **Cromwell**
 - “What does this task do / inputs / command?” → **WDL**
+- “Why did it fail?” → failures → read_log (metadata only as last resort: it can be huge)
+- “Why is it expensive / how many preemptions?” → cost / preemption
 - Failure debugging:
-  1. Cromwell (query → logs)
-  2. GCS (gcs_download)
+  1. failures (grouped root causes + stderr paths)
+  2. read_log (tail of the failing task's stderr)
   3. WDL **only to explain the code**
 
 ---

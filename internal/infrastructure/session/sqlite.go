@@ -146,7 +146,7 @@ func NewSQLiteService(dbPath string) (*SQLiteService, error) {
 
 	svc := &SQLiteService{db: db}
 	if err := svc.initSchema(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -185,19 +185,19 @@ func (s *SQLiteService) initSchema() error {
 	}
 
 	// Migration: add token columns if they don't exist (for existing databases)
-	s.db.Exec(`ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0`)
-	s.db.Exec(`ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0`)
 
 	// Migration: add summary column if it doesn't exist (for existing databases)
-	s.db.Exec(`ALTER TABLE sessions ADD COLUMN summary TEXT DEFAULT ''`)
+	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN summary TEXT DEFAULT ''`)
 
 	// Migration: add context_label (which workflow ▸ task the chat was
 	// opened for) to support resume-by-task lookups
-	s.db.Exec(`ALTER TABLE sessions ADD COLUMN context_label TEXT DEFAULT ''`)
+	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN context_label TEXT DEFAULT ''`)
 
 	// Hygiene: purge day-old sessions that never got a single event
 	// (artifacts of sessions being created on screen open, pre-lazy-create)
-	s.db.Exec(`DELETE FROM sessions
+	_, _ = s.db.Exec(`DELETE FROM sessions
 		WHERE created_at < datetime('now', '-1 day')
 		  AND id NOT IN (SELECT DISTINCT session_id FROM events)`)
 
@@ -317,7 +317,7 @@ func (s *SQLiteService) loadEvents(ctx context.Context, sessionID string, limit 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*session.Event
 	for rows.Next() {
@@ -363,7 +363,7 @@ func (s *SQLiteService) List(ctx context.Context, req *session.ListRequest) (*se
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sessions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sessions []session.Session
 	for rows.Next() {
@@ -375,7 +375,7 @@ func (s *SQLiteService) List(ctx context.Context, req *session.ListRequest) (*se
 		}
 
 		state := make(map[string]any)
-		json.Unmarshal([]byte(stateJSON), &state)
+		_ = json.Unmarshal([]byte(stateJSON), &state)
 
 		sess := &sqliteSession{
 			id:             id,
@@ -545,7 +545,7 @@ func (s *SQLiteService) ListWithSummaries(ctx context.Context, appName, userID s
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sessions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sessions []SessionInfo
 	for rows.Next() {
@@ -556,7 +556,7 @@ func (s *SQLiteService) ListWithSummaries(ctx context.Context, appName, userID s
 
 		// Count events for this session
 		var eventCount int
-		s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM events WHERE session_id = ?`, info.ID).Scan(&eventCount)
+		_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM events WHERE session_id = ?`, info.ID).Scan(&eventCount)
 		info.EventCount = eventCount
 
 		sessions = append(sessions, info)

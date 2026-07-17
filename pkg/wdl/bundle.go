@@ -120,7 +120,7 @@ func CreateBundleWithOptions(mainWorkflow string, outputDir string, opts BundleO
 	// Create ZIP with dependencies
 	if err := createDependenciesZip(graph, importMapping, zipPath, opts); err != nil {
 		// Clean up main WDL on failure
-		os.Remove(mainWDLPath)
+		_ = os.Remove(mainWDLPath)
 		return nil, fmt.Errorf("failed to create dependencies ZIP: %w", err)
 	}
 
@@ -194,7 +194,7 @@ func createDependenciesZip(graph *DependencyGraph, importMapping map[string]stri
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	zipWriter := zip.NewWriter(outFile)
 	defer func() {
@@ -276,7 +276,7 @@ func ExtractBundle(zipPath string, outputDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open zip file: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	for _, file := range reader.File {
 		err := extractZipFile(file, outputDir)
@@ -309,13 +309,13 @@ func extractZipFile(file *zip.File, outputDir string) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	rc, err := file.Open()
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	// Limit extracted file size to prevent zip bombs
 	_, err = io.CopyN(outFile, rc, maxExtractFileSize)

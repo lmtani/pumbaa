@@ -109,7 +109,7 @@ func (c *Client) Submit(ctx context.Context, req workflow.SubmitRequest) (*workf
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusCreated {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -143,7 +143,7 @@ func (c *Client) GetMetadata(ctx context.Context, workflowID string) (*workflow.
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, workflow.ErrWorkflowNotFound
@@ -178,7 +178,7 @@ func (c *Client) GetStatus(ctx context.Context, workflowID string) (workflow.Sta
 	if err != nil {
 		return workflow.StatusUnknown, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return workflow.StatusUnknown, workflow.ErrWorkflowNotFound
@@ -213,7 +213,7 @@ func (c *Client) Abort(ctx context.Context, workflowID string) error {
 	if err != nil {
 		return fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return workflow.ErrWorkflowNotFound
@@ -266,7 +266,7 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -314,7 +314,7 @@ func (c *Client) GetOutputs(ctx context.Context, workflowID string) (map[string]
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, workflow.ErrWorkflowNotFound
@@ -349,7 +349,7 @@ func (c *Client) GetLogs(ctx context.Context, workflowID string) (map[string][]w
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, workflow.ErrWorkflowNotFound
@@ -405,7 +405,7 @@ func (c *Client) GetRawMetadataWithOptions(ctx context.Context, workflowID strin
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, workflow.ErrWorkflowNotFound
@@ -435,7 +435,7 @@ func (c *Client) GetWorkflowCost(ctx context.Context, workflowID string) (float6
 	if err != nil {
 		return 0, "", fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return 0, "", workflow.ErrWorkflowNotFound
@@ -480,7 +480,7 @@ func (c *Client) GetHealthStatus(ctx context.Context) (*workflow.HealthStatus, e
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Server returns 500 if any subsystem is unhealthy
 	var result healthStatusResponse
@@ -518,7 +518,7 @@ func (c *Client) GetLabels(ctx context.Context, workflowID string) (map[string]s
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, workflow.ErrWorkflowNotFound
@@ -559,7 +559,7 @@ func (c *Client) UpdateLabels(ctx context.Context, workflowID string, labels map
 	if err != nil {
 		return fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return workflow.ErrWorkflowNotFound

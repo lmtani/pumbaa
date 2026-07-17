@@ -113,7 +113,7 @@ func (h *MetadataHandler) displayMetadata(wf *workflowdomain.Workflow) {
 
 			duration := h.calculateCallDuration(entry.call)
 
-			table.Append([]string{
+			_ = table.Append([]string{
 				entry.name,
 				h.presenter.StatusColor(string(entry.call.Status)),
 				h.presenter.FormatDuration(duration),
@@ -122,7 +122,7 @@ func (h *MetadataHandler) displayMetadata(wf *workflowdomain.Workflow) {
 			})
 		}
 
-		table.Render()
+		_ = table.Render()
 	}
 
 	// Failures

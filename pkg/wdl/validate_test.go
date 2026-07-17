@@ -123,8 +123,8 @@ task Only {
 			wantErr: false,
 		},
 		{
-			name: "invalid WDL skips validation",
-			wdl:    `not valid wdl`,
+			name:    "invalid WDL skips validation",
+			wdl:     `not valid wdl`,
 			inputs:  `{}`,
 			wantErr: false,
 		},

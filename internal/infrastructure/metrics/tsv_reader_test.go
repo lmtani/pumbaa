@@ -12,7 +12,7 @@ func TestTSVReader_ReadFromDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create a test TSV file
 	tsvContent := `task_name	shard_index	cpu_request	memory_request_bytes	disk_size_request_bytes	disk_type	total_bytes_input	duration_seconds	cpu_mean	memory_peak_mb	disk_peak_bytes	error
@@ -76,7 +76,7 @@ func TestTSVReader_ReadFromDirectory_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	reader := NewTSVReader()
 	collection, workflows, err := reader.ReadFromDirectory(tmpDir)
@@ -84,7 +84,7 @@ func TestTSVReader_ReadFromDirectory_Empty(t *testing.T) {
 		t.Fatalf("ReadFromDirectory() error = %v", err)
 	}
 
-	if workflows != nil && len(workflows) != 0 {
+	if len(workflows) != 0 {
 		t.Errorf("Expected no workflows, got %d", len(workflows))
 	}
 
@@ -98,7 +98,7 @@ func TestTSVReader_ReadFromDirectory_WithInputsJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	tsvContent := `task_name	shard_index	inputs_json	cpu_request
 MyTask	0	{"file1":1024,"file2":2048}	2`
@@ -136,7 +136,7 @@ func TestTSVReader_ReadFromDirectory_LegacyDiskPeakGB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Using legacy disk_peak_gb format (in GB, not bytes)
 	tsvContent := `task_name	disk_peak_gb

@@ -169,12 +169,8 @@ func (s *CloudflareService) Close() {
 }
 
 func (s *CloudflareService) send(payload map[string]any) {
-	// Recover from panics to never crash the app
-	defer func() {
-		if r := recover(); r != nil {
-			// Fail silently
-		}
-	}()
+	// Recover from panics to never crash the app; telemetry fails silently.
+	defer func() { _ = recover() }()
 
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -196,7 +192,7 @@ func (s *CloudflareService) send(payload map[string]any) {
 	if err != nil {
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 }
 
 // Utility functions (migrated from sentry.go)

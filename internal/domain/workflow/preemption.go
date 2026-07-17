@@ -93,50 +93,65 @@ func (w *Workflow) CalculatePreemptionSummary() *PreemptionSummary {
 	}
 	taskAggregations := make(map[string]*taskAggregation)
 
-	for callName, callList := range w.Calls {
-		// Group by shard index to calculate per-shard stats
-		shardGroups := make(map[int][]Call)
-		for _, call := range callList {
-			shardGroups[call.ShardIndex] = append(shardGroups[call.ShardIndex], call)
-		}
-
-		for shardIndex, attempts := range shardGroups {
-			key := taskKey{name: callName, shard: shardIndex}
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-
-			stats := analyzeTaskShard(attempts, now)
-			summary.TotalTasks++
-
-			if stats.IsPreemptible {
-				summary.PreemptibleTasks++
-				summary.TotalAttempts += stats.TotalAttempts
-				summary.TotalPreemptions += stats.PreemptedCount
-				totalEfficiency += stats.EfficiencyScore
-				preemptibleCount++
-
-				// Accumulate cost metrics
-				summary.TotalCost += stats.TotalCost
-				summary.WastedCost += stats.WastedCost
-
-				// Aggregate by short task name
-				taskName := preemptionShortTaskName(callName)
-				if taskAggregations[taskName] == nil {
-					taskAggregations[taskName] = &taskAggregation{}
+	// scope identifies the (sub)workflow instance, so same-named task shards
+	// from different subworkflow instances are analyzed as separate attempt
+	// chains instead of being collapsed together.
+	var walk func(calls map[string][]Call, scope string)
+	walk = func(calls map[string][]Call, scope string) {
+		for callName, callList := range calls {
+			// Group by shard index to calculate per-shard stats
+			shardGroups := make(map[int][]Call)
+			for _, call := range callList {
+				if call.SubWorkflowMetadata != nil {
+					walk(call.SubWorkflowMetadata.Calls, subworkflowScope(scope, callName, call.ShardIndex))
+					continue
 				}
-				agg := taskAggregations[taskName]
-				agg.shardCount++
-				agg.totalAttempts += stats.TotalAttempts
-				agg.totalPreemptions += stats.PreemptedCount
-				agg.totalEfficiency += stats.EfficiencyScore
-				agg.shardsCounted++
-				agg.totalCost += stats.TotalCost
-				agg.wastedCost += stats.WastedCost
+				if call.SubWorkflowID != "" {
+					// Subworkflow not loaded: its tasks are absent from this summary.
+					continue
+				}
+				shardGroups[call.ShardIndex] = append(shardGroups[call.ShardIndex], call)
+			}
+
+			for shardIndex, attempts := range shardGroups {
+				key := taskKey{name: scope + callName, shard: shardIndex}
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+
+				stats := analyzeTaskShard(attempts, now)
+				summary.TotalTasks++
+
+				if stats.IsPreemptible {
+					summary.PreemptibleTasks++
+					summary.TotalAttempts += stats.TotalAttempts
+					summary.TotalPreemptions += stats.PreemptedCount
+					totalEfficiency += stats.EfficiencyScore
+					preemptibleCount++
+
+					// Accumulate cost metrics
+					summary.TotalCost += stats.TotalCost
+					summary.WastedCost += stats.WastedCost
+
+					// Aggregate by short task name
+					taskName := preemptionShortTaskName(callName)
+					if taskAggregations[taskName] == nil {
+						taskAggregations[taskName] = &taskAggregation{}
+					}
+					agg := taskAggregations[taskName]
+					agg.shardCount++
+					agg.totalAttempts += stats.TotalAttempts
+					agg.totalPreemptions += stats.PreemptedCount
+					agg.totalEfficiency += stats.EfficiencyScore
+					agg.shardsCounted++
+					agg.totalCost += stats.TotalCost
+					agg.wastedCost += stats.WastedCost
+				}
 			}
 		}
 	}
+	walk(w.Calls, "")
 
 	// Calculate workflow-level cost efficiency
 	if summary.TotalCost > 0 {
@@ -290,30 +305,12 @@ func windowHours(start, end time.Time, status Status, now time.Time) float64 {
 }
 
 // calculateAttemptCost calculates the estimated cost of a single attempt.
+// Note: the preemption summary intentionally blends real dollars and
+// resource-hours into a single relative number (see PreemptionSummary.CostUnit);
+// the cost breakdown keeps the two units apart via attemptCostParts.
 func calculateAttemptCost(call Call, now time.Time) float64 {
-	// If we have actual VM cost per hour, use it against the billed VM lifetime
-	if call.VMCostPerHour > 0 {
-		if hours := billableHours(call, now); hours > 0 {
-			return call.VMCostPerHour * hours
-		}
-	}
-
-	// Otherwise, estimate using resource-hours
-	cpu := parseCPUFromString(call.CPU)
-	if cpu <= 0 {
-		cpu = 1
-	}
-	mem := parseMemoryGBFromString(call.Memory)
-	if mem <= 0 {
-		mem = 1
-	}
-
-	durationHours := billableHours(call, now)
-	if durationHours <= 0 {
-		durationHours = 0.01 // Minimum 36 seconds
-	}
-
-	return cpu * mem * durationHours
+	actual, estimated := attemptCostParts(call, now)
+	return actual + estimated
 }
 
 // IsPreemptible checks if a task is configured as preemptible.

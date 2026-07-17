@@ -225,10 +225,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Format entries for raw content (without ANSI colors)
 		var rawSB strings.Builder
 		for _, entry := range msg.entries {
-			rawSB.WriteString(fmt.Sprintf("[%s] [%s] %s\n",
+			fmt.Fprintf(&rawSB, "[%s] [%s] %s\n",
 				entry.Timestamp.Format("2006-01-02 15:04:05"),
 				entry.Severity,
-				entry.Message))
+				entry.Message)
 		}
 
 		// Keep raw content for clipboard (no colors)

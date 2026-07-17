@@ -120,7 +120,7 @@ func TestResourceReportUseCase_Execute_CacheHitsIgnored(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_Execute_Success(t *testing.T) {
@@ -214,7 +214,7 @@ func TestResourceReportUseCase_Execute_Success(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_Execute_ReadError(t *testing.T) {
@@ -265,7 +265,7 @@ func TestResourceReportUseCase_Execute_ReadError(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_Execute_ParseError(t *testing.T) {
@@ -313,7 +313,7 @@ func TestResourceReportUseCase_Execute_ParseError(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_Execute_SortOrder(t *testing.T) {
@@ -371,7 +371,7 @@ func TestResourceReportUseCase_Execute_SortOrder(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_ExecuteWithProgress(t *testing.T) {
@@ -424,7 +424,7 @@ func TestResourceReportUseCase_ExecuteWithProgress(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_Execute_DefaultConcurrency(t *testing.T) {
@@ -463,7 +463,7 @@ func TestResourceReportUseCase_Execute_DefaultConcurrency(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestExtractTaskName(t *testing.T) {
@@ -580,7 +580,7 @@ func TestResourceReportUseCase_TSVOutput(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
@@ -648,7 +648,7 @@ func TestResourceReportUseCase_FileSizeCache(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_CollectCallsRecursively(t *testing.T) {
@@ -733,7 +733,7 @@ func TestResourceReportUseCase_CollectCallsRecursively(t *testing.T) {
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }
 
 func TestResourceReportUseCase_CollectCallsRecursively_SubworkflowError(t *testing.T) {
@@ -786,5 +786,5 @@ func TestResourceReportUseCase_CollectCallsRecursively_SubworkflowError(t *testi
 	}
 
 	// Cleanup
-	os.Remove(output.OutputFile)
+	_ = os.Remove(output.OutputFile)
 }

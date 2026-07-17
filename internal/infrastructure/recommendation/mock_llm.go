@@ -172,9 +172,10 @@ func extractSectionJSON(fullText, sectionHeader string) string {
 	// Extract JSON using brace counting
 	depth := 0
 	for i := realStart; i < len(fullText); i++ {
-		if fullText[i] == '{' {
+		switch fullText[i] {
+		case '{':
 			depth++
-		} else if fullText[i] == '}' {
+		case '}':
 			depth--
 			if depth == 0 {
 				return fullText[realStart : i+1]

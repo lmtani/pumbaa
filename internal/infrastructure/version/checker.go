@@ -78,7 +78,7 @@ func (c *GitHubChecker) fetchLatestVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("github API returned status %d", resp.StatusCode)
@@ -122,7 +122,7 @@ func parseVersion(v string) [3]int {
 	result := [3]int{0, 0, 0}
 	for i := 0; i < len(parts) && i < 3; i++ {
 		var num int
-		fmt.Sscanf(parts[i], "%d", &num)
+		_, _ = fmt.Sscanf(parts[i], "%d", &num)
 		result[i] = num
 	}
 	return result

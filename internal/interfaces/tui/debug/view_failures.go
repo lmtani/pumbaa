@@ -46,9 +46,9 @@ func renderFailure(f Failure, depth int, index int, style lipgloss.Style) string
 
 	// Main failure message
 	if depth == 0 {
-		sb.WriteString(fmt.Sprintf("%s%d. %s\n", indent, index, style.Render(f.Message)))
+		fmt.Fprintf(&sb, "%s%d. %s\n", indent, index, style.Render(f.Message))
 	} else {
-		sb.WriteString(fmt.Sprintf("%s└─ %s\n", indent, style.Render(f.Message)))
+		fmt.Fprintf(&sb, "%s└─ %s\n", indent, style.Render(f.Message))
 	}
 
 	// Render causes

@@ -25,7 +25,7 @@ func (w *TSVWriter) WriteToFile(filename string, metrics []workflow.TaskMetrics)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	_, err = fmt.Fprintln(file, "task_name\tshard_index\tcpu_request\tmemory_request_bytes\tdisk_size_request_bytes\tdisk_type\ttotal_bytes_input\tinputs_json\tduration_seconds\tcpu_mean\tmemory_peak_mb\tdisk_peak_bytes\terror")
 	if err != nil {

@@ -2,131 +2,43 @@ package debug
 
 import (
 	"fmt"
-	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
-
-// failureGroup aggregates failed tasks sharing the same error signature.
-type failureGroup struct {
-	signature string   // normalized message used for grouping
-	sample    string   // one raw message, shown in the modal
-	tasks     []string // node names, in tree order
-}
-
-// Patterns of run-specific noise stripped from messages before grouping, so
-// the same error across hundreds of shards collapses into one group.
-var (
-	sigUUIDRe    = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
-	sigGCSRe     = regexp.MustCompile(`gs://\S+`)
-	sigPathRe    = regexp.MustCompile(`(/[\w.\-]+){3,}`)
-	sigShardRe   = regexp.MustCompile(`(?i)\b(shard|index|attempt)[ :=]+\d+`)
-	sigLongNumRe = regexp.MustCompile(`\b\d{4,}\b`)
-	sigSpaceRe   = regexp.MustCompile(`\s+`)
-)
-
-// normalizeFailureSignature strips run-specific details (paths, IDs, shard
-// numbers) from a failure message so equivalent errors group together.
-func normalizeFailureSignature(msg string) string {
-	s := sigUUIDRe.ReplaceAllString(msg, "<id>")
-	s = sigGCSRe.ReplaceAllString(s, "<path>")
-	s = sigPathRe.ReplaceAllString(s, "<path>")
-	s = sigShardRe.ReplaceAllString(s, "$1 <n>")
-	s = sigLongNumRe.ReplaceAllString(s, "<n>")
-	s = sigSpaceRe.ReplaceAllString(strings.TrimSpace(s), " ")
-	return s
-}
-
-// rootCauseMessages returns the deepest CausedBy messages of a failure —
-// the actual root causes rather than the "Workflow failed" wrappers.
-func rootCauseMessages(f Failure) []string {
-	if len(f.CausedBy) == 0 {
-		if strings.TrimSpace(f.Message) == "" {
-			return nil
-		}
-		return []string{f.Message}
-	}
-	var msgs []string
-	for _, cause := range f.CausedBy {
-		msgs = append(msgs, rootCauseMessages(cause)...)
-	}
-	if len(msgs) == 0 && strings.TrimSpace(f.Message) != "" {
-		msgs = []string{f.Message}
-	}
-	return msgs
-}
-
-// failureGrouper accumulates failure messages into deduplicated groups.
-type failureGrouper struct {
-	index  map[string]int
-	groups []failureGroup
-}
-
-func newFailureGrouper() *failureGrouper {
-	return &failureGrouper{index: make(map[string]int)}
-}
-
-func (g *failureGrouper) add(taskName, msg string) {
-	sig := normalizeFailureSignature(msg)
-	idx, ok := g.index[sig]
-	if !ok {
-		g.groups = append(g.groups, failureGroup{signature: sig, sample: msg})
-		idx = len(g.groups) - 1
-		g.index[sig] = idx
-	}
-	g.groups[idx].tasks = append(g.groups[idx].tasks, taskName)
-}
-
-// addFailures adds the root causes of a failure list, counting each
-// signature at most once per task.
-func (g *failureGrouper) addFailures(taskName string, failures []Failure) {
-	seen := make(map[string]bool)
-	for _, f := range failures {
-		for _, msg := range rootCauseMessages(f) {
-			sig := normalizeFailureSignature(msg)
-			if seen[sig] {
-				continue
-			}
-			seen[sig] = true
-			g.add(taskName, msg)
-		}
-	}
-}
-
-// sorted returns the groups ordered by task count, largest first.
-func (g *failureGrouper) sorted() []failureGroup {
-	groups := g.groups
-	sort.SliceStable(groups, func(i, j int) bool {
-		return len(groups[i].tasks) > len(groups[j].tasks)
-	})
-	return groups
-}
 
 // collectFailureGroups groups every failed leaf in the tree by error
-// signature. When no failed leaves carry messages, it falls back to the
-// workflow-level failures.
-func collectFailureGroups(root *TreeNode, workflowFailures []Failure) []failureGroup {
-	grouper := newFailureGrouper()
+// signature, using the domain's failure grouping. When no failed leaves
+// carry messages, it falls back to the workflow-level failures.
+func collectFailureGroups(root *TreeNode, workflowFailures []Failure) []workflow.FailureGroup {
+	grouper := workflow.NewFailureGrouper()
 
 	for _, node := range flattenTree(root) {
 		if len(node.Children) > 0 || !isFailedStatus(node.Status) || node.Type == NodeTypeWorkflow {
 			continue
 		}
+		task := workflow.FailureTask{Name: node.Name, ShardIndex: -1}
+		if node.CallData != nil {
+			task.ShardIndex = node.CallData.ShardIndex
+			task.Stderr = node.CallData.Stderr
+		}
 		if node.CallData != nil && len(node.CallData.Failures) > 0 {
-			grouper.addFailures(node.Name, node.CallData.Failures)
+			grouper.AddFailures(task, node.CallData.Failures)
 		} else {
-			grouper.add(node.Name, "(no failure message in metadata)")
+			grouper.Add(task, "(no failure message in metadata)")
 		}
 	}
 
-	if len(grouper.groups) == 0 {
-		grouper.addFailures("(workflow)", workflowFailures)
+	groups := grouper.Sorted()
+	if len(groups) == 0 {
+		grouper.AddFailures(workflow.FailureTask{Name: "(workflow)", ShardIndex: -1}, workflowFailures)
+		groups = grouper.Sorted()
 	}
 
-	return grouper.sorted()
+	return groups
 }
 
 // openFailureSummary opens the aggregated failure summary modal.
@@ -147,20 +59,24 @@ func (m Model) openFailureSummary() (tea.Model, tea.Cmd) {
 
 // formatFailureSummary renders the groups for the modal viewport and as raw
 // text for the clipboard.
-func (m Model) formatFailureSummary(groups []failureGroup) (styled, raw string) {
+func (m Model) formatFailureSummary(groups []workflow.FailureGroup) (styled, raw string) {
 	const maxTasksShown = 5
 	width := m.width - 14
 
 	var sb, rawSB strings.Builder
 	for i, group := range groups {
-		count := len(group.tasks)
+		count := len(group.Tasks)
+		names := make([]string, len(group.Tasks))
+		for j, task := range group.Tasks {
+			names[j] = task.Name
+		}
 
-		header := fmt.Sprintf("%d× %s", count, group.sample)
+		header := fmt.Sprintf("%d× %s", count, group.Sample)
 		sb.WriteString(errorStyle.Render(fmt.Sprintf("✗ %d×", count)) + " " +
-			errorMsgStyle.Render(wrapText(group.sample, width-7)) + "\n")
+			errorMsgStyle.Render(wrapText(group.Sample, width-7)) + "\n")
 		rawSB.WriteString(header + "\n")
 
-		shown := group.tasks
+		shown := names
 		if len(shown) > maxTasksShown {
 			shown = shown[:maxTasksShown]
 		}
@@ -169,7 +85,7 @@ func (m Model) formatFailureSummary(groups []failureGroup) (styled, raw string) 
 			taskLine += fmt.Sprintf(" (+%d more)", extra)
 		}
 		sb.WriteString(mutedStyle.Render(wrapText("  "+taskLine, width)) + "\n")
-		rawSB.WriteString("  " + strings.Join(group.tasks, ", ") + "\n")
+		rawSB.WriteString("  " + strings.Join(names, ", ") + "\n")
 
 		if i < len(groups)-1 {
 			sb.WriteString("\n")

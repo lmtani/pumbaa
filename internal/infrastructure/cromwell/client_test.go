@@ -51,7 +51,7 @@ func TestClient_GetStatus_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"id":     "test-id",
 			"status": "Running",
 		})
@@ -86,7 +86,7 @@ func TestClient_GetStatus_NotFound(t *testing.T) {
 func TestClient_GetStatus_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer server.Close()
 
@@ -111,7 +111,7 @@ func TestClient_Abort_Success(t *testing.T) {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "Aborting"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "Aborting"})
 	}))
 	defer server.Close()
 
@@ -143,7 +143,7 @@ func TestClient_GetHealthStatus_AllHealthy(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"Engine Database": map[string]bool{"ok": true},
 			"PAPI":            map[string]bool{"ok": true},
 		})
@@ -167,7 +167,7 @@ func TestClient_GetHealthStatus_AllHealthy(t *testing.T) {
 func TestClient_GetHealthStatus_Degraded(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"Engine Database": map[string]bool{"ok": true},
 			"PAPI":            map[string]bool{"ok": false},
 		})
@@ -204,7 +204,7 @@ func TestClient_Query_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"results": []map[string]any{
 				{
 					"id":     "wf-1",
@@ -244,7 +244,7 @@ func TestClient_GetLabels_Success(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id": "test-id",
 			"labels": map[string]string{
 				"project": "test-project",
@@ -277,7 +277,7 @@ func TestClient_UpdateLabels_Success(t *testing.T) {
 			t.Errorf("expected Content-Type=application/json")
 		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id": "test-id",
 			"labels": map[string]string{
 				"new-label": "new-value",

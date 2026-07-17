@@ -164,7 +164,6 @@ type Model struct {
 	// Status message
 	statusMessage        string
 	statusMessageExpires time.Time // When the status message should disappear
-	statusCopyContext    string    // What was copied (for better feedback)
 
 	// Infrastructure
 	monitoringUC *workflowapp.MonitoringUseCase

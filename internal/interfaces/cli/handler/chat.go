@@ -138,7 +138,7 @@ func (h *ChatHandler) ListSessions() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize session service: %w", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 	sessions, err := store.ListWithSummaries(ctx, appName, defaultUserID)
@@ -183,7 +183,7 @@ func (h *ChatHandler) Run(sessionID string, rebuildIndex bool) error {
 	}
 	svc := deps.SessionSvc
 	if store, ok := svc.(ports.ChatSessionStore); ok {
-		defer store.Close()
+		defer func() { _ = store.Close() }()
 	}
 
 	ctx := context.Background()
