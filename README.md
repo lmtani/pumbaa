@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/lmtani/pumbaa/actions/workflows/ci.yml"><img src="https://github.com/lmtani/pumbaa/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/lmtani/pumbaa/releases"><img src="https://img.shields.io/github/v/release/lmtani/pumbaa" alt="Latest release"></a>
-  <a href="https://goreportcard.com/report/github.com/lmtani/pumbaa"><img src="https://goreportcard.com/badge/github.com/lmtani/pumbaa" alt="Go Report Card"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/lmtani/pumbaa" alt="Go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/lmtani/pumbaa" alt="License"></a>
 </p>
 
