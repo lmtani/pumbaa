@@ -26,6 +26,11 @@ pumbaa workflow submit --workflow FILE [OPTIONS]
 
 Alias: `pumbaa wf s`
 
+!!! tip "Never written an inputs file for this workflow?"
+    [Scaffold one from the WDL](guided-submit.md) instead of starting from a
+    blank file. Submit also checks the workflow and its inputs before sending
+    anything, so mistakes surface in seconds rather than minutes.
+
 ## :material-flag: Flags
 
 | Flag | Alias | Required | Description |
@@ -35,6 +40,7 @@ Alias: `pumbaa wf s`
 | `--options` | `-o` | | Options JSON file |
 | `--dependencies` | `-d` | | Dependencies ZIP file |
 | `--label` | `-l` | | Labels (`key=value`) |
+| `--skip-preflight` | | | Submit without checking the workflow and inputs first |
 
 ## :material-lightbulb: Examples
 
@@ -66,7 +72,8 @@ Alias: `pumbaa wf s`
 
 ## :material-file-document: Input File
 
-JSON format matching WDL inputs:
+JSON format matching WDL inputs — generate a template with
+[`workflow scaffold`](guided-submit.md):
 
 ```json
 {
@@ -142,6 +149,7 @@ pumbaa workflow metadata <id>       # CLI metadata
 
 ## :material-book-open-variant: See Also
 
+- [:material-airplane-check: Prepare a Submission](guided-submit.md)
 - [:material-package: Bundle Creation](bundle.md)
 - [:material-view-dashboard: Dashboard](dashboard.md)
 - [:material-bug: Debug View](debug.md)

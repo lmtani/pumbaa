@@ -3,9 +3,11 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/application"
+	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
@@ -52,7 +54,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	input := SubmitInput{
 		WorkflowFile:     "test.wdl",
@@ -74,7 +76,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 func TestSubmitUseCase_Execute_Validation(t *testing.T) {
 	repo := &mockWorkflowRepository{}
 	fp := &mockFileProvider{}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	_, err := uc.Execute(context.Background(), SubmitInput{})
 	if err == nil {
@@ -99,7 +101,7 @@ func TestSubmitUseCase_Execute_Error(t *testing.T) {
 			return nil, errors.New("file not found")
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	input := SubmitInput{
 		WorkflowFile: "non-existent.wdl",
@@ -158,7 +160,7 @@ func TestSubmitUseCase_Execute_OptionalFileReadErrors(t *testing.T) {
 					return []byte("ok"), nil
 				},
 			}
-			uc := NewSubmitUseCase(repo, fp)
+			uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 			_, err := uc.Execute(context.Background(), tt.input)
 			if err == nil {
@@ -186,7 +188,7 @@ func TestSubmitUseCase_Execute_SubmitError(t *testing.T) {
 			return []byte("workflow test {}"), nil
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	input := SubmitInput{WorkflowFile: "test.wdl"}
 	_, err := uc.Execute(context.Background(), input)
@@ -228,7 +230,7 @@ workflow Hello {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	input := SubmitInput{
 		WorkflowFile: "hello.wdl",
@@ -238,15 +240,24 @@ workflow Hello {
 	if err == nil {
 		t.Fatal("expected error for missing required inputs, got nil")
 	}
-	if !errors.Is(err, application.ErrInvalidInput) {
-		t.Errorf("expected ErrInvalidInput, got %v", err)
+	var preflightErr *PreflightFailedError
+	if !errors.As(err, &preflightErr) {
+		t.Fatalf("expected PreflightFailedError, got %T: %v", err, err)
 	}
-	var inputErr *application.InputValidationError
-	if !errors.As(err, &inputErr) {
-		t.Fatalf("expected InputValidationError, got %T", err)
+	if !preflightErr.Report.HasErrors() {
+		t.Error("report should carry the blocking findings")
 	}
-	if inputErr.Field != "workflowInputs" {
-		t.Errorf("expected field workflowInputs, got %s", inputErr.Field)
+	// The report names the missing input, so the user can fix it in one pass.
+	found := false
+	for _, check := range preflightErr.Report.Checks {
+		for _, item := range check.Items {
+			if item.Subject == "Hello.reference" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Errorf("report should point at Hello.reference: %+v", preflightErr.Report.Checks)
 	}
 }
 
@@ -276,7 +287,7 @@ workflow Hello {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp)
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
 
 	input := SubmitInput{
 		WorkflowFile: "hello.wdl",
@@ -288,5 +299,87 @@ workflow Hello {
 	}
 	if output.WorkflowID != "wf-123" {
 		t.Errorf("expected WorkflowID wf-123, got %s", output.WorkflowID)
+	}
+}
+
+func TestSubmitUseCase_Execute_PreflightBlocksBadPath(t *testing.T) {
+	wdlContent := `version 1.0
+workflow Hello {
+    input {
+        File reference
+    }
+}
+`
+	submitted := false
+	repo := &mockWorkflowRepository{
+		submitFunc: func(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error) {
+			submitted = true
+			return &workflow.SubmitResponse{ID: "wf-1", Status: workflow.StatusSubmitted}, nil
+		},
+	}
+	fp := &mockFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			switch path {
+			case "hello.wdl":
+				return []byte(wdlContent), nil
+			case "inputs.json":
+				return []byte(`{"Hello.reference": "gs://bucket/missing.fa"}`), nil
+			}
+			return nil, errors.New("unexpected path")
+		},
+		getSizeFunc: func(ctx context.Context, path string) (int64, error) {
+			return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		},
+	}
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+
+	_, err := uc.Execute(context.Background(), SubmitInput{WorkflowFile: "hello.wdl", InputsFile: "inputs.json"})
+
+	var preflightErr *PreflightFailedError
+	if !errors.As(err, &preflightErr) {
+		t.Fatalf("a missing input file must block the submission, got %v", err)
+	}
+	if submitted {
+		t.Error("nothing should reach Cromwell when preflight fails")
+	}
+}
+
+func TestSubmitUseCase_Execute_SkipPreflight(t *testing.T) {
+	// Same broken submission as above, submitted on purpose.
+	wdlContent := `version 1.0
+workflow Hello {
+    input {
+        File reference
+    }
+}
+`
+	repo := &mockWorkflowRepository{
+		submitFunc: func(ctx context.Context, req workflow.SubmitRequest) (*workflow.SubmitResponse, error) {
+			return &workflow.SubmitResponse{ID: "wf-1", Status: workflow.StatusSubmitted}, nil
+		},
+	}
+	fp := &mockFileProvider{
+		readBytesFunc: func(ctx context.Context, path string) ([]byte, error) {
+			switch path {
+			case "hello.wdl":
+				return []byte(wdlContent), nil
+			case "inputs.json":
+				return []byte(`{}`), nil
+			}
+			return nil, errors.New("unexpected path")
+		},
+	}
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+
+	output, err := uc.Execute(context.Background(), SubmitInput{
+		WorkflowFile:  "hello.wdl",
+		InputsFile:    "inputs.json",
+		SkipPreflight: true,
+	})
+	if err != nil {
+		t.Fatalf("--skip-preflight must bypass the checks, got %v", err)
+	}
+	if output.WorkflowID != "wf-1" {
+		t.Errorf("expected the submission to go through, got %+v", output)
 	}
 }

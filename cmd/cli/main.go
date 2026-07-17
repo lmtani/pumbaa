@@ -81,6 +81,8 @@ func main() {
 			Aliases: []string{"wf"},
 			Usage:   "Workflow operations",
 			Subcommands: []*cli.Command{
+				cont.ScaffoldHandler.Command(),
+				cont.PreflightHandler.Command(),
 				cont.SubmitHandler.Command(),
 				cont.MetadataHandler.Command(),
 				cont.DiffHandler.Command(),

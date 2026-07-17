@@ -44,6 +44,19 @@ pkg/wdl/                     # WDL parser (ANTLR) — public library
 application → domain; infrastructure implements ports (aliases +
 compile-time checks); interfaces → ports/domain/application, **zero** infra.
 
+## Guided submit
+
+`pkg/wdl` owns everything decidable from the WDL + inputs JSON alone
+(`WorkflowInputs`, `ScaffoldInputs`, `CheckInputs` — no IO); the
+`PreflightUseCase` adds what needs the outside world (server health, file
+existence via `FileProvider.GetSize`). `submit` runs the same checks before
+sending. Design: `docs/design/guided-submit.md`.
+
+Two rules that matter when touching it: a WDL this parser cannot read is a
+**warning**, never a block (Cromwell is the authority), and a path that
+cannot be verified (no credentials) is a warning while a path known to be
+missing (`ports.ErrFileNotFound`) is an error.
+
 ## Domain: ready-made calculations
 
 In `domain/workflow/`, all recurse into loaded subworkflows and anchor

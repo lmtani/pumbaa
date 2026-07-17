@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -55,6 +57,9 @@ func (l *LocalBackend) ReadBytes(_ context.Context, path string) ([]byte, error)
 func (l *LocalBackend) GetSize(_ context.Context, path string) (int64, error) {
 	info, err := os.Stat(path)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		}
 		return 0, fmt.Errorf("failed to stat file: %w", err)
 	}
 	return info.Size(), nil

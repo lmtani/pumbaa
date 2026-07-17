@@ -6,18 +6,19 @@ import (
 	"github.com/lmtani/pumbaa/internal/application"
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
-	"github.com/lmtani/pumbaa/pkg/wdl"
 )
 
 // SubmitUseCase handles workflow submission.
 type SubmitUseCase struct {
 	submitter    ports.WorkflowSubmitter
 	fileProvider ports.FileProvider
+	preflight    *PreflightUseCase
 }
 
-// NewSubmitUseCase creates a new submit use case.
-func NewSubmitUseCase(submitter ports.WorkflowSubmitter, fileProvider ports.FileProvider) *SubmitUseCase {
-	return &SubmitUseCase{submitter: submitter, fileProvider: fileProvider}
+// NewSubmitUseCase creates a new submit use case. preflight may be nil, in
+// which case submissions are not checked before being sent.
+func NewSubmitUseCase(submitter ports.WorkflowSubmitter, fileProvider ports.FileProvider, preflight *PreflightUseCase) *SubmitUseCase {
+	return &SubmitUseCase{submitter: submitter, fileProvider: fileProvider, preflight: preflight}
 }
 
 // SubmitInput represents the input for workflow submission.
@@ -27,6 +28,9 @@ type SubmitInput struct {
 	OptionsFile      string
 	DependenciesFile string
 	Labels           map[string]string
+	// SkipPreflight submits without checking the workflow and its inputs
+	// first.
+	SkipPreflight bool
 }
 
 // SubmitOutput represents the output of workflow submission.
@@ -71,8 +75,13 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		}
 	}
 
-	if err := wdl.ValidateInputs(workflowSource, inputsData); err != nil {
-		return nil, application.NewInputValidationError("workflowInputs", err.Error())
+	// Catch what Cromwell would only tell us minutes (and dollars) later.
+	// The server check is skipped: submitting is about to contact it anyway.
+	if uc.preflight != nil && !input.SkipPreflight {
+		report := uc.preflight.check(ctx, workflowSource, inputsData, true, false)
+		if report.HasErrors() {
+			return nil, &PreflightFailedError{Report: report}
+		}
 	}
 
 	req := workflow2.SubmitRequest{

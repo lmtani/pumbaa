@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -101,6 +102,9 @@ func (g *GCSBackend) GetSize(ctx context.Context, path string) (int64, error) {
 
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
 	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		}
 		return 0, fmt.Errorf("failed to get object attributes: %w", err)
 	}
 

@@ -6,6 +6,15 @@ import (
 	"fmt"
 )
 
+// File storage errors
+var (
+	// ErrFileNotFound reports that a path does not exist. Storage backends
+	// wrap their not-found errors with it so callers can tell "this file is
+	// missing" (the user's problem) from "I could not check" (credentials,
+	// network), which must not be treated the same way.
+	ErrFileNotFound = errors.New("file not found")
+)
+
 // Batch logs errors
 var (
 	// ErrInvalidJobName is returned when the job name is not a valid full resource name.

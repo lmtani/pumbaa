@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/urfave/cli/v2"
@@ -58,6 +59,10 @@ func (h *SubmitHandler) Command() *cli.Command {
 				Aliases: []string{"l"},
 				Usage:   "[optional] Labels to attach to the workflow (format: key=value)",
 			},
+			&cli.BoolFlag{
+				Name:  "skip-preflight",
+				Usage: "[optional] Submit without checking the workflow and inputs first",
+			},
 		},
 		Action: h.handle,
 	}
@@ -83,10 +88,20 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 		OptionsFile:      c.String("options"),
 		DependenciesFile: c.String("dependencies"),
 		Labels:           labels,
+		SkipPreflight:    c.Bool("skip-preflight"),
 	}
 
 	output, err := h.useCase.Execute(ctx, input)
 	if err != nil {
+		// Preflight found problems: show the whole checklist rather than a
+		// single message, so everything can be fixed in one pass.
+		var preflightErr *workflow.PreflightFailedError
+		if errors.As(err, &preflightErr) {
+			renderPreflightReport(h.presenter, preflightErr.Report)
+			h.presenter.Newline()
+			h.presenter.Info("Nothing was submitted. Fix the problems above, or use --skip-preflight to submit anyway.")
+			return cli.Exit("", 1)
+		}
 		h.presenter.Error("Failed to submit workflow: %v", err)
 		return err
 	}
