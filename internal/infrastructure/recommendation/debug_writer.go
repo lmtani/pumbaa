@@ -64,19 +64,3 @@ func (w *FileDebugWriter) Close() error {
 
 // Ensure FileDebugWriter implements LLMDebugWriter
 var _ ports.LLMDebugWriter = (*FileDebugWriter)(nil)
-
-// NullDebugWriter is a no-op implementation of LLMDebugWriter.
-type NullDebugWriter struct{}
-
-// WriteInteraction does nothing.
-func (w *NullDebugWriter) WriteInteraction(_, _, _, _ string) error {
-	return nil
-}
-
-// Close does nothing.
-func (w *NullDebugWriter) Close() error {
-	return nil
-}
-
-// Ensure NullDebugWriter implements LLMDebugWriter
-var _ ports.LLMDebugWriter = (*NullDebugWriter)(nil)

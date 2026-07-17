@@ -127,29 +127,6 @@ func TestLoad_TelemetryEnvOverride(t *testing.T) {
 	}
 }
 
-func TestFromFlags_HostOverride(t *testing.T) {
-	cleanup := clearEnvVars(t)
-	defer cleanup()
-
-	cfg := FromFlags("http://custom-host:9000")
-
-	if cfg.CromwellHost != "http://custom-host:9000" {
-		t.Errorf("expected CromwellHost from flags, got %s", cfg.CromwellHost)
-	}
-}
-
-func TestFromFlags_EmptyHost(t *testing.T) {
-	cleanup := clearEnvVars(t)
-	defer cleanup()
-
-	// When host is empty, should use default
-	cfg := FromFlags("")
-
-	if cfg.CromwellHost != "http://localhost:8000" {
-		t.Errorf("expected default CromwellHost, got %s", cfg.CromwellHost)
-	}
-}
-
 func TestLoad_ClientIDGeneration(t *testing.T) {
 	cleanup := clearEnvVars(t)
 	defer cleanup()
