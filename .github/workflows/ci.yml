@@ -9,6 +9,24 @@ on:
       - '**'
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25.5'
+
+      - name: Install golangci-lint
+        # Pinned to the same version used locally (make lint) so results match.
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
+
+      - name: Run golangci-lint
+        run: $(go env GOPATH)/bin/golangci-lint run --max-issues-per-linter 0 --max-same-issues 0 ./...
+
   build:
     runs-on: ubuntu-latest
     steps:

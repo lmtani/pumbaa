@@ -79,7 +79,7 @@ func (h *QueryHandler) handle(c *cli.Context) error {
 	table := h.presenter.NewTable([]string{"ID", "Name", "Status", "Submitted"})
 
 	for _, wf := range result.Workflows {
-		table.Append([]string{
+		_ = table.Append([]string{
 			wf.ID,
 			wf.Name,
 			h.presenter.StatusColor(string(wf.Status)),
@@ -87,7 +87,7 @@ func (h *QueryHandler) handle(c *cli.Context) error {
 		})
 	}
 
-	table.Render()
+	_ = table.Render()
 
 	return nil
 }

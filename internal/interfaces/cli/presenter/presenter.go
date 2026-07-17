@@ -24,39 +24,39 @@ func New(out io.Writer) *Presenter {
 // Success prints a success message.
 func (p *Presenter) Success(format string, args ...any) {
 	green := color.New(color.FgGreen, color.Bold)
-	green.Fprintf(p.out, "✓ "+format+"\n", args...)
+	_, _ = green.Fprintf(p.out, "✓ "+format+"\n", args...)
 }
 
 // Error prints an error message.
 func (p *Presenter) Error(format string, args ...any) {
 	red := color.New(color.FgRed, color.Bold)
-	red.Fprintf(p.out, "✗ "+format+"\n", args...)
+	_, _ = red.Fprintf(p.out, "✗ "+format+"\n", args...)
 }
 
 // Info prints an info message.
 func (p *Presenter) Info(format string, args ...any) {
 	cyan := color.New(color.FgCyan)
-	cyan.Fprintf(p.out, "ℹ "+format+"\n", args...)
+	_, _ = cyan.Fprintf(p.out, "ℹ "+format+"\n", args...)
 }
 
 // Warning prints a warning message.
 func (p *Presenter) Warning(format string, args ...any) {
 	yellow := color.New(color.FgYellow)
-	yellow.Fprintf(p.out, "⚠ "+format+"\n", args...)
+	_, _ = yellow.Fprintf(p.out, "⚠ "+format+"\n", args...)
 }
 
 // Title prints a title/header.
 func (p *Presenter) Title(title string) {
 	bold := color.New(color.Bold)
-	bold.Fprintf(p.out, "\n%s\n", title)
-	fmt.Fprintln(p.out, "─────────────────────────────────────────")
+	_, _ = bold.Fprintf(p.out, "\n%s\n", title)
+	_, _ = fmt.Fprintln(p.out, "─────────────────────────────────────────")
 }
 
 // KeyValue prints a key-value pair.
 func (p *Presenter) KeyValue(key string, value any) {
 	gray := color.New(color.FgHiBlack)
-	gray.Fprintf(p.out, "  %s: ", key)
-	fmt.Fprintf(p.out, "%v\n", value)
+	_, _ = gray.Fprintf(p.out, "  %s: ", key)
+	_, _ = fmt.Fprintf(p.out, "%v\n", value)
 }
 
 // NewTable creates a new table writer.
@@ -126,15 +126,15 @@ func (p *Presenter) FormatTime(t time.Time) string {
 
 // Newline prints a newline.
 func (p *Presenter) Newline() {
-	fmt.Fprintln(p.out)
+	_, _ = fmt.Fprintln(p.out)
 }
 
 // Print prints a formatted string.
 func (p *Presenter) Print(format string, args ...any) {
-	fmt.Fprintf(p.out, format, args...)
+	_, _ = fmt.Fprintf(p.out, format, args...)
 }
 
 // Println prints a line.
 func (p *Presenter) Println(args ...any) {
-	fmt.Fprintln(p.out, args...)
+	_, _ = fmt.Fprintln(p.out, args...)
 }

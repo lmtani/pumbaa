@@ -44,10 +44,10 @@ var (
 			PaddingLeft(2).
 			MarginBottom(1)
 
-	infoStyle = common.MutedStyle.Copy().
+	infoStyle = common.MutedStyle.
 			Bold(true)
 
-	infoMessageStyle = messageStyle.Copy().
+	infoMessageStyle = messageStyle.
 				Foreground(common.MutedColor)
 
 	inputStyle = lipgloss.NewStyle().

@@ -40,7 +40,7 @@ func (r *CloudLoggingRepository) GetLogs(
 	if err != nil {
 		return nil, ports.NewBatchLogsError("fetch", jobName, "failed to create Cloud Logging client", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Build the logs filter
 	logsFilter := buildLogsFilter(project, jobID, filter)

@@ -81,7 +81,7 @@ func copyToClipboard(text string) tea.Cmd {
 		if err != nil {
 			return clipboardCopiedMsg{success: false, err: err}
 		}
-		stdin.Close()
+		_ = stdin.Close()
 
 		if err := cmd.Wait(); err != nil {
 			return clipboardCopiedMsg{success: false, err: err}

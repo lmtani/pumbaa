@@ -137,7 +137,7 @@ func (uc *ResourceVisualizationUseCase) Execute(ctx context.Context, input Resou
 			} else {
 				uc.recommendationGenerator.SetDebugWriter(debugWriter)
 				defer func() {
-					debugWriter.Close()
+					_ = debugWriter.Close()
 					uc.recommendationGenerator.SetDebugWriter(nil)
 				}()
 				log.Printf("[resource_visualization] LLM debug logging enabled: %s", input.LLMDebugFile)

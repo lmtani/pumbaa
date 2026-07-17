@@ -36,7 +36,7 @@ func (g *GCSBackend) Read(ctx context.Context, path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create GCS client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Check object size before reading
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
@@ -52,7 +52,7 @@ func (g *GCSBackend) Read(ctx context.Context, path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to open GCS object: %w", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	data, err := io.ReadAll(rc)
 	if err != nil {
@@ -74,13 +74,13 @@ func (g *GCSBackend) ReadBytes(ctx context.Context, path string) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rc, err := client.Bucket(bucket).Object(object).NewReader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open GCS object: %w", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	return io.ReadAll(rc)
 }
@@ -97,7 +97,7 @@ func (g *GCSBackend) GetSize(ctx context.Context, path string) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to create GCS client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
 	if err != nil {

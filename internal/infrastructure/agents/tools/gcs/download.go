@@ -44,7 +44,7 @@ func (h *DownloadHandler) Handle(ctx context.Context, input types.Input) (types.
 	if err != nil {
 		return types.NewErrorOutput(action, fmt.Sprintf("failed to create GCS client: %v", err)), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	content, attrs, err := downloadObject(ctx, client, bucket, object)
 	if err != nil {
@@ -90,7 +90,7 @@ func downloadObject(ctx context.Context, client *storage.Client, bucket, object 
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read: %v", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	content, err := io.ReadAll(reader)
 	if err != nil {

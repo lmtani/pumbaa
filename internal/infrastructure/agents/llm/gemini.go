@@ -25,7 +25,7 @@ func NewGeminiModel(apiKey, modelName string) (*GeminiModel, error) {
 		apiKey = os.Getenv("GEMINI_API_KEY")
 	}
 	if apiKey == "" {
-		return nil, fmt.Errorf("Gemini API key is required (set GEMINI_API_KEY or --gemini-api-key)")
+		return nil, fmt.Errorf("gemini API key is required (set GEMINI_API_KEY or --gemini-api-key)")
 	}
 	if modelName == "" {
 		modelName = "gemini-2.5-flash"
@@ -59,7 +59,7 @@ func (m *GeminiModel) GenerateContent(
 	stream bool,
 ) iter.Seq2[*model.LLMResponse, error] {
 	return generateGenaiContent(ctx, m.client, m.modelName, req, stream, func(err error) error {
-		return fmt.Errorf("Gemini API generation failed: %w", err)
+		return fmt.Errorf("gemini API generation failed: %w", err)
 	})
 }
 

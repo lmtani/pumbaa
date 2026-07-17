@@ -31,19 +31,19 @@ func clearEnvVars(t *testing.T) func() {
 	oldValues := make(map[string]string)
 	for _, v := range envVars {
 		oldValues[v] = os.Getenv(v)
-		os.Unsetenv(v)
+		_ = os.Unsetenv(v)
 	}
 
 	// Override HOME to temp dir to avoid reading user's config file
 	oldHome := os.Getenv("HOME")
 	tmpDir := t.TempDir()
-	os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("HOME", tmpDir)
 
 	return func() {
-		os.Setenv("HOME", oldHome)
+		_ = os.Setenv("HOME", oldHome)
 		for k, v := range oldValues {
 			if v != "" {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 			}
 		}
 	}
@@ -84,12 +84,12 @@ func TestLoad_EnvOverrides(t *testing.T) {
 	defer cleanup()
 
 	// Set env vars
-	os.Setenv("CROMWELL_HOST", "http://env-cromwell:8000")
-	os.Setenv("PUMBAA_LLM_PROVIDER", "vertex")
-	os.Setenv("OLLAMA_HOST", "http://env-ollama:11434")
-	os.Setenv("VERTEX_PROJECT", "env-project")
-	os.Setenv("VERTEX_LOCATION", "europe-west1")
-	os.Setenv("GEMINI_API_KEY", "test-api-key")
+	_ = os.Setenv("CROMWELL_HOST", "http://env-cromwell:8000")
+	_ = os.Setenv("PUMBAA_LLM_PROVIDER", "vertex")
+	_ = os.Setenv("OLLAMA_HOST", "http://env-ollama:11434")
+	_ = os.Setenv("VERTEX_PROJECT", "env-project")
+	_ = os.Setenv("VERTEX_LOCATION", "europe-west1")
+	_ = os.Setenv("GEMINI_API_KEY", "test-api-key")
 
 	cfg := Load()
 
@@ -118,7 +118,7 @@ func TestLoad_TelemetryEnvOverride(t *testing.T) {
 	defer cleanup()
 
 	// Test that env var overrides default telemetry
-	os.Setenv("PUMBAA_TELEMETRY_ENABLED", "false")
+	_ = os.Setenv("PUMBAA_TELEMETRY_ENABLED", "false")
 
 	cfg := Load()
 

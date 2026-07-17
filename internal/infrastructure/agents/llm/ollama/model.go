@@ -142,11 +142,11 @@ func (m *Model) streamRequest(ctx context.Context, req *ChatRequest, yield func(
 		_ = yield(nil, fmt.Errorf("error calling Ollama: %w", err))
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		_ = yield(nil, fmt.Errorf("Ollama returned status %d: %s", resp.StatusCode, string(body)))
+		_ = yield(nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(body)))
 		return
 	}
 
@@ -224,11 +224,11 @@ func (m *Model) doRequest(ctx context.Context, req *ChatRequest) (*ChatResponse,
 	if err != nil {
 		return nil, fmt.Errorf("error calling Ollama: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Ollama returned status %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(body))
 	}
 
 	var ollamaResp ChatResponse

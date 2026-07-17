@@ -51,7 +51,7 @@ func (m Model) handleLabelsModalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case "e": // Edit selected label
-		if m.labelsData != nil && len(m.labelsData) > 0 {
+		if len(m.labelsData) > 0 {
 			keys := getSortedLabelKeys(m.labelsData)
 			if m.labelsCursor < len(keys) {
 				key := keys[m.labelsCursor]
@@ -162,7 +162,7 @@ func (m Model) renderLabelsModal() string {
 			content.WriteString(common.LabelStyle.Render(fmt.Sprintf("Edit value for '%s':", m.labelsEditKey)) + "\n")
 		}
 		content.WriteString(m.labelsInput.View() + "\n")
-	} else if m.labelsData == nil || len(m.labelsData) == 0 {
+	} else if len(m.labelsData) == 0 {
 		if m.labelsLoading {
 			content.WriteString(common.MutedStyle.Render("Fetching labels...") + "\n")
 		} else {

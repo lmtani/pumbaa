@@ -31,7 +31,7 @@ func NewFileDebugWriter(filePath string) (*FileDebugWriter, error) {
 	// Write header
 	header := fmt.Sprintf("# LLM Debug Log\n# Generated: %s\n\n", time.Now().Format(time.RFC3339))
 	if _, err := file.WriteString(header); err != nil {
-		file.Close()
+		_ = file.Close()
 		return nil, fmt.Errorf("failed to write header: %w", err)
 	}
 

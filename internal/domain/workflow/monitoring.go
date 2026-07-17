@@ -97,7 +97,7 @@ func ParseMonitoringTSV(content string) (*MonitoringMetrics, error) {
 		}
 
 		// Parse timestamp
-		tsIdx, _ := headerMap[ColTimestamp]
+		tsIdx := headerMap[ColTimestamp]
 		if tsIdx >= len(fields) {
 			continue
 		}
@@ -121,7 +121,7 @@ func ParseMonitoringTSV(content string) (*MonitoringMetrics, error) {
 	}
 
 	if len(metrics.Timestamps) == 0 {
-		return nil, fmt.Errorf("incompatible format: no valid data points found.\n\nExpected TSV format with headers: timestamp, cpu_percent, mem_used_mb, ...")
+		return nil, fmt.Errorf("incompatible format: no valid data points found (expected TSV with headers: timestamp, cpu_percent, mem_used_mb, ...)")
 	}
 
 	return metrics, nil

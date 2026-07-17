@@ -64,7 +64,7 @@ func TestUseCase_Execute_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	wdlPath := filepath.Join(tmpDir, "main.wdl")
 	wdlContent := "version 1.0\nworkflow test {}"
