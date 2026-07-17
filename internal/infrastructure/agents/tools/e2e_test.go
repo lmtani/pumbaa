@@ -39,7 +39,7 @@ func TestToolsE2E(t *testing.T) {
 		}
 	}
 
-	registry := tools.NewDefaultRegistry(reader, wdlRepo)
+	registry := tools.NewDefaultRegistry(tools.Deps{Repo: reader, Fetcher: reader, WDLRepo: wdlRepo})
 	ctx := context.Background()
 
 	handle := func(t *testing.T, input types.Input) types.Output {
@@ -70,7 +70,7 @@ func TestToolsE2E(t *testing.T) {
 		t.Logf("query ok: total=%v, using workflow %s", data["total"], workflowID)
 	})
 
-	for _, action := range []string{"status", "metadata", "outputs", "logs"} {
+	for _, action := range []string{"status", "metadata", "outputs", "logs", "failures", "cost", "preemption"} {
 		t.Run(action, func(t *testing.T) {
 			if workflowID == "" {
 				t.Skip("no workflow id available")
@@ -79,6 +79,22 @@ func TestToolsE2E(t *testing.T) {
 			t.Logf("%s ok (data type %T)", action, out.Data)
 		})
 	}
+
+	t.Run("read_log_unknown_task", func(t *testing.T) {
+		// Only the error path (a real task's log may live on GCS without
+		// credentials here): must fail gracefully with the available tasks.
+		if workflowID == "" {
+			t.Skip("no workflow id available")
+		}
+		out, err := registry.Handle(ctx, types.Input{Action: "read_log", WorkflowID: workflowID, Task: "pumbaa-e2e-nonexistent-task"})
+		if err != nil {
+			t.Fatalf("read_log returned transport error: %v", err)
+		}
+		if out.Success {
+			t.Fatalf("read_log of nonexistent task should not succeed")
+		}
+		t.Logf("read_log error path ok: %s", out.Error)
+	})
 
 	t.Run("gcs_download_bad_path", func(t *testing.T) {
 		// Only the error path: must fail gracefully, never panic or succeed.

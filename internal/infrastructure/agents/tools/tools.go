@@ -18,7 +18,7 @@
 //
 // Callers building a custom registry can also register ad-hoc actions:
 //
-//	registry := tools.NewDefaultRegistry(repo, nil)
+//	registry := tools.NewDefaultRegistry(tools.Deps{Repo: repo})
 //	registry.Register("my_action", "Does something. Required: foo.", myHandler)
 //	agentTools := []tool.Tool{tools.GetPumbaaTool(registry)}
 //
@@ -29,7 +29,7 @@
 // agent untouched:
 //
 //	myTool, _ := functiontool.New(functiontool.Config{Name: "my_tool", ...}, run)
-//	agentTools := tools.GetAllTools(repo, nil, myTool)
+//	agentTools := tools.GetAllTools(tools.Deps{Repo: repo}, myTool)
 //
 // Example handler:
 //

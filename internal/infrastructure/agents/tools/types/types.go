@@ -40,6 +40,18 @@ type Input struct {
 
 	// Overwrite allows write_file to replace an existing file.
 	Overwrite bool `json:"overwrite,omitempty"`
+
+	// Task is the task name for the read_log action (short or full call name).
+	Task string `json:"task,omitempty"`
+
+	// Shard selects a scatter shard for read_log (default: -1, non-scattered).
+	Shard *int `json:"shard,omitempty"`
+
+	// Stream selects the log stream for read_log: "stderr" (default) or "stdout".
+	Stream string `json:"stream,omitempty"`
+
+	// Lines is how many tail lines read_log returns (default 100, max 500).
+	Lines int `json:"lines,omitempty"`
 }
 
 // Output represents the standardized output for all actions.

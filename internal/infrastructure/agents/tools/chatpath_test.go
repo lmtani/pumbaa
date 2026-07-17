@@ -26,7 +26,7 @@ type chatToolDefinition interface {
 // tool call — functiontool.Run with a nil tool.Context and raw map args —
 // so a regression in this layer (not just the registry) fails loudly.
 func TestChatExecutePathWDL(t *testing.T) {
-	all := GetAllTools(nil, stubWDLRepo{})
+	all := GetAllTools(Deps{WDLRepo: stubWDLRepo{}})
 
 	var td chatToolDefinition
 	for _, tl := range all {
