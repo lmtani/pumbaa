@@ -18,8 +18,9 @@ natural language.
 
 📖 **[Documentation](https://lmtani.github.io/pumbaa/)**
 
-<!-- TODO: record a terminal demo with `vhs docs/assets/demo.tape` (see the file
-     for instructions) and embed docs/assets/demo.gif here. -->
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Pumbaa dashboard: browsing workflows and drilling into a run's call tree" width="900">
+</p>
 
 ## Features
 

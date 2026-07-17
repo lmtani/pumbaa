@@ -1,38 +1,50 @@
 # Terminal demo for the README, recorded with vhs (https://github.com/charmbracelet/vhs).
 #
 # Prerequisites:
-#   - `vhs` installed and `pumbaa` on PATH
+#   - `vhs`, `ttyd` and `ffmpeg` installed, and `pumbaa` on PATH
 #   - a reachable Cromwell server with a few workflows. The easiest way to get
 #     one is the showcase: see example/showcase/README.md — start the local
-#     Cromwell, run ./run.sh, then export CROMWELL_HOST=http://localhost:8010.
+#     Cromwell and run ./run.sh. This tape targets it on :8010 (edit below to
+#     point elsewhere).
 #
 # Record from the repository root:
-#   CROMWELL_HOST=http://localhost:8010 vhs docs/assets/demo.tape
-#
-# Then embed docs/assets/demo.gif in the README (there is a TODO marker).
+#   vhs docs/assets/demo.tape
 
 Output docs/assets/demo.gif
 
+Set Shell bash
 Set FontSize 16
 Set Width 1200
-Set Height 700
+Set Height 720
 Set Padding 20
 
+# Point pumbaa at the showcase Cromwell without showing the export in the GIF.
+Hide
+Type "export CROMWELL_HOST=http://localhost:8010"
+Enter
+Type "clear"
+Enter
+Show
+
 Type "pumbaa dashboard"
-Sleep 500ms
+Sleep 800ms
 Enter
-Sleep 4s
+Sleep 3.5s
 
-# Walk the workflow list
-Down@400ms 3
-Sleep 1s
+# Move the selection down to a two-task workflow.
+Down@600ms 1
+Sleep 1.2s
 
-# Open the selected workflow
+# Open the debug view: its call tree, statuses and timings.
 Enter
-Sleep 4s
+Sleep 3.5s
+Down@500ms 2
+Sleep 1.5s
 
-# Back to the list and quit
+# Back to the list, then quit.
 Escape
-Sleep 1s
-Type "q"
-Sleep 1s
+Sleep 1.2s
+Down@500ms 2
+Sleep 1.2s
+Escape
+Sleep 800ms
