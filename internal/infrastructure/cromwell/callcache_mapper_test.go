@@ -10,8 +10,8 @@ import (
 )
 
 // loadFixture parses one of the call-cache metadata payloads captured from a
-// real Cromwell 91 server (see docs/design/cache-explainer.md for how they
-// were produced).
+// real Cromwell 91 server (see testdata/callcache/README.md for how they were
+// produced and what each one pins).
 func loadFixture(t *testing.T, name string) *workflow.Workflow {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", "callcache", name))

@@ -3,7 +3,8 @@
 //
 // It never recomputes Cromwell's hashes. Instead it compares the pending
 // submission against a previous run along the axes Cromwell fingerprints, using
-// two properties verified against a real server (docs/design/cache-explainer.md):
+// two properties verified against a real server, and pinned by the fixtures
+// under internal/infrastructure/cromwell/testdata/callcache/:
 // the command template is hashed before input substitution, so comparing WDL
 // text is equivalent to comparing that hash; and File inputs are hashed by
 // content, so a file's MD5 can be compared against the hash the reference run
@@ -123,7 +124,7 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 	}
 
 	uc.step("fetching the reference run")
-	reference, err := uc.resolveReference(ctx, input.ReferenceID, graph.Workflow)
+	reference, err := uc.resolveReference(ctx, input.ReferenceID, graph.Workflow, pendingInputs)
 	if err != nil {
 		return nil, err
 	}
@@ -405,38 +406,6 @@ func (uc *CacheForecastUseCase) fetchReference(ctx context.Context, id string) (
 		}
 	}
 	return uc.reader.GetMetadata(ctx, id)
-}
-
-// resolveReference finds the run to compare against.
-func (uc *CacheForecastUseCase) resolveReference(ctx context.Context, id, workflowName string) (*domain.Workflow, error) {
-	if id != "" {
-		w, err := uc.fetchReference(ctx, id)
-		if err != nil {
-			return nil, application.NewUseCaseError("cache forecast", "failed to fetch reference run", err)
-		}
-		return w, nil
-	}
-	if uc.querier == nil {
-		return nil, application.NewInputValidationError("reference", "is required when no querier is configured")
-	}
-
-	result, err := uc.querier.Query(ctx, domain.QueryFilter{
-		Name:     workflowName,
-		Status:   []domain.Status{domain.StatusSucceeded},
-		PageSize: 1,
-	})
-	if err != nil {
-		return nil, application.NewUseCaseError("cache forecast", "failed to look for a reference run", err)
-	}
-	if result == nil || len(result.Workflows) == 0 {
-		return nil, application.NewUseCaseError("cache forecast",
-			fmt.Sprintf("no successful previous run of %q to compare against", workflowName), nil)
-	}
-	w, err := uc.fetchReference(ctx, result.Workflows[0].ID)
-	if err != nil {
-		return nil, application.NewUseCaseError("cache forecast", "failed to fetch reference run", err)
-	}
-	return w, nil
 }
 
 func (uc *CacheForecastUseCase) readInputs(ctx context.Context, path string) (map[string]any, error) {

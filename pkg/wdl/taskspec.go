@@ -14,9 +14,9 @@ import (
 // fingerprint and can be read from the WDL text alone.
 //
 // Command is the raw, un-substituted command template. Cromwell hashes it
-// before interpolating input values — verified against a real server, see
-// docs/design/cache-explainer.md — so comparing this text between two WDLs is
-// equivalent to comparing the hash, without reimplementing the hashing.
+// before interpolating input values — verified against a real server — so
+// comparing this text between two WDLs is equivalent to comparing the hash,
+// without reimplementing the hashing.
 type TaskSpec struct {
 	Name    string
 	Command string
@@ -34,8 +34,9 @@ type TaskSpec struct {
 // template under `callCaching.hashes["command template"]`, and reports whether
 // that reproduction can be trusted for this particular command.
 //
-// The normalisation was derived by matching real Cromwell metadata (see
-// docs/design/cache-explainer.md): the command is dedented by its common
+// The normalisation was derived by matching real Cromwell metadata, kept as
+// fixtures under internal/infrastructure/cromwell/testdata/callcache/: the
+// command is dedented by its common
 // leading whitespace — relative indentation is preserved — and `~{expr}`
 // placeholders are rewritten to `${expr}`.
 //

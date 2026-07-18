@@ -19,6 +19,10 @@ type WorkflowQuerier interface {
 // Used by TUI debug and dashboard views for loading workflow details and subworkflows.
 type WorkflowMetadataFetcher interface {
 	GetRawMetadataWithOptions(ctx context.Context, workflowID string, expandSubWorkflows bool) ([]byte, error)
+	// GetSubmittedInputs returns just the parameter document a run was
+	// submitted with. Ranking candidate runs needs this and nothing else, and
+	// a run's full metadata is orders of magnitude larger.
+	GetSubmittedInputs(ctx context.Context, workflowID string) (string, error)
 	GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error)
 	ParseMetadata(data []byte) (*workflow.Workflow, error)
 }

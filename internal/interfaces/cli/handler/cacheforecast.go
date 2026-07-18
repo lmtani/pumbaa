@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -73,6 +75,11 @@ func (h *CacheForecastHandler) handle(c *cli.Context) error {
 		DependenciesFile: c.String("dependencies"),
 		ReferenceID:      c.String("against"),
 	})
+	var ambiguous *workflow.AmbiguousReferenceError
+	if errors.As(err, &ambiguous) {
+		renderReferenceChoice(h.presenter, ambiguous)
+		return cli.Exit("", 1)
+	}
 	if err != nil {
 		return err
 	}
@@ -82,6 +89,60 @@ func (h *CacheForecastHandler) handle(c *cli.Context) error {
 	}
 	renderCacheForecast(h.presenter, forecast)
 	return nil
+}
+
+// referenceChoicesShown caps the list at the number a reader will actually
+// scan. The candidates are ordered by distance, so the ones worth choosing are
+// the ones shown; the rest are counted rather than listed.
+const referenceChoicesShown = 6
+
+// renderReferenceChoice asks the user to name the run to compare against, and
+// does the legwork that makes the question answerable.
+//
+// Listing the runs by date alone would push the reader to the most recent one,
+// which is the guess the tool declined to make on their behalf. The parameter
+// distance is the part they cannot compute and we can.
+func renderReferenceChoice(p *presenter.Presenter, e *workflow.AmbiguousReferenceError) {
+	p.Title("Which run should this be compared against?")
+	p.Print("  %d previous runs of %s could serve as the reference. Pick the one whose\n",
+		len(e.Candidates), e.Workflow)
+	p.Print("  inputs match what you are about to submit — comparing against a different\n")
+	p.Print("  one reports work as new when it would in fact be reused.\n")
+	p.Newline()
+
+	shown := e.Candidates
+	if len(shown) > referenceChoicesShown {
+		shown = shown[:referenceChoicesShown]
+	}
+	for i, candidate := range shown {
+		marker := " "
+		if i == 0 && candidate.Readable {
+			marker = "→"
+		}
+		p.Print("  %s %s  %s  %s\n", marker, candidate.ID,
+			candidate.End.Format("2006-01-02 15:04"), describeDistance(candidate))
+	}
+	if hidden := len(e.Candidates) - len(shown); hidden > 0 {
+		p.Print("    …and %d older run(s), all differing more than those above\n", hidden)
+	}
+
+	p.Newline()
+	p.Print("  Re-run with:  --against <id>\n")
+}
+
+// describeDistance renders how far a candidate's parameters are from the
+// pending submission, in the terms the user supplied them in.
+func describeDistance(c workflow.ReferenceCandidate) string {
+	switch {
+	case !c.Readable:
+		return "parameters could not be read"
+	case c.Differing == 0:
+		return "same parameters"
+	case c.Differing == 1:
+		return "1 parameter differs"
+	default:
+		return fmt.Sprintf("%d of %d parameters differ", c.Differing, c.Total)
+	}
 }
 
 // renderCacheForecast prints the headline first — how much of the run is free —

@@ -6,7 +6,8 @@ import (
 )
 
 // realHashTree mirrors the shape Cromwell 91 returns under callCaching.hashes,
-// captured from the showcase server (see docs/design/cache-explainer.md).
+// captured from a real server; the payloads themselves live under
+// internal/infrastructure/cromwell/testdata/callcache/.
 func realHashTree(docker, inputVcf string) map[string]any {
 	return map[string]any{
 		"backend name":     "509820290D57F333403F490DDE7316F4",

@@ -422,6 +422,45 @@ func (c *Client) GetRawMetadataWithOptions(ctx context.Context, workflowID strin
 	return io.ReadAll(resp.Body)
 }
 
+// GetSubmittedInputs returns the parameter document a run was submitted with.
+//
+// It asks the server for that key alone. Fetching whole metadata to read the
+// inputs costs roughly twenty-five times the bytes, which matters when the
+// point is to scan many runs at once.
+func (c *Client) GetSubmittedInputs(ctx context.Context, workflowID string) (string, error) {
+	url := fmt.Sprintf("%s/api/workflows/v1/%s/metadata?includeKey=submittedFiles:inputs",
+		c.BaseURL, workflowID)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", workflow.ErrConnectionFailed, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return "", workflow.ErrWorkflowNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", workflow.APIError{StatusCode: resp.StatusCode, Message: string(body)}
+	}
+
+	var result struct {
+		SubmittedFiles struct {
+			Inputs string `json:"inputs"`
+		} `json:"submittedFiles"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	return result.SubmittedFiles.Inputs, nil
+}
+
 // GetWorkflowCost retrieves the total cost for a workflow including all subworkflows.
 func (c *Client) GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error) {
 	url := fmt.Sprintf("%s/api/workflows/v1/%s/cost", c.BaseURL, workflowID)
