@@ -38,7 +38,10 @@ type inputComparison struct {
 	// with, which is how a parameter leaf is checked for stability.
 	referenceParams map[string]any
 	pendingParams   map[string]any
-	specs           map[string]wdl.TaskSpec
+	// inputDefaults are the program's own defaults, which stand in for any
+	// input a submission leaves out.
+	inputDefaults map[string]string
+	specs         map[string]wdl.TaskSpec
 	// instance narrows the comparison to one fan-out instance. Instances are
 	// matched by position, never by element identity: a program that weaves the
 	// iteration position into a value — a per-instance label — has that value
@@ -232,10 +235,11 @@ func (c inputComparison) comparePerInstance(
 	}
 
 	if !readsElement(binding) {
-		// Built from the position and fixed text only. The position is shared
-		// with the reference instance at the same index, so the value is what
-		// was recorded without computing it.
-		return outcomeUnchanged, ""
+		// No element, so the value is built from the position and whatever else
+		// the expression reads. The position is shared with the reference
+		// instance at the same index and needs no checking; every other leaf is
+		// held to the ordinary standard.
+		return c.checkLeaves(ctx, binding, refCall, inputName)
 	}
 
 	element, ok := c.elementAt(binding)
@@ -244,6 +248,40 @@ func (c inputComparison) comparePerInstance(
 			"input %q reads a collection element this run could not enumerate", inputName)
 	}
 	return c.compareValue(ctx, element, recordedValue, refCall, inputName)
+}
+
+// checkLeaves applies the stability half of the rule to a value that cannot be
+// computed: every leaf must be unchanged for the value to be.
+//
+// The iteration position is exempt, and only because matching is positional —
+// the reference instance at the same index carried the same position, so
+// anything derived from it lands where it landed before. Under any other
+// pairing this exemption would be unfounded.
+func (c inputComparison) checkLeaves(
+	ctx context.Context,
+	binding wdl.ResolvedBinding,
+	refCall domain.Call,
+	inputName string,
+) (inputOutcome, string) {
+	for _, source := range binding.Sources {
+		switch source.Kind {
+		case wdl.SourceIndex:
+		case wdl.SourceCall:
+			return outcomeDeferred, ""
+		case wdl.SourceInput:
+			changed, detail := c.parameterChanged(ctx, source, refCall, inputName)
+			if changed {
+				return outcomeChanged, detail
+			}
+			if detail != "" {
+				return outcomeUnverifiable, detail
+			}
+		default:
+			return outcomeUnverifiable, fmt.Sprintf(
+				"input %q reads something this run cannot check against the reference", inputName)
+		}
+	}
+	return outcomeUnchanged, ""
 }
 
 // elementAt reads the value this instance receives for a binding, from the
@@ -362,22 +400,36 @@ func (c inputComparison) explains(binding wdl.ResolvedBinding, recordedValue str
 
 // producedBy reports whether the given call recorded the value as one of its
 // outputs — the evidence that an input really was fed by that call.
+// producedBy scans every instance of a call, not just the first: a consumer
+// instance is fed by the producer instance at its own position, so checking one
+// instance would read a rewiring into every fan-out that consumes another.
 func (c inputComparison) producedBy(callPath, value string) bool {
-	call, ok := findReferenceCall(c.reference, callPath)
-	if !ok {
-		return false
-	}
-	for _, out := range call.Outputs {
-		if valueString(out) == value {
-			return true
+	for _, instance := range findReferenceInstances(c.reference, callPath) {
+		for _, out := range instance.Outputs {
+			if valueString(out) == value {
+				return true
+			}
+			// A producer instance may emit a collection; the consumer then
+			// receives one of its members.
+			if items, ok := out.([]any); ok {
+				for _, item := range items {
+					if valueString(item) == value {
+						return true
+					}
+				}
+			}
 		}
 	}
 	return false
 }
 
 func (c inputComparison) hasRecordedOutputs(callPath string) bool {
-	call, ok := findReferenceCall(c.reference, callPath)
-	return ok && len(call.Outputs) > 0
+	for _, instance := range findReferenceInstances(c.reference, callPath) {
+		if len(instance.Outputs) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // parameterChanged compares one parameter leaf between the two submissions.
@@ -430,10 +482,43 @@ func presence(supplied bool) string {
 // lookupParam finds a parameter in a submission document, honouring the call
 // path an unbound subworkflow input must be qualified by.
 func (c inputComparison) lookupParam(params map[string]any, source wdl.ValueSource) (any, bool) {
+	var value any
+	var ok bool
 	if source.Scope != "" {
-		return lookupCallInput(params, source.Scope, source.Name)
+		value, ok = lookupCallInput(params, source.Scope, source.Name)
+	} else {
+		value, ok = lookupWorkflowInput(params, source.Name)
 	}
-	return lookupWorkflowInput(params, source.Name)
+	if !ok {
+		if source.Scope == "" && source.Field == "" {
+			// Left out of the submission, so the program's own default applies.
+			if def, hasDefault := c.inputDefaults[source.Name]; hasDefault {
+				return def, true
+			}
+		}
+		return nil, false
+	}
+	return navigateField(value, source.Field)
+}
+
+// navigateField walks a dotted path into a composite value. A path that does not
+// lead anywhere reports absence rather than an error: the leaf is then simply
+// one the comparison could not read, which the caller already handles.
+func navigateField(value any, field string) (any, bool) {
+	if field == "" {
+		return value, true
+	}
+	for _, step := range strings.Split(field, ".") {
+		object, ok := value.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		value, ok = object[step]
+		if !ok {
+			return nil, false
+		}
+	}
+	return value, true
 }
 
 // compareUnbound handles an input the call site does not write: the program

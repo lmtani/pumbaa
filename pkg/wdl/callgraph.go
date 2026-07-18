@@ -47,6 +47,10 @@ type CallNode struct {
 type CallGraph struct {
 	Workflow string
 	Nodes    map[string]*CallNode
+	// InputDefaults holds the top-level workflow's statically-known input
+	// defaults. An input the submission does not supply takes its default, so
+	// comparing such an input needs them.
+	InputDefaults map[string]string
 }
 
 // Dependencies returns the graph as a plain call → upstream calls map, the
@@ -105,6 +109,7 @@ func CallGraphFromDocument(doc *ast.Document, deps SourceSet) *CallGraph {
 		graph:      g,
 		subOutputs: make(map[string]map[string]string),
 	}
+	g.InputDefaults = staticDefaults(doc.Workflow.Inputs)
 	b.addWorkflow(doc, "", nil, 0)
 	b.rewireSubworkflowOutputs()
 	b.deriveDependencies()

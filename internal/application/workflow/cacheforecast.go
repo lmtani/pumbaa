@@ -139,6 +139,7 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		reference:       reference,
 		referenceParams: parseParameters(reference.SubmittedInputs),
 		pendingParams:   pendingInputs,
+		inputDefaults:   graph.InputDefaults,
 		specs:           specs,
 	}
 

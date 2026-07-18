@@ -32,6 +32,12 @@ type ValueSource struct {
 	Kind SourceKind
 	// Name is the workflow input's name, or the producing call's path.
 	Name string
+	// Field is the dotted path navigated inside a composite input, empty for a
+	// scalar one. It is part of the leaf's identity rather than a decoration on
+	// it: `settings` and `settings.reference` are different leaves, and letting
+	// them share an identity is how one call site's value silently answers for
+	// another's.
+	Field string
 	// Member is the output read from a producing call, for SourceCall.
 	Member string
 	// Literal carries the value, for SourceLiteral.
@@ -123,6 +129,15 @@ func literalText(expr ast.Expression) (string, bool) {
 	return "", false
 }
 
+// joinField extends a field path, keeping it a single value so a leaf's
+// identity cannot be split from the path that gives it meaning.
+func joinField(prefix, member string) string {
+	if prefix == "" {
+		return member
+	}
+	return prefix + "." + member
+}
+
 // isInstanceIndex reports a resolution that is exactly the fan-out position.
 func isInstanceIndex(b ResolvedBinding) bool {
 	return b.Complete && len(b.Sources) == 1 && b.Sources[0].Kind == SourceIndex
@@ -206,9 +221,16 @@ func (r *resolver) resolve(expr ast.Expression, depth int) ResolvedBinding {
 		if id, ok := e.Expression.(*ast.Identifier); ok && r.callNames[id.Name] {
 			return complete(ValueSource{Kind: SourceCall, Name: r.prefix + id.Name, Member: e.Member})
 		}
-		// A member of anything else — a struct field, say — is not something
-		// this walk models.
-		return incomplete("member access on a value that is not a call output")
+		// Otherwise it reads a field off a composite value. That resolves when
+		// the value behind it is a single input, since the field can then be
+		// navigated in the submission document; nesting works by recursion.
+		base := r.resolve(e.Expression, depth+1)
+		if !base.Complete || len(base.Sources) != 1 || base.Sources[0].Kind != SourceInput {
+			return incomplete("member access on a value that is neither a call output nor an input")
+		}
+		source := base.Sources[0]
+		source.Field = joinField(source.Field, e.Member)
+		return complete(source)
 
 	case *ast.TernaryOp:
 		// The condition's leaves matter as much as the branches': a predicate
@@ -223,7 +245,11 @@ func (r *resolver) resolve(expr ast.Expression, depth int) ResolvedBinding {
 		return r.merge(depth, e.Expression)
 
 	case *ast.IndexAccess:
-		// `xs[i]` where i is the iteration position is this instance's element.
+		// `xs[i]` where i is *exactly* the iteration position is this instance's
+		// element. Any other index — an offset, a computed position, a second
+		// dimension — selects an element this walk cannot name, and falls
+		// through to the generic merge, where the position shows up as a source
+		// the caller then has to treat as unevaluable.
 		// The collection itself still matters — a different collection yields a
 		// different element — so its leaves come along.
 		index := r.resolve(e.Index, depth+1)
