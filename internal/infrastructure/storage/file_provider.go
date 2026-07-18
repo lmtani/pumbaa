@@ -61,14 +61,15 @@ func (f *FileProvider) GetSize(ctx context.Context, path string) (int64, error) 
 	return 0, fmt.Errorf("no storage backend found for path: %s", path)
 }
 
-// GetContentHash returns a file's MD5 by delegating to the appropriate backend.
-func (f *FileProvider) GetContentHash(ctx context.Context, path string) (string, error) {
+// GetContentDigests returns a file's checksums by delegating to the appropriate
+// backend.
+func (f *FileProvider) GetContentDigests(ctx context.Context, path string) (ports.FileDigests, error) {
 	for _, backend := range f.backends {
 		if backend.CanHandle(path) {
-			return backend.GetContentHash(ctx, path)
+			return backend.GetContentDigests(ctx, path)
 		}
 	}
-	return "", fmt.Errorf("no storage backend found for path: %s", path)
+	return ports.FileDigests{}, fmt.Errorf("no storage backend found for path: %s", path)
 }
 
 // Ensure FileProvider implements the domain interface at compile time.

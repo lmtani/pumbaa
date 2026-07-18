@@ -12,6 +12,8 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/domain/wdlindex"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
+
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 // stubWDLRepo satisfies wdl.Repository for registry construction in tests.
@@ -127,8 +129,8 @@ type stubFileProvider struct{}
 func (stubFileProvider) Read(context.Context, string) (string, error)      { return "", nil }
 func (stubFileProvider) ReadBytes(context.Context, string) ([]byte, error) { return nil, nil }
 func (stubFileProvider) GetSize(context.Context, string) (int64, error)    { return 0, nil }
-func (stubFileProvider) GetContentHash(context.Context, string) (string, error) {
-	return "", nil
+func (stubFileProvider) GetContentDigests(context.Context, string) (ports.FileDigests, error) {
+	return ports.FileDigests{}, nil
 }
 
 func TestScaffoldAlwaysAvailablePreflightNeedsFileProvider(t *testing.T) {

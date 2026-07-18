@@ -3,9 +3,12 @@ package storage
 import (
 	"context"
 	"crypto/md5"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"io/fs"
 	"os"
@@ -68,23 +71,36 @@ func (l *LocalBackend) GetSize(_ context.Context, path string) (int64, error) {
 	return info.Size(), nil
 }
 
-// GetContentHash returns a local file's MD5 as lowercase hex, streaming the
-// file so large inputs do not have to fit in memory.
-func (l *LocalBackend) GetContentHash(_ context.Context, path string) (string, error) {
+// GetContentDigests returns a local file's checksums, streaming the file once
+// so large inputs never have to fit in memory and both digests come from a
+// single read.
+func (l *LocalBackend) GetContentDigests(_ context.Context, path string) (ports.FileDigests, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 		}
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return ports.FileDigests{}, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 
-	h := md5.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("failed to hash file: %w", err)
+	sum := md5.New() //nolint:gosec // reproducing Cromwell's hash, not a security primitive
+	crc := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	if _, err := io.Copy(io.MultiWriter(sum, crc), f); err != nil {
+		return ports.FileDigests{}, fmt.Errorf("failed to hash file: %w", err)
 	}
-	return hex.EncodeToString(h.Sum(nil)), nil
+	return ports.FileDigests{
+		MD5:    hex.EncodeToString(sum.Sum(nil)),
+		CRC32C: encodeCRC32C(crc.Sum32()),
+	}, nil
+}
+
+// encodeCRC32C renders a Castagnoli checksum the way GCS reports it and
+// Cromwell stores it: base64 of the four bytes, big-endian.
+func encodeCRC32C(sum uint32) string {
+	var b [4]byte
+	binary.BigEndian.PutUint32(b[:], sum)
+	return base64.StdEncoding.EncodeToString(b[:])
 }
 
 // Ensure LocalBackend implements StorageBackend at compile time.

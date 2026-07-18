@@ -70,11 +70,11 @@ func (f *fakeProvider) GetSize(ctx context.Context, path string) (int64, error) 
 	return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 }
 
-func (f *fakeProvider) GetContentHash(_ context.Context, path string) (string, error) {
+func (f *fakeProvider) GetContentDigests(_ context.Context, path string) (ports.FileDigests, error) {
 	if f.exist[path] {
-		return "d41d8cd98f00b204e9800998ecf8427e", nil
+		return ports.FileDigests{MD5: "d41d8cd98f00b204e9800998ecf8427e"}, nil
 	}
-	return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+	return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 }
 
 func TestScaffoldHandler(t *testing.T) {

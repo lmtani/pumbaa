@@ -17,14 +17,27 @@ type FileProvider interface {
 	// This is useful for calculating input sizes efficiently.
 	GetSize(ctx context.Context, path string) (int64, error)
 
-	// GetContentHash returns the file's MD5 as lowercase hex, which is what
-	// Cromwell records for cached inputs under content-based hashing. Cloud
-	// backends must read it from object metadata rather than downloading.
+	// GetContentDigests returns the file's content fingerprints. Cloud backends
+	// must read them from object metadata rather than downloading.
 	//
-	// It returns ErrHashUnavailable when the backend cannot produce an MD5 for
-	// this object — callers must degrade to "cannot determine" rather than
-	// treating that as a difference.
-	GetContentHash(ctx context.Context, path string) (string, error)
+	// Which digest matters depends on the Cromwell backend: local runs record
+	// an MD5, while GCS records a crc32c. Both are returned in one call because
+	// a single object-metadata read (or a single pass over a local file)
+	// produces them together.
+	GetContentDigests(ctx context.Context, path string) (FileDigests, error)
+}
+
+// FileDigests holds the content fingerprints of a file, in the exact encodings
+// Cromwell records in call-caching hashes. A field is empty when the backend
+// cannot supply it — a GCS composite object carries no MD5, for instance — and
+// callers must then degrade to "cannot determine" rather than treating the
+// absence as a difference.
+type FileDigests struct {
+	// MD5 is lowercase hex.
+	MD5 string
+	// CRC32C is the base64 of the 4-byte big-endian Castagnoli checksum, the
+	// form GCS reports and Cromwell stores verbatim.
+	CRC32C string
 }
 
 // FileSizeCache defines the interface for caching file sizes.
@@ -62,7 +75,7 @@ type StorageBackend interface {
 	// Uses metadata API for cloud storage to avoid data transfer costs.
 	GetSize(ctx context.Context, path string) (int64, error)
 
-	// GetContentHash returns the file's MD5 as lowercase hex, or
-	// ErrHashUnavailable when this backend cannot supply one.
-	GetContentHash(ctx context.Context, path string) (string, error)
+	// GetContentDigests returns the file's content fingerprints, or
+	// ErrHashUnavailable when this backend cannot supply any.
+	GetContentDigests(ctx context.Context, path string) (FileDigests, error)
 }

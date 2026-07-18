@@ -124,19 +124,23 @@ func TestLocalBackendGetContentHash(t *testing.T) {
 		t.Fatalf("writing file: %v", err)
 	}
 
-	got, err := NewLocalBackend().GetContentHash(context.Background(), path)
+	got, err := NewLocalBackend().GetContentDigests(context.Background(), path)
 	if err != nil {
-		t.Fatalf("GetContentHash() error: %v", err)
+		t.Fatalf("GetContentDigests() error: %v", err)
 	}
 	// md5("hello")
-	if want := "5d41402abc4b2a76b9719d911017c592"; got != want {
-		t.Errorf("GetContentHash() = %q, want %q", got, want)
+	if want := "5d41402abc4b2a76b9719d911017c592"; got.MD5 != want {
+		t.Errorf("MD5 = %q, want %q", got.MD5, want)
+	}
+	// crc32c("hello") as GCS reports it.
+	if want := "mnG7TA=="; got.CRC32C != want {
+		t.Errorf("CRC32C = %q, want %q", got.CRC32C, want)
 	}
 }
 
 func TestLocalBackendGetContentHashMissingFile(t *testing.T) {
-	_, err := NewLocalBackend().GetContentHash(context.Background(), filepath.Join(t.TempDir(), "nope"))
+	_, err := NewLocalBackend().GetContentDigests(context.Background(), filepath.Join(t.TempDir(), "nope"))
 	if !errors.Is(err, ports.ErrFileNotFound) {
-		t.Errorf("GetContentHash() error = %v, want ErrFileNotFound", err)
+		t.Errorf("GetContentDigests() error = %v, want ErrFileNotFound", err)
 	}
 }
