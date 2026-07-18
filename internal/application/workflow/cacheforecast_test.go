@@ -928,3 +928,84 @@ func TestForecastDetectsChangeAgainstCacheHitReference(t *testing.T) {
 		t.Errorf("IndexVcf: got %v, want rerun", p.Fate)
 	}
 }
+
+// A fan-out iterates one collection but its body routinely indexes others with
+// the same position. Substituting the iterated collection's element into every
+// per-instance input compares an input against a value from a different
+// collection, and reports a change that is not there.
+func TestForecastResolvesEachInstanceInputFromItsOwnCollection(t *testing.T) {
+	const src = `version 1.0
+
+workflow Top {
+  input {
+    Array[File] left
+    Array[File] right
+  }
+  scatter (i in range(length(left))) {
+    call Combine { input: a = left[i], b = right[i] }
+  }
+}
+
+task Combine {
+  input { File a File b }
+  command <<< echo ~{a} ~{b} >>>
+  output { File out = "o" }
+}
+`
+	const hashA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	const hashB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+	ref := &domain.Workflow{
+		ID: "ref", Name: "Top",
+		SubmittedInputs: `{"Top.left":["/l0"],"Top.right":["/r0"]}`,
+		Calls: map[string][]domain.Call{
+			"Top.Combine": {{
+				Name: "Top.Combine", Backend: "Local", Attempt: 1, ShardIndex: 0,
+				Inputs: map[string]any{"a": "/l0", "b": "/r0"},
+				Fingerprint: domain.CallFingerprint{
+					"command template": "IRRELEVANT",
+					"input: File a":    hashA,
+					"input: File b":    hashB,
+				},
+			}},
+		},
+	}
+
+	dir := t.TempDir()
+	wdlPath := filepath.Join(dir, "main.wdl")
+	if err := os.WriteFile(wdlPath, []byte(src), 0o600); err != nil {
+		t.Fatalf("writing wdl: %v", err)
+	}
+	inputPath := filepath.Join(dir, "inputs.json")
+	if err := os.WriteFile(inputPath, []byte(`{"Top.left":["/l0"],"Top.right":["/r0"]}`), 0o600); err != nil {
+		t.Fatalf("writing inputs: %v", err)
+	}
+
+	fp := &mockFileProvider{
+		readBytesFunc: func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		getDigestsFunc: func(_ context.Context, path string) (ports.FileDigests, error) {
+			// Each collection holds distinct content; mixing them up is exactly
+			// the defect this guards.
+			switch path {
+			case "/l0":
+				return ports.FileDigests{MD5: hashA}, nil
+			case "/r0":
+				return ports.FileDigests{MD5: hashB}, nil
+			}
+			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		},
+	}
+	env := forecastEnv{
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp),
+		wdlPath:   wdlPath,
+		inputPath: inputPath,
+	}
+
+	got := run(t, env)
+
+	p := predictionFor(t, got, "Combine")
+	if p.Fate != domain.FateReuse {
+		t.Errorf("Combine: got %v (%v), want reuse — both collections are unchanged",
+			p.Fate, p.Reasons)
+	}
+}

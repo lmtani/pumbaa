@@ -192,14 +192,81 @@ func (uc *CacheForecastUseCase) assessCall(
 		assessment.Reasons = append(assessment.Reasons, uc.compareDefinition(spec, refSpecs[node.Task], refCall, node, assumed)...)
 	}
 
-	inputs := comparison.compare(ctx, node, refCall)
-	assessment.Reasons = append(assessment.Reasons, inputs.Changed...)
-	assessment.ReuseBlocked = inputs.Blocked
-	for _, name := range inputs.Assumed {
-		*assumed = appendUnique(*assumed, name)
+	if node.Fanout != nil {
+		uc.assessInstances(ctx, node, comparison, &assessment, assumed)
+	} else {
+		inputs := comparison.compare(ctx, node, refCall)
+		assessment.Reasons = append(assessment.Reasons, inputs.Changed...)
+		assessment.ReuseBlocked = inputs.Blocked
+		for _, name := range inputs.Assumed {
+			*assumed = appendUnique(*assumed, name)
+		}
 	}
 	sort.Strings(assessment.Reasons)
 	return assessment
+}
+
+// assessInstances compares a fan-out call one instance at a time.
+//
+// The engine caches instances individually, so a verdict for the call as a whole
+// would be either too optimistic or too pessimistic whenever they disagree. The
+// instances are paired by position: the pending element at position k against
+// what the reference recorded for position k.
+func (uc *CacheForecastUseCase) assessInstances(
+	ctx context.Context,
+	node *wdl.CallNode,
+	comparison inputComparison,
+	assessment *domain.CallAssessment,
+	assumed *[]string,
+) {
+	instances := findReferenceInstances(comparison.reference, node.Name)
+	if len(instances) == 0 {
+		assessment.Unknown = "the reference run recorded no instances of this call"
+		return
+	}
+
+	// A collection that grew brings positions the reference never ran.
+	elements, _ := comparison.enumerateCollection(node.Fanout.Collection)
+	split := domain.InstanceSplit{Total: max(len(instances), len(elements))}
+
+	changed := make(map[string]bool)
+	for position, refInstance := range instances {
+		inputs := comparison.forInstance(position, node.Fanout.Collection).compare(ctx, node, refInstance)
+		for _, name := range inputs.Assumed {
+			*assumed = appendUnique(*assumed, name)
+		}
+		switch {
+		case inputs.Blocked != "":
+			// One unverifiable instance makes the whole split unknowable: the
+			// call cannot be called reused, and counting it as rerun would be a
+			// claim we did not establish.
+			assessment.ReuseBlocked = inputs.Blocked
+			assessment.Instances = nil
+			return
+		case len(inputs.Changed) > 0:
+			for _, reason := range inputs.Changed {
+				changed[reason] = true
+			}
+		default:
+			split.Reused++
+		}
+	}
+
+	if len(elements) > len(instances) {
+		changed[fmt.Sprintf("%d new instance(s) in the collection", len(elements)-len(instances))] = true
+	}
+
+	assessment.Instances = &split
+	if split.Reused < split.Total && len(changed) == 0 {
+		changed["some instances differ"] = true
+	}
+	// A split with instances on both sides is partial reuse, which the domain
+	// reads from Instances; only a wholly changed fan-out is a plain rerun.
+	if split.Reused == 0 {
+		for reason := range changed {
+			assessment.Reasons = append(assessment.Reasons, reason)
+		}
+	}
 }
 
 // compareDefinition checks the parts of a task's definition that feed the
@@ -474,6 +541,55 @@ func lookupCallByName(w *domain.Workflow, name string) (domain.Call, bool) {
 		return best, true
 	}
 	return domain.Call{}, false
+}
+
+// findReferenceInstances returns every instance the reference recorded for a
+// call, ordered by position. A call that did not fan out yields its single
+// instance, so callers need no special case.
+func findReferenceInstances(w *domain.Workflow, path string) []domain.Call {
+	segments := strings.Split(path, ".")
+	parent := w
+	for _, segment := range segments[:len(segments)-1] {
+		call, ok := lookupCallByName(parent, segment)
+		if !ok {
+			return nil
+		}
+		parent = call.SubWorkflowMetadata
+		if parent == nil {
+			return nil
+		}
+	}
+	return instancesByName(parent, segments[len(segments)-1])
+}
+
+// instancesByName collects a call's instances within one workflow, keeping the
+// latest attempt of each position.
+func instancesByName(w *domain.Workflow, name string) []domain.Call {
+	if w == nil {
+		return nil
+	}
+	for key, calls := range w.Calls {
+		if key != name && !strings.HasSuffix(key, "."+name) {
+			continue
+		}
+		best := make(map[int]domain.Call, len(calls))
+		for _, c := range calls {
+			if prev, ok := best[c.ShardIndex]; !ok || c.Attempt > prev.Attempt {
+				best[c.ShardIndex] = c
+			}
+		}
+		shards := make([]int, 0, len(best))
+		for shard := range best {
+			shards = append(shards, shard)
+		}
+		sort.Ints(shards)
+		out := make([]domain.Call, 0, len(shards))
+		for _, shard := range shards {
+			out = append(out, best[shard])
+		}
+		return out
+	}
+	return nil
 }
 
 // unresolvedCalls lists calls whose definition could not be read, so the user

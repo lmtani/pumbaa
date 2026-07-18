@@ -64,6 +64,11 @@ const (
 	// FateRerun means something in the call's own definition or direct inputs
 	// changed. This is a root cause the user can act on.
 	FateRerun
+	// FatePartialReuse means a fan-out call whose instances split: some match
+	// what the reference recorded and some do not. Folding it into rerun would
+	// overstate the cost, and into reuse would misreport the instances that
+	// really will run.
+	FatePartialReuse
 	// FateRerunDownstream means the call itself is unchanged but an upstream
 	// call will rerun. This is a *probability*, not a certainty: a rerun task
 	// may produce byte-identical outputs, in which case the cache still hits.
@@ -76,6 +81,8 @@ func (f PredictedFate) String() string {
 		return "reuse"
 	case FateRerun:
 		return "rerun"
+	case FatePartialReuse:
+		return "partial reuse"
 	case FateRerunDownstream:
 		return "rerun (downstream)"
 	default:
@@ -93,6 +100,8 @@ type CallPrediction struct {
 	// Cause names the upstream call responsible for a FateRerunDownstream,
 	// tracing to the root cause rather than the immediate parent.
 	Cause string
+	// Instances is the split of a fan-out call between reused and rerun.
+	Instances *InstanceSplit
 }
 
 // CacheForecast is the result of predicting a submission against a reference
@@ -137,6 +146,10 @@ type CallAssessment struct {
 	// Reasons, when non-empty, are why the call will rerun on its own account.
 	// This is a root cause: something in its own fingerprint changed.
 	Reasons []string
+	// Instances, when set, is the split of a fan-out call: how many of its
+	// instances match the reference, out of how many. Reasons being empty with
+	// a partial split is what distinguishes partial reuse from a full rerun.
+	Instances *InstanceSplit
 	// Unknown, when non-empty, means nothing could be established about the
 	// call at all. It poisons descendants, since a call downstream of an
 	// unknowable one is itself unknowable.
@@ -151,6 +164,16 @@ type CallAssessment struct {
 	// and could not finish checking".
 	ReuseBlocked string
 }
+
+// InstanceSplit is how a fan-out call divides between instances that match the
+// reference and instances that do not.
+type InstanceSplit struct {
+	Reused int
+	Total  int
+}
+
+// Partial reports a split with instances on both sides.
+func (s InstanceSplit) Partial() bool { return s.Reused > 0 && s.Reused < s.Total }
 
 // PredictCacheReuse propagates per-call assessments through the workflow's
 // dependency graph to a fate for every call.
@@ -190,6 +213,10 @@ func PredictCacheReuse(graph map[string][]string, assessments map[string]CallAss
 		case len(assessment.Reasons) > 0:
 			p.Fate = FateRerun
 			p.Reasons = assessment.Reasons
+			p.Instances = assessment.Instances
+		case assessment.Instances != nil && assessment.Instances.Partial():
+			p.Fate = FatePartialReuse
+			p.Instances = assessment.Instances
 		default:
 			p.Fate = FateReuse
 			// An upstream verdict overrides reuse: unknown wins over rerun,
@@ -201,7 +228,12 @@ func PredictCacheReuse(graph map[string][]string, assessments map[string]CallAss
 					p.Fate = FateUnknown
 					p.Cause = rootCause(u, up)
 					p.Reasons = []string{"upstream fate unknown"}
-				case FateRerun, FateRerunDownstream:
+				case FateRerun, FateRerunDownstream, FatePartialReuse:
+					// A partially reused producer is treated as a rerun by its
+					// consumers: which instances a consumer inherits depends on
+					// whether it is fanned out in step with the producer or
+					// gathers its outputs, and that distinction is not modelled
+					// yet. Blaming the whole consumer is the pessimistic side.
 					if p.Fate != FateUnknown {
 						p.Fate = FateRerunDownstream
 						p.Cause = rootCause(u, up)

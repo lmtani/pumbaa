@@ -23,10 +23,12 @@ type CallNode struct {
 	// DependsOn lists the calls whose outputs this call consumes, sorted and
 	// expressed as paths into the flattened graph.
 	DependsOn []string
-	// Scattered marks a call inside a scatter block. Its shard count is a
-	// runtime property, so a verdict for it covers the call as a whole and
-	// cannot speak to individual shards.
+	// Scattered marks a call inside a scatter block.
 	Scattered bool
+	// Fanout describes the scatter this call sits in, when it does. It is what
+	// lets a caller reason about the call's instances rather than about the
+	// call as a whole.
+	Fanout *Fanout
 	// Unresolved marks a call whose definition could not be read — an import
 	// missing from the sources, or a file that did not parse. Its task body is
 	// invisible, so a change to its command cannot be detected and callers
@@ -156,8 +158,59 @@ func (b *graphBuilder) addWorkflow(doc *ast.Document, prefix string, outer map[s
 	defaults := staticDefaults(wf.Inputs)
 
 	for _, c := range calls {
-		b.addCall(c, ns, localTasks, res, defaults, prefix, outer, depth)
+		// Each call is resolved in the scope of its own scatter, so the
+		// iteration variable reads as a per-instance value rather than as an
+		// unknown name.
+		scoped := *res
+		// The collection is followed outward like any other value: inside a
+		// subworkflow it is named in that workflow's terms, and enumerating it
+		// means reading the parameter the caller actually passed.
+		scoped.fanout = b.describeFanout(c.scatter, res, prefix, outer, defaults)
+		b.addCall(c, ns, localTasks, &scoped, defaults, prefix, outer, depth)
 	}
+}
+
+// describeFanout works out what a scatter iterates and how its body addresses
+// each iteration, which is what makes a call's instances individually
+// comparable.
+//
+// Two forms occur. `scatter (x in xs)` binds the element; `scatter (i in
+// range(length(xs)))` binds the position, and the body indexes the collection
+// with it. The second is why the collection has to be dug out of the range
+// expression rather than taken at face value.
+func (b *graphBuilder) describeFanout(
+	scatter *ast.Scatter,
+	res *resolver,
+	prefix string,
+	outer map[string]ResolvedBinding,
+	defaults map[string]string,
+) *Fanout {
+	if scatter == nil {
+		return nil
+	}
+	out := &Fanout{Variable: scatter.Variable}
+
+	expression := scatter.Expression
+	if collection, isIndex := rangeArgument(expression); isIndex {
+		out.VariableIsIndex = true
+		expression = collection
+	}
+	out.Collection = translate(res.resolve(expression, 0), prefix, outer, defaults)
+	return out
+}
+
+// rangeArgument unwraps `range(length(xs))` to xs, reporting whether the
+// expression is that idiom at all.
+func rangeArgument(expr ast.Expression) (ast.Expression, bool) {
+	outer, ok := expr.(*ast.FunctionCall)
+	if !ok || outer.Name != "range" || len(outer.Arguments) != 1 {
+		return nil, false
+	}
+	inner, ok := outer.Arguments[0].(*ast.FunctionCall)
+	if !ok || inner.Name != "length" || len(inner.Arguments) != 1 {
+		return nil, false
+	}
+	return inner.Arguments[0], true
 }
 
 // callName is how a call is addressed within its workflow: its alias when it
@@ -200,7 +253,7 @@ func (b *graphBuilder) addCall(
 			// A workflow we cannot read: keep it whole and opaque rather than
 			// pretending it has no calls.
 			b.graph.Nodes[path] = &CallNode{
-				Name: path, Task: target, Scattered: c.scattered,
+				Name: path, Task: target, Scattered: c.scatter != nil,
 				Unresolved: true, Subworkflow: true, Bindings: translated,
 			}
 			return
@@ -213,7 +266,8 @@ func (b *graphBuilder) addCall(
 	b.graph.Nodes[path] = &CallNode{
 		Name:       path,
 		Task:       target,
-		Scattered:  c.scattered,
+		Scattered:  c.scatter != nil,
+		Fanout:     res.fanout,
 		Unresolved: !b.taskIsVisible(namespace, target, ns, localTasks),
 		Bindings:   translated,
 	}
@@ -350,10 +404,28 @@ func subworkflowOutputs(wf *ast.Workflow, prefix string) map[string]string {
 	return out
 }
 
-// scopedCall is a call plus whether it sits inside a scatter block.
+// Fanout describes the scatter a call sits in.
+//
+// An instance of the call is identified by its position in Collection, which is
+// also how the engine orders them. Position matters and element identity does
+// not suffice: a value the body derives from the iteration index — a per-shard
+// label, say — is itself part of what the engine fingerprints, so an element
+// that moves to a different position produces a different fingerprint.
+type Fanout struct {
+	// Collection is the expression being iterated, resolved to its leaves.
+	Collection ResolvedBinding
+	// Variable is the name the body addresses each iteration by.
+	Variable string
+	// VariableIsIndex reports the `scatter (i in range(length(xs)))` form, where
+	// the variable is a position into Collection rather than an element of it.
+	// The other form, `scatter (x in xs)`, binds the element directly.
+	VariableIsIndex bool
+}
+
+// scopedCall is a call plus the scatter enclosing it, if any.
 type scopedCall struct {
-	call      *ast.Call
-	scattered bool
+	call    *ast.Call
+	scatter *ast.Scatter
 }
 
 // collectCalls gathers every call in a workflow, including those nested in
@@ -362,36 +434,39 @@ func collectCalls(wf *ast.Workflow) []scopedCall {
 	seen := make(map[*ast.Call]bool)
 	var out []scopedCall
 
-	add := func(c *ast.Call, scattered bool) {
+	add := func(c *ast.Call, scatter *ast.Scatter) {
 		if c == nil || seen[c] {
 			return
 		}
 		seen[c] = true
-		out = append(out, scopedCall{call: c, scattered: scattered})
+		out = append(out, scopedCall{call: c, scatter: scatter})
 	}
 
-	var walk func(body []ast.WorkflowElement, scattered bool)
-	walk = func(body []ast.WorkflowElement, scattered bool) {
+	// Nesting keeps the innermost scatter: that is the one whose index the body
+	// addresses, and reasoning about instances of an outer scatter would need a
+	// product of positions this does not model.
+	var walk func(body []ast.WorkflowElement, scatter *ast.Scatter)
+	walk = func(body []ast.WorkflowElement, scatter *ast.Scatter) {
 		for _, el := range body {
 			switch e := el.(type) {
 			case *ast.Call:
-				add(e, scattered)
+				add(e, scatter)
 			case *ast.Scatter:
-				walk(e.Body, true)
+				walk(e.Body, e)
 			case *ast.Conditional:
-				walk(e.Body, scattered)
+				walk(e.Body, scatter)
 			}
 		}
 	}
 
 	for _, c := range wf.Calls {
-		add(c, false)
+		add(c, nil)
 	}
 	for _, s := range wf.Scatters {
-		walk(s.Body, true)
+		walk(s.Body, s)
 	}
 	for _, c := range wf.Conditionals {
-		walk(c.Body, false)
+		walk(c.Body, nil)
 	}
 	return out
 }

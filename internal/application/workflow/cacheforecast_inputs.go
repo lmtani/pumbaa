@@ -39,6 +39,32 @@ type inputComparison struct {
 	referenceParams map[string]any
 	pendingParams   map[string]any
 	specs           map[string]wdl.TaskSpec
+	// instance narrows the comparison to one fan-out instance. Instances are
+	// matched by position, never by element identity: a program that weaves the
+	// iteration position into a value — a per-instance label — has that value
+	// fingerprinted, so an element that moves position produces a different
+	// fingerprint even though the element itself did not change.
+	instance *instanceContext
+}
+
+// instanceContext is the fan-out position being compared.
+//
+// It carries the position and nothing else on purpose. Which element that
+// position selects depends on the input: a body that scatters over one
+// collection routinely indexes *others* with the same position, so an element
+// captured once per instance would be substituted into inputs that read a
+// different collection entirely.
+type instanceContext struct {
+	index int
+	// fallback is the fan-out's own collection, used by an input that reads the
+	// iteration variable directly rather than indexing a collection of its own.
+	fallback wdl.ResolvedBinding
+}
+
+// forInstance narrows the comparison to one position of a fan-out.
+func (c inputComparison) forInstance(index int, fanout wdl.ResolvedBinding) inputComparison {
+	c.instance = &instanceContext{index: index, fallback: fanout}
+	return c
 }
 
 // inputOutcome is what could be established about a single input.
@@ -138,6 +164,10 @@ func (c inputComparison) compareBinding(
 	}
 	recordedValue := valueString(recorded)
 
+	if binding.PerInstance() {
+		return c.comparePerInstance(ctx, binding, refCall, inputName, recordedValue)
+	}
+
 	// When the pending value can be computed outright, comparing it against the
 	// recorded one settles the question on its own: equal values are equal
 	// whatever expression produced them, so how the input was wired does not
@@ -181,6 +211,77 @@ func (c inputComparison) compareBinding(
 		return outcomeDeferred, ""
 	}
 	return outcomeUnchanged, ""
+}
+
+// comparePerInstance settles an input whose value differs from one fan-out
+// instance to the next.
+//
+// Matching positionally is what makes this tractable: the position is the same
+// on both sides by construction, so a value derived from it — the common
+// per-instance label — needs no evaluation to be known unchanged. Only the
+// element itself has to be compared.
+func (c inputComparison) comparePerInstance(
+	ctx context.Context,
+	binding wdl.ResolvedBinding,
+	refCall domain.Call,
+	inputName, recordedValue string,
+) (inputOutcome, string) {
+	if c.instance == nil {
+		return outcomeUnverifiable, fmt.Sprintf(
+			"input %q varies per instance and the instances could not be enumerated", inputName)
+	}
+
+	if !readsElement(binding) {
+		// Built from the position and fixed text only. The position is shared
+		// with the reference instance at the same index, so the value is what
+		// was recorded without computing it.
+		return outcomeUnchanged, ""
+	}
+
+	element, ok := c.elementAt(binding)
+	if !ok {
+		return outcomeUnverifiable, fmt.Sprintf(
+			"input %q reads a collection element this run could not enumerate", inputName)
+	}
+	return c.compareValue(ctx, element, recordedValue, refCall, inputName)
+}
+
+// elementAt reads the value this instance receives for a binding, from the
+// collection that binding itself indexes.
+func (c inputComparison) elementAt(binding wdl.ResolvedBinding) (string, bool) {
+	collection := binding
+	if !readsOwnCollection(binding) {
+		// The iteration variable used directly: the element comes from the
+		// collection the fan-out iterates.
+		collection = c.instance.fallback
+	}
+	elements, ok := c.enumerateCollection(collection)
+	if !ok || c.instance.index >= len(elements) {
+		return "", false
+	}
+	return elements[c.instance.index], true
+}
+
+// readsOwnCollection reports whether the binding names the collection it
+// indexes, as `xs[i]` does and a bare iteration variable does not.
+func readsOwnCollection(binding wdl.ResolvedBinding) bool {
+	for _, s := range binding.Sources {
+		if s.Kind == wdl.SourceInput {
+			return true
+		}
+	}
+	return false
+}
+
+// readsElement reports whether a binding reads the collection element rather
+// than only the position.
+func readsElement(binding wdl.ResolvedBinding) bool {
+	for _, s := range binding.Sources {
+		if s.Kind == wdl.SourceElement {
+			return true
+		}
+	}
+	return false
 }
 
 // directValue computes the pending value of a binding when it does not depend
@@ -457,4 +558,43 @@ func isHex(s string) bool {
 		}
 	}
 	return true
+}
+
+// enumerateCollection reads the elements a fan-out iterates from the pending
+// submission. It succeeds only when the collection comes straight from a
+// parameter: anything computed has no value until the run happens.
+func (c inputComparison) enumerateCollection(collection wdl.ResolvedBinding) ([]string, bool) {
+	if !collection.Complete {
+		return nil, false
+	}
+	// Per-instance markers say *how* the value is selected, not where it comes
+	// from; the collection is the single parameter left once they are set aside.
+	var source wdl.ValueSource
+	found := 0
+	for _, s := range collection.Sources {
+		switch s.Kind {
+		case wdl.SourceElement, wdl.SourceIndex:
+		case wdl.SourceInput:
+			source = s
+			found++
+		default:
+			return nil, false
+		}
+	}
+	if found != 1 {
+		return nil, false
+	}
+	raw, ok := c.lookupParam(c.pendingParams, source)
+	if !ok {
+		return nil, false
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, valueString(item))
+	}
+	return out, true
 }

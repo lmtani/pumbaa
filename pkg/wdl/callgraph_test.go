@@ -684,10 +684,19 @@ task T {
 	}
 	bindings := g.Nodes["T"].Bindings
 
+	// The template text must never survive as a literal — that was the defect:
+	// "L~{idx}" being compared against the value a run produced from it.
 	label := bindings["label"]
-	if label.Complete {
-		t.Errorf("label resolved to %+v, but it interpolates a scatter variable "+
-			"and has no value fixed in the text", label.Sources)
+	for _, source := range label.Sources {
+		if source.Kind == SourceLiteral && strings.Contains(source.Literal, "~{") {
+			t.Errorf("label kept the template text as a literal: %q", source.Literal)
+		}
+	}
+	// Resolving it properly means seeing what it actually reads: the iteration
+	// position, which makes the value differ from one instance to the next.
+	if !label.PerInstance() {
+		t.Errorf("label = %+v, want a per-instance value — it interpolates the "+
+			"iteration variable", label.Sources)
 	}
 
 	// A string with no placeholder is still a literal, or the guard would have

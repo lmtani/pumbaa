@@ -96,6 +96,7 @@ func renderCacheForecast(p *presenter.Presenter, f *domain.CacheForecast) {
 	total := len(f.Calls)
 	reuse := counts[domain.FateReuse]
 	rerun := counts[domain.FateRerun]
+	partial := counts[domain.FatePartialReuse]
 	downstream := counts[domain.FateRerunDownstream]
 
 	// The headline separates what is certain from what merely might happen.
@@ -122,6 +123,17 @@ func renderCacheForecast(p *presenter.Presenter, f *domain.CacheForecast) {
 		p.Print("  Will run again (%d):\n", rerun)
 		for _, c := range f.RootCauses() {
 			p.Print("    ✗ %-24s %s\n", c.Call, strings.Join(c.Reasons, "; "))
+		}
+	}
+
+	if partial > 0 {
+		p.Newline()
+		p.Print("  Partly reused (%d) — a fan-out whose instances differ:\n", partial)
+		for _, c := range f.Calls {
+			if c.Fate == domain.FatePartialReuse && c.Instances != nil {
+				p.Print("    ◑ %-24s %d of %d instances reused\n",
+					c.Call, c.Instances.Reused, c.Instances.Total)
+			}
 		}
 	}
 
@@ -176,6 +188,12 @@ func forecastJSON(f *domain.CacheForecast) map[string]any {
 			"call": c.Call,
 			"fate": fateSlug(c.Fate),
 		}
+		if c.Instances != nil {
+			entry["instances"] = map[string]int{
+				"reused": c.Instances.Reused,
+				"total":  c.Instances.Total,
+			}
+		}
 		if len(c.Reasons) > 0 {
 			entry["reasons"] = c.Reasons
 		}
@@ -191,6 +209,7 @@ func forecastJSON(f *domain.CacheForecast) map[string]any {
 			"total":           len(f.Calls),
 			"reuse":           counts[domain.FateReuse],
 			"rerun":           counts[domain.FateRerun],
+			"partialReuse":    counts[domain.FatePartialReuse],
 			"rerunDownstream": counts[domain.FateRerunDownstream],
 			"undetermined":    counts[domain.FateUnknown],
 		},
@@ -205,6 +224,8 @@ func fateSlug(f domain.PredictedFate) string {
 		return "reuse"
 	case domain.FateRerun:
 		return "rerun"
+	case domain.FatePartialReuse:
+		return "partial_reuse"
 	case domain.FateRerunDownstream:
 		return "rerun_downstream"
 	default:

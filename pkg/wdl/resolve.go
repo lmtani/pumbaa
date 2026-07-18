@@ -1,6 +1,7 @@
 package wdl
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 
@@ -18,6 +19,12 @@ const (
 	// SourceCall is another call's output, which is what makes a cache miss
 	// cascade.
 	SourceCall
+	// SourceElement is one element of the enclosing fan-out's collection,
+	// picked by this instance's position.
+	SourceElement
+	// SourceIndex is the enclosing fan-out's position itself, which programs
+	// commonly weave into a per-instance label.
+	SourceIndex
 )
 
 // ValueSource is one leaf of the expression behind a call input.
@@ -69,6 +76,69 @@ func (b ResolvedBinding) Calls() []string {
 	return out
 }
 
+// resolveInterpolatedText reduces a string carrying placeholders to the leaves
+// it is built from: the literal fragments plus whatever each placeholder reads.
+//
+// Only a bare reference inside a placeholder is followed — the same discipline
+// the command digest applies — because anything richer would have to be parsed
+// back out of text this package no longer holds as an expression.
+func (r *resolver) resolveInterpolatedText(raw string, depth int) ResolvedBinding {
+	out := ResolvedBinding{Complete: true}
+	rest := raw
+	for {
+		loc := interpolationOpen.FindStringIndex(rest)
+		if loc == nil {
+			break
+		}
+		close := strings.IndexByte(rest[loc[1]:], '}')
+		if close < 0 {
+			return incomplete("unterminated interpolation in a string")
+		}
+		body := strings.TrimSpace(rest[loc[1] : loc[1]+close])
+		if !bareReferencePattern.MatchString(body) {
+			return incomplete("interpolates " + body + ", which is not a plain reference")
+		}
+		sub := r.resolveIdentifier(body, depth+1)
+		out.Sources = append(out.Sources, sub.Sources...)
+		if !sub.Complete {
+			return sub
+		}
+		rest = rest[loc[1]+close+1:]
+	}
+	return dedupeSources(out)
+}
+
+// interpolationOpen matches the start of either interpolation syntax.
+var interpolationOpen = regexp.MustCompile(`[~$]\{`)
+
+// literalText returns the raw string behind a literal expression.
+func literalText(expr ast.Expression) (string, bool) {
+	switch v := expr.(type) {
+	case *ast.StringLiteral:
+		return v.Value, true
+	case *ast.Literal:
+		s, ok := v.Value.(string)
+		return s, ok
+	}
+	return "", false
+}
+
+// isInstanceIndex reports a resolution that is exactly the fan-out position.
+func isInstanceIndex(b ResolvedBinding) bool {
+	return b.Complete && len(b.Sources) == 1 && b.Sources[0].Kind == SourceIndex
+}
+
+// PerInstance reports whether a value differs from one fan-out instance to the
+// next, which is what forces instances to be compared one by one.
+func (b ResolvedBinding) PerInstance() bool {
+	for _, s := range b.Sources {
+		if s.Kind == SourceElement || s.Kind == SourceIndex {
+			return true
+		}
+	}
+	return false
+}
+
 // pureFunctions is the allowlist of operators whose result is a deterministic
 // function of their arguments, so that "every argument unchanged" implies
 // "result unchanged".
@@ -100,6 +170,9 @@ type resolver struct {
 	callNames map[string]bool
 	// prefix qualifies call paths when resolving inside a subworkflow.
 	prefix string
+	// fanout is the scatter enclosing the call being resolved, if any. Its
+	// variable is what turns an ordinary identifier into a per-instance value.
+	fanout *Fanout
 }
 
 // resolve reduces an expression to its leaves, following intermediate
@@ -116,6 +189,12 @@ func (r *resolver) resolve(expr ast.Expression, depth int) ResolvedBinding {
 	case *ast.Literal, *ast.StringLiteral:
 		if v, ok := StaticValue(expr); ok {
 			return complete(ValueSource{Kind: SourceLiteral, Literal: v})
+		}
+		// The parser hands an interpolated string back as one literal with the
+		// placeholder text intact, so the references inside it have to be read
+		// out of the text rather than walked as expressions.
+		if raw, ok := literalText(expr); ok {
+			return r.resolveInterpolatedText(raw, depth)
 		}
 		return incomplete("literal of an unsupported type")
 
@@ -144,8 +223,20 @@ func (r *resolver) resolve(expr ast.Expression, depth int) ResolvedBinding {
 		return r.merge(depth, e.Expression)
 
 	case *ast.IndexAccess:
-		// An element of a collection. The index participates: selecting a
-		// different element yields a different value.
+		// `xs[i]` where i is the iteration position is this instance's element.
+		// The collection itself still matters — a different collection yields a
+		// different element — so its leaves come along.
+		index := r.resolve(e.Index, depth+1)
+		if isInstanceIndex(index) {
+			base := r.resolve(e.Expression, depth+1)
+			out := ResolvedBinding{
+				Sources:    append([]ValueSource{{Kind: SourceElement}}, base.Sources...),
+				Complete:   base.Complete,
+				Incomplete: base.Incomplete,
+			}
+			return dedupeSources(out)
+		}
+		// Any other index selects an element we cannot name.
 		return r.merge(depth, e.Expression, e.Index)
 
 	case *ast.FunctionCall:
@@ -190,6 +281,14 @@ func (r *resolver) resolve(expr ast.Expression, depth int) ResolvedBinding {
 // resolveIdentifier classifies a bare name: a workflow input, an intermediate
 // declaration to be followed, or something this walk does not model.
 func (r *resolver) resolveIdentifier(name string, depth int) ResolvedBinding {
+	if r.fanout != nil && name == r.fanout.Variable {
+		// The iteration variable: either the element itself, or the position
+		// the body then uses to index the collection.
+		if r.fanout.VariableIsIndex {
+			return complete(ValueSource{Kind: SourceIndex})
+		}
+		return complete(ValueSource{Kind: SourceElement})
+	}
 	if r.inputs[name] {
 		return complete(ValueSource{Kind: SourceInput, Name: name})
 	}
