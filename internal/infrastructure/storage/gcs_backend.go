@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -109,6 +110,38 @@ func (g *GCSBackend) GetSize(ctx context.Context, path string) (int64, error) {
 	}
 
 	return attrs.Size, nil
+}
+
+// GetContentHash returns a GCS object's MD5 as lowercase hex, read from object
+// metadata so no data is transferred.
+//
+// Composite objects — anything assembled by a parallel/resumable upload — carry
+// a crc32c but no MD5. Those report ErrHashUnavailable rather than a guess,
+// since claiming "changed" for an unhashable file would fabricate cache misses.
+func (g *GCSBackend) GetContentHash(ctx context.Context, path string) (string, error) {
+	bucket, object, err := g.parsePath(path)
+	if err != nil {
+		return "", err
+	}
+
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCS client: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
+	if err != nil {
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		}
+		return "", fmt.Errorf("failed to get object attributes: %w", err)
+	}
+
+	if len(attrs.MD5) == 0 {
+		return "", fmt.Errorf("%w: %s has no MD5 (composite object)", ports.ErrHashUnavailable, path)
+	}
+	return hex.EncodeToString(attrs.MD5), nil
 }
 
 // parsePath extracts bucket and object from a gs:// path.

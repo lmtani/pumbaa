@@ -127,6 +127,9 @@ type stubFileProvider struct{}
 func (stubFileProvider) Read(context.Context, string) (string, error)      { return "", nil }
 func (stubFileProvider) ReadBytes(context.Context, string) ([]byte, error) { return nil, nil }
 func (stubFileProvider) GetSize(context.Context, string) (int64, error)    { return 0, nil }
+func (stubFileProvider) GetContentHash(context.Context, string) (string, error) {
+	return "", nil
+}
 
 func TestScaffoldAlwaysAvailablePreflightNeedsFileProvider(t *testing.T) {
 	// scaffold reads a local WDL and needs nothing else, so it is always on.

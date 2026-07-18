@@ -63,9 +63,10 @@ func (m *mockWorkflowRepository) GetStatus(ctx context.Context, workflowID strin
 // mockFileProvider is a test double for ports.FileProvider.
 // Configure the *Func fields to control behavior in tests.
 type mockFileProvider struct {
-	readFunc      func(ctx context.Context, path string) (string, error)
-	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
-	getSizeFunc   func(ctx context.Context, path string) (int64, error)
+	readFunc           func(ctx context.Context, path string) (string, error)
+	readBytesFunc      func(ctx context.Context, path string) ([]byte, error)
+	getSizeFunc        func(ctx context.Context, path string) (int64, error)
+	getContentHashFunc func(ctx context.Context, path string) (string, error)
 }
 
 func (m *mockFileProvider) Read(ctx context.Context, path string) (string, error) {
@@ -87,6 +88,13 @@ func (m *mockFileProvider) GetSize(ctx context.Context, path string) (int64, err
 		return m.getSizeFunc(ctx, path)
 	}
 	return 0, nil
+}
+
+func (m *mockFileProvider) GetContentHash(ctx context.Context, path string) (string, error) {
+	if m.getContentHashFunc != nil {
+		return m.getContentHashFunc(ctx, path)
+	}
+	return "", nil
 }
 
 // =============================================================================

@@ -70,6 +70,13 @@ func (f *fakeProvider) GetSize(ctx context.Context, path string) (int64, error) 
 	return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 }
 
+func (f *fakeProvider) GetContentHash(_ context.Context, path string) (string, error) {
+	if f.exist[path] {
+		return "d41d8cd98f00b204e9800998ecf8427e", nil
+	}
+	return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+}
+
 func TestScaffoldHandler(t *testing.T) {
 	dir := chdir(t)
 	writeFile(t, dir, "main.wdl", sampleWDL)

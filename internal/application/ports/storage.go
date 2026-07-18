@@ -16,6 +16,15 @@ type FileProvider interface {
 	// GetSize returns the size in bytes of a file without reading its content.
 	// This is useful for calculating input sizes efficiently.
 	GetSize(ctx context.Context, path string) (int64, error)
+
+	// GetContentHash returns the file's MD5 as lowercase hex, which is what
+	// Cromwell records for cached inputs under content-based hashing. Cloud
+	// backends must read it from object metadata rather than downloading.
+	//
+	// It returns ErrHashUnavailable when the backend cannot produce an MD5 for
+	// this object — callers must degrade to "cannot determine" rather than
+	// treating that as a difference.
+	GetContentHash(ctx context.Context, path string) (string, error)
 }
 
 // FileSizeCache defines the interface for caching file sizes.
@@ -52,4 +61,8 @@ type StorageBackend interface {
 	// GetSize returns the size in bytes of a file without reading its content.
 	// Uses metadata API for cloud storage to avoid data transfer costs.
 	GetSize(ctx context.Context, path string) (int64, error)
+
+	// GetContentHash returns the file's MD5 as lowercase hex, or
+	// ErrHashUnavailable when this backend cannot supply one.
+	GetContentHash(ctx context.Context, path string) (string, error)
 }

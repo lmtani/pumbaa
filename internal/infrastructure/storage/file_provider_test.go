@@ -118,10 +118,11 @@ func TestNewFileProvider_DefaultBackends(t *testing.T) {
 
 // mockStorageBackend is a configurable mock for testing.
 type mockStorageBackend struct {
-	canHandleFunc func(path string) bool
-	readFunc      func(ctx context.Context, path string) (string, error)
-	readBytesFunc func(ctx context.Context, path string) ([]byte, error)
-	getSizeFunc   func(ctx context.Context, path string) (int64, error)
+	canHandleFunc      func(path string) bool
+	readFunc           func(ctx context.Context, path string) (string, error)
+	readBytesFunc      func(ctx context.Context, path string) ([]byte, error)
+	getSizeFunc        func(ctx context.Context, path string) (int64, error)
+	getContentHashFunc func(ctx context.Context, path string) (string, error)
 }
 
 func (m *mockStorageBackend) CanHandle(path string) bool {
@@ -150,6 +151,13 @@ func (m *mockStorageBackend) GetSize(ctx context.Context, path string) (int64, e
 		return m.getSizeFunc(ctx, path)
 	}
 	return 0, nil
+}
+
+func (m *mockStorageBackend) GetContentHash(ctx context.Context, path string) (string, error) {
+	if m.getContentHashFunc != nil {
+		return m.getContentHashFunc(ctx, path)
+	}
+	return "", nil
 }
 
 var _ ports.StorageBackend = (*mockStorageBackend)(nil)

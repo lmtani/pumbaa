@@ -13,6 +13,12 @@ var (
 	// missing" (the user's problem) from "I could not check" (credentials,
 	// network), which must not be treated the same way.
 	ErrFileNotFound = errors.New("file not found")
+
+	// ErrHashUnavailable reports that a backend cannot produce a content hash
+	// for a path that does exist — a GCS composite object carries no MD5, for
+	// instance. Callers must treat it as "cannot determine", never as "the
+	// file changed".
+	ErrHashUnavailable = errors.New("content hash unavailable")
 )
 
 // Batch logs errors

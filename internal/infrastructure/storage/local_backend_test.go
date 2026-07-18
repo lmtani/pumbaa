@@ -2,10 +2,13 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/lmtani/pumbaa/internal/application/ports"
 )
 
 func TestLocalBackend_CanHandle(t *testing.T) {
@@ -110,4 +113,30 @@ func TestLocalBackend_ReadBytes(t *testing.T) {
 			t.Error("ReadBytes() expected error for non-existent file, got nil")
 		}
 	})
+}
+
+// The forecast compares a candidate file's MD5 against the hash Cromwell
+// recorded, so this must be a plain content MD5 in lowercase hex.
+func TestLocalBackendGetContentHash(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "f.txt")
+	if err := os.WriteFile(path, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("writing file: %v", err)
+	}
+
+	got, err := NewLocalBackend().GetContentHash(context.Background(), path)
+	if err != nil {
+		t.Fatalf("GetContentHash() error: %v", err)
+	}
+	// md5("hello")
+	if want := "5d41402abc4b2a76b9719d911017c592"; got != want {
+		t.Errorf("GetContentHash() = %q, want %q", got, want)
+	}
+}
+
+func TestLocalBackendGetContentHashMissingFile(t *testing.T) {
+	_, err := NewLocalBackend().GetContentHash(context.Background(), filepath.Join(t.TempDir(), "nope"))
+	if !errors.Is(err, ports.ErrFileNotFound) {
+		t.Errorf("GetContentHash() error = %v, want ErrFileNotFound", err)
+	}
 }
