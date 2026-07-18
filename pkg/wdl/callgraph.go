@@ -3,7 +3,6 @@ package wdl
 import (
 	"slices"
 	"sort"
-	"strings"
 
 	"github.com/lmtani/pumbaa/pkg/wdl/ast"
 )
@@ -36,42 +35,9 @@ type CallNode struct {
 	// Subworkflow marks an unresolved call that targets a workflow rather than
 	// a task. Resolved subworkflows are flattened away and never appear.
 	Subworkflow bool
-	// Bindings records where each of the call's inputs gets its value, already
-	// translated into the top-level workflow's namespace.
-	Bindings map[string]CallBinding
-}
-
-// BindingKind is the origin of a call input's value.
-type BindingKind int
-
-const (
-	// BindingUnknown covers expressions this package will not evaluate —
-	// function calls, interpolations, arithmetic. A call with one of these is
-	// not statically comparable.
-	BindingUnknown BindingKind = iota
-	// BindingWorkflowInput means the value comes from a workflow-level input,
-	// so it can be read from the inputs JSON.
-	BindingWorkflowInput
-	// BindingLiteral means the value is fixed in the WDL text.
-	BindingLiteral
-	// BindingCall means the value is another call's output, which is what
-	// propagates a cache miss downstream.
-	BindingCall
-)
-
-// CallBinding describes where one call input's value comes from.
-type CallBinding struct {
-	Kind BindingKind
-	// Source names the workflow input or the producing call, depending on Kind.
-	Source string
-	// Member is the output name read from the producing call, for BindingCall.
-	Member string
-	// Literal carries the value when Kind is BindingLiteral.
-	Literal string
-	// Scope is the call path a BindingWorkflowInput belongs to when the value
-	// was not supplied by the enclosing call — an input the user must provide
-	// as "Top.Sub.name". Empty means a top-level workflow input.
-	Scope string
+	// Bindings records, per input, the leaves its value can be built from,
+	// already translated into the top-level workflow's namespace.
+	Bindings map[string]ResolvedBinding
 }
 
 // CallGraph is a workflow's calls, flattened across subworkflows and indexed
@@ -162,7 +128,7 @@ type afterEdge struct{ from, to string }
 // outer maps this workflow's input names to bindings already expressed in the
 // top-level namespace; it is how a value passed into a subworkflow is followed
 // through to the leaf that consumes it.
-func (b *graphBuilder) addWorkflow(doc *ast.Document, prefix string, outer map[string]CallBinding, depth int) {
+func (b *graphBuilder) addWorkflow(doc *ast.Document, prefix string, outer map[string]ResolvedBinding, depth int) {
 	if depth > maxImportDepth || doc.Workflow == nil {
 		return
 	}
@@ -174,40 +140,54 @@ func (b *graphBuilder) addWorkflow(doc *ast.Document, prefix string, outer map[s
 			localTasks[t.Name] = true
 		}
 	}
-	workflowInputs := declaredInputs(wf.Inputs)
+
+	calls := collectCalls(wf)
+	callNames := make(map[string]bool, len(calls))
+	for _, c := range calls {
+		callNames[callName(c.call)] = true
+	}
+
+	res := &resolver{
+		declarations: collectDeclarations(wf),
+		inputs:       declaredInputs(wf.Inputs),
+		callNames:    callNames,
+		prefix:       prefix,
+	}
 	defaults := staticDefaults(wf.Inputs)
 
-	for _, c := range collectCalls(wf) {
-		b.addCall(c, ns, localTasks, workflowInputs, defaults, prefix, outer, depth)
+	for _, c := range calls {
+		b.addCall(c, ns, localTasks, res, defaults, prefix, outer, depth)
 	}
+}
+
+// callName is how a call is addressed within its workflow: its alias when it
+// has one, otherwise the task name without any import namespace.
+func callName(c *ast.Call) string {
+	if c.Alias != "" {
+		return c.Alias
+	}
+	_, target := splitTarget(c.Target)
+	return target
 }
 
 func (b *graphBuilder) addCall(
 	c scopedCall,
 	ns map[string]string,
 	localTasks map[string]bool,
-	workflowInputs map[string]bool,
+	res *resolver,
 	defaults map[string]string,
 	prefix string,
-	outer map[string]CallBinding,
+	outer map[string]ResolvedBinding,
 	depth int,
 ) {
 	namespace, target := splitTarget(c.call.Target)
-	name := c.call.Alias
-	if name == "" {
-		name = target
-	}
-	path := prefix + name
+	path := prefix + callName(c.call)
 
-	// Bindings are first read in this workflow's own namespace, then followed
-	// outward so every node speaks in top-level terms.
-	local := make(map[string]CallBinding, len(c.call.Inputs))
+	// Each input is reduced to its leaves in this workflow's own terms, then
+	// followed outward so every node speaks in top-level terms.
+	translated := make(map[string]ResolvedBinding, len(c.call.Inputs))
 	for inputName, expr := range c.call.Inputs {
-		local[inputName] = classifyBinding(expr, name, workflowInputs)
-	}
-	translated := make(map[string]CallBinding, len(local))
-	for inputName, binding := range local {
-		translated[inputName] = b.translate(binding, prefix, outer, defaults)
+		translated[inputName] = translate(res.resolve(expr, 0), prefix, outer, defaults)
 	}
 
 	for _, after := range c.call.After {
@@ -292,57 +272,33 @@ func (b *graphBuilder) taskIsVisible(namespace, target string, ns map[string]str
 	return false
 }
 
-// translate expresses a binding read inside a workflow in the terms of the
-// top-level workflow.
-func (b *graphBuilder) translate(binding CallBinding, prefix string, outer map[string]CallBinding, defaults map[string]string) CallBinding {
-	switch binding.Kind {
-	case BindingCall:
-		// The producing call is a sibling, so it lives under the same prefix.
-		binding.Source = prefix + binding.Source
-		return binding
-	case BindingWorkflowInput:
-		if outer == nil {
-			return binding
-		}
-		if outerBinding, ok := outer[binding.Source]; ok {
-			// The enclosing call supplied this input: adopt its origin.
-			return outerBinding
-		}
-		if def, ok := defaults[binding.Source]; ok {
-			// Not supplied, but the subworkflow declares a default.
-			return CallBinding{Kind: BindingLiteral, Literal: def}
-		}
-		// Not supplied and no default: the user must provide it qualified by
-		// the call path, e.g. "Top.Sub.name".
-		binding.Scope = strings.TrimSuffix(prefix, ".")
-		return binding
-	default:
-		return binding
-	}
-}
-
 // rewireSubworkflowOutputs replaces dependencies on a flattened subworkflow
 // call with dependencies on the leaf that actually produces the value, so a
 // consumer does not inherit a rerun from an unrelated part of the subworkflow.
 func (b *graphBuilder) rewireSubworkflowOutputs() {
 	for _, node := range b.graph.Nodes {
 		for inputName, binding := range node.Bindings {
-			if binding.Kind != BindingCall {
-				continue
+			rewired := binding
+			for i, source := range rewired.Sources {
+				if source.Kind != SourceCall {
+					continue
+				}
+				outputs, ok := b.subOutputs[source.Name]
+				if !ok {
+					continue
+				}
+				producer, ok := outputs[source.Member]
+				if !ok {
+					// An output we could not trace to a leaf: the value's
+					// origin is unknown, so the binding stops being complete.
+					rewired.Complete = false
+					rewired.Incomplete = "reads an output of " + source.Name +
+						" that could not be traced to a producing call"
+					continue
+				}
+				rewired.Sources[i].Name = producer
 			}
-			outputs, ok := b.subOutputs[binding.Source]
-			if !ok {
-				continue
-			}
-			producer, ok := outputs[binding.Member]
-			if !ok {
-				// The output is not one we could trace to a leaf; without a
-				// producer the value's origin is unknown.
-				node.Bindings[inputName] = CallBinding{Kind: BindingUnknown, Source: binding.Source}
-				continue
-			}
-			binding.Source = producer
-			node.Bindings[inputName] = binding
+			node.Bindings[inputName] = dedupeSources(rewired)
 		}
 	}
 }
@@ -353,8 +309,10 @@ func (b *graphBuilder) deriveDependencies() {
 	for _, node := range b.graph.Nodes {
 		deps := make(map[string]bool)
 		for _, binding := range node.Bindings {
-			if binding.Kind == BindingCall && binding.Source != node.Name && b.graph.Nodes[binding.Source] != nil {
-				deps[binding.Source] = true
+			for _, producer := range binding.Calls() {
+				if producer != node.Name && b.graph.Nodes[producer] != nil {
+					deps[producer] = true
+				}
 			}
 		}
 		node.DependsOn = node.DependsOn[:0]
@@ -438,26 +396,39 @@ func collectCalls(wf *ast.Workflow) []scopedCall {
 	return out
 }
 
-// classifyBinding decides where a call input's value comes from, in the terms
-// of the workflow the call is written in.
-func classifyBinding(expr ast.Expression, callName string, workflowInputs map[string]bool) CallBinding {
-	if v, ok := StaticValue(expr); ok {
-		return CallBinding{Kind: BindingLiteral, Literal: v}
-	}
-	switch e := expr.(type) {
-	case *ast.Identifier:
-		if workflowInputs[e.Name] {
-			return CallBinding{Kind: BindingWorkflowInput, Source: e.Name}
-		}
-		// An identifier that is not a workflow input is a private declaration
-		// or a scatter variable, neither of which we evaluate.
-		return CallBinding{Kind: BindingUnknown, Source: e.Name}
-	case *ast.MemberAccess:
-		if id, ok := e.Expression.(*ast.Identifier); ok && id.Name != callName {
-			return CallBinding{Kind: BindingCall, Source: id.Name, Member: e.Member}
+// collectDeclarations gathers a workflow's intermediate declarations by name,
+// including those nested in scatter and conditional blocks, so an expression
+// that reads one can be followed to its own leaves.
+func collectDeclarations(wf *ast.Workflow) map[string]ast.Expression {
+	out := make(map[string]ast.Expression)
+	add := func(d *ast.Declaration) {
+		if d != nil && d.Expression != nil {
+			out[d.Name] = d.Expression
 		}
 	}
-	return CallBinding{Kind: BindingUnknown}
+	for _, d := range wf.Declarations {
+		add(d)
+	}
+	var walk func(body []ast.WorkflowElement)
+	walk = func(body []ast.WorkflowElement) {
+		for _, el := range body {
+			switch e := el.(type) {
+			case *ast.Declaration:
+				add(e)
+			case *ast.Scatter:
+				walk(e.Body)
+			case *ast.Conditional:
+				walk(e.Body)
+			}
+		}
+	}
+	for _, s := range wf.Scatters {
+		walk(s.Body)
+	}
+	for _, c := range wf.Conditionals {
+		walk(c.Body)
+	}
+	return out
 }
 
 func declaredInputs(decls []*ast.Declaration) map[string]bool {

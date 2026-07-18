@@ -62,6 +62,19 @@ task StatsVcf {
 }
 `
 
+// only returns the single source of a binding, failing when the binding is not
+// a simple one-leaf expression.
+func only(t *testing.T, b ResolvedBinding, what string) ValueSource {
+	t.Helper()
+	if !b.Complete {
+		t.Fatalf("%s: binding is incomplete (%s)", what, b.Incomplete)
+	}
+	if len(b.Sources) != 1 {
+		t.Fatalf("%s: expected one source, got %+v", what, b.Sources)
+	}
+	return b.Sources[0]
+}
+
 func TestBuildCallGraphResolvesChainedDependency(t *testing.T) {
 	g, err := BuildCallGraph([]byte(chainedWDL))
 	if err != nil {
@@ -216,16 +229,16 @@ func TestBuildCallGraphClassifiesInputBindings(t *testing.T) {
 	}
 
 	index := g.Nodes["IndexVcf"].Bindings
-	if b := index["input_vcf"]; b.Kind != BindingWorkflowInput || b.Source != "input_vcf" {
-		t.Errorf("IndexVcf.input_vcf binding = %+v, want workflow input input_vcf", b)
+	if s := only(t, index["input_vcf"], "IndexVcf.input_vcf"); s.Kind != SourceInput || s.Name != "input_vcf" {
+		t.Errorf("IndexVcf.input_vcf = %+v, want workflow input input_vcf", s)
 	}
 
 	stats := g.Nodes["StatsVcf"].Bindings
-	if b := stats["input_vcf"]; b.Kind != BindingCall || b.Source != "IndexVcf" {
-		t.Errorf("StatsVcf.input_vcf binding = %+v, want call IndexVcf", b)
+	if s := only(t, stats["input_vcf"], "StatsVcf.input_vcf"); s.Kind != SourceCall || s.Name != "IndexVcf" {
+		t.Errorf("StatsVcf.input_vcf = %+v, want call IndexVcf", s)
 	}
-	if b := stats["output_basename"]; b.Kind != BindingWorkflowInput {
-		t.Errorf("StatsVcf.output_basename binding = %+v, want workflow input", b)
+	if s := only(t, stats["output_basename"], "StatsVcf.output_basename"); s.Kind != SourceInput {
+		t.Errorf("StatsVcf.output_basename = %+v, want workflow input", s)
 	}
 }
 
@@ -294,8 +307,14 @@ task T {
 	if err != nil {
 		t.Fatalf("BuildCallGraph() error: %v", err)
 	}
-	if b := g.Nodes["T"].Bindings["image"]; b.Kind != BindingUnknown {
-		t.Errorf("concatenated expression binding = %+v, want unknown", b)
+	// A concatenation of an input and a literal is fully resolvable: both
+	// leaves are classified and the operator is deterministic.
+	b := g.Nodes["T"].Bindings["image"]
+	if !b.Complete {
+		t.Fatalf("concatenation should resolve: %s", b.Incomplete)
+	}
+	if len(b.Sources) != 2 {
+		t.Errorf("concatenation sources = %+v, want the literal and the input", b.Sources)
 	}
 }
 
@@ -405,17 +424,17 @@ func TestBuildCallGraphTranslatesBindingsThroughSubworkflow(t *testing.T) {
 
 	align := g.Nodes["AlignSample.Align"]
 	// `reads` is a subworkflow input, bound by the parent to its own input.
-	if b := align.Bindings["reads"]; b.Kind != BindingWorkflowInput || b.Source != "reads" {
-		t.Errorf("Align.reads = %+v, want the top-level workflow input reads", b)
+	if s := only(t, align.Bindings["reads"], "Align.reads"); s.Kind != SourceInput || s.Name != "reads" {
+		t.Errorf("Align.reads = %+v, want the top-level workflow input reads", s)
 	}
-	if b := align.Bindings["sample"]; b.Kind != BindingWorkflowInput || b.Source != "sample" {
-		t.Errorf("Align.sample = %+v, want the top-level workflow input sample", b)
+	if s := only(t, align.Bindings["sample"], "Align.sample"); s.Kind != SourceInput || s.Name != "sample" {
+		t.Errorf("Align.sample = %+v, want the top-level workflow input sample", s)
 	}
 
 	// Inside the subworkflow, Sort consumes Align — the edge must be qualified.
 	sort := g.Nodes["AlignSample.Sort"]
-	if b := sort.Bindings["bam"]; b.Kind != BindingCall || b.Source != "AlignSample.Align" {
-		t.Errorf("Sort.bam = %+v, want call AlignSample.Align", b)
+	if s := only(t, sort.Bindings["bam"], "Sort.bam"); s.Kind != SourceCall || s.Name != "AlignSample.Align" {
+		t.Errorf("Sort.bam = %+v, want call AlignSample.Align", s)
 	}
 	if !reflect.DeepEqual(sort.DependsOn, []string{"AlignSample.Align"}) {
 		t.Errorf("Sort.DependsOn = %v, want [AlignSample.Align]", sort.DependsOn)
@@ -433,8 +452,8 @@ func TestBuildCallGraphResolvesSubworkflowOutputToProducingLeaf(t *testing.T) {
 
 	report := g.Nodes["Report"]
 	// Cohort reads AlignSample.sorted, which the subworkflow declares as Sort.out.
-	if b := report.Bindings["bam"]; b.Kind != BindingCall || b.Source != "AlignSample.Sort" {
-		t.Errorf("Report.bam = %+v, want call AlignSample.Sort", b)
+	if s := only(t, report.Bindings["bam"], "Report.bam"); s.Kind != SourceCall || s.Name != "AlignSample.Sort" {
+		t.Errorf("Report.bam = %+v, want call AlignSample.Sort", s)
 	}
 	if !reflect.DeepEqual(report.DependsOn, []string{"AlignSample.Sort"}) {
 		t.Errorf("Report.DependsOn = %v, want only [AlignSample.Sort]", report.DependsOn)
@@ -564,11 +583,11 @@ workflow Top {
 	if run == nil {
 		t.Fatalf("Sub.Run missing; graph has %v", g.Names())
 	}
-	if b := run.Bindings["mode"]; b.Kind != BindingLiteral || b.Literal != "fast" {
-		t.Errorf("Run.mode = %+v, want the subworkflow default literal \"fast\"", b)
+	if s := only(t, run.Bindings["mode"], "Run.mode"); s.Kind != SourceLiteral || s.Literal != "fast" {
+		t.Errorf("Run.mode = %+v, want the subworkflow default literal \"fast\"", s)
 	}
-	if b := run.Bindings["data"]; b.Kind != BindingWorkflowInput || b.Source != "data" {
-		t.Errorf("Run.data = %+v, want the top-level input data", b)
+	if s := only(t, run.Bindings["data"], "Run.data"); s.Kind != SourceInput || s.Name != "data" {
+		t.Errorf("Run.data = %+v, want the top-level input data", s)
 	}
 }
 
@@ -607,9 +626,9 @@ workflow Top {
 	if err != nil {
 		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
 	}
-	b := g.Nodes["Sub.Run"].Bindings["mode"]
-	if b.Kind != BindingWorkflowInput || b.Source != "mode" || b.Scope != "Sub" {
-		t.Errorf("Run.mode = %+v, want workflow input mode scoped to Sub", b)
+	s := only(t, g.Nodes["Sub.Run"].Bindings["mode"], "Run.mode")
+	if s.Kind != SourceInput || s.Name != "mode" || s.Scope != "Sub" {
+		t.Errorf("Run.mode = %+v, want workflow input mode scoped to Sub", s)
 	}
 }
 
@@ -635,4 +654,48 @@ func specKeys(m map[string]TaskSpec) []string {
 	}
 	gosort.Strings(out)
 	return out
+}
+
+// The parser hands back an interpolated string as a single literal with the
+// placeholder text intact, so `"L~{idx}"` arrives verbatim. Treating that as a
+// fixed value compares a template against whatever a run produced from it, and
+// reports a change for every such input — a confident, wrong answer.
+func TestStaticValueRejectsInterpolatedStrings(t *testing.T) {
+	const src = `version 1.0
+
+workflow W {
+  input { Array[File] items String tag }
+
+  scatter (idx in range(length(items))) {
+    String label = "L~{idx}"
+    call T { input: label = label, fixed = "plain", tagged = tag }
+  }
+}
+
+task T {
+  input { String label String fixed String tagged }
+  command <<< echo ~{label} >>>
+  output { File out = "o" }
+}
+`
+	g, err := BuildCallGraph([]byte(src))
+	if err != nil {
+		t.Fatalf("BuildCallGraph() error: %v", err)
+	}
+	bindings := g.Nodes["T"].Bindings
+
+	label := bindings["label"]
+	if label.Complete {
+		t.Errorf("label resolved to %+v, but it interpolates a scatter variable "+
+			"and has no value fixed in the text", label.Sources)
+	}
+
+	// A string with no placeholder is still a literal, or the guard would have
+	// cost every genuine constant.
+	if s := only(t, bindings["fixed"], "T.fixed"); s.Kind != SourceLiteral || s.Literal != "plain" {
+		t.Errorf("fixed = %+v, want the literal \"plain\"", s)
+	}
+	if s := only(t, bindings["tagged"], "T.tagged"); s.Kind != SourceInput || s.Name != "tag" {
+		t.Errorf("tagged = %+v, want the workflow input tag", s)
+	}
 }

@@ -235,9 +235,10 @@ func TaskSpecsFromDocument(doc *ast.Document) map[string]TaskSpec {
 func StaticValue(e ast.Expression) (string, bool) {
 	switch v := e.(type) {
 	case *ast.Literal:
-		return literalString(v.Value)
+		s, ok := literalString(v.Value)
+		return staticString(s, ok)
 	case *ast.StringLiteral:
-		return v.Value, true
+		return staticString(v.Value, true)
 	case *ast.StringInterpolation:
 		// Only fully-literal interpolations are static; a single placeholder
 		// makes the whole string input-dependent.
@@ -271,3 +272,20 @@ func literalString(v any) (string, bool) {
 		return "", false
 	}
 }
+
+// staticString rejects a string that still carries an interpolation.
+//
+// The parser hands back an interpolated string as one literal with the
+// placeholder text intact — `"L~{idx}"` arrives verbatim rather than split into
+// parts. Taking that at face value would compare the *template* against the
+// value a run produced, reporting a change for every such input. A string that
+// contains a placeholder is by definition not fixed in the text.
+func staticString(s string, ok bool) (string, bool) {
+	if !ok || interpolationMarker.MatchString(s) {
+		return "", false
+	}
+	return s, true
+}
+
+// interpolationMarker matches either interpolation syntax, unescaped.
+var interpolationMarker = regexp.MustCompile(`(^|[^\\])[~$]\{`)
