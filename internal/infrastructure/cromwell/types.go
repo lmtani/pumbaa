@@ -80,9 +80,16 @@ type callMetadata struct {
 }
 
 // callCachingInfo contains caching information for a call.
+//
+// Hashes is the fingerprint Cromwell compares to decide a cache hit. It
+// arrives as a nested tree ("runtime attribute" → "docker" → hash) and is
+// flattened into the domain's CallFingerprint by the mapper.
 type callCachingInfo struct {
-	Hit    bool   `json:"hit"`
-	Result string `json:"result"`
+	Hit                      bool           `json:"hit"`
+	Result                   string         `json:"result"`
+	Hashes                   map[string]any `json:"hashes"`
+	AllowResultReuse         bool           `json:"allowResultReuse"`
+	EffectiveCallCachingMode string         `json:"effectiveCallCachingMode"`
 }
 
 // executionEventMeta represents an execution event in metadata.

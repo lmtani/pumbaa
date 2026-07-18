@@ -139,6 +139,11 @@ func mapCallMetadataToCall(callName string, call *callMetadata) workflow.Call {
 	if call.CallCaching != nil {
 		c.CacheHit = call.CallCaching.Hit
 		c.CacheResult = call.CallCaching.Result
+		c.CacheMode = call.CallCaching.EffectiveCallCachingMode
+		c.AllowResultReuse = call.CallCaching.AllowResultReuse
+		if len(call.CallCaching.Hashes) > 0 {
+			c.Fingerprint = workflow.FlattenHashes(call.CallCaching.Hashes)
+		}
 	}
 
 	// Map execution events
