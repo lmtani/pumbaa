@@ -78,7 +78,7 @@ func forecastFixture(wdlSource, backend string) *domain.Workflow {
 	}
 	fp := func(task, inputHash string) domain.CallFingerprint {
 		return domain.CallFingerprint{
-			"command template":              specs[task].CommandHash(),
+			"command template":              commandHashOf(specs[task]),
 			"runtime attribute: docker":     "DOCKERHASH",
 			"input: File input_vcf":         inputHash,
 			"input: String output_basename": "BASENAME",
@@ -102,6 +102,12 @@ func forecastFixture(wdlSource, backend string) *domain.Workflow {
 			}},
 		},
 	}
+}
+
+// commandHashOf is the hash a reference run would have recorded for a task.
+func commandHashOf(spec wdl.TaskSpec) string {
+	h, _ := spec.CommandHash()
+	return h
 }
 
 // forecastEnv wires the use case over a temp dir holding the WDL and inputs.
@@ -132,14 +138,14 @@ func newForecastEnv(t *testing.T, wdlSource string, inputs map[string]any, refer
 		readBytesFunc: func(_ context.Context, path string) ([]byte, error) {
 			return os.ReadFile(path)
 		},
-		getContentHashFunc: func(_ context.Context, path string) (string, error) {
+		getDigestsFunc: func(_ context.Context, path string) (ports.FileDigests, error) {
 			if h, ok := hashes[path]; ok {
 				if h == "" {
-					return "", fmt.Errorf("%w: %s", ports.ErrHashUnavailable, path)
+					return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrHashUnavailable, path)
 				}
-				return h, nil
+				return ports.FileDigests{MD5: h}, nil
 			}
-			return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 		},
 	}
 	reader := &stubMetadataReader{workflow: reference}
@@ -149,6 +155,24 @@ func newForecastEnv(t *testing.T, wdlSource string, inputs map[string]any, refer
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}
+}
+
+// newForecastEnvWithDigests is newForecastEnv with full control over the
+// digests a backend reports, for exercising the GCS crc32c path.
+func newForecastEnvWithDigests(t *testing.T, wdlSource string, inputs map[string]any, reference *domain.Workflow, digests map[string]ports.FileDigests) forecastEnv {
+	t.Helper()
+	env := newForecastEnv(t, wdlSource, inputs, reference, nil)
+	fp := &mockFileProvider{
+		readBytesFunc: func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		getDigestsFunc: func(_ context.Context, path string) (ports.FileDigests, error) {
+			if d, ok := digests[path]; ok {
+				return d, nil
+			}
+			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		},
+	}
+	env.uc = NewCacheForecastUseCase(&stubMetadataReader{workflow: reference}, nil, nil, fp)
+	return env
 }
 
 type stubMetadataReader struct{ workflow *domain.Workflow }
@@ -524,7 +548,7 @@ func subReference(readsHash string) *domain.Workflow {
 			spec = parentSpecs[task]
 		}
 		out := domain.CallFingerprint{
-			"command template":          spec.CommandHash(),
+			"command template":          commandHashOf(spec),
 			"runtime attribute: docker": "D",
 		}
 		for k, v := range entries {
@@ -602,11 +626,11 @@ func newSubEnv(t *testing.T, parentSource, subSource string, inputs map[string]a
 
 	fp := &mockFileProvider{
 		readBytesFunc: func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
-		getContentHashFunc: func(_ context.Context, path string) (string, error) {
+		getDigestsFunc: func(_ context.Context, path string) (ports.FileDigests, error) {
 			if h, ok := hashes[path]; ok {
-				return h, nil
+				return ports.FileDigests{MD5: h}, nil
 			}
-			return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 		},
 	}
 	return forecastEnv{
@@ -712,8 +736,10 @@ func TestForecastWarnsWhenSubworkflowSourceMissing(t *testing.T) {
 		t.Fatalf("writing inputs: %v", err)
 	}
 	fp := &mockFileProvider{
-		readBytesFunc:      func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
-		getContentHashFunc: func(_ context.Context, _ string) (string, error) { return "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", nil },
+		readBytesFunc: func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		getDigestsFunc: func(_ context.Context, _ string) (ports.FileDigests, error) {
+			return ports.FileDigests{MD5: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, nil
+		},
 	}
 	env := forecastEnv{
 		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}, nil, nil, fp),
@@ -734,5 +760,115 @@ func TestForecastWarnsWhenSubworkflowSourceMissing(t *testing.T) {
 	// And the consumer downstream of it must not be claimed as reuse.
 	if p := predictionFor(t, got, "Report"); p.Fate != domain.FateUnknown {
 		t.Errorf("Report: got %v, want undetermined downstream of an unreadable subworkflow", p.Fate)
+	}
+}
+
+// --- GCS hashing and derived inputs ---------------------------------------
+
+// Cromwell records a crc32c for GCS inputs, not an MD5. Comparing only MD5s
+// made every GCP call undetermined, which is the whole feature failing on the
+// backend most users are on.
+func TestForecastComparesGCSFilesByCRC32C(t *testing.T) {
+	const gcsCRC = "tBGf4Q==" // as captured from a real GoogleBatch run
+	ref := forecastFixture(forecastWDL, "PAPIv2")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		if _, ok := calls[0].Fingerprint["input: File input_vcf"]; ok {
+			calls[0].Fingerprint["input: File input_vcf"] = gcsCRC
+		}
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "gs://bucket/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "sample",
+	}
+	env := newForecastEnvWithDigests(t, forecastWDL, inputs, ref,
+		map[string]ports.FileDigests{"gs://bucket/in.vcf.gz": {CRC32C: gcsCRC}})
+
+	got := run(t, env)
+
+	if p := predictionFor(t, got, "IndexVcf"); p.Fate != domain.FateReuse {
+		t.Errorf("IndexVcf: got %v (%v), want reuse via crc32c", p.Fate, p.Reasons)
+	}
+}
+
+func TestForecastDetectsChangedGCSFileByCRC32C(t *testing.T) {
+	ref := forecastFixture(forecastWDL, "PAPIv2")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		if _, ok := calls[0].Fingerprint["input: File input_vcf"]; ok {
+			calls[0].Fingerprint["input: File input_vcf"] = "tBGf4Q=="
+		}
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "gs://bucket/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "sample",
+	}
+	env := newForecastEnvWithDigests(t, forecastWDL, inputs, ref,
+		map[string]ports.FileDigests{"gs://bucket/in.vcf.gz": {CRC32C: "ZZZZZZ=="}})
+
+	got := run(t, env)
+
+	if p := predictionFor(t, got, "IndexVcf"); p.Fate != domain.FateRerun {
+		t.Errorf("IndexVcf: got %v, want rerun for a different crc32c", p.Fate)
+	}
+}
+
+// A value the WDL computes — a disk size derived from an input's size — must
+// not make the whole call undetermined. Real pipelines have one on every task,
+// and poisoning on it reported an entire production workflow as unknowable.
+func TestForecastDoesNotPoisonCallOnDerivedInput(t *testing.T) {
+	ref := forecastFixture(forecastWDL, "Local")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		calls[0].Fingerprint["input: Int disk_size"] = "DERIVED"
+		calls[0].Inputs["disk_size"] = 250
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "/data/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "sample",
+	}
+	env := newForecastEnv(t, forecastWDL, inputs, ref,
+		map[string]string{"/data/in.vcf.gz": refVcfHash})
+
+	got := run(t, env)
+
+	if p := predictionFor(t, got, "IndexVcf"); p.Fate != domain.FateReuse {
+		t.Errorf("IndexVcf: got %v (%v), want reuse — a computed input must not poison",
+			p.Fate, p.Reasons)
+	}
+	joined := strings.Join(got.Warnings, " | ")
+	if !strings.Contains(joined, "disk_size") {
+		t.Errorf("the assumption should be reported, warnings = %v", got.Warnings)
+	}
+}
+
+// Inputs the reference did not fingerprint play no part in the cache key, so
+// comparing them would invent differences Cromwell never sees.
+func TestForecastIgnoresInputsAbsentFromTheFingerprint(t *testing.T) {
+	ref := forecastFixture(forecastWDL, "Local")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		// Present as an input, absent from the fingerprint.
+		calls[0].Inputs["not_hashed"] = "whatever"
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "/data/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "sample",
+	}
+	env := newForecastEnv(t, forecastWDL, inputs, ref,
+		map[string]string{"/data/in.vcf.gz": refVcfHash})
+
+	got := run(t, env)
+
+	if p := predictionFor(t, got, "IndexVcf"); p.Fate != domain.FateReuse {
+		t.Errorf("IndexVcf: got %v (%v), want reuse", p.Fate, p.Reasons)
 	}
 }

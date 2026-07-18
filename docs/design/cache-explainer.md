@@ -226,26 +226,53 @@ fingerprints, which is sound because of two properties the experiments proved:
 
 - **The command template is hashed pre-substitution**, so the hash depends only
   on the WDL text. Better still, the hash is *reproducible*: it is the MD5 of
-  the template with each line trimmed, rejoined with newlines, and `~{expr}`
-  rewritten to `${expr}`. That formula matches every task in the captured
-  fixtures, so a command change is detectable by computing the hash locally and
-  comparing it against the reference's fingerprint — **without needing the
-  reference run's WDL at all**. That matters more than it first appears: a
-  run's metadata carries only the top-level workflow source, never its imported
-  files, so text comparison could never have covered tasks inside a
-  subworkflow.
+  the template **dedented by its common leading whitespace** — relative
+  indentation preserved — with `~{expr}` rewritten to `${expr}`. So a command
+  change is detectable by computing the hash locally and comparing it against
+  the reference's fingerprint, **without needing the reference run's WDL at
+  all**. That matters more than it first appears: a run's metadata carries only
+  the top-level workflow source, never its imported files, so text comparison
+  could never have covered tasks inside a subworkflow.
 
-  The normalisation is not a documented contract, so the forecast calibrates
-  before trusting it: if no call's computed hash reproduces its recorded one,
-  the axis is dropped with a warning rather than reporting every task as
-  changed.
+  Two guards, because the normalisation is not a documented contract. The
+  forecast calibrates per run: if no call's computed hash reproduces its
+  recorded one, the axis is dropped entirely with a warning. And per task, the
+  hash is only trusted when every placeholder is a bare reference, optionally
+  behind a `sep=`/`default=`/`true=`/`false=` option.
+
+  That second guard exists because Cromwell does not hash placeholder text
+  verbatim — it re-serialises the parsed expression. For a bare reference the
+  round-trip is the identity; for `~{if defined(x) then "-f " + x else ""}` the
+  canonical form is unknown to us, and guessing produced a confident, wrong
+  "command changed". Measured across a 15-task production pipeline the
+  predicate never admitted a command whose hash it then got wrong, declining
+  only two it would in fact have reproduced.
 - **File inputs are hashed by content**, and the reference run's metadata
-  records those hashes. So the candidate file's MD5 — from GCS object metadata
-  without downloading, or computed locally — is directly comparable.
+  records those hashes — but *which* content hash depends on the backend. A
+  local Cromwell records a 32-character MD5; **GCS records a crc32c**, as the
+  base64 of four bytes (`tBGf4Q==`). The algorithm is therefore chosen from the
+  shape of the recorded hash rather than assumed, and both backends supply both
+  digests from a single metadata read or file pass. Comparing only MD5s made
+  every call on GCP undetermined — the feature failing entirely on the backend
+  most users are on.
 
-Comparison axes, per call: command template text, docker image, and every
-input's value (files by content hash, scalars by value). A call whose own
-fingerprint is unchanged but whose upstream will rerun is a cascade.
+Comparison axes, per call: command template, docker image, and every input's
+value (files by content hash, scalars by value). A call whose own fingerprint is
+unchanged but whose upstream will rerun is a cascade.
+
+Only inputs the reference actually fingerprinted are compared. A task receives
+more than that — Cromwell exposes some private declarations as extra inputs —
+and comparing those invents differences the cache never sees.
+
+**A value the WDL computes is assumed to follow the values it derives from.**
+Real tasks almost all carry a `disk_size` computed from an input's size, which
+cannot be evaluated statically. Treating that as unknowable poisoned the call,
+and with one on every task it reported an entire production pipeline as
+undetermined — technically honest, practically useless. Such a value is a
+deterministic function of the task definition and the other inputs, both of
+which *are* compared, so it is assumed to follow them and the assumption is
+reported. A File whose path cannot even be resolved is different: that is
+genuine uncertainty about data, and still withholds a verdict.
 
 ### Subworkflows and imports
 

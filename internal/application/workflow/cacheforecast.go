@@ -12,6 +12,7 @@ package workflow
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,7 +30,10 @@ import (
 // md5HexLength is the length of the MD5 hashes Cromwell records for files under
 // content-based hashing. A reference hash of any other length came from a
 // different algorithm (a GCS crc32c, say) and must not be compared to an MD5.
-const md5HexLength = 32
+const (
+	md5HexLength    = 32
+	crc32ByteLength = 4
+)
 
 // CacheForecastUseCase predicts which calls of a pending submission will be
 // served from the call cache.
@@ -134,9 +138,10 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 
 	changed := make(map[string][]string)
 	unknown := make(map[string]string)
+	var assumed []string
 	for _, name := range graph.Names() {
 		node := graph.Nodes[name]
-		reasons, why := uc.assessCall(ctx, node, specs, refSpecs, reference, pendingInputs, forecast)
+		reasons, why := uc.assessCall(ctx, node, specs, refSpecs, reference, pendingInputs, &assumed)
 		if why != "" {
 			unknown[name] = why
 			continue
@@ -144,6 +149,13 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		if len(reasons) > 0 {
 			changed[name] = reasons
 		}
+	}
+
+	if len(assumed) > 0 {
+		sort.Strings(assumed)
+		forecast.Warnings = append(forecast.Warnings, fmt.Sprintf(
+			"not compared, and assumed unchanged: %s",
+			strings.Join(assumed, ", ")))
 	}
 
 	forecast.Calls = domain.PredictCacheReuse(graph.Dependencies(), changed, unknown)
@@ -158,7 +170,7 @@ func (uc *CacheForecastUseCase) assessCall(
 	specs, refSpecs map[string]wdl.TaskSpec,
 	reference *domain.Workflow,
 	pendingInputs map[string]any,
-	forecast *domain.CacheForecast,
+	assumed *[]string,
 ) (reasons []string, why string) {
 	if node.Unresolved {
 		if node.Subworkflow {
@@ -185,7 +197,15 @@ func (uc *CacheForecastUseCase) assessCall(
 		// top-level workflow, so a task inside an imported subworkflow has no
 		// reference text to compare with — but it always has a fingerprint.
 		recordedCommand := refCall.Fingerprint["command template"]
-		if uc.commandHashTrusted && recordedCommand != "" && spec.CommandHash() != recordedCommand {
+		computed, canonical := spec.CommandHash()
+		switch {
+		case !uc.commandHashTrusted || recordedCommand == "":
+		case !canonical:
+			// The command interpolates an expression whose canonical form we
+			// cannot reproduce, so a mismatch would be our rendering, not a
+			// change. Skipping is the only honest option.
+			*assumed = appendUnique(*assumed, node.Task+" (command)")
+		case computed != recordedCommand:
 			reasons = append(reasons, "command template changed")
 		}
 		if refSpec, ok := refSpecs[node.Task]; ok {
@@ -195,7 +215,7 @@ func (uc *CacheForecastUseCase) assessCall(
 		}
 	}
 
-	inputReasons, inputWhy := uc.compareInputs(ctx, node, refCall, pendingInputs, specs)
+	inputReasons, inputWhy := uc.compareInputs(ctx, node, refCall, pendingInputs, specs, assumed)
 	if inputWhy != "" {
 		return nil, inputWhy
 	}
@@ -218,33 +238,36 @@ func (uc *CacheForecastUseCase) compareInputs(
 	refCall domain.Call,
 	pendingInputs map[string]any,
 	specs map[string]wdl.TaskSpec,
+	assumed *[]string,
 ) (reasons []string, why string) {
-	names := make([]string, 0, len(refCall.Inputs))
-	for n := range refCall.Inputs {
-		names = append(names, n)
-	}
-	for n := range node.Bindings {
-		if _, ok := refCall.Inputs[n]; !ok {
-			names = append(names, n)
-		}
-	}
-	sort.Strings(names)
+	// Only inputs the reference actually fingerprinted can affect reuse. A task
+	// may receive more than that (Cromwell renames some private declarations),
+	// and comparing those would invent differences the cache never sees.
+	names := fingerprintInputNames(refCall.Fingerprint)
 
 	for _, inputName := range names {
 		binding, bound := node.Bindings[inputName]
-		switch {
-		case bound && binding.Kind == wdl.BindingCall:
+		if bound && binding.Kind == wdl.BindingCall {
 			// Handled by cascade propagation, not here.
 			continue
-		case bound && binding.Kind == wdl.BindingUnknown:
-			return nil, fmt.Sprintf("input %q is not statically resolvable", inputName)
 		}
 
 		pending, ok := uc.pendingValue(binding, node, inputName, pendingInputs, specs)
 		if !ok {
-			// An input the reference recorded but this submission cannot
-			// resolve statically (a private declaration, a scatter variable).
-			return nil, fmt.Sprintf("input %q has no resolvable value", inputName)
+			// The value is computed by the WDL rather than supplied — a disk
+			// size derived from an input's size, say. It is a deterministic
+			// function of the task definition and the other inputs, both of
+			// which are compared, so it is assumed to follow them rather than
+			// being treated as unknowable. Assumptions are reported, because
+			// editing such an expression without touching the command would
+			// slip past.
+			_, declaredType := declaredTypeOf(refCall.Fingerprint, inputName)
+			if strings.Contains(declaredType, "File") {
+				// A file we cannot even name is genuine uncertainty about data.
+				return nil, fmt.Sprintf("input %q has no resolvable path", inputName)
+			}
+			*assumed = appendUnique(*assumed, inputName)
+			continue
 		}
 
 		hashKey, isFile := fileHashKey(refCall.Fingerprint, inputName)
@@ -315,14 +338,19 @@ func (uc *CacheForecastUseCase) pendingValue(
 }
 
 // sameFile reports whether the candidate path holds the same bytes the
-// reference run hashed. Comparison only happens when the reference hash is an
-// MD5; anything else means the backend hashed differently and the answer is
-// genuinely unknown.
+// reference run hashed.
+//
+// Which digest to compare is decided by the shape of the recorded hash rather
+// than by the backend: a local Cromwell records a 32-character MD5, while GCS
+// records a crc32c as base64 of four bytes. Reading it from the hash itself
+// means a deployment that hashes differently is detected rather than assumed.
 func (uc *CacheForecastUseCase) sameFile(ctx context.Context, path, referenceHash string) (bool, error) {
-	if len(referenceHash) != md5HexLength {
-		return false, errors.New("reference hash is not an MD5, cannot compare content")
+	kind := classifyFileHash(referenceHash)
+	if kind == hashUnrecognised {
+		return false, errors.New("reference hash is in an unrecognised format, cannot compare content")
 	}
-	hash, err := uc.files.GetContentHash(ctx, path)
+
+	digests, err := uc.files.GetContentDigests(ctx, path)
 	if err != nil {
 		if errors.Is(err, ports.ErrFileNotFound) {
 			// A missing input is a submission problem, not a cache question;
@@ -331,7 +359,51 @@ func (uc *CacheForecastUseCase) sameFile(ctx context.Context, path, referenceHas
 		}
 		return false, err
 	}
-	return strings.EqualFold(hash, referenceHash), nil
+
+	switch kind {
+	case hashMD5:
+		if digests.MD5 == "" {
+			return false, errors.New("no MD5 available for this file")
+		}
+		return strings.EqualFold(digests.MD5, referenceHash), nil
+	default:
+		if digests.CRC32C == "" {
+			return false, errors.New("no crc32c available for this file")
+		}
+		return digests.CRC32C == referenceHash, nil
+	}
+}
+
+// fileHashKind is the digest algorithm a recorded file hash came from.
+type fileHashKind int
+
+const (
+	hashUnrecognised fileHashKind = iota
+	hashMD5
+	hashCRC32C
+)
+
+// classifyFileHash infers the algorithm from the encoding Cromwell stored.
+func classifyFileHash(h string) fileHashKind {
+	if len(h) == md5HexLength && isHex(h) {
+		return hashMD5
+	}
+	// GCS crc32c: four bytes, base64 encoded — "tBGf4Q==".
+	if raw, err := base64.StdEncoding.DecodeString(h); err == nil && len(raw) == crc32ByteLength {
+		return hashCRC32C
+	}
+	return hashUnrecognised
+}
+
+func isHex(s string) bool {
+	for _, c := range s {
+		switch {
+		case c >= '0' && c <= '9', c >= 'a' && c <= 'f', c >= 'A' && c <= 'F':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // referenceTaskSpecs parses the WDL the reference run was submitted with. It
@@ -372,8 +444,12 @@ func calibrateCommandHash(graph *wdl.CallGraph, specs map[string]wdl.TaskSpec, r
 		if recorded == "" {
 			continue
 		}
+		computed, canonical := spec.CommandHash()
+		if !canonical {
+			continue
+		}
 		compared++
-		if spec.CommandHash() == recorded {
+		if computed == recorded {
 			return true
 		}
 	}
@@ -463,6 +539,39 @@ func valueString(v any) string {
 	default:
 		return fmt.Sprintf("%v", t)
 	}
+}
+
+// fingerprintInputNames lists the input names the reference fingerprinted,
+// sorted, since only those participate in the cache key.
+func fingerprintInputNames(fp domain.CallFingerprint) []string {
+	var out []string
+	for key := range fp {
+		if _, name := domain.ParseInputHashKey(key); name != "" {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// declaredTypeOf returns the fingerprint key and declared WDL type of an input.
+func declaredTypeOf(fp domain.CallFingerprint, inputName string) (key, declaredType string) {
+	for k := range fp {
+		typ, name := domain.ParseInputHashKey(k)
+		if name == inputName {
+			return k, typ
+		}
+	}
+	return "", ""
+}
+
+func appendUnique(list []string, v string) []string {
+	for _, existing := range list {
+		if existing == v {
+			return list
+		}
+	}
+	return append(list, v)
 }
 
 // compareDocker reports a docker change, or "" when the images match or cannot
