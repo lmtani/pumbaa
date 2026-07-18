@@ -36,10 +36,11 @@ const (
 // CacheForecastUseCase predicts which calls of a pending submission will be
 // served from the call cache.
 type CacheForecastUseCase struct {
-	reader  ports.WorkflowMetadataReader
-	fetcher ports.WorkflowMetadataFetcher
-	querier ports.WorkflowQuerier
-	files   ports.FileProvider
+	reader   ports.WorkflowMetadataReader
+	fetcher  ports.WorkflowMetadataFetcher
+	querier  ports.WorkflowQuerier
+	files    ports.FileProvider
+	progress ports.ProgressReporter
 
 	// commandHashTrusted records whether this run's reference confirmed that we
 	// reproduce Cromwell's command-template hash. It is set per Execute call,
@@ -58,8 +59,24 @@ func NewCacheForecastUseCase(
 	fetcher ports.WorkflowMetadataFetcher,
 	querier ports.WorkflowQuerier,
 	files ports.FileProvider,
+	progress ports.ProgressReporter,
 ) *CacheForecastUseCase {
-	return &CacheForecastUseCase{reader: reader, fetcher: fetcher, querier: querier, files: files}
+	return &CacheForecastUseCase{
+		reader: reader, fetcher: fetcher, querier: querier, files: files, progress: progress,
+	}
+}
+
+// step reports a stage, tolerating the absence of a reporter.
+func (uc *CacheForecastUseCase) step(format string, args ...any) {
+	if uc.progress != nil {
+		uc.progress.Step(format, args...)
+	}
+}
+
+func (uc *CacheForecastUseCase) doneReporting() {
+	if uc.progress != nil {
+		uc.progress.Done()
+	}
 }
 
 // CacheForecastInput describes the submission to forecast.
@@ -81,6 +98,9 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		return nil, application.NewInputValidationError("workflowFile", "is required")
 	}
 
+	defer uc.doneReporting()
+
+	uc.step("reading the workflow")
 	source, err := uc.files.ReadBytes(ctx, input.WorkflowFile)
 	if err != nil {
 		return nil, application.NewUseCaseError("cache forecast", "failed to read workflow file", err)
@@ -102,6 +122,7 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		return nil, err
 	}
 
+	uc.step("fetching the reference run")
 	reference, err := uc.resolveReference(ctx, input.ReferenceID, graph.Workflow)
 	if err != nil {
 		return nil, err
@@ -134,8 +155,19 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 				"input and docker changes still are")
 	}
 
+	// Inputs are hashed one object at a time, and each hash is a round trip. The
+	// paths are known up front, so they are fetched together before the
+	// comparison walks them one by one.
+	digests := newDigestCache(uc.files)
+	prefetch := pathsWorthPrefetching(pendingInputs)
+	if len(prefetch) > 0 {
+		uc.step("checking %d input file(s)", len(prefetch))
+		digests.warm(ctx, prefetch)
+	}
+
+	uc.step("comparing %d call(s)", len(graph.Nodes))
 	comparison := inputComparison{
-		files:           uc.files,
+		files:           digests,
 		reference:       reference,
 		referenceParams: parseParameters(reference.SubmittedInputs),
 		pendingParams:   pendingInputs,

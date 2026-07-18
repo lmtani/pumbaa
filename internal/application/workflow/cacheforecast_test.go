@@ -151,7 +151,7 @@ func newForecastEnv(t *testing.T, wdlSource string, inputs map[string]any, refer
 	reader := &stubMetadataReader{workflow: reference}
 
 	return forecastEnv{
-		uc:        NewCacheForecastUseCase(reader, nil, nil, fp),
+		uc:        NewCacheForecastUseCase(reader, nil, nil, fp, nil),
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}
@@ -171,7 +171,7 @@ func newForecastEnvWithDigests(t *testing.T, wdlSource string, inputs map[string
 			return ports.FileDigests{}, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 		},
 	}
-	env.uc = NewCacheForecastUseCase(&stubMetadataReader{workflow: reference}, nil, nil, fp)
+	env.uc = NewCacheForecastUseCase(&stubMetadataReader{workflow: reference}, nil, nil, fp, nil)
 	return env
 }
 
@@ -634,7 +634,7 @@ func newSubEnv(t *testing.T, parentSource, subSource string, inputs map[string]a
 		},
 	}
 	return forecastEnv{
-		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp),
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp, nil),
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}
@@ -742,7 +742,7 @@ func TestForecastWarnsWhenSubworkflowSourceMissing(t *testing.T) {
 		},
 	}
 	env := forecastEnv{
-		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}, nil, nil, fp),
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}, nil, nil, fp, nil),
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}
@@ -996,7 +996,7 @@ task Combine {
 		},
 	}
 	env := forecastEnv{
-		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp),
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp, nil),
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}

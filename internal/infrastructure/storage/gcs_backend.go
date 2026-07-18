@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"cloud.google.com/go/storage"
 
@@ -14,11 +15,32 @@ import (
 )
 
 // GCSBackend implements StorageBackend for Google Cloud Storage access.
-type GCSBackend struct{}
+//
+// The client is built once and shared. Constructing one per request costs a
+// credential lookup each time, which dominates any workload that touches many
+// objects — a metadata sweep over a few hundred inputs spent almost all of its
+// wall clock there.
+type GCSBackend struct {
+	once   sync.Once
+	client *storage.Client
+	err    error
+}
 
 // NewGCSBackend creates a new GCSBackend.
 func NewGCSBackend() *GCSBackend {
 	return &GCSBackend{}
+}
+
+// clientFor returns the shared client, building it on first use so that a
+// process which never touches cloud storage never pays for credentials.
+func (g *GCSBackend) clientFor(ctx context.Context) (*storage.Client, error) {
+	g.once.Do(func() {
+		g.client, g.err = storage.NewClient(ctx)
+	})
+	if g.err != nil {
+		return nil, fmt.Errorf("failed to create GCS client: %w", g.err)
+	}
+	return g.client, nil
 }
 
 // CanHandle returns true for paths starting with "gs://".
@@ -34,11 +56,10 @@ func (g *GCSBackend) Read(ctx context.Context, path string) (string, error) {
 		return "", err
 	}
 
-	client, err := storage.NewClient(ctx)
+	client, err := g.clientFor(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to create GCS client: %w", err)
+		return "", err
 	}
-	defer func() { _ = client.Close() }()
 
 	// Check object size before reading
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
@@ -72,11 +93,10 @@ func (g *GCSBackend) ReadBytes(ctx context.Context, path string) ([]byte, error)
 		return nil, err
 	}
 
-	client, err := storage.NewClient(ctx)
+	client, err := g.clientFor(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create GCS client: %w", err)
+		return nil, err
 	}
-	defer func() { _ = client.Close() }()
 
 	rc, err := client.Bucket(bucket).Object(object).NewReader(ctx)
 	if err != nil {
@@ -95,11 +115,10 @@ func (g *GCSBackend) GetSize(ctx context.Context, path string) (int64, error) {
 		return 0, err
 	}
 
-	client, err := storage.NewClient(ctx)
+	client, err := g.clientFor(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create GCS client: %w", err)
+		return 0, err
 	}
-	defer func() { _ = client.Close() }()
 
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
 	if err != nil {
@@ -126,11 +145,10 @@ func (g *GCSBackend) GetContentDigests(ctx context.Context, path string) (ports.
 		return ports.FileDigests{}, err
 	}
 
-	client, err := storage.NewClient(ctx)
+	client, err := g.clientFor(ctx)
 	if err != nil {
-		return ports.FileDigests{}, fmt.Errorf("failed to create GCS client: %w", err)
+		return ports.FileDigests{}, err
 	}
-	defer func() { _ = client.Close() }()
 
 	attrs, err := client.Bucket(bucket).Object(object).Attrs(ctx)
 	if err != nil {

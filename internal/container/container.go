@@ -117,7 +117,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 
 	// Initialize use cases
 	c.PreflightUseCase = workflow.NewPreflightUseCase(fileProvider, c.CromwellClient)
-	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, c.CromwellClient, fileProvider)
+	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, c.CromwellClient, fileProvider, presenter.NewProgress())
 	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
 	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)

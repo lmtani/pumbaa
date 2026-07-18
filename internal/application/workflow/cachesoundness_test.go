@@ -48,7 +48,7 @@ func soundnessEnv(t *testing.T, files map[string]string, params map[string]any, 
 		},
 	}
 	return forecastEnv{
-		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: reference}, nil, nil, fp),
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: reference}, nil, nil, fp, nil),
 		wdlPath:   filepath.Join(dir, "main.wdl"),
 		inputPath: paramsPath,
 	}
