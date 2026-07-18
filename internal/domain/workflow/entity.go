@@ -109,6 +109,19 @@ type Call struct {
 	CacheHit    bool
 	CacheResult string
 
+	// Fingerprint is the flattened call-caching hash map Cromwell used to
+	// decide reuse for this call. Empty when the server did not report hashes
+	// (caching disabled, or an older run) — which means "cannot explain",
+	// never "nothing changed".
+	Fingerprint CallFingerprint
+
+	// CacheMode is Cromwell's effectiveCallCachingMode, e.g. "ReadAndWriteCache".
+	CacheMode string
+
+	// AllowResultReuse reports whether this call's results may be reused by a
+	// later run.
+	AllowResultReuse bool
+
 	// Recovery holds the real execution metrics recovered from the cache
 	// source when this call was a cache hit (nil otherwise). Set by the
 	// application layer; the domain only reads it when diffing.

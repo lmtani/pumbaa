@@ -1,0 +1,295 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/urfave/cli/v2"
+
+	"github.com/lmtani/pumbaa/internal/application/workflow"
+	domain "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/interfaces/cli/presenter"
+)
+
+// CacheForecastHandler handles the pre-submission cache prediction command.
+type CacheForecastHandler struct {
+	useCase   *workflow.CacheForecastUseCase
+	presenter *presenter.Presenter
+}
+
+// NewCacheForecastHandler creates a new CacheForecastHandler.
+func NewCacheForecastHandler(uc *workflow.CacheForecastUseCase, p *presenter.Presenter) *CacheForecastHandler {
+	return &CacheForecastHandler{useCase: uc, presenter: p}
+}
+
+// Command returns the CLI command for the cache forecast.
+func (h *CacheForecastHandler) Command() *cli.Command {
+	return &cli.Command{
+		Name:    "cache-forecast",
+		Aliases: []string{"forecast"},
+		Usage:   "Predict which tasks would be served from cache before submitting",
+		Description: "Compares a pending submission against a previous run and reports which calls\n" +
+			"would be reused and which would run again, so you can decide whether a run is\n" +
+			"worth starting.\n\n" +
+			"The prediction is advisory: Cromwell decides. Supported backends are local and\n" +
+			"GCP; anything else is reported as undetermined rather than guessed.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "workflow",
+				Aliases:  []string{"w"},
+				Usage:    "[required] Path to the WDL workflow file",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:    "inputs",
+				Aliases: []string{"i"},
+				Usage:   "[optional] Path to the inputs JSON file",
+			},
+			&cli.StringFlag{
+				Name:    "dependencies",
+				Aliases: []string{"d"},
+				Usage:   "[optional] Path to the imports ZIP; without it, imports are read from files beside the workflow",
+			},
+			&cli.StringFlag{
+				Name:    "against",
+				Aliases: []string{"a"},
+				Usage:   "[optional] Reference run ID; defaults to the latest successful run",
+			},
+			&cli.BoolFlag{
+				Name:  "json",
+				Usage: "[optional] Emit the forecast as JSON",
+			},
+		},
+		Action: h.handle,
+	}
+}
+
+func (h *CacheForecastHandler) handle(c *cli.Context) error {
+	forecast, err := h.useCase.Execute(context.Background(), workflow.CacheForecastInput{
+		WorkflowFile:     c.String("workflow"),
+		InputsFile:       c.String("inputs"),
+		DependenciesFile: c.String("dependencies"),
+		ReferenceID:      c.String("against"),
+	})
+	var ambiguous *workflow.AmbiguousReferenceError
+	if errors.As(err, &ambiguous) {
+		renderReferenceChoice(h.presenter, ambiguous)
+		return cli.Exit("", 1)
+	}
+	if err != nil {
+		return err
+	}
+
+	if c.Bool("json") {
+		return json.NewEncoder(os.Stdout).Encode(forecastJSON(forecast))
+	}
+	renderCacheForecast(h.presenter, forecast)
+	return nil
+}
+
+// referenceChoicesShown caps the list at the number a reader will actually
+// scan. The candidates are ordered by distance, so the ones worth choosing are
+// the ones shown; the rest are counted rather than listed.
+const referenceChoicesShown = 6
+
+// renderReferenceChoice asks the user to name the run to compare against, and
+// does the legwork that makes the question answerable.
+//
+// Listing the runs by date alone would push the reader to the most recent one,
+// which is the guess the tool declined to make on their behalf. The parameter
+// distance is the part they cannot compute and we can.
+func renderReferenceChoice(p *presenter.Presenter, e *workflow.AmbiguousReferenceError) {
+	p.Title("Which run should this be compared against?")
+	p.Print("  %d previous runs of %s could serve as the reference. Pick the one whose\n",
+		len(e.Candidates), e.Workflow)
+	p.Print("  inputs match what you are about to submit — comparing against a different\n")
+	p.Print("  one reports work as new when it would in fact be reused.\n")
+	p.Newline()
+
+	shown := e.Candidates
+	if len(shown) > referenceChoicesShown {
+		shown = shown[:referenceChoicesShown]
+	}
+	for i, candidate := range shown {
+		marker := " "
+		if i == 0 && candidate.Readable {
+			marker = "→"
+		}
+		p.Print("  %s %s  %s  %s\n", marker, candidate.ID,
+			candidate.End.Format("2006-01-02 15:04"), describeDistance(candidate))
+	}
+	if hidden := len(e.Candidates) - len(shown); hidden > 0 {
+		p.Print("    …and %d older run(s), all differing more than those above\n", hidden)
+	}
+
+	p.Newline()
+	p.Print("  Re-run with:  --against <id>\n")
+}
+
+// describeDistance renders how far a candidate's parameters are from the
+// pending submission, in the terms the user supplied them in.
+func describeDistance(c workflow.ReferenceCandidate) string {
+	switch {
+	case !c.Readable:
+		return "parameters could not be read"
+	case c.Differing == 0:
+		return "same parameters"
+	case c.Differing == 1:
+		return "1 parameter differs"
+	default:
+		return fmt.Sprintf("%d of %d parameters differ", c.Differing, c.Total)
+	}
+}
+
+// renderCacheForecast prints the headline first — how much of the run is free —
+// then the root causes, which are the only thing the user can act on.
+func renderCacheForecast(p *presenter.Presenter, f *domain.CacheForecast) {
+	p.Title("Cache forecast")
+	p.KeyValue("Reference run", f.Reference)
+	p.KeyValue("Backend", f.Backend.String())
+	p.Newline()
+
+	counts := f.Counts()
+	total := len(f.Calls)
+	reuse := counts[domain.FateReuse]
+	rerun := counts[domain.FateRerun]
+	partial := counts[domain.FatePartialReuse]
+	downstream := counts[domain.FateRerunDownstream]
+
+	// The headline separates what is certain from what merely might happen.
+	// Reporting downstream calls as reruns overstates the cost: measured
+	// against a live server, a task that reran produced byte-identical outputs
+	// and its whole downstream still hit the cache.
+	switch {
+	case total == 0:
+		p.Warning("no calls found in this workflow")
+		return
+	case reuse == total:
+		p.Success("all %d call(s) would be served from cache — this run should cost nothing", total)
+	case rerun == 0 && downstream == 0:
+		p.Info("%d of %d call(s) would be served from cache", reuse, total)
+	case downstream == 0:
+		p.Info("%d of %d call(s) would be served from cache; %d will run again", reuse, total, rerun)
+	default:
+		p.Info("%d of %d call(s) would be served from cache; %d will run again and %d more may, "+
+			"depending on whether their inputs really change", reuse, total, rerun, downstream)
+	}
+
+	if rerun > 0 {
+		p.Newline()
+		p.Print("  Will run again (%d):\n", rerun)
+		for _, c := range f.RootCauses() {
+			p.Print("    ✗ %-24s %s\n", c.Call, strings.Join(c.Reasons, "; "))
+		}
+	}
+
+	if partial > 0 {
+		p.Newline()
+		p.Print("  Partly reused (%d) — a fan-out whose instances differ:\n", partial)
+		for _, c := range f.Calls {
+			if c.Fate == domain.FatePartialReuse && c.Instances != nil {
+				p.Print("    ◑ %-24s %d of %d instances reused\n",
+					c.Call, c.Instances.Reused, c.Instances.Total)
+			}
+		}
+	}
+
+	if downstream > 0 {
+		p.Newline()
+		p.Print("  May run again (%d) — downstream, only if the rerun changes their inputs:\n", downstream)
+		for _, c := range f.Calls {
+			if c.Fate == domain.FateRerunDownstream {
+				p.Print("    ↓ %-24s after %s\n", c.Call, c.Cause)
+			}
+		}
+	}
+
+	if n := counts[domain.FateUnknown]; n > 0 {
+		p.Newline()
+		p.Print("  Could not determine (%d):\n", n)
+		for _, c := range f.Calls {
+			if c.Fate == domain.FateUnknown {
+				p.Print("    ? %-24s %s\n", c.Call, strings.Join(c.Reasons, "; "))
+			}
+		}
+	}
+
+	if len(f.Warnings) > 0 {
+		p.Newline()
+		for _, w := range f.Warnings {
+			p.Warning("%s", w)
+		}
+	}
+
+	p.Newline()
+	p.Print("  %s\n", forecastCaveat(counts))
+}
+
+// forecastCaveat states the limit that applies to what was actually shown, so
+// the caveat is never boilerplate the user learns to skip.
+func forecastCaveat(counts map[domain.PredictedFate]int) string {
+	if counts[domain.FateRerunDownstream] > 0 {
+		return "A rerun task that writes byte-identical outputs still lets its downstream hit " +
+			"the cache, so those may cost nothing. Cromwell decides."
+	}
+	return "Advisory only — Cromwell decides."
+}
+
+// forecastJSON is the machine-readable shape, kept explicit so the CLI contract
+// does not drift with the domain's internals.
+func forecastJSON(f *domain.CacheForecast) map[string]any {
+	counts := f.Counts()
+	calls := make([]map[string]any, 0, len(f.Calls))
+	for _, c := range f.Calls {
+		entry := map[string]any{
+			"call": c.Call,
+			"fate": fateSlug(c.Fate),
+		}
+		if c.Instances != nil {
+			entry["instances"] = map[string]int{
+				"reused": c.Instances.Reused,
+				"total":  c.Instances.Total,
+			}
+		}
+		if len(c.Reasons) > 0 {
+			entry["reasons"] = c.Reasons
+		}
+		if c.Cause != "" {
+			entry["cause"] = c.Cause
+		}
+		calls = append(calls, entry)
+	}
+	return map[string]any{
+		"reference": f.Reference,
+		"backend":   f.Backend.String(),
+		"summary": map[string]int{
+			"total":           len(f.Calls),
+			"reuse":           counts[domain.FateReuse],
+			"rerun":           counts[domain.FateRerun],
+			"partialReuse":    counts[domain.FatePartialReuse],
+			"rerunDownstream": counts[domain.FateRerunDownstream],
+			"undetermined":    counts[domain.FateUnknown],
+		},
+		"calls":    calls,
+		"warnings": f.Warnings,
+	}
+}
+
+func fateSlug(f domain.PredictedFate) string {
+	switch f {
+	case domain.FateReuse:
+		return "reuse"
+	case domain.FateRerun:
+		return "rerun"
+	case domain.FatePartialReuse:
+		return "partial_reuse"
+	case domain.FateRerunDownstream:
+		return "rerun_downstream"
+	default:
+		return "undetermined"
+	}
+}

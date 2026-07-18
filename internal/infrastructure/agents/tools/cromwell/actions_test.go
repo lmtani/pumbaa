@@ -32,6 +32,10 @@ func (s *stubFetcher) ParseMetadata(data []byte) (*workflow.Workflow, error) {
 	return s.wf, nil
 }
 
+func (s *stubFetcher) GetSubmittedInputs(context.Context, string) (string, error) {
+	return "", nil
+}
+
 func (s *stubFetcher) GetWorkflowCost(ctx context.Context, workflowID string) (float64, string, error) {
 	if s.apiCost == 0 {
 		return 0, "", errors.New("cost endpoint unavailable")

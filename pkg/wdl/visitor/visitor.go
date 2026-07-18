@@ -228,19 +228,50 @@ func (v *WDLVisitor) VisitTask_output(ctx *parser.Task_outputContext) interface{
 
 // VisitTask_command visits task command section
 func (v *WDLVisitor) VisitTask_command(ctx *parser.Task_commandContext) interface{} {
-	var sb strings.Builder
+	// The command body is taken verbatim from the source rather than rebuilt
+	// from tokens: GetText() concatenates token text and so drops whitespace
+	// that lives on the hidden channel, turning `~{sep="," xs}` into
+	// `~{sep=","xs}`. That is invisible for most purposes but not for hashing —
+	// Cromwell's call-cache fingerprint covers the command template, so a
+	// reconstructed body silently fails to match the real one.
+	if raw, ok := commandBody(ctx); ok {
+		return raw
+	}
 
-	// Get the string parts
+	// Fall back to the reconstruction when the source text is unavailable.
+	var sb strings.Builder
 	if ctx.Task_command_string_part() != nil {
 		sb.WriteString(ctx.Task_command_string_part().GetText())
 	}
-
-	// Get the expression parts interleaved with string parts
 	for _, exprStr := range ctx.AllTask_command_expr_with_string() {
 		sb.WriteString(exprStr.GetText())
 	}
-
 	return sb.String()
+}
+
+// commandBody returns the original text between a command block's delimiters,
+// supporting both the `<<< >>>` and `{ }` forms.
+func commandBody(ctx *parser.Task_commandContext) (string, bool) {
+	start, stop := ctx.GetStart(), ctx.GetStop()
+	if start == nil || stop == nil {
+		return "", false
+	}
+	stream := start.GetInputStream()
+	if stream == nil {
+		return "", false
+	}
+	raw := stream.GetText(start.GetStart(), stop.GetStop())
+
+	open, closing := "<<<", ">>>"
+	if i := strings.Index(raw, "<<<"); i < 0 {
+		open, closing = "{", "}"
+	}
+	begin := strings.Index(raw, open)
+	end := strings.LastIndex(raw, closing)
+	if begin < 0 || end < begin+len(open) {
+		return "", false
+	}
+	return raw[begin+len(open) : end], true
 }
 
 // VisitTask_runtime visits task runtime section

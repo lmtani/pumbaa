@@ -61,5 +61,16 @@ func (f *FileProvider) GetSize(ctx context.Context, path string) (int64, error) 
 	return 0, fmt.Errorf("no storage backend found for path: %s", path)
 }
 
+// GetContentDigests returns a file's checksums by delegating to the appropriate
+// backend.
+func (f *FileProvider) GetContentDigests(ctx context.Context, path string) (ports.FileDigests, error) {
+	for _, backend := range f.backends {
+		if backend.CanHandle(path) {
+			return backend.GetContentDigests(ctx, path)
+		}
+	}
+	return ports.FileDigests{}, fmt.Errorf("no storage backend found for path: %s", path)
+}
+
 // Ensure FileProvider implements the domain interface at compile time.
 var _ ports.FileProvider = (*FileProvider)(nil)

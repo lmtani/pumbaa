@@ -16,6 +16,28 @@ type FileProvider interface {
 	// GetSize returns the size in bytes of a file without reading its content.
 	// This is useful for calculating input sizes efficiently.
 	GetSize(ctx context.Context, path string) (int64, error)
+
+	// GetContentDigests returns the file's content fingerprints. Cloud backends
+	// must read them from object metadata rather than downloading.
+	//
+	// Which digest matters depends on the Cromwell backend: local runs record
+	// an MD5, while GCS records a crc32c. Both are returned in one call because
+	// a single object-metadata read (or a single pass over a local file)
+	// produces them together.
+	GetContentDigests(ctx context.Context, path string) (FileDigests, error)
+}
+
+// FileDigests holds the content fingerprints of a file, in the exact encodings
+// Cromwell records in call-caching hashes. A field is empty when the backend
+// cannot supply it — a GCS composite object carries no MD5, for instance — and
+// callers must then degrade to "cannot determine" rather than treating the
+// absence as a difference.
+type FileDigests struct {
+	// MD5 is lowercase hex.
+	MD5 string
+	// CRC32C is the base64 of the 4-byte big-endian Castagnoli checksum, the
+	// form GCS reports and Cromwell stores verbatim.
+	CRC32C string
 }
 
 // FileSizeCache defines the interface for caching file sizes.
@@ -52,4 +74,8 @@ type StorageBackend interface {
 	// GetSize returns the size in bytes of a file without reading its content.
 	// Uses metadata API for cloud storage to avoid data transfer costs.
 	GetSize(ctx context.Context, path string) (int64, error)
+
+	// GetContentDigests returns the file's content fingerprints, or
+	// ErrHashUnavailable when this backend cannot supply any.
+	GetContentDigests(ctx context.Context, path string) (FileDigests, error)
 }

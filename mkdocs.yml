@@ -52,6 +52,7 @@ nav:
     - Workflow Metadata: features/metadata.md
     - Inputs & Outputs: features/inputs-outputs.md
     - Diff Two Runs: features/diff.md
+    - Cache Forecast: features/cache-forecast.md
     - Abort Workflow: features/abort.md
     - Bundle WDL: features/bundle.md
   - AI Chat:
