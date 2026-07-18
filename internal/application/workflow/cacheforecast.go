@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,20 +35,39 @@ const md5HexLength = 32
 // served from the call cache.
 type CacheForecastUseCase struct {
 	reader  ports.WorkflowMetadataReader
+	fetcher ports.WorkflowMetadataFetcher
 	querier ports.WorkflowQuerier
 	files   ports.FileProvider
+
+	// commandHashTrusted records whether this run's reference confirmed that we
+	// reproduce Cromwell's command-template hash. It is set per Execute call,
+	// not configured.
+	commandHashTrusted bool
 }
 
-// NewCacheForecastUseCase builds the use case. querier may be nil, in which
-// case a reference run must be named explicitly.
-func NewCacheForecastUseCase(reader ports.WorkflowMetadataReader, querier ports.WorkflowQuerier, files ports.FileProvider) *CacheForecastUseCase {
-	return &CacheForecastUseCase{reader: reader, querier: querier, files: files}
+// NewCacheForecastUseCase builds the use case.
+//
+// fetcher supplies metadata with subworkflows expanded, which is what makes
+// calls inside a subworkflow comparable; without it the forecast falls back to
+// flat metadata and reports those calls as undetermined. querier may be nil, in
+// which case a reference run must be named explicitly.
+func NewCacheForecastUseCase(
+	reader ports.WorkflowMetadataReader,
+	fetcher ports.WorkflowMetadataFetcher,
+	querier ports.WorkflowQuerier,
+	files ports.FileProvider,
+) *CacheForecastUseCase {
+	return &CacheForecastUseCase{reader: reader, fetcher: fetcher, querier: querier, files: files}
 }
 
 // CacheForecastInput describes the submission to forecast.
 type CacheForecastInput struct {
 	WorkflowFile string
 	InputsFile   string
+	// DependenciesFile is an imports zip. Without it, imports are resolved
+	// from WDL files sitting next to the workflow, and anything still missing
+	// is reported as undetermined rather than assumed unchanged.
+	DependenciesFile string
 	// ReferenceID names the run to compare against. When empty, the most
 	// recent successful run of the same workflow is used.
 	ReferenceID string
@@ -64,12 +84,14 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		return nil, application.NewUseCaseError("cache forecast", "failed to read workflow file", err)
 	}
 
-	graph, err := wdl.BuildCallGraph(source)
+	deps, depErr := uc.resolveImportSources(ctx, input)
+
+	graph, err := wdl.BuildCallGraphWithSources(source, deps)
 	if err != nil {
 		return nil, application.NewUseCaseError("cache forecast", "failed to parse workflow", err)
 	}
 	specs := map[string]wdl.TaskSpec{}
-	if s, err := wdl.TaskSpecs(source); err == nil {
+	if s, err := wdl.TaskSpecsWithSources(source, deps); err == nil {
 		specs = s
 	}
 
@@ -84,6 +106,14 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 	}
 
 	forecast := &domain.CacheForecast{Reference: reference.ID}
+	if depErr != "" {
+		forecast.Warnings = append(forecast.Warnings, depErr)
+	}
+	if names := unresolvedCalls(graph); len(names) > 0 {
+		forecast.Warnings = append(forecast.Warnings, fmt.Sprintf(
+			"could not read the definition of %s; pass --dependencies with the imports zip to cover them",
+			strings.Join(names, ", ")))
+	}
 
 	forecast.Backend = referenceBackend(reference)
 	if !forecast.Backend.Supported() {
@@ -94,7 +124,13 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 		return forecast, nil
 	}
 
-	refSpecs := uc.referenceTaskSpecs(reference, forecast)
+	refSpecs := uc.referenceTaskSpecs(reference)
+	uc.commandHashTrusted = calibrateCommandHash(graph, specs, reference)
+	if !uc.commandHashTrusted {
+		forecast.Warnings = append(forecast.Warnings,
+			"could not reproduce this server's command-template hash, so command changes are not reported; "+
+				"input and docker changes still are")
+	}
 
 	changed := make(map[string][]string)
 	unknown := make(map[string]string)
@@ -124,8 +160,13 @@ func (uc *CacheForecastUseCase) assessCall(
 	pendingInputs map[string]any,
 	forecast *domain.CacheForecast,
 ) (reasons []string, why string) {
-	if node.Subworkflow {
-		return nil, "subworkflow internals not analysed"
+	if node.Unresolved {
+		if node.Subworkflow {
+			return nil, "subworkflow source not available"
+		}
+		// The task body is invisible, so a command or docker change would go
+		// undetected. Predicting reuse here would be the dangerous direction.
+		return nil, "task definition not available"
 	}
 
 	refCall, ok := findReferenceCall(reference, node.Name)
@@ -138,17 +179,20 @@ func (uc *CacheForecastUseCase) assessCall(
 	}
 
 	spec, hasSpec := specs[node.Task]
-	refSpec, hasRefSpec := refSpecs[node.Task]
-	if hasSpec && hasRefSpec {
-		if spec.Command != refSpec.Command {
+	if hasSpec {
+		// The command template is compared against the hash the reference
+		// recorded, not against its WDL text: a run's metadata carries only the
+		// top-level workflow, so a task inside an imported subworkflow has no
+		// reference text to compare with — but it always has a fingerprint.
+		recordedCommand := refCall.Fingerprint["command template"]
+		if uc.commandHashTrusted && recordedCommand != "" && spec.CommandHash() != recordedCommand {
 			reasons = append(reasons, "command template changed")
 		}
-		if r := compareDocker(spec, refSpec); r != "" {
-			reasons = append(reasons, r)
+		if refSpec, ok := refSpecs[node.Task]; ok {
+			if r := compareDocker(spec, refSpec); r != "" {
+				reasons = append(reasons, r)
+			}
 		}
-	} else if !hasRefSpec {
-		forecast.Warnings = append(forecast.Warnings,
-			fmt.Sprintf("%s: reference WDL unavailable, compared inputs only", node.Name))
 	}
 
 	inputReasons, inputWhy := uc.compareInputs(ctx, node, refCall, pendingInputs, specs)
@@ -237,13 +281,30 @@ func (uc *CacheForecastUseCase) pendingValue(
 	if binding.Kind == wdl.BindingLiteral {
 		return binding.Literal, true
 	}
-	// A workflow-level input: the inputs JSON wins, then the WDL default.
-	if v, ok := lookupWorkflowInput(pendingInputs, binding.Source); ok {
-		return valueString(v), true
+	// An input a subworkflow declares but its caller does not pass must be
+	// supplied qualified by the call path, so look there and nowhere else —
+	// a top-level input of the same name is a different value.
+	if binding.Kind == wdl.BindingWorkflowInput && binding.Scope != "" {
+		if v, ok := lookupCallInput(pendingInputs, binding.Scope, binding.Source); ok {
+			return valueString(v), true
+		}
+		return "", false
 	}
-	// Cromwell also accepts call-scoped overrides ("WF.Call.input").
-	if v, ok := lookupCallInput(pendingInputs, node.Name, inputName); ok {
-		return valueString(v), true
+	// A workflow-level input: the inputs JSON wins, then the WDL default.
+	if binding.Kind == wdl.BindingWorkflowInput {
+		if v, ok := lookupWorkflowInput(pendingInputs, binding.Source); ok {
+			return valueString(v), true
+		}
+	}
+	// Cromwell accepts call-scoped overrides ("WF.Call.input") only for calls
+	// of the top-level workflow. A task inside a subworkflow cannot be
+	// addressed that way — Cromwell rejects the submission outright — so the
+	// override is not consulted for nested calls, whose values come from the
+	// subworkflow's own WDL.
+	if !strings.Contains(node.Name, ".") {
+		if v, ok := lookupCallInput(pendingInputs, node.Name, inputName); ok {
+			return valueString(v), true
+		}
 	}
 	if spec, ok := specs[node.Task]; ok {
 		if def, ok := spec.InputDefaults[inputName]; ok {
@@ -273,27 +334,76 @@ func (uc *CacheForecastUseCase) sameFile(ctx context.Context, path, referenceHas
 	return strings.EqualFold(hash, referenceHash), nil
 }
 
-// referenceTaskSpecs parses the WDL the reference run was submitted with, which
-// is what makes "the command changed" answerable.
-func (uc *CacheForecastUseCase) referenceTaskSpecs(reference *domain.Workflow, forecast *domain.CacheForecast) map[string]wdl.TaskSpec {
+// referenceTaskSpecs parses the WDL the reference run was submitted with. It
+// covers only the top-level workflow — metadata never carries imported files —
+// so it is a bonus source for the docker comparison, not a requirement.
+func (uc *CacheForecastUseCase) referenceTaskSpecs(reference *domain.Workflow) map[string]wdl.TaskSpec {
 	if reference.SubmittedWorkflow == "" {
-		forecast.Warnings = append(forecast.Warnings,
-			"reference run did not record its WDL source; command and docker changes cannot be detected")
 		return nil
 	}
 	specs, err := wdl.TaskSpecs([]byte(reference.SubmittedWorkflow))
 	if err != nil {
-		forecast.Warnings = append(forecast.Warnings,
-			"reference WDL could not be parsed; command and docker changes cannot be detected")
 		return nil
 	}
 	return specs
 }
 
+// calibrateCommandHash checks that we reproduce this server's command-template
+// hash before any mismatch is reported as a change.
+//
+// The normalisation Cromwell applies is not a documented contract, so a version
+// that changed it would otherwise make every task look modified. Finding a
+// single call whose computed hash matches its recorded one proves the formula
+// holds here; finding none means a mismatch says more about us than about the
+// submission, and the axis is dropped rather than reported wrongly.
+func calibrateCommandHash(graph *wdl.CallGraph, specs map[string]wdl.TaskSpec, reference *domain.Workflow) bool {
+	compared := 0
+	for _, name := range graph.Names() {
+		node := graph.Nodes[name]
+		spec, ok := specs[node.Task]
+		if !ok {
+			continue
+		}
+		refCall, ok := findReferenceCall(reference, node.Name)
+		if !ok {
+			continue
+		}
+		recorded := refCall.Fingerprint["command template"]
+		if recorded == "" {
+			continue
+		}
+		compared++
+		if spec.CommandHash() == recorded {
+			return true
+		}
+	}
+	// Nothing to calibrate against: withhold the axis rather than assume the
+	// formula holds. Such a reference has no fingerprints either, so those
+	// calls are already reported as undetermined.
+	_ = compared
+	return false
+}
+
+// fetchReference reads a run's metadata with subworkflows expanded, so calls
+// inside a subworkflow carry their fingerprints. It falls back to flat metadata
+// when no expanding fetcher is wired or the expanded read fails; those calls
+// then come out as undetermined rather than wrong.
+func (uc *CacheForecastUseCase) fetchReference(ctx context.Context, id string) (*domain.Workflow, error) {
+	if uc.fetcher != nil {
+		raw, err := uc.fetcher.GetRawMetadataWithOptions(ctx, id, true)
+		if err == nil {
+			if w, err := uc.fetcher.ParseMetadata(raw); err == nil {
+				return w, nil
+			}
+		}
+	}
+	return uc.reader.GetMetadata(ctx, id)
+}
+
 // resolveReference finds the run to compare against.
 func (uc *CacheForecastUseCase) resolveReference(ctx context.Context, id, workflowName string) (*domain.Workflow, error) {
 	if id != "" {
-		w, err := uc.reader.GetMetadata(ctx, id)
+		w, err := uc.fetchReference(ctx, id)
 		if err != nil {
 			return nil, application.NewUseCaseError("cache forecast", "failed to fetch reference run", err)
 		}
@@ -315,7 +425,7 @@ func (uc *CacheForecastUseCase) resolveReference(ctx context.Context, id, workfl
 		return nil, application.NewUseCaseError("cache forecast",
 			fmt.Sprintf("no successful previous run of %q to compare against", workflowName), nil)
 	}
-	w, err := uc.reader.GetMetadata(ctx, result.Workflows[0].ID)
+	w, err := uc.fetchReference(ctx, result.Workflows[0].ID)
 	if err != nil {
 		return nil, application.NewUseCaseError("cache forecast", "failed to fetch reference run", err)
 	}
@@ -366,25 +476,91 @@ func compareDocker(pending, reference wdl.TaskSpec) string {
 	return fmt.Sprintf("docker image changed (%s → %s)", r, p)
 }
 
-// findReferenceCall locates a call in the reference run by its unqualified
-// name, since metadata keys are "Workflow.Call" while the graph uses "Call".
-func findReferenceCall(w *domain.Workflow, callName string) (domain.Call, bool) {
+// findReferenceCall locates a call in the reference run by its path in the
+// flattened graph ("AlignSample.Align").
+//
+// Metadata keys are qualified by the enclosing workflow ("Cohort.AlignSample"),
+// and a subworkflow's calls live under that call's own metadata rather than at
+// the top level, so each path segment is resolved one level down.
+func findReferenceCall(w *domain.Workflow, path string) (domain.Call, bool) {
+	return findReferenceCallPath(w, strings.Split(path, "."))
+}
+
+func findReferenceCallPath(w *domain.Workflow, segments []string) (domain.Call, bool) {
+	if w == nil || len(segments) == 0 {
+		return domain.Call{}, false
+	}
+	call, ok := lookupCallByName(w, segments[0])
+	if !ok {
+		return domain.Call{}, false
+	}
+	if len(segments) == 1 {
+		return call, true
+	}
+	return findReferenceCallPath(call.SubWorkflowMetadata, segments[1:])
+}
+
+// lookupCallByName finds a call by its unqualified name within one workflow,
+// choosing the latest attempt because that is the one whose fingerprint decided
+// reuse.
+func lookupCallByName(w *domain.Workflow, name string) (domain.Call, bool) {
 	for key, calls := range w.Calls {
 		if len(calls) == 0 {
 			continue
 		}
-		if key == callName || strings.HasSuffix(key, "."+callName) {
-			// The latest attempt carries the fingerprint that decided reuse.
-			best := calls[0]
-			for _, c := range calls[1:] {
-				if c.Attempt > best.Attempt {
-					best = c
-				}
-			}
-			return best, true
+		if key != name && !strings.HasSuffix(key, "."+name) {
+			continue
 		}
+		best := calls[0]
+		for _, c := range calls[1:] {
+			if c.Attempt > best.Attempt {
+				best = c
+			}
+		}
+		return best, true
 	}
 	return domain.Call{}, false
+}
+
+// unresolvedCalls lists calls whose definition could not be read, so the user
+// is told exactly what to bundle rather than just seeing "undetermined".
+func unresolvedCalls(graph *wdl.CallGraph) []string {
+	var out []string
+	for _, name := range graph.Names() {
+		if graph.Nodes[name].Unresolved {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+// resolveImportSources gathers the WDL sources needed to see inside imports:
+// the dependencies zip when given, otherwise the WDL files sitting beside the
+// workflow, which is how a workflow run from a checkout resolves. It returns a
+// warning string rather than an error — a forecast without imports is degraded,
+// not impossible.
+func (uc *CacheForecastUseCase) resolveImportSources(ctx context.Context, input CacheForecastInput) (wdl.SourceSet, string) {
+	if input.DependenciesFile != "" {
+		data, err := uc.files.ReadBytes(ctx, input.DependenciesFile)
+		if err != nil {
+			return nil, fmt.Sprintf("could not read the dependencies zip: %v", err)
+		}
+		sources, err := wdl.SourcesFromZip(data)
+		if err != nil {
+			return nil, fmt.Sprintf("could not read the dependencies zip: %v", err)
+		}
+		return sources, ""
+	}
+
+	// Only local paths have a directory to scan; a remote WDL must be bundled.
+	if strings.Contains(input.WorkflowFile, "://") {
+		return nil, ""
+	}
+	sources, err := wdl.SourcesFromDir(filepath.Dir(input.WorkflowFile))
+	if err != nil {
+		return nil, ""
+	}
+	return sources, ""
 }
 
 // fileHashKey finds the fingerprint entry for a File input, returning the key

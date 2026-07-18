@@ -224,9 +224,21 @@ try to reimplement Cromwell's hashing either — that would be fragile and
 version-bound. Instead it compares *values* along the axes Cromwell
 fingerprints, which is sound because of two properties the experiments proved:
 
-- **The command template is hashed pre-substitution**, so comparing the
-  command text of two WDLs is equivalent to comparing that hash. This is what
-  makes "the command changed" answerable from the WDL alone.
+- **The command template is hashed pre-substitution**, so the hash depends only
+  on the WDL text. Better still, the hash is *reproducible*: it is the MD5 of
+  the template with each line trimmed, rejoined with newlines, and `~{expr}`
+  rewritten to `${expr}`. That formula matches every task in the captured
+  fixtures, so a command change is detectable by computing the hash locally and
+  comparing it against the reference's fingerprint — **without needing the
+  reference run's WDL at all**. That matters more than it first appears: a
+  run's metadata carries only the top-level workflow source, never its imported
+  files, so text comparison could never have covered tasks inside a
+  subworkflow.
+
+  The normalisation is not a documented contract, so the forecast calibrates
+  before trusting it: if no call's computed hash reproduces its recorded one,
+  the axis is dropped with a warning rather than reporting every task as
+  changed.
 - **File inputs are hashed by content**, and the reference run's metadata
   records those hashes. So the candidate file's MD5 — from GCS object metadata
   without downloading, or computed locally — is directly comparable.
@@ -235,13 +247,59 @@ Comparison axes, per call: command template text, docker image, and every
 input's value (files by content hash, scalars by value). A call whose own
 fingerprint is unchanged but whose upstream will rerun is a cascade.
 
-One trap found while validating against the live server: Cromwell accepts
-**call-scoped overrides in the inputs JSON** (`Workflow.Call.docker`) that
-never appear as call bindings in the WDL. Iterating only the WDL's explicit
-bindings silently predicted "reuse" for a submission that changed a task's
-image — the very manoeuvre the original experiment used to force a miss. The
-input list is therefore taken from the *reference call's* recorded inputs,
-which is authoritative, with WDL bindings only supplying provenance.
+### Subworkflows and imports
+
+**Cromwell caches leaf tasks, not subworkflow calls.** A forecast that treated
+`call sub.AlignSample` as one unit would be answering a question the cache
+never asks. So the graph is *flattened*: a resolved subworkflow contributes its
+leaves under their call path (`AlignSample.Align`), and the subworkflow call
+itself disappears from the graph.
+
+Flattening requires following values across the boundary in both directions:
+
+- **Inward**, a leaf input bound to a subworkflow input is rewritten to
+  whatever the parent passed — the top-level input, a literal, or another
+  parent call's output. An input the parent does not pass falls back to the
+  subworkflow's own default, and failing that is scoped to the call path, which
+  is where Cromwell expects it in the inputs JSON (`Top.Sub.name`).
+- **Outward**, a consumer of `Sub.result` must depend on the *leaf that
+  produces that output*, resolved through the subworkflow's output
+  declarations. Depending on all leaves would be conservative but wrong in
+  practice: an unrelated rerun inside the subworkflow would cascade to
+  consumers that never read its result.
+
+On the reference side this needs metadata fetched with
+`expandSubWorkflows=true`, since a subworkflow's calls live under the parent
+call's own metadata rather than at the top level. Lookup walks the path one
+segment at a time.
+
+**An imported task is not a subworkflow.** The first iteration classified any
+call whose target was not a task in the current document as a subworkflow,
+which silently withheld a verdict for `import "tasks.wdl"` — the most common
+pattern in production pipelines, and enough to make the forecast useless on
+them. Resolution now distinguishes the two by parsing the imported document and
+asking whether the target is one of its tasks or its workflow.
+
+Sources come from `--dependencies` when given, otherwise from WDL files beside
+the workflow, which is how a checkout resolves. Anything still unresolved keeps
+its call opaque and undetermined, with a warning naming it — never assumed
+unchanged, because an invisible task body hides command changes.
+
+Two traps found while validating against the live server, both about
+call-scoped overrides in the inputs JSON:
+
+- Cromwell accepts `Workflow.Call.docker` overrides that **never appear as call
+  bindings in the WDL**. Iterating only the WDL's explicit bindings silently
+  predicted "reuse" for a submission that changed a task's image — the very
+  manoeuvre the original experiment used to force a miss. The input list is
+  therefore taken from the *reference call's* recorded inputs, which is
+  authoritative, with WDL bindings only supplying provenance.
+- That form works **only for calls of the top-level workflow**. Cromwell
+  rejects `Top.Sub.Leaf.docker` outright ("Unexpected input provided"), so the
+  override is not consulted for nested calls; their values come from the
+  subworkflow's own WDL. Discovered by a submission that failed input
+  processing, which is a better outcome than a forecast quietly disagreeing
+  with a server that would never have accepted the run.
 
 ## Layering
 
@@ -294,6 +352,36 @@ of scope for this iteration.
 
 Agent: read-only, so it fits the current tool policy with no confirmation UX,
 and it serves the agent's main job directly — "why did my pipeline rerun?"
+
+## What the live validation measured
+
+Two runs of a parent workflow calling a subworkflow (`example/showcase`,
+`cohort_qc.wdl` → `qc_sub.wdl`), forecast first and then actually submitted.
+
+An identical resubmission was predicted as full reuse, and all three leaf calls
+hit. Bumping `IndexVcf`'s docker inside the subworkflow produced:
+
+| Call | Predicted | Actual |
+|---|---|---|
+| `VcfQc.IndexVcf` | will run again (docker) | missed |
+| `VcfQc.StatsVcf` | may run again, downstream | **hit** |
+| `Summarize` | may run again, downstream | **hit** |
+
+The root cause was identified exactly, including that it lives *inside* a
+subworkflow and that the parent's `Summarize` traces back to it rather than to
+the nearest hop. Both downstream calls still hit, because bcftools 1.12 wrote a
+byte-identical output to 1.11.
+
+That is the irreducible limit, not a defect — and it is why the summary counts
+downstream calls separately ("1 will run again and 2 more may") instead of
+folding them into the rerun total. An earlier wording claimed "none of the 3
+would be reused" for a run where two thirds of it was in fact free.
+
+Import handling was measured against a real production pipeline (Illumina
+TSO500, 24 WDL files): with the imports zip, 23 calls resolve and **none** are
+undetermined, with both subworkflows flattened into their leaves and scattered
+calls flagged. Without it, 20 of 21 calls are undetermined — which is what the
+first iteration effectively did to every import-heavy pipeline.
 
 ## Supported backends
 

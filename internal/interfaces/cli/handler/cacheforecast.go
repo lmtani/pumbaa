@@ -48,6 +48,11 @@ func (h *CacheForecastHandler) Command() *cli.Command {
 				Usage:   "[optional] Path to the inputs JSON file",
 			},
 			&cli.StringFlag{
+				Name:    "dependencies",
+				Aliases: []string{"d"},
+				Usage:   "[optional] Path to the imports ZIP; without it, imports are read from files beside the workflow",
+			},
+			&cli.StringFlag{
 				Name:    "against",
 				Aliases: []string{"a"},
 				Usage:   "[optional] Reference run ID; defaults to the latest successful run",
@@ -63,9 +68,10 @@ func (h *CacheForecastHandler) Command() *cli.Command {
 
 func (h *CacheForecastHandler) handle(c *cli.Context) error {
 	forecast, err := h.useCase.Execute(context.Background(), workflow.CacheForecastInput{
-		WorkflowFile: c.String("workflow"),
-		InputsFile:   c.String("inputs"),
-		ReferenceID:  c.String("against"),
+		WorkflowFile:     c.String("workflow"),
+		InputsFile:       c.String("inputs"),
+		DependenciesFile: c.String("dependencies"),
+		ReferenceID:      c.String("against"),
 	})
 	if err != nil {
 		return err
@@ -89,30 +95,39 @@ func renderCacheForecast(p *presenter.Presenter, f *domain.CacheForecast) {
 	counts := f.Counts()
 	total := len(f.Calls)
 	reuse := counts[domain.FateReuse]
+	rerun := counts[domain.FateRerun]
+	downstream := counts[domain.FateRerunDownstream]
 
+	// The headline separates what is certain from what merely might happen.
+	// Reporting downstream calls as reruns overstates the cost: measured
+	// against a live server, a task that reran produced byte-identical outputs
+	// and its whole downstream still hit the cache.
 	switch {
 	case total == 0:
 		p.Warning("no calls found in this workflow")
 		return
 	case reuse == total:
 		p.Success("all %d call(s) would be served from cache — this run should cost nothing", total)
-	case reuse == 0:
-		p.Warning("none of the %d call(s) would be reused", total)
-	default:
+	case rerun == 0 && downstream == 0:
 		p.Info("%d of %d call(s) would be served from cache", reuse, total)
+	case downstream == 0:
+		p.Info("%d of %d call(s) would be served from cache; %d will run again", reuse, total, rerun)
+	default:
+		p.Info("%d of %d call(s) would be served from cache; %d will run again and %d more may, "+
+			"depending on whether their inputs really change", reuse, total, rerun, downstream)
 	}
 
-	if n := counts[domain.FateRerun]; n > 0 {
+	if rerun > 0 {
 		p.Newline()
-		p.Print("  Will run again (%d):\n", n)
+		p.Print("  Will run again (%d):\n", rerun)
 		for _, c := range f.RootCauses() {
 			p.Print("    ✗ %-24s %s\n", c.Call, strings.Join(c.Reasons, "; "))
 		}
 	}
 
-	if n := counts[domain.FateRerunDownstream]; n > 0 {
+	if downstream > 0 {
 		p.Newline()
-		p.Print("  Downstream of those (%d) — likely to run again, not certain:\n", n)
+		p.Print("  May run again (%d) — downstream, only if the rerun changes their inputs:\n", downstream)
 		for _, c := range f.Calls {
 			if c.Fate == domain.FateRerunDownstream {
 				p.Print("    ↓ %-24s after %s\n", c.Call, c.Cause)
@@ -145,8 +160,8 @@ func renderCacheForecast(p *presenter.Presenter, f *domain.CacheForecast) {
 // the caveat is never boilerplate the user learns to skip.
 func forecastCaveat(counts map[domain.PredictedFate]int) string {
 	if counts[domain.FateRerunDownstream] > 0 {
-		return "Downstream calls are a prediction: a rerun task that produces byte-identical " +
-			"outputs still hits the cache. Cromwell decides."
+		return "A rerun task that writes byte-identical outputs still lets its downstream hit " +
+			"the cache, so those may cost nothing. Cromwell decides."
 	}
 	return "Advisory only — Cromwell decides."
 }

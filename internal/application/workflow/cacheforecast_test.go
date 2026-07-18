@@ -11,6 +11,7 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	domain "github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/pkg/wdl"
 )
 
 // The chain that the live Cromwell experiment used: StatsVcf consumes
@@ -67,9 +68,17 @@ const (
 // forecastFixture builds a reference run matching forecastWDL, with the file
 // hash and backend the caller wants to exercise.
 func forecastFixture(wdlSource, backend string) *domain.Workflow {
-	fp := func(inputHash string) domain.CallFingerprint {
+	// Command-template hashes must be the ones Cromwell would really record,
+	// because that is what the forecast compares against — and because the
+	// forecast refuses to report command changes until it has reproduced a
+	// known hash for this reference.
+	specs, err := wdl.TaskSpecs([]byte(wdlSource))
+	if err != nil {
+		panic("forecast fixture: unparseable WDL: " + err.Error())
+	}
+	fp := func(task, inputHash string) domain.CallFingerprint {
 		return domain.CallFingerprint{
-			"command template":              "TEMPLATE",
+			"command template":              specs[task].CommandHash(),
 			"runtime attribute: docker":     "DOCKERHASH",
 			"input: File input_vcf":         inputHash,
 			"input: String output_basename": "BASENAME",
@@ -84,12 +93,12 @@ func forecastFixture(wdlSource, backend string) *domain.Workflow {
 			"VcfIndexAndStats.IndexVcf": {{
 				Name: "VcfIndexAndStats.IndexVcf", Backend: backend, Attempt: 1,
 				Inputs:      map[string]any{"input_vcf": "/data/in.vcf.gz", "output_basename": "sample", "docker": "bcftools:1.11"},
-				Fingerprint: fp(refVcfHash),
+				Fingerprint: fp("IndexVcf", refVcfHash),
 			}},
 			"VcfIndexAndStats.StatsVcf": {{
 				Name: "VcfIndexAndStats.StatsVcf", Backend: backend, Attempt: 1,
 				Inputs:      map[string]any{"input_vcf": "/exec/out.vcf.gz", "output_basename": "sample", "docker": "bcftools:1.11"},
-				Fingerprint: fp("PRODUCED_UPSTREAM"),
+				Fingerprint: fp("StatsVcf", "PRODUCED_UPSTREAM"),
 			}},
 		},
 	}
@@ -136,7 +145,7 @@ func newForecastEnv(t *testing.T, wdlSource string, inputs map[string]any, refer
 	reader := &stubMetadataReader{workflow: reference}
 
 	return forecastEnv{
-		uc:        NewCacheForecastUseCase(reader, nil, fp),
+		uc:        NewCacheForecastUseCase(reader, nil, nil, fp),
 		wdlPath:   wdlPath,
 		inputPath: inputPath,
 	}
@@ -443,5 +452,287 @@ func TestForecastDetectsCallScopedInputOverride(t *testing.T) {
 	}
 	if p := predictionFor(t, got, "StatsVcf"); p.Fate != domain.FateRerunDownstream {
 		t.Errorf("StatsVcf: got %v, want rerun (downstream)", p.Fate)
+	}
+}
+
+// --- Subworkflow coverage -------------------------------------------------
+
+const subWDL = `version 1.0
+
+workflow AlignSample {
+  input {
+    File reads
+    String sample
+  }
+  call Align { input: reads = reads, sample = sample }
+  call Sort { input: bam = Align.out, sample = sample }
+  output {
+    File sorted = Sort.out
+  }
+}
+
+task Align {
+  input { File reads String sample String docker = "bwa:0.7.17" }
+  command <<< bwa mem ~{reads} >>>
+  runtime { docker: docker }
+  output { File out = "~{sample}.bam" }
+}
+
+task Sort {
+  input { File bam String sample String docker = "samtools:1.21" }
+  command <<< samtools sort ~{bam} >>>
+  runtime { docker: docker }
+  output { File out = "~{sample}.sorted.bam" }
+}
+`
+
+const parentWDL = `version 1.0
+
+import "sub.wdl" as sub
+
+workflow Cohort {
+  input {
+    File reads
+    String sample
+  }
+  call sub.AlignSample { input: reads = reads, sample = sample }
+  call Report { input: bam = AlignSample.sorted, sample = sample }
+}
+
+task Report {
+  input { File bam String sample String docker = "report:1.0" }
+  command <<< echo ~{bam} >>>
+  runtime { docker: docker }
+  output { File out = "~{sample}.txt" }
+}
+`
+
+// subReference models what Cromwell returns with expandSubWorkflows=true: the
+// subworkflow call carries its own metadata, and the leaves live inside it.
+func subReference(readsHash string) *domain.Workflow {
+	subSpecs, err := wdl.TaskSpecs([]byte(subWDL))
+	if err != nil {
+		panic("sub fixture: unparseable subworkflow WDL: " + err.Error())
+	}
+	parentSpecs, err := wdl.TaskSpecs([]byte(parentWDL))
+	if err != nil {
+		panic("sub fixture: unparseable parent WDL: " + err.Error())
+	}
+	fp := func(task string, entries map[string]string) domain.CallFingerprint {
+		spec, ok := subSpecs[task]
+		if !ok {
+			spec = parentSpecs[task]
+		}
+		out := domain.CallFingerprint{
+			"command template":          spec.CommandHash(),
+			"runtime attribute: docker": "D",
+		}
+		for k, v := range entries {
+			out[k] = v
+		}
+		return out
+	}
+	align := domain.Call{
+		Name: "AlignSample.Align", Backend: "Local", Attempt: 1,
+		Inputs: map[string]any{"reads": "/data/r.fq", "sample": "S1", "docker": "bwa:0.7.17"},
+		Fingerprint: fp("Align", map[string]string{
+			"input: File reads":    readsHash,
+			"input: String sample": "SAMPLE",
+			"input: String docker": "DOCK_BWA",
+		}),
+	}
+	sortCall := domain.Call{
+		Name: "AlignSample.Sort", Backend: "Local", Attempt: 1,
+		Inputs: map[string]any{"bam": "/exec/S1.bam", "sample": "S1", "docker": "samtools:1.21"},
+		Fingerprint: fp("Sort", map[string]string{
+			"input: File bam":      "UPSTREAM",
+			"input: String sample": "SAMPLE",
+			"input: String docker": "DOCK_SAM",
+		}),
+	}
+	report := domain.Call{
+		Name: "Cohort.Report", Backend: "Local", Attempt: 1,
+		Inputs: map[string]any{"bam": "/exec/S1.sorted.bam", "sample": "S1", "docker": "report:1.0"},
+		Fingerprint: fp("Report", map[string]string{
+			"input: File bam":      "UPSTREAM2",
+			"input: String sample": "SAMPLE",
+			"input: String docker": "DOCK_REP",
+		}),
+	}
+	return &domain.Workflow{
+		ID:                "ref-sub",
+		Name:              "Cohort",
+		SubmittedWorkflow: parentWDL,
+		Calls: map[string][]domain.Call{
+			"Cohort.AlignSample": {{
+				Name: "Cohort.AlignSample", Backend: "Local", Attempt: 1,
+				SubWorkflowMetadata: &domain.Workflow{
+					Name: "AlignSample",
+					Calls: map[string][]domain.Call{
+						"AlignSample.Align": {align},
+						"AlignSample.Sort":  {sortCall},
+					},
+				},
+			}},
+			"Cohort.Report": {report},
+		},
+	}
+}
+
+// newSubEnv writes the parent and the subworkflow side by side, the way a
+// checkout looks, so imports resolve without a zip.
+func newSubEnv(t *testing.T, parentSource, subSource string, inputs map[string]any, ref *domain.Workflow, hashes map[string]string) forecastEnv {
+	t.Helper()
+	dir := t.TempDir()
+	wdlPath := filepath.Join(dir, "cohort.wdl")
+	if err := os.WriteFile(wdlPath, []byte(parentSource), 0o600); err != nil {
+		t.Fatalf("writing parent: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sub.wdl"), []byte(subSource), 0o600); err != nil {
+		t.Fatalf("writing sub: %v", err)
+	}
+	inputsJSON, err := json.Marshal(inputs)
+	if err != nil {
+		t.Fatalf("marshalling inputs: %v", err)
+	}
+	inputPath := filepath.Join(dir, "inputs.json")
+	if err := os.WriteFile(inputPath, inputsJSON, 0o600); err != nil {
+		t.Fatalf("writing inputs: %v", err)
+	}
+
+	fp := &mockFileProvider{
+		readBytesFunc: func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		getContentHashFunc: func(_ context.Context, path string) (string, error) {
+			if h, ok := hashes[path]; ok {
+				return h, nil
+			}
+			return "", fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
+		},
+	}
+	return forecastEnv{
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: ref}, nil, nil, fp),
+		wdlPath:   wdlPath,
+		inputPath: inputPath,
+	}
+}
+
+func subInputs() map[string]any {
+	return map[string]any{"Cohort.reads": "/data/r.fq", "Cohort.sample": "S1"}
+}
+
+// Calls inside a subworkflow must be predicted individually — they are the
+// units Cromwell actually caches.
+func TestForecastCoversCallsInsideSubworkflow(t *testing.T) {
+	env := newSubEnv(t, parentWDL, subWDL, subInputs(), subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		map[string]string{"/data/r.fq": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
+
+	got := run(t, env)
+
+	for _, name := range []string{"AlignSample.Align", "AlignSample.Sort", "Report"} {
+		p := predictionFor(t, got, name)
+		if p.Fate != domain.FateReuse {
+			t.Errorf("%s: got %v (%v), want reuse", name, p.Fate, p.Reasons)
+		}
+	}
+	if len(got.Calls) != 3 {
+		t.Errorf("got %d predictions, want 3 leaf calls", len(got.Calls))
+	}
+}
+
+// A change to a task inside a subworkflow must be named as the root cause, and
+// cascade both within the subworkflow and out to the parent's calls.
+func TestForecastCascadesOutOfSubworkflow(t *testing.T) {
+	changedSub := strings.Replace(subWDL, `String docker = "bwa:0.7.17"`, `String docker = "bwa:0.7.18"`, 1)
+	if changedSub == subWDL {
+		t.Fatal("test setup: docker substitution did not apply")
+	}
+	env := newSubEnv(t, parentWDL, changedSub, subInputs(), subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		map[string]string{"/data/r.fq": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
+
+	got := run(t, env)
+
+	align := predictionFor(t, got, "AlignSample.Align")
+	if align.Fate != domain.FateRerun {
+		t.Fatalf("AlignSample.Align: got %v (%v), want rerun", align.Fate, align.Reasons)
+	}
+	if !strings.Contains(strings.Join(align.Reasons, ","), "docker") {
+		t.Errorf("AlignSample.Align reasons = %v, want a docker change", align.Reasons)
+	}
+
+	// Inside the subworkflow.
+	sortPred := predictionFor(t, got, "AlignSample.Sort")
+	if sortPred.Fate != domain.FateRerunDownstream || sortPred.Cause != "AlignSample.Align" {
+		t.Errorf("AlignSample.Sort: got %v cause=%q, want downstream of AlignSample.Align",
+			sortPred.Fate, sortPred.Cause)
+	}
+	// And out into the parent, blaming the root rather than the nearest hop.
+	report := predictionFor(t, got, "Report")
+	if report.Fate != domain.FateRerunDownstream || report.Cause != "AlignSample.Align" {
+		t.Errorf("Report: got %v cause=%q, want downstream of AlignSample.Align",
+			report.Fate, report.Cause)
+	}
+}
+
+// A change confined to one leaf must not drag in a sibling the consumer does
+// not read from.
+func TestForecastDoesNotCascadeFromUnrelatedSubworkflowLeaf(t *testing.T) {
+	changedSub := strings.Replace(subWDL, `String docker = "samtools:1.21"`, `String docker = "samtools:1.22"`, 1)
+	if changedSub == subWDL {
+		t.Fatal("test setup: docker substitution did not apply")
+	}
+	env := newSubEnv(t, parentWDL, changedSub, subInputs(), subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		map[string]string{"/data/r.fq": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
+
+	got := run(t, env)
+
+	// Align feeds Sort, not the other way round.
+	if p := predictionFor(t, got, "AlignSample.Align"); p.Fate != domain.FateReuse {
+		t.Errorf("AlignSample.Align: got %v (%v), want reuse", p.Fate, p.Reasons)
+	}
+	if p := predictionFor(t, got, "AlignSample.Sort"); p.Fate != domain.FateRerun {
+		t.Errorf("AlignSample.Sort: got %v, want rerun", p.Fate)
+	}
+	// Report reads AlignSample.sorted, which Sort produces, so it does cascade.
+	if p := predictionFor(t, got, "Report"); p.Fate != domain.FateRerunDownstream {
+		t.Errorf("Report: got %v, want downstream", p.Fate)
+	}
+}
+
+// Without the subworkflow source the call stays opaque and is reported as
+// undetermined, with a warning telling the user what to bundle.
+func TestForecastWarnsWhenSubworkflowSourceMissing(t *testing.T) {
+	dir := t.TempDir()
+	wdlPath := filepath.Join(dir, "cohort.wdl")
+	if err := os.WriteFile(wdlPath, []byte(parentWDL), 0o600); err != nil {
+		t.Fatalf("writing parent: %v", err)
+	}
+	inputsJSON, _ := json.Marshal(subInputs())
+	inputPath := filepath.Join(dir, "inputs.json")
+	if err := os.WriteFile(inputPath, inputsJSON, 0o600); err != nil {
+		t.Fatalf("writing inputs: %v", err)
+	}
+	fp := &mockFileProvider{
+		readBytesFunc:      func(_ context.Context, path string) ([]byte, error) { return os.ReadFile(path) },
+		getContentHashFunc: func(_ context.Context, _ string) (string, error) { return "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", nil },
+	}
+	env := forecastEnv{
+		uc:        NewCacheForecastUseCase(&stubMetadataReader{workflow: subReference("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")}, nil, nil, fp),
+		wdlPath:   wdlPath,
+		inputPath: inputPath,
+	}
+
+	got := run(t, env)
+
+	p := predictionFor(t, got, "AlignSample")
+	if p.Fate != domain.FateUnknown {
+		t.Errorf("AlignSample: got %v, want undetermined without its source", p.Fate)
+	}
+	joined := strings.Join(got.Warnings, " | ")
+	if !strings.Contains(joined, "AlignSample") || !strings.Contains(joined, "--dependencies") {
+		t.Errorf("warnings = %v, want AlignSample named and --dependencies suggested", got.Warnings)
+	}
+	// And the consumer downstream of it must not be claimed as reuse.
+	if p := predictionFor(t, got, "Report"); p.Fate != domain.FateUnknown {
+		t.Errorf("Report: got %v, want undetermined downstream of an unreadable subworkflow", p.Fate)
 	}
 }
