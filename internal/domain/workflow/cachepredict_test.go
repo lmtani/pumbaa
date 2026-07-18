@@ -20,9 +20,9 @@ func TestPredictCacheReuseCascadesFromRootCause(t *testing.T) {
 		"IndexVcf": nil,
 		"StatsVcf": {"IndexVcf"},
 	}
-	changed := map[string][]string{"IndexVcf": {"docker image changed"}}
-
-	preds := PredictCacheReuse(graph, changed, nil)
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"IndexVcf": {Reasons: []string{"docker image changed"}},
+	})
 
 	if p := fateOf(t, preds, "IndexVcf"); p.Fate != FateRerun {
 		t.Errorf("IndexVcf: got %v, want rerun", p.Fate)
@@ -41,7 +41,7 @@ func TestPredictCacheReuseCascadesFromRootCause(t *testing.T) {
 func TestPredictCacheReusePredictsFullReuseWhenNothingChanged(t *testing.T) {
 	graph := map[string][]string{"A": nil, "B": {"A"}, "C": {"B"}}
 
-	preds := PredictCacheReuse(graph, nil, nil)
+	preds := PredictCacheReuse(graph, nil)
 
 	if len(preds) != 3 {
 		t.Fatalf("expected 3 predictions, got %d", len(preds))
@@ -56,9 +56,9 @@ func TestPredictCacheReusePredictsFullReuseWhenNothingChanged(t *testing.T) {
 // A chain A→B→C with A changed must blame A for C, not the immediate parent B.
 func TestPredictCacheReuseBlamesRootNotImmediateParent(t *testing.T) {
 	graph := map[string][]string{"A": nil, "B": {"A"}, "C": {"B"}}
-	changed := map[string][]string{"A": {"command changed"}}
-
-	preds := PredictCacheReuse(graph, changed, nil)
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"A": {Reasons: []string{"command changed"}},
+	})
 
 	c := fateOf(t, preds, "C")
 	if c.Fate != FateRerunDownstream {
@@ -76,9 +76,9 @@ func TestPredictCacheReuseFanInRerunsWhenAnyUpstreamChanges(t *testing.T) {
 		"Dirty":  nil,
 		"Merged": {"Clean", "Dirty"},
 	}
-	changed := map[string][]string{"Dirty": {"input file changed"}}
-
-	preds := PredictCacheReuse(graph, changed, nil)
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"Dirty": {Reasons: []string{"input file changed"}},
+	})
 
 	if p := fateOf(t, preds, "Clean"); p.Fate != FateReuse {
 		t.Errorf("Clean: got %v, want reuse", p.Fate)
@@ -96,9 +96,9 @@ func TestPredictCacheReuseFanInRerunsWhenAnyUpstreamChanges(t *testing.T) {
 // of something we could not verify.
 func TestPredictCacheReuseUnknownPoisonsDownstream(t *testing.T) {
 	graph := map[string][]string{"A": nil, "B": {"A"}}
-	unknown := map[string]string{"A": "input not readable"}
-
-	preds := PredictCacheReuse(graph, nil, unknown)
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"A": {Unknown: "input not readable"},
+	})
 
 	a := fateOf(t, preds, "A")
 	if a.Fate != FateUnknown {
@@ -120,10 +120,10 @@ func TestPredictCacheReuseUnknownWinsOverRerun(t *testing.T) {
 		"Changed":    nil,
 		"Sink":       {"Changed", "Unknowable"},
 	}
-	changed := map[string][]string{"Changed": {"docker image changed"}}
-	unknown := map[string]string{"Unknowable": "backend not supported"}
-
-	preds := PredictCacheReuse(graph, changed, unknown)
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"Changed":    {Reasons: []string{"docker image changed"}},
+		"Unknowable": {Unknown: "backend not supported"},
+	})
 
 	if s := fateOf(t, preds, "Sink"); s.Fate != FateUnknown {
 		t.Errorf("Sink: got %v, want unknown", s.Fate)
@@ -135,7 +135,7 @@ func TestPredictCacheReuseUnknownWinsOverRerun(t *testing.T) {
 func TestPredictCacheReuseSurvivesCycle(t *testing.T) {
 	graph := map[string][]string{"A": {"B"}, "B": {"A"}}
 
-	preds := PredictCacheReuse(graph, nil, nil)
+	preds := PredictCacheReuse(graph, nil)
 
 	if len(preds) != 2 {
 		t.Fatalf("expected 2 predictions, got %d", len(preds))
@@ -188,5 +188,44 @@ func TestClassifyBackend(t *testing.T) {
 	}
 	if !BackendGCP.Supported() || !BackendLocal.Supported() || BackendUnsupported.Supported() {
 		t.Error("Supported() disagrees with the two backends we claim to handle")
+	}
+}
+
+// A call whose inputs could not be fully verified must not be reported as
+// reusable, but it is still worth more than "unknown": when an ancestor
+// reruns, the more informative verdict survives.
+func TestPredictCacheReuseBlockedReuseFallsBackToUnknown(t *testing.T) {
+	graph := map[string][]string{"A": nil, "B": {"A"}}
+
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"B": {ReuseBlocked: "an input could not be checked"},
+	})
+
+	if p := fateOf(t, preds, "A"); p.Fate != FateReuse {
+		t.Errorf("A: got %v, want reuse", p.Fate)
+	}
+	b := fateOf(t, preds, "B")
+	if b.Fate != FateUnknown {
+		t.Errorf("B: got %v, want unknown when reuse is blocked and nothing upstream reruns", b.Fate)
+	}
+	if len(b.Reasons) != 1 || b.Reasons[0] != "an input could not be checked" {
+		t.Errorf("B reasons = %v, want the blocking reason", b.Reasons)
+	}
+}
+
+func TestPredictCacheReuseBlockedReuseStillInheritsRerun(t *testing.T) {
+	graph := map[string][]string{"A": nil, "B": {"A"}}
+
+	preds := PredictCacheReuse(graph, map[string]CallAssessment{
+		"A": {Reasons: []string{"docker image changed"}},
+		"B": {ReuseBlocked: "an input could not be checked"},
+	})
+
+	b := fateOf(t, preds, "B")
+	if b.Fate != FateRerunDownstream {
+		t.Errorf("B: got %v, want rerun (downstream) — more informative than unknown", b.Fate)
+	}
+	if b.Cause != "A" {
+		t.Errorf("B cause = %q, want A", b.Cause)
 	}
 }

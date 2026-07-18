@@ -129,18 +129,36 @@ func (f CacheForecast) RootCauses() []CallPrediction {
 	return out
 }
 
-// PredictCacheReuse propagates per-call changes through the workflow's
+// CallAssessment is what was determined about one call on its own account,
+// before the dependency graph is taken into account. The zero value means
+// "nothing changed and everything was verified", which is what makes a call
+// eligible for reuse.
+type CallAssessment struct {
+	// Reasons, when non-empty, are why the call will rerun on its own account.
+	// This is a root cause: something in its own fingerprint changed.
+	Reasons []string
+	// Unknown, when non-empty, means nothing could be established about the
+	// call at all. It poisons descendants, since a call downstream of an
+	// unknowable one is itself unknowable.
+	Unknown string
+	// ReuseBlocked, when non-empty, means no change was found but the call
+	// cannot be shown unchanged either: some input resisted verification. Such
+	// a call may still inherit a rerun from upstream — which is more
+	// informative than Unknown — but it can never be reported as reuse.
+	//
+	// The distinction matters because these two are not the same claim:
+	// Unknown says "I know nothing"; ReuseBlocked says "I found nothing wrong
+	// and could not finish checking".
+	ReuseBlocked string
+}
+
+// PredictCacheReuse propagates per-call assessments through the workflow's
 // dependency graph to a fate for every call.
 //
-// graph maps a call to the calls it consumes outputs from. changed maps a call
-// to the reasons it will rerun on its own account (absent or empty means the
-// call's own fingerprint is unchanged). unknown marks calls whose fate could
-// not be determined; they poison their descendants, since a call downstream of
-// an unknown is itself unknowable.
-//
-// Calls in the graph but absent from both maps are assumed unchanged, which is
-// the whole point: they are the ones that will be reused.
-func PredictCacheReuse(graph map[string][]string, changed map[string][]string, unknown map[string]string) []CallPrediction {
+// graph maps a call to the calls it consumes outputs from. Calls with no
+// assessment are taken as verified-unchanged, which is the whole point: they
+// are the ones that will be reused.
+func PredictCacheReuse(graph map[string][]string, assessments map[string]CallAssessment) []CallPrediction {
 	names := make([]string, 0, len(graph))
 	for name := range graph {
 		names = append(names, name)
@@ -163,14 +181,15 @@ func PredictCacheReuse(graph map[string][]string, changed map[string][]string, u
 		visiting[name] = true
 		defer func() { visiting[name] = false }()
 
+		assessment := assessments[name]
 		p := CallPrediction{Call: name}
 		switch {
-		case unknown[name] != "":
+		case assessment.Unknown != "":
 			p.Fate = FateUnknown
-			p.Reasons = []string{unknown[name]}
-		case len(changed[name]) > 0:
+			p.Reasons = []string{assessment.Unknown}
+		case len(assessment.Reasons) > 0:
 			p.Fate = FateRerun
-			p.Reasons = changed[name]
+			p.Reasons = assessment.Reasons
 		default:
 			p.Fate = FateReuse
 			// An upstream verdict overrides reuse: unknown wins over rerun,
@@ -188,6 +207,13 @@ func PredictCacheReuse(graph map[string][]string, changed map[string][]string, u
 						p.Cause = rootCause(u, up)
 					}
 				}
+			}
+			// Nothing upstream forced a rerun, so reuse would be the verdict —
+			// but it is only available to a call whose inputs were fully
+			// verified. Otherwise the honest answer is that we do not know.
+			if p.Fate == FateReuse && assessment.ReuseBlocked != "" {
+				p.Fate = FateUnknown
+				p.Reasons = []string{assessment.ReuseBlocked}
 			}
 		}
 
