@@ -872,3 +872,59 @@ func TestForecastIgnoresInputsAbsentFromTheFingerprint(t *testing.T) {
 		t.Errorf("IndexVcf: got %v (%v), want reuse", p.Fate, p.Reasons)
 	}
 }
+
+// A reference run whose calls were themselves served from cache is the normal
+// case once a pipeline has run more than twice. Cromwell computes a call's
+// fingerprint in order to look for a hit, so a hit call records the same
+// hashes, inputs and backend a fresh one does — and those describe the
+// reference run's own submission, not the origin it copied from. The forecast
+// therefore needs no special case, which this pins.
+func TestForecastWorksWhenReferenceItselfHitTheCache(t *testing.T) {
+	ref := forecastFixture(forecastWDL, "Local")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		calls[0].CacheHit = true
+		calls[0].CacheResult = "Cache Hit: 0000-older-run:" + key + ":-1"
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "/data/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "sample",
+	}
+	env := newForecastEnv(t, forecastWDL, inputs, ref,
+		map[string]string{"/data/in.vcf.gz": refVcfHash})
+
+	got := run(t, env)
+
+	for _, p := range got.Calls {
+		if p.Fate != domain.FateReuse {
+			t.Errorf("%s: got %v (%v), want reuse — a cache-hit reference is still comparable",
+				p.Call, p.Fate, p.Reasons)
+		}
+	}
+}
+
+// And a change must still be detected against such a reference.
+func TestForecastDetectsChangeAgainstCacheHitReference(t *testing.T) {
+	ref := forecastFixture(forecastWDL, "Local")
+	for key := range ref.Calls {
+		calls := ref.Calls[key]
+		calls[0].CacheHit = true
+		calls[0].CacheResult = "Cache Hit: 0000-older-run:" + key + ":-1"
+		ref.Calls[key] = calls
+	}
+
+	inputs := map[string]any{
+		"VcfIndexAndStats.input_vcf":       "/data/in.vcf.gz",
+		"VcfIndexAndStats.output_basename": "different",
+	}
+	env := newForecastEnv(t, forecastWDL, inputs, ref,
+		map[string]string{"/data/in.vcf.gz": refVcfHash})
+
+	got := run(t, env)
+
+	if p := predictionFor(t, got, "IndexVcf"); p.Fate != domain.FateRerun {
+		t.Errorf("IndexVcf: got %v, want rerun", p.Fate)
+	}
+}
