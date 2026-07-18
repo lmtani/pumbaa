@@ -83,6 +83,7 @@ func main() {
 			Subcommands: []*cli.Command{
 				cont.ScaffoldHandler.Command(),
 				cont.PreflightHandler.Command(),
+				cont.CacheForecastHandler.Command(),
 				cont.SubmitHandler.Command(),
 				cont.MetadataHandler.Command(),
 				cont.DiffHandler.Command(),

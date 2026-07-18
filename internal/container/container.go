@@ -45,6 +45,7 @@ type Container struct {
 	// Use cases
 	SubmitUseCase                *workflow.SubmitUseCase
 	PreflightUseCase             *workflow.PreflightUseCase
+	CacheForecastUseCase         *workflow.CacheForecastUseCase
 	ScaffoldInputsUseCase        *workflow.ScaffoldInputsUseCase
 	MetadataUseCase              *workflow.MetadataUseCase
 	CompareUseCase               *workflow.CompareUseCase
@@ -61,6 +62,7 @@ type Container struct {
 	// Handlers
 	SubmitHandler         *handler.SubmitHandler
 	PreflightHandler      *handler.PreflightHandler
+	CacheForecastHandler  *handler.CacheForecastHandler
 	ScaffoldHandler       *handler.ScaffoldHandler
 	MetadataHandler       *handler.MetadataHandler
 	DiffHandler           *handler.DiffHandler
@@ -115,6 +117,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 
 	// Initialize use cases
 	c.PreflightUseCase = workflow.NewPreflightUseCase(fileProvider, c.CromwellClient)
+	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, fileProvider)
 	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
 	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase)
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
@@ -150,6 +153,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	// Initialize handlers
 	c.SubmitHandler = handler.NewSubmitHandler(c.SubmitUseCase, c.Presenter)
 	c.PreflightHandler = handler.NewPreflightHandler(c.PreflightUseCase, c.Presenter)
+	c.CacheForecastHandler = handler.NewCacheForecastHandler(c.CacheForecastUseCase, c.Presenter)
 	c.ScaffoldHandler = handler.NewScaffoldHandler(c.ScaffoldInputsUseCase, c.Presenter)
 	c.MetadataHandler = handler.NewMetadataHandler(c.MetadataUseCase, c.Presenter)
 	c.DiffHandler = handler.NewDiffHandler(c.CompareUseCase, c.Presenter)
