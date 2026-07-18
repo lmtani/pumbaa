@@ -51,6 +51,9 @@ const (
 	outcomeChanged
 	// outcomeDeferred: rests on a producing call; the graph decides.
 	outcomeDeferred
+	// outcomeAssumed: the program computes the value, so it is taken to follow
+	// the sources it derives from — which are themselves compared.
+	outcomeAssumed
 	// outcomeUnverifiable: nothing could be established, so reuse is off the
 	// table even though nothing was found wrong.
 	outcomeUnverifiable
@@ -71,28 +74,51 @@ type callInputs struct {
 func (c inputComparison) compare(ctx context.Context, node *wdl.CallNode, refCall domain.Call) callInputs {
 	var out callInputs
 
+	// Every input the reference fingerprinted yields exactly one outcome, and
+	// every outcome is acted on here. An input that fell through this loop
+	// without a decision would be one the analysis never looked at while
+	// reporting the call reusable — which is how an invisible dependency
+	// reached a verdict once already. The default arm is what keeps a future
+	// outcome from re-opening that door.
 	for _, inputName := range fingerprintInputNames(refCall.Fingerprint) {
-		binding, bound := node.Bindings[inputName]
-		if !bound {
-			// Not written at the call site: either the program computes it, or
-			// the submission supplies it under a call-scoped key.
-			c.compareUnbound(ctx, node, refCall, inputName, &out)
-			continue
-		}
-
-		switch outcome, detail := c.compareBinding(ctx, binding, refCall, inputName); outcome {
+		outcome, detail := c.classify(ctx, node, refCall, inputName)
+		switch outcome {
+		case outcomeUnchanged, outcomeDeferred:
 		case outcomeChanged:
 			out.Changed = append(out.Changed, detail)
+		case outcomeAssumed:
+			out.Assumed = appendUnique(out.Assumed, detail)
 		case outcomeUnverifiable:
-			if out.Blocked == "" {
-				out.Blocked = detail
-			}
-		case outcomeUnchanged, outcomeDeferred:
+			out.block(detail)
+		default:
+			out.block(fmt.Sprintf("input %q was not classified", inputName))
 		}
 	}
 
 	sort.Strings(out.Changed)
 	return out
+}
+
+// block records the first reason reuse cannot be established. The first is kept
+// rather than the last so the message names the input the user reaches first.
+func (o *callInputs) block(reason string) {
+	if o.Blocked == "" {
+		o.Blocked = reason
+	}
+}
+
+// classify decides one input, choosing between an expression written at the
+// call site and one the program or the submission supplies elsewhere.
+func (c inputComparison) classify(
+	ctx context.Context,
+	node *wdl.CallNode,
+	refCall domain.Call,
+	inputName string,
+) (inputOutcome, string) {
+	if binding, bound := node.Bindings[inputName]; bound {
+		return c.compareBinding(ctx, binding, refCall, inputName)
+	}
+	return c.compareUnbound(ctx, node, refCall, inputName)
 }
 
 // compareBinding applies the two-part rule to one resolved input.
@@ -316,8 +342,7 @@ func (c inputComparison) compareUnbound(
 	node *wdl.CallNode,
 	refCall domain.Call,
 	inputName string,
-	out *callInputs,
-) {
+) (inputOutcome, string) {
 	pending, ok := c.pendingValue(node, inputName)
 	if !ok {
 		// Computed by the program. It is a deterministic function of the task
@@ -325,35 +350,20 @@ func (c inputComparison) compareUnbound(
 		// taken to follow them — except for a file, where not even the path is
 		// known and there is nothing to stand on.
 		if _, declared := declaredTypeOf(refCall.Fingerprint, inputName); strings.Contains(declared, "File") {
-			if out.Blocked == "" {
-				out.Blocked = fmt.Sprintf("input %q has no resolvable path", inputName)
-			}
-			return
+			return outcomeUnverifiable, fmt.Sprintf("input %q has no resolvable path", inputName)
 		}
-		out.Assumed = appendUnique(out.Assumed, inputName)
-		return
+		return outcomeAssumed, inputName
 	}
 
 	recorded, recordedOK := refCall.Inputs[inputName]
 	if !recordedOK {
-		return
+		// The reference fingerprinted this input but did not record what it
+		// held, so there is nothing to compare against. Passing over it would
+		// silently count as unchanged.
+		return outcomeUnverifiable, fmt.Sprintf(
+			"input %q was fingerprinted by the reference run but its value was not recorded", inputName)
 	}
-	if valueString(recorded) == pending {
-		return
-	}
-	if hash := c.recordedFileHash(refCall.Fingerprint, inputName); hash != "" {
-		same, err := sameContent(ctx, c.files, pending, hash)
-		if err != nil {
-			if out.Blocked == "" {
-				out.Blocked = fmt.Sprintf("input %q: %v", inputName, err)
-			}
-			return
-		}
-		if same {
-			return
-		}
-	}
-	out.Changed = append(out.Changed, fmt.Sprintf("input %q changed", inputName))
+	return c.compareValue(ctx, pending, valueString(recorded), refCall, inputName)
 }
 
 // pendingValue resolves an input the call site does not write, from a
