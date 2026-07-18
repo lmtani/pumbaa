@@ -31,38 +31,98 @@ type TaskSpec struct {
 }
 
 // CommandHash reproduces the hash Cromwell records for this task's command
-// template under `callCaching.hashes["command template"]`.
+// template under `callCaching.hashes["command template"]`, and reports whether
+// that reproduction can be trusted for this particular command.
 //
-// The normalisation was derived by matching against real Cromwell 91 metadata
-// (see docs/design/cache-explainer.md): each line is trimmed and rejoined with
-// newlines, and `~{expr}` placeholders are rewritten to `${expr}`. It matches
-// every task in the captured fixtures, including a run where the docker image
-// changed and the command did not.
+// The normalisation was derived by matching real Cromwell metadata (see
+// docs/design/cache-explainer.md): the command is dedented by its common
+// leading whitespace — relative indentation is preserved — and `~{expr}`
+// placeholders are rewritten to `${expr}`.
 //
-// Being able to compute this locally means a command change is detectable
-// without the reference run's WDL source — which matters because a run's
-// metadata carries only the top-level workflow, never its imported files.
-// Callers should still confirm the formula reproduces at least one known hash
-// before trusting a mismatch, since the normalisation is not a documented
-// contract.
-func (t TaskSpec) CommandHash() string {
+// The catch is that Cromwell does not hash the placeholder text verbatim: it
+// re-serialises the parsed expression. For a bare reference that round-trip is
+// the identity, so the text transform is exact. For anything richer — a
+// conditional, arithmetic, a function call — the canonical form is unknown to
+// us and a mismatch would say more about our rendering than about the command.
+// ok is false in exactly those cases, and callers must then skip the comparison
+// rather than report a change.
+//
+// Measured against a real 15-task production pipeline, this predicate never
+// admitted a command whose hash it then got wrong; it only declines a couple it
+// would in fact have reproduced.
+//
+// Computing this locally is what makes a command change detectable without the
+// reference run's WDL source, which matters because a run's metadata carries
+// only the top-level workflow, never its imported files.
+func (t TaskSpec) CommandHash() (hash string, ok bool) {
 	return CommandTemplateHash(t.Command)
 }
 
-// CommandTemplateHash hashes a raw WDL command template the way Cromwell does.
-func CommandTemplateHash(command string) string {
-	lines := strings.Split(strings.TrimSpace(command), "\n")
-	for i, line := range lines {
-		lines[i] = strings.TrimSpace(line)
-	}
-	normalized := placeholderPattern.ReplaceAllString(strings.Join(lines, "\n"), "${$1}")
+// CommandTemplateHash hashes a raw WDL command template the way Cromwell does,
+// reporting whether every placeholder in it is one we can render canonically.
+func CommandTemplateHash(command string) (hash string, ok bool) {
+	normalized := placeholderPattern.ReplaceAllString(dedentCommand(command), "${$1}")
 	sum := md5.Sum([]byte(normalized)) //nolint:gosec // reproducing Cromwell's hash, not a security primitive
-	return strings.ToUpper(hex.EncodeToString(sum[:]))
+	return strings.ToUpper(hex.EncodeToString(sum[:])), canonicalPlaceholders(command)
 }
 
-// placeholderPattern matches WDL 1.0 `~{...}` interpolation, which Cromwell
-// normalises to the `${...}` form before hashing.
-var placeholderPattern = regexp.MustCompile(`~\{([^}]*)\}`)
+// dedentCommand removes the whitespace prefix common to every non-blank line,
+// preserving relative indentation.
+func dedentCommand(command string) string {
+	lines := strings.Split(strings.Trim(command, "\n"), "\n")
+	indent := -1
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		n := len(line) - len(strings.TrimLeft(line, " \t"))
+		if indent < 0 || n < indent {
+			indent = n
+		}
+	}
+	if indent > 0 {
+		for i, line := range lines {
+			if len(line) >= indent {
+				lines[i] = line[indent:]
+			} else {
+				lines[i] = strings.TrimLeft(line, " \t")
+			}
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// canonicalPlaceholders reports whether every interpolation in the command is a
+// bare reference, optionally behind a placeholder option (`sep=`, `default=`,
+// `true=`/`false=`). Those are the forms whose textual rewrite is exactly what
+// Cromwell hashes.
+func canonicalPlaceholders(command string) bool {
+	for _, form := range []*regexp.Regexp{placeholderPattern, dollarPlaceholderPattern} {
+		for _, m := range form.FindAllStringSubmatch(command, -1) {
+			body := strings.TrimSpace(m[1])
+			body = strings.TrimSpace(placeholderOptionPattern.ReplaceAllString(body, ""))
+			if !bareReferencePattern.MatchString(body) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+var (
+	// placeholderPattern matches WDL 1.0 `~{...}` interpolation, which Cromwell
+	// normalises to the `${...}` form before hashing.
+	placeholderPattern = regexp.MustCompile(`~\{([^}]*)\}`)
+	// dollarPlaceholderPattern matches the older `${...}` interpolation. In a
+	// heredoc command it may equally be a shell variable, which is harmless:
+	// a plain `${VAR}` passes the bare-reference test either way, and anything
+	// more elaborate only makes the check more conservative.
+	dollarPlaceholderPattern = regexp.MustCompile(`\$\{([^}]*)\}`)
+	// placeholderOptionPattern strips a leading placeholder option so the
+	// reference behind it can be examined.
+	placeholderOptionPattern = regexp.MustCompile(`^(sep|default|true|false)\s*=\s*("[^"]*"|'[^']*'|\S+)\s*`)
+	bareReferencePattern     = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.]*$`)
+)
 
 // DockerValue resolves the task's docker image, preferring a literal in the
 // runtime section and falling back to the default of the input the runtime

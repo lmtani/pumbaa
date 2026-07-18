@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -48,7 +49,12 @@ func TestCommandTemplateHashMatchesCromwell(t *testing.T) {
 		if want == "" {
 			continue
 		}
-		if got := spec.CommandHash(); got != want {
+		got, canonical := spec.CommandHash()
+		if !canonical {
+			t.Errorf("%s: command should be canonically renderable", task)
+			continue
+		}
+		if got != want {
 			t.Errorf("%s: CommandHash() = %s, want %s (Cromwell's recorded hash)", task, got, want)
 		}
 		checked++
@@ -59,12 +65,102 @@ func TestCommandTemplateHashMatchesCromwell(t *testing.T) {
 }
 
 func TestCommandTemplateHashIsStableAndSensitive(t *testing.T) {
+	hash := func(s string) string { h, _ := CommandTemplateHash(s); return h }
+
 	base := "  set -e\n  bcftools index ~{input_vcf}\n"
-	// Indentation is normalised away; the content is not.
-	if CommandTemplateHash(base) != CommandTemplateHash("set -e\nbcftools index ~{input_vcf}") {
-		t.Error("hash must ignore leading indentation")
+	// The common indent is removed; the content is not.
+	if hash(base) != hash("set -e\nbcftools index ~{input_vcf}") {
+		t.Error("hash must ignore the common leading indentation")
 	}
-	if CommandTemplateHash(base) == CommandTemplateHash("set -e\nbcftools index --force ~{input_vcf}") {
+	if hash(base) == hash("set -e\nbcftools index --force ~{input_vcf}") {
 		t.Error("hash must change when the command does")
+	}
+	// Relative indentation is part of the command and must survive dedenting.
+	nested := "if true; then\n  echo hi\nfi"
+	flat := "if true; then\necho hi\nfi"
+	if hash(nested) == hash(flat) {
+		t.Error("relative indentation must be preserved")
+	}
+}
+
+// A command whose placeholders are bare references can be rendered exactly;
+// one that interpolates an expression cannot, and must say so rather than
+// produce a hash that would read as a change.
+func TestCommandTemplateHashReportsNonCanonicalPlaceholders(t *testing.T) {
+	tests := []struct {
+		command string
+		want    bool
+	}{
+		{"echo ~{sample}", true},
+		{"echo ~{ sample }", true},
+		{"echo ~{obj.field}", true},
+		{"echo ~{sep=\" \" bams}", true},
+		{"echo ~{default=\"none\" tag}", true},
+		{"echo ~{if defined(x) then \"-f \" + x else \"\"}", false},
+		{"echo ~{basename(path)}", false},
+		{"echo ~{a + b}", false},
+	}
+	for _, tt := range tests {
+		if _, got := CommandTemplateHash(tt.command); got != tt.want {
+			t.Errorf("CommandTemplateHash(%q) canonical = %v, want %v", tt.command, got, tt.want)
+		}
+	}
+}
+
+// The parser must hand back the command exactly as written. Rebuilding it from
+// tokens drops whitespace on the hidden channel — `~{sep="," xs}` came back as
+// `~{sep=","xs}` — which silently broke every command-template hash for tasks
+// using placeholder options.
+func TestParserPreservesCommandWhitespaceVerbatim(t *testing.T) {
+	const src = `version 1.0
+
+workflow W { call T }
+
+task T {
+  input { Array[File] bams }
+  command <<<
+    tool \
+      -input ~{sep="," bams} \
+      -flag
+  >>>
+  output { File out = "o" }
+}
+`
+	specs, err := TaskSpecs([]byte(src))
+	if err != nil {
+		t.Fatalf("TaskSpecs() error: %v", err)
+	}
+	got := specs["T"].Command
+	if !strings.Contains(got, `~{sep="," bams}`) {
+		t.Errorf("command lost source whitespace inside the placeholder:\n%q", got)
+	}
+	// Relative indentation of the continuation lines must survive too.
+	if !strings.Contains(got, "\n      -flag") {
+		t.Errorf("command lost relative indentation:\n%q", got)
+	}
+}
+
+func TestCommandTemplateHashHandlesCurlyBraceCommands(t *testing.T) {
+	const src = `version 1.0
+
+workflow W { call T }
+
+task T {
+  input { String sample }
+  command {
+    echo ${sample}
+  }
+  output { File out = "o" }
+}
+`
+	specs, err := TaskSpecs([]byte(src))
+	if err != nil {
+		t.Fatalf("TaskSpecs() error: %v", err)
+	}
+	if got := strings.TrimSpace(specs["T"].Command); got != "echo ${sample}" {
+		t.Errorf("curly-brace command body = %q, want the inner text", got)
+	}
+	if _, ok := specs["T"].CommandHash(); !ok {
+		t.Error("a bare ${ref} placeholder should be canonically renderable")
 	}
 }
