@@ -2,6 +2,7 @@ package wdl
 
 import (
 	"reflect"
+	gosort "sort"
 	"strings"
 	"testing"
 )
@@ -296,4 +297,342 @@ task T {
 	if b := g.Nodes["T"].Bindings["image"]; b.Kind != BindingUnknown {
 		t.Errorf("concatenated expression binding = %+v, want unknown", b)
 	}
+}
+
+// A subworkflow: the parent passes its own inputs down, and the leaf tasks are
+// what Cromwell actually caches.
+const subWorkflowSource = `version 1.0
+
+workflow AlignSample {
+  input {
+    File reads
+    String sample
+  }
+
+  call Align {
+    input: reads = reads, sample = sample
+  }
+
+  call Sort {
+    input: bam = Align.out, sample = sample
+  }
+
+  output {
+    File sorted = Sort.out
+    File raw = Align.out
+  }
+}
+
+task Align {
+  input { File reads String sample }
+  command <<< bwa mem ~{reads} > ~{sample}.bam >>>
+  runtime { docker: "bwa:0.7.17" }
+  output { File out = "~{sample}.bam" }
+}
+
+task Sort {
+  input { File bam String sample }
+  command <<< samtools sort ~{bam} >>>
+  runtime { docker: "samtools:1.21" }
+  output { File out = "~{sample}.sorted.bam" }
+}
+`
+
+const parentWithSubSource = `version 1.0
+
+import "align_sample.wdl" as align
+
+workflow Cohort {
+  input {
+    File reads
+    String sample
+  }
+
+  call align.AlignSample {
+    input: reads = reads, sample = sample
+  }
+
+  call Report {
+    input: bam = AlignSample.sorted, sample = sample
+  }
+}
+
+task Report {
+  input { File bam String sample }
+  command <<< echo ~{bam} >>>
+  runtime { docker: "report:1.0" }
+  output { File out = "~{sample}.txt" }
+}
+`
+
+func subSources() SourceSet {
+	s := SourceSet{}
+	s.Add("align_sample.wdl", []byte(subWorkflowSource))
+	return s
+}
+
+// The core of subworkflow support: leaves are flattened into the graph under
+// their call path, because a subworkflow call is not itself a cacheable unit.
+func TestBuildCallGraphFlattensSubworkflowIntoLeaves(t *testing.T) {
+	g, err := BuildCallGraphWithSources([]byte(parentWithSubSource), subSources())
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+
+	want := []string{"AlignSample.Align", "AlignSample.Sort", "Report"}
+	if got := g.Names(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("Names() = %v, want %v", got, want)
+	}
+	// The subworkflow call itself must not survive as a node.
+	if _, ok := g.Nodes["AlignSample"]; ok {
+		t.Error("the subworkflow call should be flattened away, not kept as a node")
+	}
+	for _, n := range g.Nodes {
+		if n.Unresolved || n.Subworkflow {
+			t.Errorf("%s: got unresolved=%v subworkflow=%v, want both false",
+				n.Name, n.Unresolved, n.Subworkflow)
+		}
+	}
+}
+
+// Values passed into a subworkflow must be followed through to the leaf, or the
+// leaf's inputs cannot be compared against a reference run.
+func TestBuildCallGraphTranslatesBindingsThroughSubworkflow(t *testing.T) {
+	g, err := BuildCallGraphWithSources([]byte(parentWithSubSource), subSources())
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+
+	align := g.Nodes["AlignSample.Align"]
+	// `reads` is a subworkflow input, bound by the parent to its own input.
+	if b := align.Bindings["reads"]; b.Kind != BindingWorkflowInput || b.Source != "reads" {
+		t.Errorf("Align.reads = %+v, want the top-level workflow input reads", b)
+	}
+	if b := align.Bindings["sample"]; b.Kind != BindingWorkflowInput || b.Source != "sample" {
+		t.Errorf("Align.sample = %+v, want the top-level workflow input sample", b)
+	}
+
+	// Inside the subworkflow, Sort consumes Align — the edge must be qualified.
+	sort := g.Nodes["AlignSample.Sort"]
+	if b := sort.Bindings["bam"]; b.Kind != BindingCall || b.Source != "AlignSample.Align" {
+		t.Errorf("Sort.bam = %+v, want call AlignSample.Align", b)
+	}
+	if !reflect.DeepEqual(sort.DependsOn, []string{"AlignSample.Align"}) {
+		t.Errorf("Sort.DependsOn = %v, want [AlignSample.Align]", sort.DependsOn)
+	}
+}
+
+// A consumer of a subworkflow output must depend on the leaf that produces it,
+// not on every leaf — otherwise an unrelated rerun inside the subworkflow would
+// cascade to it.
+func TestBuildCallGraphResolvesSubworkflowOutputToProducingLeaf(t *testing.T) {
+	g, err := BuildCallGraphWithSources([]byte(parentWithSubSource), subSources())
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+
+	report := g.Nodes["Report"]
+	// Cohort reads AlignSample.sorted, which the subworkflow declares as Sort.out.
+	if b := report.Bindings["bam"]; b.Kind != BindingCall || b.Source != "AlignSample.Sort" {
+		t.Errorf("Report.bam = %+v, want call AlignSample.Sort", b)
+	}
+	if !reflect.DeepEqual(report.DependsOn, []string{"AlignSample.Sort"}) {
+		t.Errorf("Report.DependsOn = %v, want only [AlignSample.Sort]", report.DependsOn)
+	}
+}
+
+// Without the imported source the subworkflow stays opaque and is flagged, so
+// callers withhold a verdict instead of assuming it is unchanged.
+func TestBuildCallGraphMarksUnresolvedSubworkflow(t *testing.T) {
+	g, err := BuildCallGraph([]byte(parentWithSubSource))
+	if err != nil {
+		t.Fatalf("BuildCallGraph() error: %v", err)
+	}
+
+	node, ok := g.Nodes["AlignSample"]
+	if !ok {
+		t.Fatal("an unresolvable subworkflow must remain in the graph as one node")
+	}
+	if !node.Unresolved || !node.Subworkflow {
+		t.Errorf("AlignSample: got unresolved=%v subworkflow=%v, want both true",
+			node.Unresolved, node.Subworkflow)
+	}
+}
+
+// An imported *task* is not a subworkflow. Treating it as one was a real bug:
+// it silently withheld a verdict for the most common import pattern.
+func TestBuildCallGraphResolvesImportedTask(t *testing.T) {
+	const lib = `version 1.0
+
+task AlignReads {
+  input { File bam }
+  command <<< bwa ~{bam} >>>
+  runtime { docker: "bwa:0.7.17" }
+  output { File out = "o.bam" }
+}
+`
+	const main = `version 1.0
+
+import "lib.wdl" as lib
+
+workflow W {
+  input { File bam }
+  call lib.AlignReads { input: bam = bam }
+}
+`
+	sources := SourceSet{}
+	sources.Add("lib.wdl", []byte(lib))
+
+	g, err := BuildCallGraphWithSources([]byte(main), sources)
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+
+	node, ok := g.Nodes["AlignReads"]
+	if !ok {
+		t.Fatalf("AlignReads missing; graph has %v", g.Names())
+	}
+	if node.Subworkflow {
+		t.Error("an imported task must not be classified as a subworkflow")
+	}
+	if node.Unresolved {
+		t.Error("an imported task whose source is available must be resolved")
+	}
+}
+
+// Without the library source the task body is invisible, so a command change
+// would be undetectable — that has to be flagged, not silently ignored.
+func TestBuildCallGraphMarksImportedTaskUnresolvedWithoutSources(t *testing.T) {
+	const main = `version 1.0
+
+import "lib.wdl" as lib
+
+workflow W {
+  input { File bam }
+  call lib.AlignReads { input: bam = bam }
+}
+`
+	g, err := BuildCallGraph([]byte(main))
+	if err != nil {
+		t.Fatalf("BuildCallGraph() error: %v", err)
+	}
+	node, ok := g.Nodes["AlignReads"]
+	if !ok {
+		t.Fatalf("AlignReads missing; graph has %v", g.Names())
+	}
+	if !node.Unresolved {
+		t.Error("AlignReads: want unresolved when the import source is absent")
+	}
+}
+
+// A subworkflow input the parent does not pass falls back to the subworkflow's
+// own default.
+func TestBuildCallGraphUsesSubworkflowDefaultWhenParentDoesNotBind(t *testing.T) {
+	const sub = `version 1.0
+
+workflow Sub {
+  input {
+    File data
+    String mode = "fast"
+  }
+  call Run { input: data = data, mode = mode }
+}
+
+task Run {
+  input { File data String mode }
+  command <<< echo ~{mode} ~{data} >>>
+  output { File out = "o" }
+}
+`
+	const main = `version 1.0
+
+import "sub.wdl" as s
+
+workflow Top {
+  input { File data }
+  call s.Sub { input: data = data }
+}
+`
+	sources := SourceSet{}
+	sources.Add("sub.wdl", []byte(sub))
+
+	g, err := BuildCallGraphWithSources([]byte(main), sources)
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+	run := g.Nodes["Sub.Run"]
+	if run == nil {
+		t.Fatalf("Sub.Run missing; graph has %v", g.Names())
+	}
+	if b := run.Bindings["mode"]; b.Kind != BindingLiteral || b.Literal != "fast" {
+		t.Errorf("Run.mode = %+v, want the subworkflow default literal \"fast\"", b)
+	}
+	if b := run.Bindings["data"]; b.Kind != BindingWorkflowInput || b.Source != "data" {
+		t.Errorf("Run.data = %+v, want the top-level input data", b)
+	}
+}
+
+// An input neither passed by the parent nor defaulted must be looked up under
+// the call path, the way Cromwell expects it in the inputs JSON.
+func TestBuildCallGraphScopesUnboundSubworkflowInput(t *testing.T) {
+	const sub = `version 1.0
+
+workflow Sub {
+  input {
+    File data
+    String mode
+  }
+  call Run { input: data = data, mode = mode }
+}
+
+task Run {
+  input { File data String mode }
+  command <<< echo ~{mode} >>>
+  output { File out = "o" }
+}
+`
+	const main = `version 1.0
+
+import "sub.wdl" as s
+
+workflow Top {
+  input { File data }
+  call s.Sub { input: data = data }
+}
+`
+	sources := SourceSet{}
+	sources.Add("sub.wdl", []byte(sub))
+
+	g, err := BuildCallGraphWithSources([]byte(main), sources)
+	if err != nil {
+		t.Fatalf("BuildCallGraphWithSources() error: %v", err)
+	}
+	b := g.Nodes["Sub.Run"].Bindings["mode"]
+	if b.Kind != BindingWorkflowInput || b.Source != "mode" || b.Scope != "Sub" {
+		t.Errorf("Run.mode = %+v, want workflow input mode scoped to Sub", b)
+	}
+}
+
+func TestTaskSpecsWithSourcesIncludesImportedTasks(t *testing.T) {
+	specs, err := TaskSpecsWithSources([]byte(parentWithSubSource), subSources())
+	if err != nil {
+		t.Fatalf("TaskSpecsWithSources() error: %v", err)
+	}
+	for _, name := range []string{"Report", "Align", "Sort"} {
+		if _, ok := specs[name]; !ok {
+			t.Errorf("task %q missing; got %v", name, specKeys(specs))
+		}
+	}
+	if docker, ok := specs["Align"].DockerValue(); !ok || docker != "bwa:0.7.17" {
+		t.Errorf("Align docker = (%q, %v), want bwa:0.7.17", docker, ok)
+	}
+}
+
+func specKeys(m map[string]TaskSpec) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	gosort.Strings(out)
+	return out
 }

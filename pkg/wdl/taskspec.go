@@ -1,7 +1,10 @@
 package wdl
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/lmtani/pumbaa/pkg/wdl/ast"
@@ -27,6 +30,40 @@ type TaskSpec struct {
 	InputDefaults map[string]string
 }
 
+// CommandHash reproduces the hash Cromwell records for this task's command
+// template under `callCaching.hashes["command template"]`.
+//
+// The normalisation was derived by matching against real Cromwell 91 metadata
+// (see docs/design/cache-explainer.md): each line is trimmed and rejoined with
+// newlines, and `~{expr}` placeholders are rewritten to `${expr}`. It matches
+// every task in the captured fixtures, including a run where the docker image
+// changed and the command did not.
+//
+// Being able to compute this locally means a command change is detectable
+// without the reference run's WDL source — which matters because a run's
+// metadata carries only the top-level workflow, never its imported files.
+// Callers should still confirm the formula reproduces at least one known hash
+// before trusting a mismatch, since the normalisation is not a documented
+// contract.
+func (t TaskSpec) CommandHash() string {
+	return CommandTemplateHash(t.Command)
+}
+
+// CommandTemplateHash hashes a raw WDL command template the way Cromwell does.
+func CommandTemplateHash(command string) string {
+	lines := strings.Split(strings.TrimSpace(command), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	normalized := placeholderPattern.ReplaceAllString(strings.Join(lines, "\n"), "${$1}")
+	sum := md5.Sum([]byte(normalized)) //nolint:gosec // reproducing Cromwell's hash, not a security primitive
+	return strings.ToUpper(hex.EncodeToString(sum[:]))
+}
+
+// placeholderPattern matches WDL 1.0 `~{...}` interpolation, which Cromwell
+// normalises to the `${...}` form before hashing.
+var placeholderPattern = regexp.MustCompile(`~\{([^}]*)\}`)
+
 // DockerValue resolves the task's docker image, preferring a literal in the
 // runtime section and falling back to the default of the input the runtime
 // references. ok is false when the image cannot be determined from the WDL.
@@ -43,12 +80,52 @@ func (t TaskSpec) DockerValue() (string, bool) {
 }
 
 // TaskSpecs extracts every task definition from WDL source, keyed by task name.
+// Imports are not resolved; use TaskSpecsWithSources to include imported tasks.
 func TaskSpecs(source []byte) (map[string]TaskSpec, error) {
+	return TaskSpecsWithSources(source, nil)
+}
+
+// TaskSpecsWithSources extracts task definitions from the source and, walking
+// its imports transitively, from every document it can resolve.
+//
+// Tasks are keyed by bare name because that is how a call addresses them once
+// the namespace is stripped. A name collision across imported files keeps the
+// definition nearest the root, which is the one a reader would assume wins.
+func TaskSpecsWithSources(source []byte, deps SourceSet) (map[string]TaskSpec, error) {
 	doc, err := ParseBytes(source)
 	if err != nil {
 		return nil, err
 	}
-	return TaskSpecsFromDocument(doc), nil
+
+	out := TaskSpecsFromDocument(doc)
+	docs := newDocumentSet(deps)
+
+	// Breadth-first so nearer definitions are added first and shadow deeper ones.
+	frontier := []*ast.Document{doc}
+	visited := make(map[string]bool)
+	for depth := 0; depth < maxImportDepth && len(frontier) > 0; depth++ {
+		var next []*ast.Document
+		for _, d := range frontier {
+			for _, imp := range d.Imports {
+				if imp == nil || visited[imp.URI] {
+					continue
+				}
+				visited[imp.URI] = true
+				imported, ok := docs.document(imp.URI)
+				if !ok {
+					continue
+				}
+				for name, spec := range TaskSpecsFromDocument(imported) {
+					if _, exists := out[name]; !exists {
+						out[name] = spec
+					}
+				}
+				next = append(next, imported)
+			}
+		}
+		frontier = next
+	}
+	return out, nil
 }
 
 // TaskSpecsFromDocument extracts task specs from an already-parsed document.
