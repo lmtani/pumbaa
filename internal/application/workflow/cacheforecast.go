@@ -12,9 +12,7 @@ package workflow
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -136,19 +134,18 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 				"input and docker changes still are")
 	}
 
-	changed := make(map[string][]string)
-	unknown := make(map[string]string)
+	comparison := inputComparison{
+		files:           uc.files,
+		reference:       reference,
+		referenceParams: parseParameters(reference.SubmittedInputs),
+		pendingParams:   pendingInputs,
+		specs:           specs,
+	}
+
+	assessments := make(map[string]domain.CallAssessment, len(graph.Nodes))
 	var assumed []string
 	for _, name := range graph.Names() {
-		node := graph.Nodes[name]
-		reasons, why := uc.assessCall(ctx, node, specs, refSpecs, reference, pendingInputs, &assumed)
-		if why != "" {
-			unknown[name] = why
-			continue
-		}
-		if len(reasons) > 0 {
-			changed[name] = reasons
-		}
+		assessments[name] = uc.assessCall(ctx, graph.Nodes[name], specs, refSpecs, comparison, &assumed)
 	}
 
 	if len(assumed) > 0 {
@@ -158,252 +155,86 @@ func (uc *CacheForecastUseCase) Execute(ctx context.Context, input CacheForecast
 			strings.Join(assumed, ", ")))
 	}
 
-	forecast.Calls = domain.PredictCacheReuse(graph.Dependencies(), changed, unknown)
+	forecast.Calls = domain.PredictCacheReuse(graph.Dependencies(), assessments)
 	return forecast, nil
 }
 
-// assessCall decides whether one call's own fingerprint changed. It returns the
-// reasons it will rerun, or a non-empty why when the call cannot be judged.
+// assessCall determines what can be established about one call on its own
+// account, before the dependency graph is consulted.
 func (uc *CacheForecastUseCase) assessCall(
 	ctx context.Context,
 	node *wdl.CallNode,
-	specs, refSpecs map[string]wdl.TaskSpec,
-	reference *domain.Workflow,
-	pendingInputs map[string]any,
+	specs map[string]wdl.TaskSpec,
+	refSpecs map[string]wdl.TaskSpec,
+	comparison inputComparison,
 	assumed *[]string,
-) (reasons []string, why string) {
+) domain.CallAssessment {
 	if node.Unresolved {
 		if node.Subworkflow {
-			return nil, "subworkflow source not available"
+			return domain.CallAssessment{Unknown: "subworkflow source not available"}
 		}
 		// The task body is invisible, so a command or docker change would go
 		// undetected. Predicting reuse here would be the dangerous direction.
-		return nil, "task definition not available"
+		return domain.CallAssessment{Unknown: "task definition not available"}
 	}
 
-	refCall, ok := findReferenceCall(reference, node.Name)
+	refCall, ok := findReferenceCall(comparison.reference, node.Name)
 	if !ok {
 		// A call the reference never ran has nothing to be reused from.
-		return []string{"not present in the reference run"}, ""
+		return domain.CallAssessment{Reasons: []string{"not present in the reference run"}}
 	}
 	if len(refCall.Fingerprint) == 0 {
-		return nil, "reference run recorded no cache hashes"
+		return domain.CallAssessment{Unknown: "reference run recorded no cache hashes"}
 	}
 
-	spec, hasSpec := specs[node.Task]
-	if hasSpec {
-		// The command template is compared against the hash the reference
-		// recorded, not against its WDL text: a run's metadata carries only the
-		// top-level workflow, so a task inside an imported subworkflow has no
-		// reference text to compare with — but it always has a fingerprint.
-		recordedCommand := refCall.Fingerprint["command template"]
-		computed, canonical := spec.CommandHash()
-		switch {
-		case !uc.commandHashTrusted || recordedCommand == "":
-		case !canonical:
-			// The command interpolates an expression whose canonical form we
-			// cannot reproduce, so a mismatch would be our rendering, not a
-			// change. Skipping is the only honest option.
-			*assumed = appendUnique(*assumed, node.Task+" (command)")
-		case computed != recordedCommand:
-			reasons = append(reasons, "command template changed")
-		}
-		if refSpec, ok := refSpecs[node.Task]; ok {
-			if r := compareDocker(spec, refSpec); r != "" {
-				reasons = append(reasons, r)
-			}
-		}
-	}
-
-	inputReasons, inputWhy := uc.compareInputs(ctx, node, refCall, pendingInputs, specs, assumed)
-	if inputWhy != "" {
-		return nil, inputWhy
-	}
-	reasons = append(reasons, inputReasons...)
-	sort.Strings(reasons)
-	return reasons, ""
-}
-
-// compareInputs checks every input of a call against the value the reference
-// run used.
-//
-// The list of inputs comes from the reference call rather than from the WDL's
-// explicit call bindings, because Cromwell also accepts call-scoped overrides
-// in the inputs JSON ("Workflow.Call.docker"). Those never appear as bindings,
-// and missing them would silently predict reuse for a submission that changed
-// a task's image.
-func (uc *CacheForecastUseCase) compareInputs(
-	ctx context.Context,
-	node *wdl.CallNode,
-	refCall domain.Call,
-	pendingInputs map[string]any,
-	specs map[string]wdl.TaskSpec,
-	assumed *[]string,
-) (reasons []string, why string) {
-	// Only inputs the reference actually fingerprinted can affect reuse. A task
-	// may receive more than that (Cromwell renames some private declarations),
-	// and comparing those would invent differences the cache never sees.
-	names := fingerprintInputNames(refCall.Fingerprint)
-
-	for _, inputName := range names {
-		binding, bound := node.Bindings[inputName]
-		if bound && binding.Kind == wdl.BindingCall {
-			// Handled by cascade propagation, not here.
-			continue
-		}
-
-		pending, ok := uc.pendingValue(binding, node, inputName, pendingInputs, specs)
-		if !ok {
-			// The value is computed by the WDL rather than supplied — a disk
-			// size derived from an input's size, say. It is a deterministic
-			// function of the task definition and the other inputs, both of
-			// which are compared, so it is assumed to follow them rather than
-			// being treated as unknowable. Assumptions are reported, because
-			// editing such an expression without touching the command would
-			// slip past.
-			_, declaredType := declaredTypeOf(refCall.Fingerprint, inputName)
-			if strings.Contains(declaredType, "File") {
-				// A file we cannot even name is genuine uncertainty about data.
-				return nil, fmt.Sprintf("input %q has no resolvable path", inputName)
-			}
-			*assumed = appendUnique(*assumed, inputName)
-			continue
-		}
-
-		hashKey, isFile := fileHashKey(refCall.Fingerprint, inputName)
-		if isFile {
-			same, err := uc.sameFile(ctx, pending, refCall.Fingerprint[hashKey])
-			if err != nil {
-				return nil, fmt.Sprintf("input %q: %v", inputName, err)
-			}
-			if !same {
-				reasons = append(reasons, fmt.Sprintf("input file %q changed", inputName))
-			}
-			continue
-		}
-
-		refValue, ok := refCall.Inputs[inputName]
-		if !ok {
-			continue
-		}
-		if valueString(refValue) != pending {
-			reasons = append(reasons, fmt.Sprintf("input %q changed", inputName))
-		}
-	}
-	return reasons, ""
-}
-
-// pendingValue resolves what the submission will pass for one call input.
-func (uc *CacheForecastUseCase) pendingValue(
-	binding wdl.CallBinding,
-	node *wdl.CallNode,
-	inputName string,
-	pendingInputs map[string]any,
-	specs map[string]wdl.TaskSpec,
-) (string, bool) {
-	if binding.Kind == wdl.BindingLiteral {
-		return binding.Literal, true
-	}
-	// An input a subworkflow declares but its caller does not pass must be
-	// supplied qualified by the call path, so look there and nowhere else —
-	// a top-level input of the same name is a different value.
-	if binding.Kind == wdl.BindingWorkflowInput && binding.Scope != "" {
-		if v, ok := lookupCallInput(pendingInputs, binding.Scope, binding.Source); ok {
-			return valueString(v), true
-		}
-		return "", false
-	}
-	// A workflow-level input: the inputs JSON wins, then the WDL default.
-	if binding.Kind == wdl.BindingWorkflowInput {
-		if v, ok := lookupWorkflowInput(pendingInputs, binding.Source); ok {
-			return valueString(v), true
-		}
-	}
-	// Cromwell accepts call-scoped overrides ("WF.Call.input") only for calls
-	// of the top-level workflow. A task inside a subworkflow cannot be
-	// addressed that way — Cromwell rejects the submission outright — so the
-	// override is not consulted for nested calls, whose values come from the
-	// subworkflow's own WDL.
-	if !strings.Contains(node.Name, ".") {
-		if v, ok := lookupCallInput(pendingInputs, node.Name, inputName); ok {
-			return valueString(v), true
-		}
-	}
+	var assessment domain.CallAssessment
 	if spec, ok := specs[node.Task]; ok {
-		if def, ok := spec.InputDefaults[inputName]; ok {
-			return def, true
-		}
+		assessment.Reasons = append(assessment.Reasons, uc.compareDefinition(spec, refSpecs[node.Task], refCall, node, assumed)...)
 	}
-	return "", false
+
+	inputs := comparison.compare(ctx, node, refCall)
+	assessment.Reasons = append(assessment.Reasons, inputs.Changed...)
+	assessment.ReuseBlocked = inputs.Blocked
+	for _, name := range inputs.Assumed {
+		*assumed = appendUnique(*assumed, name)
+	}
+	sort.Strings(assessment.Reasons)
+	return assessment
 }
 
-// sameFile reports whether the candidate path holds the same bytes the
-// reference run hashed.
-//
-// Which digest to compare is decided by the shape of the recorded hash rather
-// than by the backend: a local Cromwell records a 32-character MD5, while GCS
-// records a crc32c as base64 of four bytes. Reading it from the hash itself
-// means a deployment that hashes differently is detected rather than assumed.
-func (uc *CacheForecastUseCase) sameFile(ctx context.Context, path, referenceHash string) (bool, error) {
-	kind := classifyFileHash(referenceHash)
-	if kind == hashUnrecognised {
-		return false, errors.New("reference hash is in an unrecognised format, cannot compare content")
+// compareDefinition checks the parts of a task's definition that feed the
+// fingerprint and can be read from the WDL.
+func (uc *CacheForecastUseCase) compareDefinition(
+	spec wdl.TaskSpec,
+	refSpec wdl.TaskSpec,
+	refCall domain.Call,
+	node *wdl.CallNode,
+	assumed *[]string,
+) []string {
+	var reasons []string
+
+	// The command is compared against the digest the reference recorded rather
+	// than against its text: a run's metadata carries only the top-level
+	// workflow, so a task inside an imported unit has no reference text — but
+	// it always has a fingerprint.
+	recorded := refCall.Fingerprint["command template"]
+	computed, canonical := spec.CommandHash()
+	switch {
+	case !uc.commandHashTrusted || recorded == "":
+	case !canonical:
+		// The command interpolates an expression whose canonical form we cannot
+		// reproduce, so a mismatch would be our rendering, not a change.
+		*assumed = appendUnique(*assumed, node.Task+" (command)")
+	case computed != recorded:
+		reasons = append(reasons, "command template changed")
 	}
 
-	digests, err := uc.files.GetContentDigests(ctx, path)
-	if err != nil {
-		if errors.Is(err, ports.ErrFileNotFound) {
-			// A missing input is a submission problem, not a cache question;
-			// preflight reports it. Here it simply cannot be compared.
-			return false, fmt.Errorf("file not found: %s", path)
-		}
-		return false, err
-	}
-
-	switch kind {
-	case hashMD5:
-		if digests.MD5 == "" {
-			return false, errors.New("no MD5 available for this file")
-		}
-		return strings.EqualFold(digests.MD5, referenceHash), nil
-	default:
-		if digests.CRC32C == "" {
-			return false, errors.New("no crc32c available for this file")
-		}
-		return digests.CRC32C == referenceHash, nil
-	}
-}
-
-// fileHashKind is the digest algorithm a recorded file hash came from.
-type fileHashKind int
-
-const (
-	hashUnrecognised fileHashKind = iota
-	hashMD5
-	hashCRC32C
-)
-
-// classifyFileHash infers the algorithm from the encoding Cromwell stored.
-func classifyFileHash(h string) fileHashKind {
-	if len(h) == md5HexLength && isHex(h) {
-		return hashMD5
-	}
-	// GCS crc32c: four bytes, base64 encoded — "tBGf4Q==".
-	if raw, err := base64.StdEncoding.DecodeString(h); err == nil && len(raw) == crc32ByteLength {
-		return hashCRC32C
-	}
-	return hashUnrecognised
-}
-
-func isHex(s string) bool {
-	for _, c := range s {
-		switch {
-		case c >= '0' && c <= '9', c >= 'a' && c <= 'f', c >= 'A' && c <= 'F':
-		default:
-			return false
+	if refSpec.Name != "" {
+		if r := compareDocker(spec, refSpec); r != "" {
+			reasons = append(reasons, r)
 		}
 	}
-	return true
+	return reasons
 }
 
 // referenceTaskSpecs parses the WDL the reference run was submitted with. It
@@ -574,6 +405,20 @@ func appendUnique(list []string, v string) []string {
 	return append(list, v)
 }
 
+// parseParameters decodes a submission's parameter document, tolerating an
+// absent or unreadable one: the comparison degrades to "cannot verify" rather
+// than failing the whole forecast.
+func parseParameters(document string) map[string]any {
+	if document == "" {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(document), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
 // compareDocker reports a docker change, or "" when the images match or cannot
 // both be resolved from the WDL.
 func compareDocker(pending, reference wdl.TaskSpec) string {
@@ -670,19 +515,6 @@ func (uc *CacheForecastUseCase) resolveImportSources(ctx context.Context, input 
 		return nil, ""
 	}
 	return sources, ""
-}
-
-// fileHashKey finds the fingerprint entry for a File input, returning the key
-// and whether the input is a File at all.
-func fileHashKey(fp domain.CallFingerprint, inputName string) (string, bool) {
-	for key := range fp {
-		declaredType, name := domain.ParseInputHashKey(key)
-		if name != inputName {
-			continue
-		}
-		return key, strings.Contains(declaredType, "File")
-	}
-	return "", false
 }
 
 // referenceBackend reports the backend the reference run used, treating a
