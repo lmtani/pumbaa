@@ -257,6 +257,8 @@ func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.To
 		Fetcher:      c.CromwellClient,
 		WDLRepo:      c.initWDLRepository(rebuildWDLIndex),
 		FileProvider: storage.NewFileProvider(),
+		History:      c.RunHistory,
+		Host:         c.Config,
 	}, extraTools...)
 	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

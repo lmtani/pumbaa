@@ -109,6 +109,10 @@ Choose your preferred AI backend:
     
     Summarize root causes and read the failing task's log
 
+-   :material-history: **Local Run History**
+    
+    Recall what was submitted from this machine and why ([history](history.md))
+
 </div>
 
 !!! info "Streaming"
@@ -193,3 +197,5 @@ export PUMBAA_SESSION_DB=~/.pumbaa/sessions.db
     - "What inputs does main.wdl need?"
     - "Check my inputs.json against main.wdl before I submit"
     - "Why did workflow abc-123 fail?"
+    - "What was workflow abc-123 for?"
+    - "What have I been running this week?"

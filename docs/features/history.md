@@ -125,6 +125,20 @@ The `H` modal is the only place runs the server no longer has can be seen: the
 dashboard table is a view of the server. From it, `enter` opens a run that
 still exists and `n` writes a note about any of them.
 
+## :material-robot: In the chat agent
+
+The `history` action gives the agent the same memory, so it can answer what a
+run was for and what has been submitted recently — neither of which the
+Cromwell server knows:
+
+```
+> what was workflow abc-123 for?
+> what have I been running this week?
+```
+
+It reads only what this machine remembers; live state still comes from the
+Cromwell actions.
+
 ## :material-lightbulb: See also
 
 - [Submit workflows](submit.md) — where `--describe` is given
