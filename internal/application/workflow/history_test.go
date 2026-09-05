@@ -188,6 +188,30 @@ func TestListMarksRunsTheServerForgot(t *testing.T) {
 	}
 }
 
+func TestListWaitsBeforeCallingAFreshRunForgotten(t *testing.T) {
+	fresh := historyRecord("http://localhost:8000", "just-submitted", "Submitted")
+	fresh.SubmittedAt = time.Now().Add(-30 * time.Second)
+	store := newStubRunHistory(fresh)
+	// Cromwell answers /query from a summary table a background job fills, so
+	// a run submitted seconds ago is routinely missing from it.
+	querier := &historyQuerier{known: map[string]workflow.Workflow{}}
+	uc := NewRunHistoryUseCase(store, querier, fakeHostProvider{url: "http://localhost:8000"})
+
+	out, err := uc.List(context.Background(), ListRunHistoryInput{Refresh: true})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if out.Entries[0].Forgotten {
+		t.Error("a run submitted seconds ago was declared forgotten; the query index simply lags")
+	}
+	if !out.Entries[0].Stale {
+		t.Error("Stale = false, want the unconfirmed status flagged as the last known one")
+	}
+	if out.Entries[0].Status != "Submitted" {
+		t.Errorf("status = %q, want the last known one kept", out.Entries[0].Status)
+	}
+}
+
 func TestListSurvivesAnUnreachableServer(t *testing.T) {
 	store := newStubRunHistory(historyRecord("http://localhost:8000", "run-1", "Running"))
 	querier := &historyQuerier{err: workflow.ErrConnectionFailed}

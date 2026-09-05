@@ -12,6 +12,13 @@ import (
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
+// forgottenGrace is how long a run is given before its absence from a query
+// is read as deletion. Cromwell answers /query from a summary table filled by
+// a background summarizer, so a run submitted seconds ago is routinely missing
+// from it while very much existing — claiming it was forgotten would be a
+// confident lie at exactly the moment the user is watching.
+const forgottenGrace = 10 * time.Minute
+
 // RunHistoryUseCase serves the local run history. The server is consulted
 // only to refresh what the local record cannot know — the current status, and
 // whether the run still exists there at all.
@@ -210,10 +217,14 @@ func (uc *RunHistoryUseCase) refresh(ctx context.Context, host string, entries [
 	for i := range entries {
 		wf, ok := live[entries[i].Record.WorkflowID]
 		if !ok {
-			// The server answered without this run: it has been forgotten
-			// there, which is precisely what the local record survives.
-			entries[i].Forgotten = true
-			entries[i].Stale = false
+			// The server answered without this run. Old enough, that means it
+			// was forgotten there — precisely what the local record survives.
+			// Recent enough, it just has not been summarized yet, and the
+			// honest answer is that the status is the last one seen.
+			if now.Sub(entries[i].Record.SubmittedAt) > forgottenGrace {
+				entries[i].Forgotten = true
+				entries[i].Stale = false
+			}
 			continue
 		}
 		entries[i].Status = string(wf.Status)
