@@ -141,7 +141,7 @@ func builtinActions() []actionSpec {
 			name: "history",
 			description: "What was submitted from this machine and why: the description written at submit time, plus the WDL and inputs files each run used. " +
 				"Answers \"what was this run for?\" and \"what have I been running?\" — a Cromwell server does not keep any of it, and still answers after it forgot the run. " +
-				"Optional: workflow_id (one run), query (match description, name or id), page_size.",
+				"Optional: workflow_id (one run), query (keywords matched across the note, name, id, labels and file paths), status, since_days, page_size.",
 			requiresHistory: true,
 			build: func(deps Deps) types.Handler {
 				return history.NewHandler(deps.History, deps.Host)

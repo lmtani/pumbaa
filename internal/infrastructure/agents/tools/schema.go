@@ -20,8 +20,12 @@ func GetParametersSchema() map[string]any {
 			},
 			"status": map[string]any{
 				"type":        "string",
-				"description": "Status filter for query action",
+				"description": "Status filter for the query and history actions",
 				"enum":        []string{"Running", "Succeeded", "Failed", "Submitted", "Aborted"},
+			},
+			"since_days": map[string]any{
+				"type":        "integer",
+				"description": "Limit the history action to runs submitted in the last N days",
 			},
 			"name": map[string]any{
 				"type":        "string",

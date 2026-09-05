@@ -128,6 +128,41 @@ func TestHandleListsScopedToTheActiveHost(t *testing.T) {
 	}
 }
 
+func TestHandleNarrowsByAgeAndStatus(t *testing.T) {
+	store := &stubStore{records: []ports.RunRecord{record("run-1")}}
+	h := NewHandler(store, stubHost{})
+
+	before := time.Now()
+	if _, err := h.Handle(context.Background(), types.Input{
+		Action: action, Status: "Failed", SinceDays: 7, PageSize: 3,
+	}); err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+
+	if store.lastFilter.Status != "Failed" {
+		t.Errorf("status = %q, want it passed through", store.lastFilter.Status)
+	}
+	if store.lastFilter.Limit != 3 {
+		t.Errorf("limit = %d, want the requested page size", store.lastFilter.Limit)
+	}
+	wantSince := before.AddDate(0, 0, -7)
+	if store.lastFilter.Since.Sub(wantSince).Abs() > time.Minute {
+		t.Errorf("since = %v, want about %v (seven days back)", store.lastFilter.Since, wantSince)
+	}
+}
+
+func TestHandleWithoutAgeLeavesTheWindowOpen(t *testing.T) {
+	store := &stubStore{records: []ports.RunRecord{record("run-1")}}
+	h := NewHandler(store, stubHost{})
+
+	if _, err := h.Handle(context.Background(), types.Input{Action: action}); err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !store.lastFilter.Since.IsZero() {
+		t.Errorf("since = %v, want no age cutoff when none was asked for", store.lastFilter.Since)
+	}
+}
+
 func TestViewDropsEmptyFields(t *testing.T) {
 	rec := ports.RunRecord{WorkflowID: "run-1", Origin: ports.OriginNote}
 

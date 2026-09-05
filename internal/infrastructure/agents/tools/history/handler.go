@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
@@ -56,11 +57,17 @@ func (h *Handler) Handle(ctx context.Context, input types.Input) (types.Output, 
 		limit = defaultLimit
 	}
 
-	records, err := h.store.List(ctx, ports.RunHistoryFilter{
+	filter := ports.RunHistoryFilter{
 		Host:   host,
 		Search: input.Query,
+		Status: input.Status,
 		Limit:  limit,
-	})
+	}
+	if input.SinceDays > 0 {
+		filter.Since = time.Now().AddDate(0, 0, -input.SinceDays)
+	}
+
+	records, err := h.store.List(ctx, filter)
 	if err != nil {
 		return types.NewErrorOutput(action, err.Error()), nil
 	}

@@ -32,6 +32,11 @@ type Input struct {
 	// PageSize for query action (default: 10).
 	PageSize int `json:"page_size,omitempty"`
 
+	// SinceDays limits the history action to runs submitted within that many
+	// days. Days rather than a date string: it is what a question like "this
+	// week" turns into, with no format to get wrong.
+	SinceDays int `json:"since_days,omitempty"`
+
 	// Content is the file body for the write_file action.
 	Content string `json:"content,omitempty"`
 

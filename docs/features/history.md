@@ -152,8 +152,10 @@ Cromwell server knows:
 > what have I been running this week?
 ```
 
-It reads only what this machine remembers; live state still comes from the
-Cromwell actions.
+Besides `workflow_id` and a keyword `query`, the action takes `status` and
+`since_days`, so "what failed last week" is one call rather than a scan. It
+reads only what this machine remembers — no Cromwell server is contacted, so
+it keeps working offline; live state still comes from the Cromwell actions.
 
 ## :material-lightbulb: See also
 

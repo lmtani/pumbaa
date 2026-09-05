@@ -63,9 +63,12 @@ func (r RunRecord) Ref() RunRef {
 type RunHistoryFilter struct {
 	// Host restricts the listing to one server; empty means all of them.
 	Host string
-	// Search matches, case-insensitively, against the description, the
-	// workflow name and the workflow ID.
+	// Search matches keywords case-insensitively: every whitespace-separated
+	// term must appear somewhere in the record.
 	Search string
+	// Status keeps only runs whose last known status matches. That status is
+	// the one recorded locally, which can lag the server.
+	Status string
 	Since  time.Time
 	Limit  int
 }

@@ -77,8 +77,13 @@ forgotten the run.
 - action="history"
   What was submitted from this machine and why: the description written at
   submit time, plus the WDL and inputs files each run used.
-  Optional: workflow_id (one run), query (match description, name or id),
-  page_size
+  Optional: workflow_id (one run), query, status, since_days, page_size
+
+  query takes keywords, not a phrase: each term is matched independently and
+  all of them must appear somewhere in the record — the description, the
+  workflow name, the id, the labels, or the WDL/inputs file paths. So
+  "tso500 reference" finds a run described as "rerun of the TSO500 panel with
+  the rebuilt reference", and "hg38" finds runs whose inputs path mentions it.
 
 Only runs submitted through pumbaa, or annotated with
 "pumbaa history note <id> <text>", are remembered. Statuses it returns are the
@@ -157,6 +162,7 @@ Use **only** to understand or explain WDL definitions.
 - “Why did it fail?” → failures → read_log (metadata only as last resort: it can be huge)
 - “Why is it expensive / how many preemptions?” → cost / preemption
 - “What was this run for / what did I run this week?” → history
+  (this week → since_days=7; “what failed last week” → status="Failed")
 - “What inputs does this workflow need / how do I run it?” → scaffold, then preflight
 - Failure debugging:
   1. failures (grouped root causes + stderr paths)

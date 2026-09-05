@@ -300,6 +300,10 @@ func (s *Store) List(ctx context.Context, filter ports.RunHistoryFilter) ([]port
 		where = append(where, searchClause)
 		args = append(args, pattern)
 	}
+	if filter.Status != "" {
+		where = append(where, `LOWER(last_status) = ?`)
+		args = append(args, strings.ToLower(filter.Status))
+	}
 	if !filter.Since.IsZero() {
 		where = append(where, `submitted_at >= ?`)
 		args = append(args, formatTime(filter.Since.UTC()))

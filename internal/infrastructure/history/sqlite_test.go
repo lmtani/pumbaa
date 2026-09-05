@@ -284,6 +284,32 @@ func TestSearchMatchesEveryTermAcrossTheRecord(t *testing.T) {
 	}
 }
 
+func TestListFiltersByLastKnownStatus(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	failed := sampleRecord("failed-run")
+	failed.LastStatus = "Failed"
+	succeeded := sampleRecord("succeeded-run")
+	succeeded.LastStatus = "Succeeded"
+	for _, rec := range []ports.RunRecord{failed, succeeded} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+
+	// Case-insensitive: an agent may well send "failed".
+	for _, status := range []string{"Failed", "failed"} {
+		got, err := store.List(ctx, ports.RunHistoryFilter{Status: status})
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		if len(got) != 1 || got[0].WorkflowID != "failed-run" {
+			t.Errorf("status %q matched %v, want just failed-run", status, ids(got))
+		}
+	}
+}
+
 func TestSearchRequiresEveryTerm(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
