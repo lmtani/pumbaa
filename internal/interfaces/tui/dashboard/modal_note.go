@@ -21,21 +21,44 @@ func (m Model) openNoteModal() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	wf := m.workflows[m.cursor]
+	return m.openNoteModalFor(wf.ID, wf.Name)
+}
+
+// openNoteModalFor edits the note of a specific run, which is how the history
+// modal reaches runs the dashboard itself cannot list.
+func (m Model) openNoteModalFor(workflowID, name string) (tea.Model, tea.Cmd) {
+	if m.historyUC == nil {
+		return m, nil
+	}
 
 	input := textinput.New()
 	input.Placeholder = "what this run is for..."
 	input.CharLimit = noteCharLimit
 	input.Width = minInt(60, maxInt(20, m.width-16))
-	input.SetValue(m.notes[wf.ID].Description)
+	input.SetValue(m.noteFor(workflowID))
 	input.CursorEnd()
 	input.Focus()
 
 	m.showNoteModal = true
-	m.noteWorkflowID = wf.ID
-	m.noteWorkflowName = wf.Name
+	m.noteWorkflowID = workflowID
+	m.noteWorkflowName = name
 	m.noteInput = input
 	m.noteMessage = ""
 	return m, textinput.Blink
+}
+
+// noteFor returns the note already written about a run, looking in whichever
+// listing knows about it.
+func (m Model) noteFor(workflowID string) string {
+	if rec, ok := m.notes[workflowID]; ok {
+		return rec.Description
+	}
+	for _, entry := range m.historyEntries {
+		if entry.Record.WorkflowID == workflowID {
+			return entry.Record.Description
+		}
+	}
+	return ""
 }
 
 // handleNoteModalKeys processes keyboard input in the note modal.

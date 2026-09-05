@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
@@ -72,6 +73,12 @@ type noteSavedMsg struct {
 	workflowID  string
 	description string
 	err         error
+}
+
+type historyLoadedMsg struct {
+	entries    []workflowapp.RunHistoryEntry
+	refreshErr error
+	err        error
 }
 
 // clearStatusMsg clears the temporary status message after expiry.

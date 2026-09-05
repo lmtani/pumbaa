@@ -18,6 +18,10 @@ func (m Model) View() string {
 		return m.renderLabelsModal()
 	}
 
+	if m.showHistoryModal {
+		return m.renderHistoryModal()
+	}
+
 	if m.showNoteModal {
 		return m.renderNoteModal()
 	}

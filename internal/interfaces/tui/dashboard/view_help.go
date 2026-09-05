@@ -38,6 +38,7 @@ func (m Model) renderHelpModal() string {
 	content.WriteString(helpLine("a", "Abort selected workflow"))
 	content.WriteString(helpLine("L", "Edit labels"))
 	content.WriteString(helpLine("n", "Write a local note (✎ marks them)"))
+	content.WriteString(helpLine("H", "Local history, incl. forgotten runs"))
 	content.WriteString(helpLine("r", "Refresh list"))
 	content.WriteString(helpLine("w", "Toggle auto-refresh (30s)"))
 	content.WriteString("\n")

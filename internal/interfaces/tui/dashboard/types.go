@@ -24,6 +24,7 @@ type KeyMap struct {
 	ErrorDetail   key.Binding // Show full text of the last error
 	Compare       key.Binding // Mark base / compare two workflows
 	Note          key.Binding // Write the local note for the selected run
+	History       key.Binding // Open the local run history
 }
 
 // DefaultKeyMap returns the default key bindings for the dashboard.
@@ -81,6 +82,10 @@ func DefaultKeyMap() KeyMap {
 		Note: key.NewBinding(
 			key.WithKeys("n"),
 			key.WithHelp("n", "note"),
+		),
+		History: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "local history"),
 		),
 		Compare: key.NewBinding(
 			key.WithKeys("c"),

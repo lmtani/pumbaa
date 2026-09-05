@@ -111,6 +111,16 @@ type Model struct {
 	noteInput        textinput.Model
 	noteSaving       bool
 	noteMessage      string
+	// noteReturnToHistory brings the history modal back after a note written
+	// from inside it, instead of dropping the reader on the dashboard.
+	noteReturnToHistory bool
+
+	showHistoryModal bool
+	historyLoading   bool
+	historyEntries   []workflowapp.RunHistoryEntry
+	historyCursor    int
+	historyScroll    int
+	historyError     string
 
 	// LastError keeps the most recent error for telemetry and the error modal.
 	LastError error
@@ -165,7 +175,7 @@ func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowap
 // dies while the screen is hidden, since spinner ticks are only routed to
 // the focused screen.
 func (m *Model) ResumeCmd() tea.Cmd {
-	if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating {
+	if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.historyLoading {
 		return m.spinner.Tick
 	}
 	return nil
@@ -173,7 +183,7 @@ func (m *Model) ResumeCmd() tea.Cmd {
 
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff || m.showNoteModal
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff || m.showNoteModal || m.showHistoryModal
 }
 
 // Init implements tea.Model.
@@ -217,7 +227,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.noteSaving || m.statusMsg != "" {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.noteSaving || m.historyLoading || m.statusMsg != "" {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -324,9 +334,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		m.rememberNote(msg.workflowID, msg.description)
+		returnToHistory := m.noteReturnToHistory
 		m.closeNoteModal()
 		m.setStatusMessage("✓ Note saved for " + truncateID(msg.workflowID))
 		cmds = append(cmds, getClearStatusCmd())
+		if returnToHistory {
+			m.showHistoryModal = true
+			m.historyLoading = true
+			cmds = append(cmds, m.spinner.Tick, m.fetchHistory())
+		}
+
+	case historyLoadedMsg:
+		m.historyLoading = false
+		if msg.err != nil {
+			m.historyError = friendlyError(msg.err)
+			m.LastError = msg.err
+			break
+		}
+		m.historyEntries = msg.entries
+		m.historyCursor = minInt(m.historyCursor, maxInt(0, len(msg.entries)-1))
+		m.ensureHistoryVisible()
+		m.historyError = ""
+		if msg.refreshErr != nil {
+			m.historyError = "Statuses are the last known: the server could not be reached."
+		}
 
 	case labelsLoadedMsg:
 		m.labelsLoading = false
@@ -386,6 +417,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle note modal
 		if m.showNoteModal {
 			return m.handleNoteModalKeys(msg)
+		}
+
+		// Handle local history modal
+		if m.showHistoryModal {
+			return m.handleHistoryModalKeys(msg)
 		}
 
 		// Handle filter input
