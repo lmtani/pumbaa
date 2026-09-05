@@ -39,6 +39,7 @@ Alias: `pumbaa wf s`
 | `--inputs` | `-i` | | Inputs JSON file |
 | `--options` | `-o` | | Options JSON file |
 | `--dependencies` | `-d` | | Dependencies ZIP file |
+| `--describe` | `-D` | | What the run is for, kept in the [local history](history.md) |
 | `--label` | `-l` | | Labels (`key=value`) |
 | `--skip-preflight` | | | Submit without checking the workflow and inputs first |
 
@@ -66,9 +67,16 @@ Alias: `pumbaa wf s`
       --inputs inputs.json \
       --options options.json \
       --dependencies deps.zip \
+      --describe "reprocessing after the reference panel was rebuilt" \
       --label sample=S001 \
       --label env=prod
     ```
+
+!!! tip "Say what the run is for"
+    `--describe` attaches a sentence to the submission. It is kept on this
+    machine, not sent to Cromwell — labels there are constrained and meant to
+    be tags — and it is what makes a run recognisable weeks later in
+    [`pumbaa history`](history.md) and in the dashboard.
 
 ## :material-file-document: Input File
 

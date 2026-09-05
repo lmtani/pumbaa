@@ -31,6 +31,8 @@ natural language.
 - **[Query & inspect](https://lmtani.github.io/pumbaa/features/query/)** — list workflows and fetch metadata, inputs, and outputs from the command line.
 - **[Diff two runs](https://lmtani.github.io/pumbaa/features/diff/)** — compare inputs, options, source, and task-level differences between two executions.
 - **[Resource & cost analysis](https://lmtani.github.io/pumbaa/features/resource-monitoring/)** — measure actual usage vs. allocated resources and get recommendations to cut over-provisioning.
+- **[Local run history](https://lmtani.github.io/pumbaa/features/history/)** — describe a run when submitting it and find out later what it was for, even after the server forgot it (`pumbaa history`).
+- **[Cromwell hosts](https://lmtani.github.io/pumbaa/features/hosts/)** — register servers under short names and switch between them with `--host prod` (`pumbaa host`).
 - **[WDL bundling](https://lmtani.github.io/pumbaa/features/bundle/)** — package a workflow and all its imports into a single distributable zip (`pumbaa bundle`).
 
 <p align="center">
@@ -63,7 +65,8 @@ A few common commands:
 ```bash
 pumbaa workflow query                                # list recent workflows
 pumbaa workflow scaffold -w pipeline.wdl             # generate an inputs JSON template
-pumbaa workflow submit -w pipeline.wdl -i inputs.json  # preflights, then submits
+pumbaa workflow submit -w pipeline.wdl -i inputs.json -D "what this run is for"
+pumbaa history                                       # what was submitted from here
 pumbaa workflow metadata <workflow-id>               # status of a run
 pumbaa workflow debug --id <workflow-id>             # interactive failure debugging
 pumbaa chat                                          # ask the AI agent about your runs
@@ -79,7 +82,7 @@ Settings are resolved in order: CLI flags > environment variables >
 
 | Variable | Purpose |
 |---|---|
-| `CROMWELL_HOST` | Cromwell server URL (default `http://localhost:8000`) |
+| `CROMWELL_HOST` | Cromwell server: a URL, or an alias registered with `pumbaa host add` |
 | `PUMBAA_LLM_PROVIDER` | LLM backend for the chat agent: `ollama`, `vertex`, or `gemini` |
 | `PUMBAA_WDL_DIR` | Directory of WDLs indexed for the agent's WDL tools |
 

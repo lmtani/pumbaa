@@ -30,10 +30,11 @@ internal/
 │   ├── agents/              # LLM adapters (gemini/vertex/ollama) + agent tools
 │   ├── recommendation/      # LLM-based resource recommendations
 │   ├── session/             # SQLite (~/.pumbaa/sessions.db)
+│   ├── history/             # SQLite (~/.pumbaa/history.db) — local run history
 │   ├── wdlindexer/          # WDL index backing the agent tools
 │   ├── storage/ cloudlogging/ metrics/ telemetry/ templates/ version/
 ├── interfaces/
-│   ├── cli/handler/         # 14 handlers (pattern: useCase + presenter)
+│   ├── cli/handler/         # 16 handlers (pattern: useCase + presenter)
 │   └── tui/                 # BubbleTea: app.go, common/, dashboard/, debug/, chat/
 ├── prompts/                 # Agent system instructions (dependency-free)
 └── container/               # Composition root — ALL construction happens here
@@ -43,6 +44,26 @@ pkg/wdl/                     # WDL parser (ANTLR) — public library
 **Layering (invariant enforced through imports):** domain → nothing;
 application → domain; infrastructure implements ports (aliases +
 compile-time checks); interfaces → ports/domain/application, **zero** infra.
+
+## Hosts and local run history
+
+`config.FileConfig` holds a `hosts` alias → URL registry plus `default_host`;
+`ResolveHost` turns any host reference (`--host`, `CROMWELL_HOST`) into a
+`HostRef`. A **registered alias always wins**; an unregistered reference is a
+URL only if it carries a scheme, dot, colon or slash — aliases are bare words,
+which is what keeps the reference unambiguous. `Container.UseHost` repoints
+the client after flag parsing.
+
+The run history (`ports.RunHistory`, `infrastructure/history`) is the local
+memory of submissions: description, the local files a run was assembled from,
+last known status — keyed by `(host, workflow id)`, since an ID is only unique
+within a server. Three rules that matter when touching it: **a history failure
+never fails a submission** (the workflow is already running — it is reported
+via `SubmitOutput.HistoryError`), **an unreachable server is not an error**
+(the listing falls back to the last known status), and **status refresh must
+stay a single ID-filtered query** (`QueryFilter.IDs`) — a real server has
+thousands of runs. `RunHistoryUseCase.Annotate` adopts a run from the server
+rather than inventing one locally.
 
 ## Guided submit
 
