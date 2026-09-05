@@ -34,6 +34,7 @@ func main() {
 	// Create container with initial config
 	cont := container.New(cfg, Version)
 	defer cont.TelemetryService.Close()
+	defer func() { _ = cont.RunHistory.Close() }()
 
 	// Log app start for telemetry breadcrumb trail
 	cont.TelemetryService.AddBreadcrumb("app", fmt.Sprintf("pumbaa %s started", Version))

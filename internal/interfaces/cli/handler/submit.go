@@ -54,6 +54,11 @@ func (h *SubmitHandler) Command() *cli.Command {
 				Aliases: []string{"d"},
 				Usage:   "[optional] Path to the dependencies ZIP file",
 			},
+			&cli.StringFlag{
+				Name:    "describe",
+				Aliases: []string{"D"},
+				Usage:   "[optional] What this run is for, kept in the local history",
+			},
 			&cli.StringSliceFlag{
 				Name:    "label",
 				Aliases: []string{"l"},
@@ -88,6 +93,7 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 		OptionsFile:      c.String("options"),
 		DependenciesFile: c.String("dependencies"),
 		Labels:           labels,
+		Description:      c.String("describe"),
 		SkipPreflight:    c.Bool("skip-preflight"),
 	}
 
@@ -113,6 +119,14 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 	h.presenter.Success("Workflow submitted successfully!")
 	h.presenter.KeyValue("Workflow ID", output.WorkflowID)
 	h.presenter.KeyValue("Status", h.presenter.StatusColor(output.Status))
+	if input.Description != "" && output.Remembered {
+		h.presenter.KeyValue("Description", input.Description)
+	}
+	// The run is already going; a history failure is worth a word, not an
+	// error exit, and staying silent would hide a note that never got saved.
+	if output.HistoryError != nil {
+		h.presenter.Warning("Could not save this run to the local history: %v", output.HistoryError)
+	}
 
 	return nil
 }

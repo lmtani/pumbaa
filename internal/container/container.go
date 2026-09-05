@@ -16,6 +16,7 @@ import (
 	wdltools "github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/history"
 	"github.com/lmtani/pumbaa/internal/infrastructure/metrics"
 	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
@@ -32,6 +33,10 @@ import (
 // githubRepo is the GitHub repository used for release update checks.
 const githubRepo = "lmtani/pumbaa"
 
+// The config is what knows which server the CLI is talking to, so it is what
+// the run history keys records by.
+var _ ports.HostProvider = (*config.Config)(nil)
+
 // Container holds all application dependencies.
 type Container struct {
 	Config    *config.Config
@@ -41,6 +46,9 @@ type Container struct {
 	CromwellClient   *cromwell.Client
 	TelemetryService telemetry.Service
 	CloudLoggingRepo *cloudlogging.CloudLoggingRepository
+	// RunHistory is the local memory of submitted runs. It opens its database
+	// lazily, so holding it costs nothing until something reads or writes.
+	RunHistory ports.RunHistory
 
 	// Use cases
 	SubmitUseCase                *workflow.SubmitUseCase
@@ -115,12 +123,14 @@ func New(cfg *config.Config, appVersion string) *Container {
 
 	// Initialize infrastructure adapters
 	c.CloudLoggingRepo = cloudlogging.NewCloudLoggingRepository()
+	c.RunHistory = history.New(cfg.HistoryDBPath)
 
 	// Initialize use cases
 	c.PreflightUseCase = workflow.NewPreflightUseCase(fileProvider, c.CromwellClient)
 	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, c.CromwellClient, fileProvider, presenter.NewProgress())
 	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
-	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase)
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase,
+		&workflow.SubmitHistory{Store: c.RunHistory, Host: c.Config})
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)

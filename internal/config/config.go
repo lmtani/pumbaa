@@ -47,6 +47,13 @@ type Config struct {
 	WDLIndexPath string // Path to cached WDL index JSON file
 }
 
+// CurrentHost reports the Cromwell server this invocation is pointed at. It
+// satisfies ports.HostProvider without the config package having to depend on
+// the application layer; the composition root asserts the match.
+func (c *Config) CurrentHost() (url, alias string) {
+	return c.CromwellHost, c.CromwellHostAlias
+}
+
 // Load loads configuration from file and environment variables.
 // Priority: CLI flags > env vars > config file > defaults
 func Load() *Config {
