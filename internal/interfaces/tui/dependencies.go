@@ -20,6 +20,8 @@ type Dependencies struct {
 
 	// App info
 	CurrentVersion string
+	// HostLabel names the Cromwell server in use — its alias when it has one.
+	HostLabel string
 
 	// Use cases
 	MonitoringUC *workflowapp.MonitoringUseCase

@@ -82,6 +82,10 @@ type Model struct {
 	loadingDebugID  string
 	metadataFetcher ports.WorkflowMetadataFetcher
 
+	// hostLabel names the server being browsed: the alias when it has one,
+	// its URL otherwise.
+	hostLabel string
+
 	// Health status
 	healthChecker ports.HealthChecker
 	healthStatus  *workflow.HealthStatus
@@ -156,9 +160,10 @@ func NewModel() Model {
 // HealthChecker, and LabelManager through interface composition. compareUC may be
 // nil, in which case the compare feature is disabled; so may historyUC, which
 // disables the local run history markers and the note editor.
-func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, historyUC *workflowapp.RunHistoryUseCase, version string, updateChecker ports.UpdateChecker) Model {
+func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, historyUC *workflowapp.RunHistoryUseCase, hostLabel, version string, updateChecker ports.UpdateChecker) Model {
 	m := NewModel()
 	m.historyUC = historyUC
+	m.hostLabel = hostLabel
 	m.querier = repo
 	m.aborter = repo
 	m.metadataFetcher = repo

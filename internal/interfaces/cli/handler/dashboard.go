@@ -9,6 +9,7 @@ import (
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
+	"github.com/lmtani/pumbaa/internal/config"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui"
 )
 
@@ -22,6 +23,7 @@ type DashboardHandler struct {
 	compareUC     *workflowapp.CompareUseCase
 	historyUC     *workflowapp.RunHistoryUseCase
 	updateChecker ports.UpdateChecker
+	host          func() config.HostRef
 	version       string
 	chatDeps      ChatDepsProvider
 }
@@ -36,6 +38,7 @@ func NewDashboardHandler(
 	cuc *workflowapp.CompareUseCase,
 	huc *workflowapp.RunHistoryUseCase,
 	updateChecker ports.UpdateChecker,
+	host func() config.HostRef,
 	version string,
 	chatDeps ChatDepsProvider,
 ) *DashboardHandler {
@@ -48,6 +51,7 @@ func NewDashboardHandler(
 		compareUC:     cuc,
 		historyUC:     huc,
 		updateChecker: updateChecker,
+		host:          host,
 		chatDeps:      chatDeps,
 		version:       version,
 	}
@@ -122,6 +126,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		HistoryUC:      h.historyUC,
 		UpdateChecker:  h.updateChecker,
 		CurrentVersion: h.version,
+		HostLabel:      h.host().Display(),
 	}
 
 	// Initialize chat dependencies if LLM is configured; failures only

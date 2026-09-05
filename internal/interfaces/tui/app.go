@@ -65,7 +65,7 @@ func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	}
 
 	// Initialize dashboard
-	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CompareUC, deps.HistoryUC, deps.CurrentVersion, deps.UpdateChecker)
+	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CompareUC, deps.HistoryUC, deps.HostLabel, deps.CurrentVersion, deps.UpdateChecker)
 	m.hasDashboard = true
 
 	return m
