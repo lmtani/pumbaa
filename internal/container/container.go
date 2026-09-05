@@ -76,6 +76,7 @@ type Container struct {
 	DashboardHandler      *handler.DashboardHandler
 	ChatHandler           *handler.ChatHandler
 	ConfigHandler         *handler.ConfigHandler
+	HostHandler           *handler.HostHandler
 	AnalyzeHandler        *handler.AnalyzeHandler
 }
 
@@ -167,9 +168,26 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, version.NewGitHubChecker(githubRepo), appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
+	c.HostHandler = handler.NewHostHandler(c.Presenter, c.ActiveHost, func(url string) ports.HealthChecker {
+		return cromwell.NewClient(cromwell.Config{Host: url, Timeout: cfg.CromwellTimeout})
+	})
 	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)
 
 	return c
+}
+
+// ActiveHost reports the Cromwell server this invocation is talking to.
+func (c *Container) ActiveHost() config.HostRef {
+	return config.HostRef{Alias: c.Config.CromwellHostAlias, URL: c.Config.CromwellHost}
+}
+
+// UseHost repoints the CLI at another Cromwell server. It runs after the
+// container is built, when the global --host flag is parsed, so everything
+// that reads the host at call time follows along.
+func (c *Container) UseHost(ref config.HostRef) {
+	c.Config.CromwellHost = ref.URL
+	c.Config.CromwellHostAlias = ref.Alias
+	c.CromwellClient.BaseURL = ref.URL
 }
 
 // SessionStore opens the SQLite chat session store. It does not require an
