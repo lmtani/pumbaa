@@ -204,6 +204,10 @@ type SubmitResponse struct {
 
 // QueryFilter represents filters for querying workflows.
 type QueryFilter struct {
+	// IDs restricts the query to specific runs. It answers "what does the
+	// server still know about these?" in one call, which is how locally
+	// remembered runs are matched against the server.
+	IDs           []string
 	Name          string
 	Status        []Status
 	SubmissionMin time.Time

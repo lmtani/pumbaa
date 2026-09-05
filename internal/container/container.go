@@ -65,6 +65,7 @@ type Container struct {
 	ResourceReportUseCase        *workflow.ResourceReportUseCase
 	BatchLogsUseCase             *workflow.GetBatchLogsUseCase
 	BundleUseCase                *bundle.BundleUseCase
+	RunHistoryUseCase            *workflow.RunHistoryUseCase
 	ResourceVisualizationUseCase *workflow.ResourceVisualizationUseCase
 
 	// Handlers
@@ -85,6 +86,7 @@ type Container struct {
 	ChatHandler           *handler.ChatHandler
 	ConfigHandler         *handler.ConfigHandler
 	HostHandler           *handler.HostHandler
+	HistoryHandler        *handler.HistoryHandler
 	AnalyzeHandler        *handler.AnalyzeHandler
 }
 
@@ -141,6 +143,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider, metricsWriter, fileSizeCache)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
+	c.RunHistoryUseCase = workflow.NewRunHistoryUseCase(c.RunHistory, c.CromwellClient, c.Config)
 
 	// Initialize metrics reader for TSV files
 	metricsReader := metrics.NewTSVReader()
@@ -178,6 +181,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, version.NewGitHubChecker(githubRepo), appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
+	c.HistoryHandler = handler.NewHistoryHandler(c.RunHistoryUseCase, c.Presenter)
 	c.HostHandler = handler.NewHostHandler(c.Presenter, c.ActiveHost, func(url string) ports.HealthChecker {
 		return cromwell.NewClient(cromwell.Config{Host: url, Timeout: cfg.CromwellTimeout})
 	})

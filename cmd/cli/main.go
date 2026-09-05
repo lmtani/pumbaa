@@ -105,6 +105,7 @@ func main() {
 		cont.ChatHandler.Command(),
 		cont.ConfigHandler.Command(),
 		cont.HostHandler.Command(),
+		cont.HistoryHandler.Command(),
 		cont.AnalyzeHandler.Command(),
 	}
 
