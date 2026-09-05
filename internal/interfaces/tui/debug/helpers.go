@@ -193,6 +193,24 @@ func (m Model) fetchTotalCost() tea.Cmd {
 	}
 }
 
+// fetchRunNote reads what this machine remembers about the run. A missing
+// record is the normal case, not an error.
+func (m Model) fetchRunNote() tea.Cmd {
+	if m.historyUC == nil {
+		return nil
+	}
+
+	uc := m.historyUC
+	workflowID := m.metadata.ID
+	return func() tea.Msg {
+		out, err := uc.Show(context.Background(), workflowID, false)
+		if err != nil {
+			return runNoteLoadedMsg{}
+		}
+		return runNoteLoadedMsg{description: out.Entry.Record.Description}
+	}
+}
+
 func (m Model) loadResourceAnalysis(path string) tea.Cmd {
 	return func() tea.Msg {
 		if m.monitoringUC == nil {

@@ -43,6 +43,12 @@ type costLoadedMsg struct {
 	totalCost float64
 }
 
+// runNoteLoadedMsg carries the local description of this run, empty when
+// nothing was written about it.
+type runNoteLoadedMsg struct {
+	description string
+}
+
 type resourceAnalysisLoadedMsg struct {
 	report *workflowDomain.EfficiencyReport
 }
@@ -72,6 +78,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case costLoadedMsg:
 		m.totalCost = msg.totalCost
+		return m, nil
+
+	case runNoteLoadedMsg:
+		m.runNote = msg.description
+		m.updateDetailsContent()
 		return m, nil
 
 	case watchTickMsg:

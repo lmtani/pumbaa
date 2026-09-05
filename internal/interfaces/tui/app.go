@@ -89,7 +89,7 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 
 // newDebugModel builds a debug screen model for the given workflow.
 func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
-	return debug.NewModelWithChat(
+	m := debug.NewModelWithChat(
 		wf,
 		deps.Repository,
 		deps.MonitoringUC,
@@ -97,6 +97,8 @@ func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
 		deps.BatchLogsUC,
 		convertChatDeps(deps.ChatDeps),
 	)
+	m.SetRunHistory(deps.HistoryUC)
+	return m
 }
 
 // Init implements tea.Model.
