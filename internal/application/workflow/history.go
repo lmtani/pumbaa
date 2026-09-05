@@ -19,6 +19,13 @@ import (
 // confident lie at exactly the moment the user is watching.
 const forgottenGrace = 10 * time.Minute
 
+// refreshTimeout bounds the status refresh. The records are already on disk
+// and are the answer; the refresh only enriches them, so it must not make an
+// answer wait as long as fetching metadata would. A server that goes silent —
+// VPN down, laptop off the network — is the common case, not the rare one,
+// and it costs the full client timeout to discover.
+const refreshTimeout = 3 * time.Second
+
 // RunHistoryUseCase serves the local run history. The server is consulted
 // only to refresh what the local record cannot know — the current status, and
 // whether the run still exists there at all.
@@ -208,6 +215,10 @@ func (uc *RunHistoryUseCase) refresh(ctx context.Context, host string, entries [
 	for _, e := range entries {
 		ids = append(ids, e.Record.WorkflowID)
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
+	defer cancel()
+
 	live, err := uc.lookupOnServer(ctx, ids)
 	if err != nil {
 		return err

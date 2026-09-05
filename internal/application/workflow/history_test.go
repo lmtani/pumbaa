@@ -232,6 +232,40 @@ func TestListSurvivesAnUnreachableServer(t *testing.T) {
 	}
 }
 
+// slowQuerier stands in for a server that accepted the connection and then
+// went quiet, which is what a dropped VPN looks like.
+type slowQuerier struct{}
+
+func (slowQuerier) Query(ctx context.Context, _ workflow.QueryFilter) (*workflow.QueryResult, error) {
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestListDoesNotWaitOnASilentServer(t *testing.T) {
+	store := newStubRunHistory(historyRecord("http://localhost:8000", "run-1", "Running"))
+	uc := NewRunHistoryUseCase(store, slowQuerier{}, fakeHostProvider{url: "http://localhost:8000"})
+
+	start := time.Now()
+	out, err := uc.List(context.Background(), ListRunHistoryInput{Refresh: true})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if elapsed > 2*refreshTimeout {
+		t.Errorf("took %v to answer from disk; the refresh deadline (%v) did not apply", elapsed, refreshTimeout)
+	}
+	if len(out.Entries) != 1 || out.Entries[0].Status != "Running" {
+		t.Errorf("got %+v, want the remembered record returned anyway", out.Entries)
+	}
+	if out.RefreshError == nil {
+		t.Error("RefreshError = nil, want the timeout reported")
+	}
+	if out.Entries[0].Forgotten {
+		t.Error("Forgotten = true, want a silent server not to be read as deletion")
+	}
+}
+
 func TestAnnotateEditsARememberedRun(t *testing.T) {
 	store := newStubRunHistory(historyRecord("http://localhost:8000", "run-1", "Running"))
 	querier := &historyQuerier{}
