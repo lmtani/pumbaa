@@ -125,6 +125,16 @@ func (uc *RunHistoryUseCase) Annotate(ctx context.Context, workflowID, descripti
 	host, alias := uc.host.CurrentHost()
 	ref := ports.RunRef{Host: host, WorkflowID: workflowID}
 
+	// A run remembered only for its note has nothing left once the note is
+	// cleared; keeping an empty row would put a marker on a listing for no
+	// reason. A submitted run keeps its record: the files it ran with are
+	// worth remembering on their own.
+	if description == "" {
+		if rec, getErr := uc.store.Get(ctx, ref); getErr == nil && rec.Origin == ports.OriginNote {
+			return uc.store.Forget(ctx, ref)
+		}
+	}
+
 	err := uc.store.SetDescription(ctx, ref, description)
 	if err == nil {
 		return nil

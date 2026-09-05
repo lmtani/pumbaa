@@ -91,6 +91,9 @@ func (m Model) handleMainKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case key.Matches(msg, m.keys.Note):
+		return m.openNoteModal()
+
 	case key.Matches(msg, m.keys.Filter):
 		m.showFilter = true
 		m.filterType = "name"

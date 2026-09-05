@@ -60,6 +60,16 @@ func (s *stubRunHistory) SetStatus(_ context.Context, ref ports.RunRef, status s
 	return nil
 }
 
+func (s *stubRunHistory) Forget(_ context.Context, ref ports.RunRef) error {
+	for i := range s.records {
+		if s.records[i].Host == ref.Host && s.records[i].WorkflowID == ref.WorkflowID {
+			s.records = append(s.records[:i], s.records[i+1:]...)
+			return nil
+		}
+	}
+	return ports.ErrRunNotRemembered
+}
+
 func (s *stubRunHistory) Record(_ context.Context, rec ports.RunRecord) error {
 	s.records = append(s.records, rec)
 	return nil
@@ -263,5 +273,31 @@ func TestAnnotateRejectsARunNobodyKnows(t *testing.T) {
 	}
 	if len(store.records) != 0 {
 		t.Error("stored a record for a run that does not exist")
+	}
+}
+
+func TestAnnotateEmptyDropsAnAnnotationOnlyRun(t *testing.T) {
+	annotated := historyRecord("http://localhost:8000", "annotated", "Succeeded")
+	annotated.Origin = ports.OriginNote
+	submitted := historyRecord("http://localhost:8000", "submitted", "Succeeded")
+	store := newStubRunHistory(annotated, submitted)
+	uc := NewRunHistoryUseCase(store, &historyQuerier{}, fakeHostProvider{url: "http://localhost:8000"})
+
+	if err := uc.Annotate(context.Background(), "annotated", ""); err != nil {
+		t.Fatalf("Annotate: %v", err)
+	}
+	if _, err := store.Get(context.Background(), ports.RunRef{Host: "http://localhost:8000", WorkflowID: "annotated"}); !errors.Is(err, ports.ErrRunNotRemembered) {
+		t.Error("a run remembered only for its note survived the note being cleared")
+	}
+
+	if err := uc.Annotate(context.Background(), "submitted", ""); err != nil {
+		t.Fatalf("Annotate: %v", err)
+	}
+	rec, err := store.Get(context.Background(), ports.RunRef{Host: "http://localhost:8000", WorkflowID: "submitted"})
+	if err != nil {
+		t.Fatalf("a submitted run lost its record when its note was cleared: %v", err)
+	}
+	if rec.Description != "" {
+		t.Errorf("description = %q, want it cleared", rec.Description)
 	}
 }

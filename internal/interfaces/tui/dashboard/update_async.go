@@ -12,6 +12,33 @@ import (
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
+// fetchNotes looks up which of the listed runs are remembered locally, in one
+// query, so the table can mark them.
+func (m Model) fetchNotes(ids []string) tea.Cmd {
+	if m.historyUC == nil || len(ids) == 0 {
+		return nil
+	}
+	uc := m.historyUC
+	return func() tea.Msg {
+		notes, err := uc.Marks(context.Background(), ids)
+		if err != nil {
+			// The history is a convenience here: failing to read it must not
+			// disturb a dashboard that is otherwise working.
+			return notesLoadedMsg{notes: nil}
+		}
+		return notesLoadedMsg{notes: notes}
+	}
+}
+
+// saveNote writes the local note of a run.
+func (m Model) saveNote(workflowID, description string) tea.Cmd {
+	uc := m.historyUC
+	return func() tea.Msg {
+		err := uc.Annotate(context.Background(), workflowID, description)
+		return noteSavedMsg{workflowID: workflowID, description: description, err: err}
+	}
+}
+
 // checkVersion starts an async version check.
 func (m Model) checkVersion() tea.Cmd {
 	if m.updateChecker == nil {

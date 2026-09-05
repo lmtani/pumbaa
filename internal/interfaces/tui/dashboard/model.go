@@ -101,6 +101,17 @@ type Model struct {
 	labelsInput        textinput.Model
 	labelsMessage      string // In-modal feedback message
 
+	// Local run history: which runs this machine remembers, and the editor
+	// for the note of the selected one.
+	historyUC        *workflowapp.RunHistoryUseCase
+	notes            map[string]ports.RunRecord
+	showNoteModal    bool
+	noteWorkflowID   string
+	noteWorkflowName string
+	noteInput        textinput.Model
+	noteSaving       bool
+	noteMessage      string
+
 	// LastError keeps the most recent error for telemetry and the error modal.
 	LastError error
 }
@@ -133,9 +144,11 @@ func NewModel() Model {
 // NewModelWithRepository creates a new dashboard model with all repository capabilities.
 // The repository satisfies WorkflowQuerier, WorkflowAborter, WorkflowMetadataFetcher,
 // HealthChecker, and LabelManager through interface composition. compareUC may be
-// nil, in which case the compare feature is disabled.
-func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, version string, updateChecker ports.UpdateChecker) Model {
+// nil, in which case the compare feature is disabled; so may historyUC, which
+// disables the local run history markers and the note editor.
+func NewModelWithRepository(repo ports.WorkflowRepository, compareUC *workflowapp.CompareUseCase, historyUC *workflowapp.RunHistoryUseCase, version string, updateChecker ports.UpdateChecker) Model {
 	m := NewModel()
+	m.historyUC = historyUC
 	m.querier = repo
 	m.aborter = repo
 	m.metadataFetcher = repo
@@ -160,7 +173,7 @@ func (m *Model) ResumeCmd() tea.Cmd {
 
 // HasActiveModal returns true if there's an active modal being displayed.
 func (m *Model) HasActiveModal() bool {
-	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff
+	return m.showFilter || m.showConfirm || m.showLabelsModal || m.showHelp || m.showError || m.showDiff || m.showNoteModal
 }
 
 // Init implements tea.Model.
@@ -204,7 +217,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.filterInput.Width = minInt(40, m.width-20)
 
 	case spinner.TickMsg:
-		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.statusMsg != "" {
+		if m.loading || m.loadingDebug || m.labelsLoading || m.labelsUpdating || m.diffLoading || m.noteSaving || m.statusMsg != "" {
 			m.spinner, cmd = m.spinner.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -237,6 +250,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(m.workflows) {
 			m.cursor = maxInt(0, len(m.workflows)-1)
 		}
+		cmds = append(cmds, m.fetchNotes(workflowIDs(msg.workflows)))
 
 	case workflowsErrorMsg:
 		m.loading = false
@@ -299,6 +313,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.spinner.Tick, m.fetchWorkflows())
 		}
 
+	case notesLoadedMsg:
+		m.notes = msg.notes
+
+	case noteSavedMsg:
+		m.noteSaving = false
+		if msg.err != nil {
+			m.noteMessage = "✗ " + friendlyError(msg.err)
+			m.LastError = msg.err
+			break
+		}
+		m.rememberNote(msg.workflowID, msg.description)
+		m.closeNoteModal()
+		m.setStatusMessage("✓ Note saved for " + truncateID(msg.workflowID))
+		cmds = append(cmds, getClearStatusCmd())
+
 	case labelsLoadedMsg:
 		m.labelsLoading = false
 		m.labelsData = msg.labels
@@ -354,6 +383,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleLabelsModalKeys(msg)
 		}
 
+		// Handle note modal
+		if m.showNoteModal {
+			return m.handleNoteModalKeys(msg)
+		}
+
 		// Handle filter input
 		if m.showFilter {
 			return m.handleFilterKeys(msg)
@@ -372,6 +406,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // - view_table.go: renderTable(), renderWorkflowRow(), getColumnWidths()
 // - view_footer.go: renderFooter()
 // Helper functions are in helpers.go
+
+// workflowIDs collects the IDs of a workflow list.
+func workflowIDs(workflows []workflow.Workflow) []string {
+	ids := make([]string, 0, len(workflows))
+	for _, wf := range workflows {
+		ids = append(ids, wf.ID)
+	}
+	return ids
+}
+
+// rememberNote updates the local view of the history after a successful save,
+// so the table marker reacts immediately instead of waiting for a refresh.
+func (m *Model) rememberNote(workflowID, description string) {
+	if m.notes == nil {
+		m.notes = make(map[string]ports.RunRecord)
+	}
+	rec := m.notes[workflowID]
+	rec.WorkflowID = workflowID
+	rec.Description = description
+	if rec.Origin == "" {
+		rec.Origin = ports.OriginNote
+	}
+	if description == "" && rec.Origin == ports.OriginNote {
+		// Clearing the note of a run that was only remembered for that note
+		// leaves nothing worth keeping; the use case drops it too.
+		delete(m.notes, workflowID)
+		return
+	}
+	m.notes[workflowID] = rec
+}
 
 // setStatusMessage sets a temporary status message that auto-clears after 3 seconds.
 func (m *Model) setStatusMessage(message string) {

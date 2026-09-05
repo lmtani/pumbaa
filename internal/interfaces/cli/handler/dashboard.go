@@ -20,6 +20,7 @@ type DashboardHandler struct {
 	fileProvider  ports.FileProvider
 	batchLogsUC   *workflowapp.GetBatchLogsUseCase
 	compareUC     *workflowapp.CompareUseCase
+	historyUC     *workflowapp.RunHistoryUseCase
 	updateChecker ports.UpdateChecker
 	version       string
 	chatDeps      ChatDepsProvider
@@ -33,6 +34,7 @@ func NewDashboardHandler(
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cuc *workflowapp.CompareUseCase,
+	huc *workflowapp.RunHistoryUseCase,
 	updateChecker ports.UpdateChecker,
 	version string,
 	chatDeps ChatDepsProvider,
@@ -44,6 +46,7 @@ func NewDashboardHandler(
 		fileProvider:  fp,
 		batchLogsUC:   bluc,
 		compareUC:     cuc,
+		historyUC:     huc,
 		updateChecker: updateChecker,
 		chatDeps:      chatDeps,
 		version:       version,
@@ -67,6 +70,7 @@ KEY BINDINGS:
   s             Cycle status filter (All/Running/Failed/Succeeded)
   /             Filter by workflow name
   Ctrl+X        Clear all filters
+  n             Write a local note about the run
   r             Refresh workflow list
   q             Quit`,
 		Flags: []cli.Flag{
@@ -115,6 +119,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		MonitoringUC:   h.monitoringUC,
 		BatchLogsUC:    h.batchLogsUC,
 		CompareUC:      h.compareUC,
+		HistoryUC:      h.historyUC,
 		UpdateChecker:  h.updateChecker,
 		CurrentVersion: h.version,
 	}

@@ -25,6 +25,9 @@ type Dependencies struct {
 	MonitoringUC *workflowapp.MonitoringUseCase
 	BatchLogsUC  *workflowapp.GetBatchLogsUseCase
 	CompareUC    *workflowapp.CompareUseCase
+	// HistoryUC serves the local run history (optional - nil disables the
+	// markers and the note editor).
+	HistoryUC *workflowapp.RunHistoryUseCase
 
 	// UpdateChecker checks for newer releases (optional - nil disables it)
 	UpdateChecker ports.UpdateChecker
