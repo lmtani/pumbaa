@@ -296,10 +296,9 @@ func (s *Store) List(ctx context.Context, filter ports.RunHistoryFilter) ([]port
 		where = append(where, `host = ?`)
 		args = append(args, filter.Host)
 	}
-	if filter.Search != "" {
-		where = append(where, `(LOWER(description) LIKE ? OR LOWER(name) LIKE ? OR LOWER(workflow_id) LIKE ?)`)
-		pattern := "%" + strings.ToLower(filter.Search) + "%"
-		args = append(args, pattern, pattern, pattern)
+	for _, pattern := range searchPatterns(filter.Search) {
+		where = append(where, searchClause)
+		args = append(args, pattern)
 	}
 	if !filter.Since.IsZero() {
 		where = append(where, `submitted_at >= ?`)
@@ -365,6 +364,37 @@ func (s *Store) Lookup(ctx context.Context, host string, workflowIDs []string) (
 		found[rec.WorkflowID] = rec
 	}
 	return found, rows.Err()
+}
+
+// searchable is every field a keyword could plausibly appear in, joined so a
+// single LIKE per term covers them all: the note, the workflow name, the ID,
+// the labels, and the paths of the files the run was assembled from — asking
+// "what did I run with hg38?" is as natural as asking by description.
+const searchable = `LOWER(description || ' ' || name || ' ' || workflow_id || ' ' || labels || ' ' ||
+	workflow_file || ' ' || inputs_file || ' ' || options_file || ' ' || dependencies_file)`
+
+// searchClause matches one term. Terms never contain whitespace and the parts
+// above are space-joined, so a term can never match across a field boundary.
+const searchClause = searchable + ` LIKE ? ESCAPE '\'`
+
+// searchPatterns splits a search into terms, every one of which must match
+// somewhere in the record. Anything else surprises: a person typing three
+// words means a run described by all three, not one containing that exact
+// phrase, and an agent phrases its questions the same way.
+func searchPatterns(search string) []string {
+	terms := strings.Fields(strings.ToLower(search))
+	patterns := make([]string, 0, len(terms))
+	for _, term := range terms {
+		patterns = append(patterns, "%"+escapeLike(term)+"%")
+	}
+	return patterns
+}
+
+// escapeLike neutralises the LIKE wildcards, so a search for "hg38_v2" looks
+// for that text rather than treating _ as "any character".
+func escapeLike(term string) string {
+	replacer := strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+	return replacer.Replace(term)
 }
 
 const selectColumns = `SELECT host, workflow_id, host_alias, name, description,

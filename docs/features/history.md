@@ -65,7 +65,7 @@ already running by then, so a failure is reported as a warning.
 | Flag | Alias | Description |
 |------|:-----:|-------------|
 | `--all` | `-a` | Every host, not just the active one |
-| `--search` | `-s` | Match the description, name or ID |
+| `--search` | `-s` | Keywords; every one must appear somewhere in the record |
 | `--since` | | `7d`, `24h` or `2026-07-01` |
 | `--limit` | `-l` | Maximum rows (default 20) |
 | `--no-refresh` | | Do not ask the server for current statuses |
@@ -92,6 +92,22 @@ says so.
     so a run submitted moments ago is routinely missing from it while very much
     existing. A run is only reported as forgotten once it is old enough for
     that lag to be ruled out.
+
+## :material-magnify: Searching
+
+`--search` takes keywords, not a phrase: the terms are matched independently,
+in any order, and every one of them must appear somewhere in the record —
+description, workflow name, ID, labels, or the paths of the WDL, inputs,
+options and dependency files.
+
+```bash
+pumbaa history --search "tso500 referência"   # both words, not necessarily adjacent
+pumbaa history --search hg38                  # runs whose inputs path mentions hg38
+pumbaa history --search S001                  # a label value
+```
+
+Matching is case-insensitive, and `%` and `_` are searched for as text rather
+than treated as wildcards.
 
 ## :material-pencil-plus: Annotating someone else's run
 

@@ -235,6 +235,102 @@ func TestListFilters(t *testing.T) {
 	}
 }
 
+func TestSearchMatchesEveryTermAcrossTheRecord(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	tso := sampleRecord("tso-run")
+	tso.Name = "Tso500SomaticAnalysis"
+	tso.Description = "rerun do painel com a referência reconstruída"
+	tso.WorkflowFile = "/wdl/tso500.wdl"
+	tso.InputsFile = "/inputs/hg38_v2.json"
+	tso.Labels = map[string]string{"sample": "S001"}
+	germline := sampleRecord("germline-run")
+	germline.Name = "GermlineVariantCalling"
+	germline.Description = "validação da coorte de janeiro"
+	germline.WorkflowFile = "/wdl/germline.wdl"
+	germline.InputsFile = "/inputs/cohort.json"
+	germline.Labels = map[string]string{"project": "genomics"}
+	for _, rec := range []ports.RunRecord{tso, germline} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+
+	tests := []struct {
+		search string
+		want   string
+	}{
+		{"tso500", "tso-run"},
+		{"painel referência", "tso-run"},     // two terms, not adjacent in the text
+		{"REFERÊNCIA PAINEL", "tso-run"},     // order and case do not matter
+		{"hg38", "tso-run"},                  // an inputs path
+		{"hg38_v2", "tso-run"},               // _ is text, not a wildcard
+		{"s001", "tso-run"},                  // a label value
+		{"genomics", "germline-run"},         // a label key's value
+		{"germline janeiro", "germline-run"}, // name plus description
+		{"/wdl/tso500.wdl", "tso-run"},       // a full path
+	}
+	for _, tt := range tests {
+		t.Run(tt.search, func(t *testing.T) {
+			got, err := store.List(ctx, ports.RunHistoryFilter{Search: tt.search})
+			if err != nil {
+				t.Fatalf("List: %v", err)
+			}
+			if len(got) != 1 || got[0].WorkflowID != tt.want {
+				t.Errorf("search %q matched %d runs %v, want just %s", tt.search, len(got), ids(got), tt.want)
+			}
+		})
+	}
+}
+
+func TestSearchRequiresEveryTerm(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	rec := sampleRecord("tso-run")
+	rec.Description = "rerun do painel"
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	// "painel" matches, "germline" does not: an AND, not an OR.
+	got, err := store.List(ctx, ports.RunHistoryFilter{Search: "painel germline"})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("matched %v, want nothing when one of the terms is absent", ids(got))
+	}
+}
+
+func TestSearchTreatsWildcardsAsText(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	// A bare wildcard must not match everything.
+	for _, search := range []string{"%", "_"} {
+		got, err := store.List(ctx, ports.RunHistoryFilter{Search: search})
+		if err != nil {
+			t.Fatalf("List: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("search %q matched %v, want it treated as literal text", search, ids(got))
+		}
+	}
+}
+
+func ids(records []ports.RunRecord) []string {
+	out := make([]string, 0, len(records))
+	for _, rec := range records {
+		out = append(out, rec.WorkflowID)
+	}
+	return out
+}
+
 func TestLookupBatchesByHost(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
