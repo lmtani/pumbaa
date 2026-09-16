@@ -83,6 +83,7 @@ func (m Model) renderFooter() string {
 		renderHint("/", "filter"),
 		renderHint("a", "abort"),
 		renderHint("c", "compare"),
+		renderHint("n", "note"),
 	}
 	if m.LastError != nil {
 		hints = append(hints, renderHint("e", "error details"))

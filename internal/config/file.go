@@ -13,8 +13,12 @@ import (
 type FileConfig struct {
 	LLMProvider string `yaml:"llm_provider,omitempty"`
 
-	// Cromwell
-	CromwellHost string `yaml:"cromwell_host,omitempty"`
+	// Cromwell. CromwellHost is the single-host setting that predates the
+	// alias registry; it is still honoured as the default when no alias is
+	// marked as such.
+	CromwellHost string            `yaml:"cromwell_host,omitempty"`
+	Hosts        map[string]string `yaml:"hosts,omitempty"`
+	DefaultHost  string            `yaml:"default_host,omitempty"`
 
 	// Ollama
 	OllamaHost  string `yaml:"ollama_host,omitempty"`
@@ -105,6 +109,8 @@ func (c *FileConfig) GetValue(key string) (string, bool) {
 		return c.LLMProvider, c.LLMProvider != ""
 	case "cromwell_host":
 		return c.CromwellHost, c.CromwellHost != ""
+	case "default_host":
+		return c.DefaultHost, c.DefaultHost != ""
 	case "ollama_host":
 		return c.OllamaHost, c.OllamaHost != ""
 	case "ollama_model":
@@ -142,7 +148,9 @@ func (c *FileConfig) SetValue(key, value string) error {
 		}
 		c.LLMProvider = value
 	case "cromwell_host":
-		c.CromwellHost = value
+		c.CromwellHost = NormalizeHostURL(value)
+	case "default_host":
+		return c.SetDefaultHost(value)
 	case "ollama_host":
 		c.OllamaHost = value
 	case "ollama_model":
@@ -173,6 +181,7 @@ func AllKeys() []string {
 	return []string{
 		"llm_provider",
 		"cromwell_host",
+		"default_host",
 		"ollama_host",
 		"ollama_model",
 		"vertex_project",

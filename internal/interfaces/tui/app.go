@@ -65,7 +65,7 @@ func NewAppModel(deps *Dependencies, initialScreen Screen) AppModel {
 	}
 
 	// Initialize dashboard
-	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CompareUC, deps.CurrentVersion, deps.UpdateChecker)
+	m.dashboard = dashboard.NewModelWithRepository(deps.Repository, deps.CompareUC, deps.HistoryUC, deps.HostLabel, deps.CurrentVersion, deps.UpdateChecker)
 	m.hasDashboard = true
 
 	return m
@@ -89,7 +89,7 @@ func NewAppModelWithWorkflow(deps *Dependencies, wf *workflow.Workflow) AppModel
 
 // newDebugModel builds a debug screen model for the given workflow.
 func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
-	return debug.NewModelWithChat(
+	m := debug.NewModelWithChat(
 		wf,
 		deps.Repository,
 		deps.MonitoringUC,
@@ -97,6 +97,8 @@ func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
 		deps.BatchLogsUC,
 		convertChatDeps(deps.ChatDeps),
 	)
+	m.SetRunHistory(deps.HistoryUC)
+	return m
 }
 
 // Init implements tea.Model.

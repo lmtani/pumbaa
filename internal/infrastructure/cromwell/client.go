@@ -248,6 +248,9 @@ func (c *Client) Query(ctx context.Context, filter workflow.QueryFilter) (*workf
 	// Include labels in results
 	q.Add("additionalQueryResultFields", "labels")
 
+	for _, id := range filter.IDs {
+		q.Add("id", id)
+	}
 	if filter.Name != "" {
 		q.Add("name", filter.Name)
 	}

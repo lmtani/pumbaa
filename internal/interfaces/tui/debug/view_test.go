@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -49,5 +50,51 @@ func TestViewFillsTerminalExactly(t *testing.T) {
 		if got := lipgloss.Width(view); got > size.w {
 			t.Errorf("View() at %dx%d has width %d, want <= %d", size.w, size.h, got, size.w)
 		}
+	}
+}
+
+// TestWorkflowPanelShowsTheLocalNote covers the run's description in the
+// workflow panel, including the wrapping a long one needs.
+func TestWorkflowPanelShowsTheLocalNote(t *testing.T) {
+	m := testModel(t, 100, 30)
+	updated, _ := m.Update(runNoteLoadedMsg{
+		description: "reprocessing the January cohort after the reference panel was rebuilt, to check whether the ancestry step still disagrees with the clinical call",
+	})
+	m, ok := updated.(Model)
+	if !ok {
+		t.Fatalf("Update returned %T, want Model", updated)
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "Note") {
+		t.Error("workflow panel has no Note section")
+	}
+	if !strings.Contains(view, "reprocessing the January cohort") {
+		t.Error("workflow panel does not show the note")
+	}
+	if got := lipgloss.Height(view); got != 30 {
+		t.Errorf("view height %d, want 30 — a long note must wrap inside the panel, not grow it", got)
+	}
+	if got := lipgloss.Width(view); got > 100 {
+		t.Errorf("view width %d, want <= 100", got)
+	}
+}
+
+// TestWorkflowPanelWithoutANoteHasNoSection keeps the panel quiet for runs
+// nobody wrote about, which is most of them.
+func TestWorkflowPanelWithoutANoteHasNoSection(t *testing.T) {
+	m := testModel(t, 100, 30)
+
+	if strings.Contains(m.View(), "Note") {
+		t.Error("Note section rendered for a run with no local record")
+	}
+}
+
+func TestNoteWrapWidthHasAFloor(t *testing.T) {
+	if got := noteWrapWidth(10); got != 20 {
+		t.Errorf("noteWrapWidth(10) = %d, want the floor of 20", got)
+	}
+	if got := noteWrapWidth(60); got != 54 {
+		t.Errorf("noteWrapWidth(60) = %d, want the panel width less its padding", got)
 	}
 }

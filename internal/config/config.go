@@ -11,9 +11,14 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	CromwellHost    string
-	CromwellTimeout time.Duration
-	SessionDBPath   string
+	CromwellHost string
+	// CromwellHostAlias is the registered name the host was resolved from,
+	// empty when a URL was given directly. It is what the user recognises,
+	// so it is what gets shown back to them.
+	CromwellHostAlias string
+	CromwellTimeout   time.Duration
+	SessionDBPath     string
+	HistoryDBPath     string
 
 	// LLM Provider configuration
 	LLMProvider string // "ollama" or "vertex"
@@ -42,25 +47,39 @@ type Config struct {
 	WDLIndexPath string // Path to cached WDL index JSON file
 }
 
+// CurrentHost reports the Cromwell server this invocation is pointed at. It
+// satisfies ports.HostProvider without the config package having to depend on
+// the application layer; the composition root asserts the match.
+func (c *Config) CurrentHost() (url, alias string) {
+	return c.CromwellHost, c.CromwellHostAlias
+}
+
 // Load loads configuration from file and environment variables.
 // Priority: CLI flags > env vars > config file > defaults
 func Load() *Config {
 	// Load file config first
 	fileCfg, _ := LoadFileConfig()
 
-	// Cromwell host: env > file > default
-	host := os.Getenv("CROMWELL_HOST")
-	if host == "" && fileCfg.CromwellHost != "" {
-		host = fileCfg.CromwellHost
-	}
-	if host == "" {
-		host = "http://localhost:8000"
+	// Cromwell host: env > registry default > legacy single-host setting >
+	// built-in default. The environment variable takes an alias just as the
+	// flag does, so a shell can be pointed at a host by name too.
+	host, err := fileCfg.ResolveHost(os.Getenv("CROMWELL_HOST"))
+	if err != nil {
+		// An unknown alias in the environment must not stop the CLI from
+		// starting: the command may well be `pumbaa host add`.
+		host = HostRef{URL: DefaultCromwellHost}
 	}
 
 	sessionDBPath := os.Getenv("PUMBAA_SESSION_DB")
 	if sessionDBPath == "" {
 		home, _ := os.UserHomeDir()
 		sessionDBPath = filepath.Join(home, ".pumbaa", "sessions.db")
+	}
+
+	historyDBPath := os.Getenv("PUMBAA_HISTORY_DB")
+	if historyDBPath == "" {
+		home, _ := os.UserHomeDir()
+		historyDBPath = filepath.Join(home, ".pumbaa", "history.db")
 	}
 
 	// LLM Provider: env > file > default
@@ -182,9 +201,11 @@ func Load() *Config {
 	}
 
 	return &Config{
-		CromwellHost:      host,
+		CromwellHost:      host.URL,
+		CromwellHostAlias: host.Alias,
 		CromwellTimeout:   30 * time.Second,
 		SessionDBPath:     sessionDBPath,
+		HistoryDBPath:     historyDBPath,
 		LLMProvider:       llmProvider,
 		OllamaHost:        ollamaHost,
 		OllamaModel:       ollamaModel,

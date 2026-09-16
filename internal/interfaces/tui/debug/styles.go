@@ -52,6 +52,10 @@ var (
 			Foreground(common.InfoColor).
 			Italic(true)
 
+	// Local run note: prose, so it wraps to the panel rather than being cut.
+	runNoteStyle = lipgloss.NewStyle().
+			Foreground(common.TextColor)
+
 	// Informational note style (subworkflow hints, etc.)
 	infoNoteStyle = lipgloss.NewStyle().
 			Foreground(common.InfoColor).

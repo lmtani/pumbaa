@@ -34,6 +34,7 @@ func main() {
 	// Create container with initial config
 	cont := container.New(cfg, Version)
 	defer cont.TelemetryService.Close()
+	defer func() { _ = cont.RunHistory.Close() }()
 
 	// Log app start for telemetry breadcrumb trail
 	cont.TelemetryService.AddBreadcrumb("app", fmt.Sprintf("pumbaa %s started", Version))
@@ -48,15 +49,19 @@ func main() {
 			&cli.StringFlag{
 				Name:    "host",
 				Aliases: []string{"H"},
-				Usage:   "Cromwell server host URL",
+				Usage:   "Cromwell server: a registered alias (see `pumbaa host`) or a URL",
 				EnvVars: []string{"CROMWELL_HOST"},
-				Value:   "http://localhost:8000",
 			},
 		},
 		Before: func(c *cli.Context) error {
-			// Update config with CLI flags
-			if c.IsSet("host") {
-				cont.CromwellClient.BaseURL = c.String("host")
+			// Resolve --host, which accepts an alias as readily as a URL.
+			if ref := c.String("host"); ref != "" {
+				fileCfg, _ := config.LoadFileConfig()
+				resolved, err := fileCfg.ResolveHost(ref)
+				if err != nil {
+					return err
+				}
+				cont.UseHost(resolved)
 			}
 
 			// Log command execution breadcrumb
@@ -99,6 +104,8 @@ func main() {
 		cont.DashboardHandler.Command(),
 		cont.ChatHandler.Command(),
 		cont.ConfigHandler.Command(),
+		cont.HostHandler.Command(),
+		cont.HistoryHandler.Command(),
 		cont.AnalyzeHandler.Command(),
 	}
 

@@ -55,6 +55,8 @@ nav:
     - Cache Forecast: features/cache-forecast.md
     - Abort Workflow: features/abort.md
     - Bundle WDL: features/bundle.md
+    - Cromwell Hosts: features/hosts.md
+    - Local Run History: features/history.md
   - AI Chat:
     - Chat Agent: features/chat.md
   - Advanced:

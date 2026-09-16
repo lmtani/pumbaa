@@ -20,11 +20,16 @@ type Dependencies struct {
 
 	// App info
 	CurrentVersion string
+	// HostLabel names the Cromwell server in use — its alias when it has one.
+	HostLabel string
 
 	// Use cases
 	MonitoringUC *workflowapp.MonitoringUseCase
 	BatchLogsUC  *workflowapp.GetBatchLogsUseCase
 	CompareUC    *workflowapp.CompareUseCase
+	// HistoryUC serves the local run history (optional - nil disables the
+	// markers and the note editor).
+	HistoryUC *workflowapp.RunHistoryUseCase
 
 	// UpdateChecker checks for newer releases (optional - nil disables it)
 	UpdateChecker ports.UpdateChecker

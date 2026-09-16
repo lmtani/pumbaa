@@ -171,3 +171,51 @@ func TestScaffoldActionDispatchesThroughRegistry(t *testing.T) {
 		t.Errorf("unexpected scaffold output: %+v", out.Data)
 	}
 }
+
+// stubRunHistory satisfies ports.RunHistoryReader for registry construction.
+type stubRunHistory struct{}
+
+func (stubRunHistory) Get(context.Context, ports.RunRef) (ports.RunRecord, error) {
+	return ports.RunRecord{}, ports.ErrRunNotRemembered
+}
+
+func (stubRunHistory) List(context.Context, ports.RunHistoryFilter) ([]ports.RunRecord, error) {
+	return nil, nil
+}
+
+func (stubRunHistory) Lookup(context.Context, string, []string) (map[string]ports.RunRecord, error) {
+	return nil, nil
+}
+
+type stubHostProvider struct{}
+
+func (stubHostProvider) CurrentHost() (string, string) { return "http://localhost:8000", "local" }
+
+func TestHistoryActionNeedsBothStoreAndHost(t *testing.T) {
+	if _, ok := NewDefaultRegistry(Deps{}).Get("history"); ok {
+		t.Error("history should be omitted without a local store")
+	}
+	if _, ok := NewDefaultRegistry(Deps{History: stubRunHistory{}}).Get("history"); ok {
+		t.Error("history should be omitted without a host to key records by")
+	}
+
+	full := NewDefaultRegistry(Deps{History: stubRunHistory{}, Host: stubHostProvider{}})
+	if _, ok := full.Get("history"); !ok {
+		t.Error("history should be registered once the store and host are wired")
+	}
+}
+
+func TestHistoryActionDispatchesThroughRegistry(t *testing.T) {
+	r := NewDefaultRegistry(Deps{History: stubRunHistory{}, Host: stubHostProvider{}})
+
+	out, err := r.Handle(context.Background(), types.Input{Action: "history", WorkflowID: "ghost"})
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if out.Action != "history" {
+		t.Errorf("action = %q, want history", out.Action)
+	}
+	if out.Success {
+		t.Error("Success = true for a run with no local record, want the absence reported")
+	}
+}

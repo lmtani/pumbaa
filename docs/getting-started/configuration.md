@@ -49,6 +49,7 @@ pumbaa config path
 |-----|-------------|---------|
 | `llm_provider` | LLM backend | `ollama`, `gemini`, `vertex` |
 | `cromwell_host` | Cromwell server URL | `http://localhost:8000` |
+| `default_host` | Registered host used when none is given | `prod` |
 | `ollama_host` | Ollama server URL | `http://localhost:11434` |
 | `ollama_model` | Ollama model name | `llama3.2:3b` |
 | `gemini_api_key` | Gemini API key | `AIza...` |
@@ -60,13 +61,30 @@ pumbaa config path
 
 ---
 
+## :material-server-network: Multiple Cromwell Servers
+
+Servers can be registered under short names and selected by name, instead of
+being spelled out on every command:
+
+```bash
+pumbaa host add local http://localhost:8000
+pumbaa host add prod https://cromwell.example.com
+pumbaa --host prod workflow query
+```
+
+They are stored in the same config file under `hosts`, with `default_host`
+naming the one used when no host is given. Full reference:
+[Cromwell hosts](../features/hosts.md).
+
+---
+
 ## :material-application-variable: Environment Variables
 
 Every setting can also be provided via environment variable. Env vars override the config file.
 
 | Variable | Equivalent config key | Default |
 |----------|----------------------|---------|
-| `CROMWELL_HOST` | `cromwell_host` | `http://localhost:8000` |
+| `CROMWELL_HOST` | `cromwell_host` (accepts a [host alias](../features/hosts.md)) | `http://localhost:8000` |
 | `PUMBAA_LLM_PROVIDER` | `llm_provider` | `ollama` |
 | `OLLAMA_HOST` | `ollama_host` | `http://localhost:11434` |
 | `OLLAMA_MODEL` | `ollama_model` | `llama3.2:3b` |
@@ -78,6 +96,7 @@ Every setting can also be provided via environment variable. Env vars override t
 | `PUMBAA_WDL_DIR` | `wdl_directory` | — |
 | `PUMBAA_WDL_INDEX` | — (WDL index cache path) | `~/.pumbaa/wdl_index.json` |
 | `PUMBAA_SESSION_DB` | — (chat sessions database) | `~/.pumbaa/sessions.db` |
+| `PUMBAA_HISTORY_DB` | — (local run history database) | `~/.pumbaa/history.db` |
 | `PUMBAA_TELEMETRY_ENABLED` | `telemetry_enabled` | `true` |
 
 !!! warning "Prefix inconsistency"

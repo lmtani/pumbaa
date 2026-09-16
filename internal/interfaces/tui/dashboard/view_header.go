@@ -40,6 +40,13 @@ func (m Model) renderHeader() string {
 		}
 	}
 
+	// Which server this is: with aliases, the dashboard can be pointed
+	// anywhere, and "connected" alone stops answering "connected to what".
+	if m.hostLabel != "" {
+		left := common.MutedStyle.Render(" @ " + m.hostLabel)
+		status += left
+	}
+
 	left := brand + " " + breadcrumbs + "  " + status
 
 	// Right side: compare-base badge, update notice, workflow count, last refresh

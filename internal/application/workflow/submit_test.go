@@ -54,7 +54,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	input := SubmitInput{
 		WorkflowFile:     "test.wdl",
@@ -76,7 +76,7 @@ func TestSubmitUseCase_Execute(t *testing.T) {
 func TestSubmitUseCase_Execute_Validation(t *testing.T) {
 	repo := &mockWorkflowRepository{}
 	fp := &mockFileProvider{}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	_, err := uc.Execute(context.Background(), SubmitInput{})
 	if err == nil {
@@ -101,7 +101,7 @@ func TestSubmitUseCase_Execute_Error(t *testing.T) {
 			return nil, errors.New("file not found")
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	input := SubmitInput{
 		WorkflowFile: "non-existent.wdl",
@@ -160,7 +160,7 @@ func TestSubmitUseCase_Execute_OptionalFileReadErrors(t *testing.T) {
 					return []byte("ok"), nil
 				},
 			}
-			uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+			uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 			_, err := uc.Execute(context.Background(), tt.input)
 			if err == nil {
@@ -188,7 +188,7 @@ func TestSubmitUseCase_Execute_SubmitError(t *testing.T) {
 			return []byte("workflow test {}"), nil
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	input := SubmitInput{WorkflowFile: "test.wdl"}
 	_, err := uc.Execute(context.Background(), input)
@@ -230,7 +230,7 @@ workflow Hello {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	input := SubmitInput{
 		WorkflowFile: "hello.wdl",
@@ -287,7 +287,7 @@ workflow Hello {
 			}
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	input := SubmitInput{
 		WorkflowFile: "hello.wdl",
@@ -339,7 +339,7 @@ workflow Hello {
 			return 0, fmt.Errorf("%w: %s", ports.ErrFileNotFound, path)
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	_, err := uc.Execute(context.Background(), SubmitInput{WorkflowFile: "hello.wdl", InputsFile: "inputs.json"})
 
@@ -377,7 +377,7 @@ workflow Hello {
 			return nil, errors.New("unexpected path")
 		},
 	}
-	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil))
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil), nil)
 
 	output, err := uc.Execute(context.Background(), SubmitInput{
 		WorkflowFile:  "hello.wdl",

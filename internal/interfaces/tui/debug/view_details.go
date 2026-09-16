@@ -84,6 +84,14 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	}
 	sb.WriteString("\n")
 
+	// The local note comes first for the run as a whole: it is what says why
+	// this execution exists, and it is read before any of its numbers.
+	if node.Type == NodeTypeWorkflow && m.runNote != "" {
+		sb.WriteString(titleStyle.Render("Note") + "\n")
+		sb.WriteString(runNoteStyle.Width(noteWrapWidth(m.detailsWidth)).Render(m.runNote) + "\n")
+		sb.WriteString("\n" + sectionSeparator(35) + "\n")
+	}
+
 	// Scatter summary for Call nodes with shards
 	if node.Type == NodeTypeCall && len(node.Children) > 0 {
 		sb.WriteString("\n")
@@ -226,6 +234,15 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 	}
 
 	return sb.String()
+}
+
+// noteWrapWidth keeps the note inside the panel, with a floor so a very
+// narrow split still wraps instead of producing zero-width lines.
+func noteWrapWidth(detailsWidth int) int {
+	if detailsWidth-6 < 20 {
+		return 20
+	}
+	return detailsWidth - 6
 }
 
 func (m Model) renderCommand(node *TreeNode) string {

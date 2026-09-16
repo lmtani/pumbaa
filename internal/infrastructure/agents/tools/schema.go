@@ -16,12 +16,16 @@ func GetParametersSchema() map[string]any {
 			},
 			"workflow_id": map[string]any{
 				"type":        "string",
-				"description": "UUID of the workflow (required for status, metadata, outputs, logs actions)",
+				"description": "UUID of the workflow (required for status, metadata, outputs, logs actions; optional for history)",
 			},
 			"status": map[string]any{
 				"type":        "string",
-				"description": "Status filter for query action",
+				"description": "Status filter for the query and history actions",
 				"enum":        []string{"Running", "Succeeded", "Failed", "Submitted", "Aborted"},
+			},
+			"since_days": map[string]any{
+				"type":        "integer",
+				"description": "Limit the history action to runs submitted in the last N days",
 			},
 			"name": map[string]any{
 				"type":        "string",
@@ -45,7 +49,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"query": map[string]any{
 				"type":        "string",
-				"description": "Search query for wdl_search action",
+				"description": "Search query for wdl_search, or a text filter for history",
 			},
 			"type": map[string]any{
 				"type":        "string",
@@ -54,7 +58,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"page_size": map[string]any{
 				"type":        "integer",
-				"description": "Number of results to return for query action (default: 10)",
+				"description": "Number of results to return for the query and history actions (default: 10)",
 			},
 			"task": map[string]any{
 				"type":        "string",

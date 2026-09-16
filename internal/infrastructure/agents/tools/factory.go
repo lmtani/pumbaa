@@ -11,6 +11,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/application/ports"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/cromwell"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/gcs"
+	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/history"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/localfs"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/submit"
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
@@ -35,7 +36,10 @@ type actionSpec struct {
 	// requiresFileProvider marks actions that read/verify local or cloud
 	// files and are skipped when no file provider is wired.
 	requiresFileProvider bool
-	build                func(deps Deps) types.Handler
+	// requiresHistory marks actions reading the local run history, which
+	// needs both the store and the host records are keyed by.
+	requiresHistory bool
+	build           func(deps Deps) types.Handler
 }
 
 // Deps carries the external dependencies handlers can draw from. Any of the
@@ -46,6 +50,8 @@ type Deps struct {
 	Fetcher      ports.WorkflowMetadataFetcher
 	WDLRepo      wdl.Repository
 	FileProvider ports.FileProvider
+	History      ports.RunHistoryReader
+	Host         ports.HostProvider
 }
 
 func builtinActions() []actionSpec {
@@ -132,6 +138,16 @@ func builtinActions() []actionSpec {
 			},
 		},
 		{
+			name: "history",
+			description: "What was submitted from this machine and why: the description written at submit time, plus the WDL and inputs files each run used. " +
+				"Answers \"what was this run for?\" and \"what have I been running?\" — a Cromwell server does not keep any of it, and still answers after it forgot the run. " +
+				"Optional: workflow_id (one run), query (keywords matched across the note, name, id, labels and file paths), status, since_days, page_size.",
+			requiresHistory: true,
+			build: func(deps Deps) types.Handler {
+				return history.NewHandler(deps.History, deps.Host)
+			},
+		},
+		{
 			name:        "gcs_download",
 			description: "Read file from Google Cloud Storage. Required: path (gs://bucket/file).",
 			build: func(deps Deps) types.Handler {
@@ -186,6 +202,9 @@ func NewDefaultRegistry(deps Deps) *Registry {
 			continue
 		}
 		if spec.requiresFileProvider && deps.FileProvider == nil {
+			continue
+		}
+		if spec.requiresHistory && (deps.History == nil || deps.Host == nil) {
 			continue
 		}
 		r.Register(spec.name, spec.description, spec.build(deps))

@@ -16,6 +16,7 @@ import (
 	wdltools "github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/wdl"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cloudlogging"
 	"github.com/lmtani/pumbaa/internal/infrastructure/cromwell"
+	"github.com/lmtani/pumbaa/internal/infrastructure/history"
 	"github.com/lmtani/pumbaa/internal/infrastructure/metrics"
 	"github.com/lmtani/pumbaa/internal/infrastructure/recommendation"
 	"github.com/lmtani/pumbaa/internal/infrastructure/session"
@@ -32,6 +33,10 @@ import (
 // githubRepo is the GitHub repository used for release update checks.
 const githubRepo = "lmtani/pumbaa"
 
+// The config is what knows which server the CLI is talking to, so it is what
+// the run history keys records by.
+var _ ports.HostProvider = (*config.Config)(nil)
+
 // Container holds all application dependencies.
 type Container struct {
 	Config    *config.Config
@@ -41,6 +46,9 @@ type Container struct {
 	CromwellClient   *cromwell.Client
 	TelemetryService telemetry.Service
 	CloudLoggingRepo *cloudlogging.CloudLoggingRepository
+	// RunHistory is the local memory of submitted runs. It opens its database
+	// lazily, so holding it costs nothing until something reads or writes.
+	RunHistory ports.RunHistory
 
 	// Use cases
 	SubmitUseCase                *workflow.SubmitUseCase
@@ -57,6 +65,7 @@ type Container struct {
 	ResourceReportUseCase        *workflow.ResourceReportUseCase
 	BatchLogsUseCase             *workflow.GetBatchLogsUseCase
 	BundleUseCase                *bundle.BundleUseCase
+	RunHistoryUseCase            *workflow.RunHistoryUseCase
 	ResourceVisualizationUseCase *workflow.ResourceVisualizationUseCase
 
 	// Handlers
@@ -76,6 +85,8 @@ type Container struct {
 	DashboardHandler      *handler.DashboardHandler
 	ChatHandler           *handler.ChatHandler
 	ConfigHandler         *handler.ConfigHandler
+	HostHandler           *handler.HostHandler
+	HistoryHandler        *handler.HistoryHandler
 	AnalyzeHandler        *handler.AnalyzeHandler
 }
 
@@ -114,12 +125,14 @@ func New(cfg *config.Config, appVersion string) *Container {
 
 	// Initialize infrastructure adapters
 	c.CloudLoggingRepo = cloudlogging.NewCloudLoggingRepository()
+	c.RunHistory = history.New(cfg.HistoryDBPath)
 
 	// Initialize use cases
 	c.PreflightUseCase = workflow.NewPreflightUseCase(fileProvider, c.CromwellClient)
 	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, c.CromwellClient, fileProvider, presenter.NewProgress())
 	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
-	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase)
+	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase,
+		&workflow.SubmitHistory{Store: c.RunHistory, Host: c.Config})
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
@@ -130,6 +143,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.ResourceReportUseCase = workflow.NewResourceReportUseCase(c.CromwellClient, fileProvider, metricsWriter, fileSizeCache)
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
+	c.RunHistoryUseCase = workflow.NewRunHistoryUseCase(c.RunHistory, c.CromwellClient, c.Config)
 
 	// Initialize metrics reader for TSV files
 	metricsReader := metrics.NewTSVReader()
@@ -163,13 +177,31 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
 	c.ResourceReportHandler = handler.NewResourceReportHandler(c.ResourceReportUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.ChatDependencies)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, version.NewGitHubChecker(githubRepo), appVersion, c.ChatDependencies)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.RunHistoryUseCase, c.ChatDependencies)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, c.RunHistoryUseCase, version.NewGitHubChecker(githubRepo), c.ActiveHost, appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
+	c.HistoryHandler = handler.NewHistoryHandler(c.RunHistoryUseCase, c.Presenter)
+	c.HostHandler = handler.NewHostHandler(c.Presenter, c.ActiveHost, func(url string) ports.HealthChecker {
+		return cromwell.NewClient(cromwell.Config{Host: url, Timeout: cfg.CromwellTimeout})
+	})
 	c.AnalyzeHandler = handler.NewAnalyzeHandler(c.ResourceVisualizationUseCase, c.Presenter)
 
 	return c
+}
+
+// ActiveHost reports the Cromwell server this invocation is talking to.
+func (c *Container) ActiveHost() config.HostRef {
+	return config.HostRef{Alias: c.Config.CromwellHostAlias, URL: c.Config.CromwellHost}
+}
+
+// UseHost repoints the CLI at another Cromwell server. It runs after the
+// container is built, when the global --host flag is parsed, so everything
+// that reads the host at call time follows along.
+func (c *Container) UseHost(ref config.HostRef) {
+	c.Config.CromwellHost = ref.URL
+	c.Config.CromwellHostAlias = ref.Alias
+	c.CromwellClient.BaseURL = ref.URL
 }
 
 // SessionStore opens the SQLite chat session store. It does not require an
@@ -225,6 +257,8 @@ func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.To
 		Fetcher:      c.CromwellClient,
 		WDLRepo:      c.initWDLRepository(rebuildWDLIndex),
 		FileProvider: storage.NewFileProvider(),
+		History:      c.RunHistory,
+		Host:         c.Config,
 	}, extraTools...)
 	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

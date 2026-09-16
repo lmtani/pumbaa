@@ -48,6 +48,11 @@ type Model struct {
 	// Metadata fetcher for on-demand subworkflow loading and parsing
 	fetcher ports.WorkflowMetadataFetcher
 
+	// historyUC reads the local note about this run; nil simply means there
+	// is no note to show.
+	historyUC *workflowapp.RunHistoryUseCase
+	runNote   string
+
 	totalCost float64 // Cached total cost from API
 
 	// View state persistence
@@ -237,7 +242,14 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadingSpinner.Tick,
 		m.fetchTotalCost(),
+		m.fetchRunNote(),
 	)
+}
+
+// SetRunHistory attaches the local run history, whose note about this run is
+// shown in the workflow panel. Optional: without it there is simply no note.
+func (m *Model) SetRunHistory(uc *workflowapp.RunHistoryUseCase) {
+	m.historyUC = uc
 }
 
 // SetCanGoBack sets whether ESC should show "back" or "quit" in the footer.
