@@ -1018,6 +1018,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cromwell Hosts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Run History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1613,6 +1669,12 @@ anything, so mistakes surface in seconds rather than minutes.</p>
 <td>Dependencies ZIP file</td>
 </tr>
 <tr>
+<td><code>--describe</code></td>
+<td style="text-align: center;"><code>-D</code></td>
+<td style="text-align: center;"></td>
+<td>What the run is for, kept in the <a href="../history/">local history</a></td>
+</tr>
+<tr>
 <td><code>--label</code></td>
 <td style="text-align: center;"><code>-l</code></td>
 <td style="text-align: center;"></td>
@@ -1645,11 +1707,19 @@ anything, so mistakes surface in seconds rather than minutes.</p>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--inputs<span class="w"> </span>inputs.json<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--options<span class="w"> </span>options.json<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--dependencies<span class="w"> </span>deps.zip<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--label<span class="w"> </span><span class="nv">sample</span><span class="o">=</span>S001<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--label<span class="w"> </span><span class="nv">env</span><span class="o">=</span>prod
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--describe<span class="w"> </span><span class="s2">"reprocessing after the reference panel was rebuilt"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--label<span class="w"> </span><span class="nv">sample</span><span class="o">=</span>S001<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>--label<span class="w"> </span><span class="nv">env</span><span class="o">=</span>prod
 </span></code></pre></div>
 </div>
 </div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Say what the run is for</p>
+<p><code>--describe</code> attaches a sentence to the submission. It is kept on this
+machine, not sent to Cromwell — labels there are constrained and meant to
+be tags — and it is what makes a run recognisable weeks later in
+<a href="../history/"><code>pumbaa history</code></a> and in the dashboard.</p>
 </div>
 <h2 id="input-file"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5zM6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2zm3-4v-2H6v2z"></path></svg></span> Input File</h2>
 <p>JSON format matching WDL inputs — generate a template with

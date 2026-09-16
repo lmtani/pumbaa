@@ -486,6 +486,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiple-cromwell-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Cromwell Servers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1046,6 +1057,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/hosts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cromwell Hosts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Run History
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1492,6 +1559,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#multiple-cromwell-servers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Cromwell Servers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1661,6 +1739,11 @@
 <td><code>http://localhost:8000</code></td>
 </tr>
 <tr>
+<td><code>default_host</code></td>
+<td>Registered host used when none is given</td>
+<td><code>prod</code></td>
+</tr>
+<tr>
 <td><code>ollama_host</code></td>
 <td>Ollama server URL</td>
 <td><code>http://localhost:11434</code></td>
@@ -1703,6 +1786,17 @@
 </tbody>
 </table>
 <hr>
+<h2 id="multiple-cromwell-servers"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 19h1a1 1 0 0 1 1 1h7v2h-7a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1H2v-2h7a1 1 0 0 1 1-1h1v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-7zM4 3h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1m5 4h1V5H9zm0 8h1v-2H9zM5 5v2h2V5zm0 8v2h2v-2z"></path></svg></span> Multiple Cromwell Servers</h2>
+<p>Servers can be registered under short names and selected by name, instead of
+being spelled out on every command:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>host<span class="w"> </span>add<span class="w"> </span><span class="nb">local</span><span class="w"> </span>http://localhost:8000
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pumbaa<span class="w"> </span>host<span class="w"> </span>add<span class="w"> </span>prod<span class="w"> </span>https://cromwell.example.com
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>pumbaa<span class="w"> </span>--host<span class="w"> </span>prod<span class="w"> </span>workflow<span class="w"> </span>query
+</span></code></pre></div>
+<p>They are stored in the same config file under <code>hosts</code>, with <code>default_host</code>
+naming the one used when no host is given. Full reference:
+<a href="../../features/hosts/">Cromwell hosts</a>.</p>
+<hr>
 <h2 id="environment-variables"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 2H3c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2M7.4 20C5.9 18.6 5 16.6 5 14.5s.9-4.1 2.4-5.5l1.6.6c-1.3 1.1-2 3-2 4.9s.7 3.7 2 4.9zm5.3-2-.8-2-1.4 2H9l2.3-3.1L10 12h1.3l.8 2 1.4-2H15l-2.2 3 1.3 3zm3.9 2-1.6-.6c1.3-1.2 2-3 2-4.9s-.7-3.7-2-4.9l1.6-.6c1.5 1.4 2.4 3.4 2.4 5.5s-.9 4.1-2.4 5.5M21 7H3V4h18z"></path></svg></span> Environment Variables</h2>
 <p>Every setting can also be provided via environment variable. Env vars override the config file.</p>
 <table>
@@ -1716,7 +1810,7 @@
 <tbody>
 <tr>
 <td><code>CROMWELL_HOST</code></td>
-<td><code>cromwell_host</code></td>
+<td><code>cromwell_host</code> (accepts a <a href="../../features/hosts/">host alias</a>)</td>
 <td><code>http://localhost:8000</code></td>
 </tr>
 <tr>
@@ -1775,6 +1869,11 @@
 <td><code>~/.pumbaa/sessions.db</code></td>
 </tr>
 <tr>
+<td><code>PUMBAA_HISTORY_DB</code></td>
+<td>— (local run history database)</td>
+<td><code>~/.pumbaa/history.db</code></td>
+</tr>
+<tr>
 <td><code>PUMBAA_TELEMETRY_ENABLED</code></td>
 <td><code>telemetry_enabled</code></td>
 <td><code>true</code></td>
@@ -1797,15 +1896,15 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Config Command</label><label for="__tabbed_1_2">Environment Variable</label><label for="__tabbed_1_3">Command-line Flag</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://cromwell.example.com:8000
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://cromwell.example.com:8000
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://cromwell.example.com:8000
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">CROMWELL_HOST</span><span class="o">=</span>http://cromwell.example.com:8000
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span>--host<span class="w"> </span>http://cromwell.example.com:8000<span class="w"> </span>dashboard
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pumbaa<span class="w"> </span>--host<span class="w"> </span>http://cromwell.example.com:8000<span class="w"> </span>dashboard
 </span></code></pre></div>
 </div>
 </div>
@@ -1820,20 +1919,20 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Get your API key at <a href="https://aistudio.google.com/apikey">Google AI Studio</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>gemini
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>gemini_api_key<span class="w"> </span>&lt;your-api-key&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>gemini
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>gemini_api_key<span class="w"> </span>&lt;your-api-key&gt;
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>ollama
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_host<span class="w"> </span>http://localhost:11434
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_model<span class="w"> </span>llama3.2:3b
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>ollama
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_host<span class="w"> </span>http://localhost:11434
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>ollama_model<span class="w"> </span>llama3.2:3b
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>vertex
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_project<span class="w"> </span>&lt;project-id&gt;
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_location<span class="w"> </span>us-central1
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>llm_provider<span class="w"> </span>vertex
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_project<span class="w"> </span>&lt;project-id&gt;
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>vertex_location<span class="w"> </span>us-central1
 </span></code></pre></div>
 </div>
 </div>
@@ -1843,8 +1942,8 @@
 <p>Pumbaa assumes a direct connection to a reachable Cromwell server; it does not perform authentication itself.</p>
 <details class="example">
 <summary>Port-forwarding from Kubernetes</summary>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>port-forward<span class="w"> </span>svc/cromwell<span class="w"> </span><span class="m">8000</span>:8000
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://localhost:8000
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>port-forward<span class="w"> </span>svc/cromwell<span class="w"> </span><span class="m">8000</span>:8000
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>cromwell_host<span class="w"> </span>http://localhost:8000
 </span></code></pre></div>
 </details>
 <hr>
@@ -1875,11 +1974,11 @@
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio"><input id="__tabbed_3_2" name="__tabbed_3" type="radio"><div class="tabbed-labels"><label for="__tabbed_3_1">Config Command</label><label for="__tabbed_3_2">Environment Variable</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>telemetry_enabled<span class="w"> </span><span class="nb">false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pumbaa<span class="w"> </span>config<span class="w"> </span><span class="nb">set</span><span class="w"> </span>telemetry_enabled<span class="w"> </span><span class="nb">false</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_TELEMETRY_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">PUMBAA_TELEMETRY_ENABLED</span><span class="o">=</span><span class="nb">false</span>
 </span></code></pre></div>
 </div>
 </div>
