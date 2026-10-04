@@ -172,7 +172,13 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 				cacheStatus = "Hit"
 			}
 			sb.WriteString(labelStyle.Render("Status: ") + valueStyle.Render(cacheStatus) + "\n")
-			if cd.CacheResult != "" {
+			if src, ok := cacheSourceOf(node); ok {
+				// Name the producing run in readable parts instead of the raw
+				// "Cache Hit: <id>:<fqn>:<shard>" string.
+				sb.WriteString(labelStyle.Render("Produced by:") + " " + mutedStyle.Render("(o to open)") + "\n")
+				sb.WriteString("  " + valueStyle.Render(cacheSourceCallLabel(src)) + "\n")
+				sb.WriteString("  " + mutedStyle.Render("in workflow "+src.WorkflowID) + "\n")
+			} else if cd.CacheResult != "" {
 				sb.WriteString(labelStyle.Render("Result: ") + valueStyle.Render(cd.CacheResult) + "\n")
 			}
 		}
@@ -497,6 +503,9 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			// Chat with AI - enabled if LLM is configured
 			if a := formatAction("6", "chat", m.llm != nil); a != "" {
 				actions = append(actions, a)
+			}
+			if _, ok := cacheSourceOf(node); ok {
+				actions = append(actions, formatAction("o", "cache source", true))
 			}
 		}
 	}

@@ -8,10 +8,17 @@ import (
 
 func (m Model) renderHeader() string {
 	brand := common.HeaderBrandStyle.Render("Pumbaa")
-	breadcrumbs := common.RenderBreadcrumbs([]common.Screen{
+	screens := []common.Screen{
 		{Name: "Dashboard", Active: false},
 		{Name: "Debug", Active: true},
-	})
+	}
+	if m.origin != "" {
+		screens = []common.Screen{
+			{Name: "Debug", Active: false},
+			{Name: "Cache source", Active: true},
+		}
+	}
+	breadcrumbs := common.RenderBreadcrumbs(screens)
 
 	// Status badge
 	statusText := string(m.metadata.Status)

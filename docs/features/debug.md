@@ -60,6 +60,7 @@ Inspect workflow execution tree and call-level details.
 | ++y++ | Copy menu (context-sensitive) |
 | ++"<"++ / ++">"++ | Resize tree/details split |
 | ++a++ | Chat with AI |
+| ++o++ | Open the run that produced a cache hit |
 | ++esc++ | Close modal / back · ++ctrl+c++ quits |
 
 ## :material-lightning-bolt: Quick Actions
@@ -86,6 +87,7 @@ Quick actions are context-sensitive and depend on the selected node type. Press 
 | ++4++ | **Logs** | Switch to logs view (stdout/stderr/monitoring) |
 | ++5++ | **Efficiency** | Analyze resource usage (requires monitoring script) |
 | ++6++ | **AI Chat** | Open chat with selected context data |
+| ++o++ | **Cache Source** | Open the workflow whose run produced this cache hit (only on cache hits) |
 
 !!! tip "Copy to Clipboard"
     In modals, press ++y++ to copy content to clipboard.
@@ -117,6 +119,14 @@ Before starting the chat, you'll be prompted to select which data to include in 
 | ++space++ | Toggle selection |
 | ++enter++ | Confirm and start chat |
 | ++esc++ | Cancel |
+
+## :material-cached: Following Cache Hits
+
+A task served from call caching did not run in this workflow: its outputs, logs and command belong to the run that produced them. Cache-hit tasks are marked with ⇠ in the tree, and their details panel names the producing task and workflow.
+
+Press ++o++ on a cache-hit task to open that workflow with the cursor already on the producing task, so ++1++–++5++ show the real inputs, outputs, command, logs and efficiency. The header reads **Debug › Cache source**, and ++esc++ returns to the workflow you came from with the tree exactly as you left it.
+
+If the producing task was itself a cache hit, press ++o++ again to keep following the chain; each ++esc++ steps back one hop. Opening a cache source needs a server connection (it is not available when debugging a metadata file offline).
 
 ## :material-timer-outline: Timeline Analysis
 

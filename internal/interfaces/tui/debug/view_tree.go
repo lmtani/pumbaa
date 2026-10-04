@@ -111,8 +111,17 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 		}
 	}
 
+	// Cache-hit leaves: results were reused from another run (o follows them)
+	cacheBadge := ""
+	if node.CallData != nil && node.CallData.CacheHit && len(node.Children) == 0 {
+		cacheBadge = mutedStyle.Render(" " + common.IconCached)
+	}
+
 	// Name with truncation (account for badges)
 	maxNameLen := m.treeWidth - node.Depth*2 - 12
+	if cacheBadge != "" {
+		maxNameLen -= 2
+	}
 	if preemptBadge != "" {
 		maxNameLen -= 4 // Reserve space for badge
 	}
@@ -122,7 +131,7 @@ func (m Model) renderTreeNode(node *TreeNode, index int) string {
 	name := truncate(node.Name, maxNameLen)
 
 	// Build the node string
-	nodeStr := fmt.Sprintf("%s%s %s %s %s %s%s%s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name, preemptBadge, failedBadge)
+	nodeStr := fmt.Sprintf("%s%s %s %s %s %s%s%s%s", prefix, indicator, expandIndicator, statusIcon, typeIcon, name, cacheBadge, preemptBadge, failedBadge)
 
 	// Style based on selection
 	if index == m.cursor {

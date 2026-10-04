@@ -14,7 +14,7 @@ type quickAction struct {
 	key     string             // primary key, shown in the footer
 	alias   string             // optional secondary key
 	label   string             // footer description
-	visible func(m Model) bool // nil = always advertised in the footer
+	visible func(m Model, node *TreeNode) bool // nil = always advertised in the footer
 	run     func(m Model, node *TreeNode) (tea.Model, tea.Cmd)
 }
 
@@ -56,8 +56,17 @@ func taskQuickActions() []quickAction {
 			key:     "a",
 			alias:   "6",
 			label:   "chat",
-			visible: func(m Model) bool { return m.llm != nil },
+			visible: func(m Model, _ *TreeNode) bool { return m.llm != nil },
 			run:     Model.openChatSelectionModal,
+		},
+		{
+			key:   "o",
+			label: "cache source",
+			visible: func(_ Model, node *TreeNode) bool {
+				_, ok := cacheSourceOf(node)
+				return ok
+			},
+			run: Model.openCacheSource,
 		},
 	}
 }
