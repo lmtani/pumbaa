@@ -114,6 +114,8 @@ func (m Model) escHint() string {
 		return "exit search"
 	case m.viewMode != ViewModeTree:
 		return "tree view"
+	case m.origin != "":
+		return "back to cache hit"
 	case m.canGoBack:
 		return "back"
 	default:
@@ -128,10 +130,11 @@ func (m Model) quickActionHints() []string {
 		return nil
 	}
 
-	actions := m.quickActionsFor(m.nodes[m.cursor])
+	node := m.nodes[m.cursor]
+	actions := m.quickActionsFor(node)
 	hints := make([]string, 0, len(actions))
 	for _, action := range actions {
-		if action.visible != nil && !action.visible(m) {
+		if action.visible != nil && !action.visible(m, node) {
 			continue
 		}
 		hints = append(hints, renderFooterHint(action.key, action.label))

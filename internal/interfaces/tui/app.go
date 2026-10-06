@@ -47,6 +47,11 @@ type AppModel struct {
 	// search and watch state) when the target workflow hasn't changed.
 	debugWorkflow *workflow.Workflow
 
+	// debugStack holds debug screens covered by another debug screen opened
+	// from them (following a cache hit to its source). ESC pops back to them
+	// with cursor, expansion and modals intact.
+	debugStack []debugFrame
+
 	width      int
 	height     int
 	globalKeys common.GlobalKeys
@@ -54,6 +59,12 @@ type AppModel struct {
 
 	// Quit confirmation modal
 	showQuitConfirm bool
+}
+
+// debugFrame is a debug screen parked under another one.
+type debugFrame struct {
+	model    debug.Model
+	workflow *workflow.Workflow
 }
 
 // NewAppModel creates a new app model with the given dependencies.
@@ -98,6 +109,7 @@ func newDebugModel(deps *Dependencies, wf *workflow.Workflow) debug.Model {
 		convertChatDeps(deps.ChatDeps),
 	)
 	m.SetRunHistory(deps.HistoryUC)
+	m.SetCacheLineage(deps.LineageUC)
 	return m
 }
 
@@ -143,7 +155,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case common.NavigateToDebugMsg:
-		return m.navigateToDebug(msg.Workflow)
+		return m.navigateToDebug(msg)
 
 	case common.NavigateToChatMsg:
 		return m.navigateToChat(msg)
@@ -187,7 +199,12 @@ func (m AppModel) broadcast(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // navigateToDebug switches to the debug screen with the given workflow.
-func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
+func (m AppModel) navigateToDebug(msg common.NavigateToDebugMsg) (tea.Model, tea.Cmd) {
+	if msg.Origin != "" {
+		return m.stackDebug(msg)
+	}
+
+	wf := msg.Workflow
 	m.stack = append(m.stack, m.currentScreen)
 	m.currentScreen = ScreenDebug
 
@@ -197,10 +214,32 @@ func (m AppModel) navigateToDebug(wf *workflow.Workflow) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.sizeCmd(), m.debug.ResumeCmd())
 	}
 
-	m.debugWorkflow = wf
-	m.debug = newDebugModel(m.deps, wf)
+	return m.openDebug(msg)
+}
 
-	return m, tea.Batch(m.debug.Init(), m.sizeCmd())
+// stackDebug opens a debug screen on top of the current one, which is parked
+// in debugStack until ESC comes back to it.
+func (m AppModel) stackDebug(msg common.NavigateToDebugMsg) (tea.Model, tea.Cmd) {
+	// The request is the answer to a fetch the debug screen started; if the
+	// user has moved on to another screen meanwhile, don't yank them back.
+	if m.currentScreen != ScreenDebug || m.debugWorkflow == nil {
+		return m, nil
+	}
+
+	m.debug.Suspend()
+	m.debugStack = append(m.debugStack, debugFrame{model: m.debug, workflow: m.debugWorkflow})
+	m.stack = append(m.stack, ScreenDebug)
+
+	return m.openDebug(msg)
+}
+
+// openDebug builds the debug screen for msg's workflow and lets it arrive
+// (cursor, origin, notice) as requested.
+func (m AppModel) openDebug(msg common.NavigateToDebugMsg) (tea.Model, tea.Cmd) {
+	m.debugWorkflow = msg.Workflow
+	m.debug = newDebugModel(m.deps, msg.Workflow)
+	arrive := m.debug.Arrive(msg)
+	return m, tea.Batch(m.debug.Init(), m.sizeCmd(), arrive)
 }
 
 // navigateToChat switches to the chat screen. The chat session is created
@@ -263,8 +302,19 @@ func (m AppModel) navigateBack() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	previous := m.currentScreen
 	m.currentScreen = m.stack[len(m.stack)-1]
 	m.stack = m.stack[:len(m.stack)-1]
+
+	// Leaving a stacked debug screen: bring back the one underneath
+	if previous == ScreenDebug && m.currentScreen == ScreenDebug && len(m.debugStack) > 0 {
+		frame := m.debugStack[len(m.debugStack)-1]
+		m.debugStack = m.debugStack[:len(m.debugStack)-1]
+		m.debug = frame.model
+		m.debugWorkflow = frame.workflow
+		reactivate := m.debug.Reactivate() // mutates m.debug: run before returning m
+		return m, tea.Batch(m.sizeCmd(), reactivate)
+	}
 
 	// Returning screens kept their state; they only need the current size
 	// and, if they were mid-load, a fresh spinner tick.

@@ -86,17 +86,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case watchTickMsg:
-		if !m.watchActive {
+		if !m.watchActive || msg.workflowID != m.metadata.ID {
 			return m, nil
 		}
 		if m.watchRefreshing {
 			// Previous fetch still in flight; keep the ticker alive
-			return m, watchTick()
+			return m, watchTick(m.metadata.ID)
 		}
 		m.watchRefreshing = true
 		return m, m.refreshWorkflowMetadata()
 
 	case watchMetadataLoadedMsg:
+		if msg.metadata.ID != m.metadata.ID {
+			return m, nil
+		}
 		m.watchRefreshing = false
 		if !m.watchActive {
 			return m, nil
@@ -107,19 +110,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.setStatusMessage(fmt.Sprintf("Workflow %s — watch stopped", msg.metadata.Status))
 		} else {
 			m.setStatusMessage(watchStatusMessage(changes))
-			cmds = append(cmds, watchTick())
+			cmds = append(cmds, watchTick(m.metadata.ID))
 		}
 		cmds = append(cmds, getClearStatusCmd(), m.fetchTotalCost())
 		return m, tea.Batch(cmds...)
 
 	case watchErrorMsg:
+		if msg.workflowID != m.metadata.ID {
+			return m, nil
+		}
 		m.watchRefreshing = false
 		if !m.watchActive {
 			return m, nil
 		}
 		m.lastError = msg.err.Error()
 		m.setStatusMessage("Watch refresh failed: " + common.Truncate(msg.err.Error(), 60))
-		return m, tea.Batch(watchTick(), getClearStatusCmd())
+		return m, tea.Batch(watchTick(m.metadata.ID), getClearStatusCmd())
 
 	case clipboardCopiedMsg:
 		if msg.Success {
@@ -297,6 +303,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case lineageResolvedMsg:
+		return m.handleLineageResolved(msg)
+
 	case chatContextLoadedMsg:
 		return m.handleChatContextLoaded(msg)
 
@@ -318,7 +327,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDetailsContent()
 
 	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
+		model, cmd := m.handleKeyMsg(msg)
+		// Any key may have moved the cursor onto a cache hit: start
+		// following its chain so the details panel can show it.
+		next, ok := model.(Model)
+		if !ok {
+			return model, cmd
+		}
+		resolve := next.ensureSelectedLineage()
+		return next, tea.Batch(cmd, resolve)
 	}
 
 	return m, cmd

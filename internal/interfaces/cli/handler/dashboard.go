@@ -22,6 +22,7 @@ type DashboardHandler struct {
 	batchLogsUC   *workflowapp.GetBatchLogsUseCase
 	compareUC     *workflowapp.CompareUseCase
 	historyUC     *workflowapp.RunHistoryUseCase
+	lineageUC     *workflowapp.CacheLineageUseCase
 	updateChecker ports.UpdateChecker
 	host          func() config.HostRef
 	version       string
@@ -37,6 +38,7 @@ func NewDashboardHandler(
 	bluc *workflowapp.GetBatchLogsUseCase,
 	cuc *workflowapp.CompareUseCase,
 	huc *workflowapp.RunHistoryUseCase,
+	luc *workflowapp.CacheLineageUseCase,
 	updateChecker ports.UpdateChecker,
 	host func() config.HostRef,
 	version string,
@@ -50,6 +52,7 @@ func NewDashboardHandler(
 		batchLogsUC:   bluc,
 		compareUC:     cuc,
 		historyUC:     huc,
+		lineageUC:     luc,
 		updateChecker: updateChecker,
 		host:          host,
 		chatDeps:      chatDeps,
@@ -124,6 +127,7 @@ func (h *DashboardHandler) createDependencies() *tui.Dependencies {
 		BatchLogsUC:    h.batchLogsUC,
 		CompareUC:      h.compareUC,
 		HistoryUC:      h.historyUC,
+		LineageUC:      h.lineageUC,
 		UpdateChecker:  h.updateChecker,
 		CurrentVersion: h.version,
 		HostLabel:      h.host().Display(),

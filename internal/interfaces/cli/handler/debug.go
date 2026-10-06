@@ -20,6 +20,7 @@ type DebugHandler struct {
 	fileProvider ports.FileProvider
 	batchLogsUC  *workflowapp.GetBatchLogsUseCase
 	historyUC    *workflowapp.RunHistoryUseCase
+	lineageUC    *workflowapp.CacheLineageUseCase
 	chatDeps     ChatDepsProvider
 }
 
@@ -31,6 +32,7 @@ func NewDebugHandler(
 	fp ports.FileProvider,
 	bluc *workflowapp.GetBatchLogsUseCase,
 	huc *workflowapp.RunHistoryUseCase,
+	luc *workflowapp.CacheLineageUseCase,
 	chatDeps ChatDepsProvider,
 ) *DebugHandler {
 	return &DebugHandler{
@@ -40,6 +42,7 @@ func NewDebugHandler(
 		fileProvider: fp,
 		batchLogsUC:  bluc,
 		historyUC:    huc,
+		lineageUC:    luc,
 		chatDeps:     chatDeps,
 	}
 }
@@ -158,6 +161,7 @@ func (h *DebugHandler) createDependencies() *tui.Dependencies {
 		MonitoringUC: h.monitoringUC,
 		BatchLogsUC:  h.batchLogsUC,
 		HistoryUC:    h.historyUC,
+		LineageUC:    h.lineageUC,
 	}
 
 	// Initialize chat dependencies if LLM is configured; failures only

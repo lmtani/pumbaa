@@ -44,13 +44,14 @@ func (m *Model) restoreNodeState(nodeID string) {
 				m.resourceError = ""
 			} else {
 				// If no cache, fall back to details to avoid loading state flicker or empty screen
-				m.viewMode = ViewModeDetails
+				m.viewMode = ViewModeTree
 				m.resourceReport = nil
 			}
 		}
 	} else {
-		// Default state for new nodes
-		m.viewMode = ViewModeDetails
+		// Default state for new nodes: the plain details, so ESC leaves the
+		// screen instead of first "returning" to an identical view
+		m.viewMode = ViewModeTree
 		m.logCursor = 0
 		m.resourceReport = nil
 		m.resourceError = ""

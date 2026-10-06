@@ -25,6 +25,7 @@ const (
 	IconTask        = "◇"
 	IconShard       = "·"
 	IconSubworkflow = "◈"
+	IconCached      = "⇠" // call whose results were reused from call caching
 )
 
 // Data flow icons - used for inputs/outputs sections

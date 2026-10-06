@@ -11,10 +11,10 @@ import (
 // so key dispatch and the footer hints derive from the same table and can
 // never drift.
 type quickAction struct {
-	key     string             // primary key, shown in the footer
-	alias   string             // optional secondary key
-	label   string             // footer description
-	visible func(m Model) bool // nil = always advertised in the footer
+	key     string                             // primary key, shown in the footer
+	alias   string                             // optional secondary key
+	label   string                             // footer description
+	visible func(m Model, node *TreeNode) bool // nil = always advertised in the footer
 	run     func(m Model, node *TreeNode) (tea.Model, tea.Cmd)
 }
 
@@ -56,8 +56,20 @@ func taskQuickActions() []quickAction {
 			key:     "a",
 			alias:   "6",
 			label:   "chat",
-			visible: func(m Model) bool { return m.llm != nil },
+			visible: func(m Model, _ *TreeNode) bool { return m.llm != nil },
 			run:     Model.openChatSelectionModal,
+		},
+		{
+			key:     "o",
+			label:   "producing run",
+			visible: isCacheHitNode,
+			run:     Model.openOriginal,
+		},
+		{
+			key:     "O",
+			label:   "lineage",
+			visible: isCacheHitNode,
+			run:     Model.openLineageModal,
 		},
 	}
 }
@@ -214,4 +226,10 @@ func (m Model) openTaskEfficiency(node *TreeNode) (tea.Model, tea.Cmd) {
 	m.loadingStartTime = time.Now()
 	m.updateDetailsContent()
 	return m, m.loadResourceAnalysis(node.CallData.MonitoringLog)
+}
+
+// isCacheHitNode reports whether node's results can be followed to another run.
+func isCacheHitNode(_ Model, node *TreeNode) bool {
+	_, ok := cacheSourceOf(node)
+	return ok
 }

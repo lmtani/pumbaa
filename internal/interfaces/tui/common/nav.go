@@ -16,6 +16,24 @@ import (
 // NavigateToDebugMsg requests navigation to the debug screen for a workflow.
 type NavigateToDebugMsg struct {
 	Workflow *workflow.Workflow
+
+	// Focus, when set, places the cursor on that call once the screen opens.
+	Focus *CallFocus
+
+	// Origin is set when the request comes from another debug screen (e.g.
+	// following a cache hit to its source). The new screen is stacked on top
+	// of the current one, and ESC returns to it with its state intact.
+	Origin string
+
+	// Notice is shown in the footer when the screen opens.
+	Notice string
+}
+
+// CallFocus identifies a call within a workflow: its fully-qualified name and
+// shard index (-1 when not scattered).
+type CallFocus struct {
+	CallName string
+	Shard    int
 }
 
 // NavigateToChatMsg requests navigation to the chat screen.

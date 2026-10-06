@@ -101,6 +101,11 @@ func (m Model) modalDispatches() []modalDispatch {
 			handle: Model.handleCostModalKeys,
 			resize: func(m *Model) { m.resizeStandardModalViewport(&m.costViewport) },
 		},
+		{
+			active: func(m Model) bool { return m.activeModal == ModalCacheLineage },
+			view:   Model.renderLineageModal,
+			handle: Model.handleLineageModalKeys,
+		},
 	}
 }
 

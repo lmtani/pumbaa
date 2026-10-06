@@ -30,8 +30,7 @@ const (
 type ViewMode int
 
 const (
-	ViewModeTree ViewMode = iota
-	ViewModeDetails
+	ViewModeTree ViewMode = iota // tree with the node's details
 	ViewModeCommand
 	ViewModeLogs
 	ViewModeInputs

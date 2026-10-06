@@ -20,4 +20,5 @@ const (
 	ModalFailureSummary
 	ModalError
 	ModalCost
+	ModalCacheLineage
 )

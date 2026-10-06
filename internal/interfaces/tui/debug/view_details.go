@@ -109,6 +109,12 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			sb.WriteString(m.renderTaskFailures(cd.Failures))
 		}
 
+		// A cache hit's timing and logs are the copy, not the work: where the
+		// results really come from is what matters first.
+		if cd.CacheHit {
+			sb.WriteString(m.renderCacheSection(node))
+		}
+
 		// Timing
 		if !cd.Start.IsZero() || !cd.End.IsZero() || !cd.VMStartTime.IsZero() || !cd.VMEndTime.IsZero() {
 			sb.WriteString("\n")
@@ -163,18 +169,9 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			}
 		}
 
-		// Cache - only show if has meaningful data
-		if cd.CacheHit || cd.CacheResult != "" {
-			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("Cache") + "\n")
-			cacheStatus := "Miss"
-			if cd.CacheHit {
-				cacheStatus = "Hit"
-			}
-			sb.WriteString(labelStyle.Render("Status: ") + valueStyle.Render(cacheStatus) + "\n")
-			if cd.CacheResult != "" {
-				sb.WriteString(labelStyle.Render("Result: ") + valueStyle.Render(cd.CacheResult) + "\n")
-			}
+		// A cache miss is a footnote; a hit leads (see above)
+		if !cd.CacheHit && cd.CacheResult != "" {
+			sb.WriteString(m.renderCacheSection(node))
 		}
 
 		// Cost
@@ -497,6 +494,9 @@ func (m Model) renderActionBar(node *TreeNode) string {
 			// Chat with AI - enabled if LLM is configured
 			if a := formatAction("6", "chat", m.llm != nil); a != "" {
 				actions = append(actions, a)
+			}
+			if _, ok := cacheSourceOf(node); ok {
+				actions = append(actions, formatAction("o", "producing run", true))
 			}
 		}
 	}

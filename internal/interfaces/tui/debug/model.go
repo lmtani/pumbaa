@@ -86,6 +86,15 @@ type Model struct {
 	watchRefreshing      bool            // a refresh fetch is in flight
 	watchRestoreExpanded map[string]bool // expansion snapshot to reapply after subworkflow reloads
 	watchReloadSubs      map[string]bool // subworkflow node IDs still to re-fetch after a refresh
+	watchSuspended       bool            // watch paused while another debug screen is on top
+
+	// origin labels the cache-hit call this screen was opened from (o key);
+	// empty when opened from the dashboard or the command line.
+	origin string
+
+	// Cache lineage (o/O keys) and its modal
+	lineage      lineageTracker
+	lineageModal lineageModalState
 
 	// Loading state
 	isLoading        bool

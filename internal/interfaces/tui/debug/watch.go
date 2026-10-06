@@ -14,19 +14,25 @@ import (
 // watchInterval is how often watch mode re-fetches the workflow metadata.
 const watchInterval = 30 * time.Second
 
-type watchTickMsg struct{}
+// Watch messages carry the workflow they belong to: async messages are
+// broadcast, and a debug screen stacked under another one (cache source
+// navigation) must not pick up the other screen's ticks.
+type watchTickMsg struct {
+	workflowID string
+}
 
 type watchMetadataLoadedMsg struct {
 	metadata *WorkflowMetadata
 }
 
 type watchErrorMsg struct {
-	err error
+	workflowID string
+	err        error
 }
 
-func watchTick() tea.Cmd {
+func watchTick(workflowID string) tea.Cmd {
 	return tea.Tick(watchInterval, func(time.Time) tea.Msg {
-		return watchTickMsg{}
+		return watchTickMsg{workflowID: workflowID}
 	})
 }
 
@@ -37,11 +43,11 @@ func (m Model) refreshWorkflowMetadata() tea.Cmd {
 		ctx := context.Background()
 		data, err := m.fetcher.GetRawMetadataWithOptions(ctx, workflowID, false)
 		if err != nil {
-			return watchErrorMsg{err: err}
+			return watchErrorMsg{workflowID: workflowID, err: err}
 		}
 		wf, err := m.fetcher.ParseMetadata(data)
 		if err != nil {
-			return watchErrorMsg{err: err}
+			return watchErrorMsg{workflowID: workflowID, err: err}
 		}
 		return watchMetadataLoadedMsg{metadata: wf}
 	}
