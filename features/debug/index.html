@@ -698,6 +698,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#following-cache-hits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Following Cache Hits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#timeline-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1682,6 +1693,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#following-cache-hits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Following Cache Hits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#timeline-analysis" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1912,6 +1934,14 @@
 <td>Chat with AI</td>
 </tr>
 <tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-o">O</kbd></span></td>
+<td>Open the run that produced a cache hit</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-shift">Shift</kbd><span>+</span><kbd class="key-o">O</kbd></span></td>
+<td>Cache lineage: pick any run in the chain</td>
+</tr>
+<tr>
 <td style="text-align: center;"><span class="keys"><kbd class="key-escape">Esc</kbd></span></td>
 <td>Close modal / back · <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> quits</td>
 </tr>
@@ -1996,6 +2026,16 @@
 <td><strong>AI Chat</strong></td>
 <td>Open chat with selected context data</td>
 </tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-o">O</kbd></span></td>
+<td><strong>Producing Run</strong></td>
+<td>Open the run that actually executed this cache hit (only on cache hits)</td>
+</tr>
+<tr>
+<td style="text-align: center;"><span class="keys"><kbd class="key-shift">Shift</kbd><span>+</span><kbd class="key-o">O</kbd></span></td>
+<td><strong>Lineage</strong></td>
+<td>List every run in the cache chain and open any of them</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition tip">
@@ -2067,6 +2107,22 @@
 </tr>
 </tbody>
 </table>
+<h2 id="following-cache-hits"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19 8-4 4h3a6 6 0 0 1-6 6c-1 0-1.97-.25-2.8-.7l-1.46 1.46A7.93 7.93 0 0 0 12 20a8 8 0 0 0 8-8h3M6 12a6 6 0 0 1 6-6c1 0 1.97.25 2.8.7l1.46-1.46A7.93 7.93 0 0 0 12 4a8 8 0 0 0-8 8H1l4 4 4-4"></path></svg></span> Following Cache Hits</h2>
+<p>A task served from call caching did not run in this workflow: its outputs, logs and command belong to the run that produced them. And that run may itself have reused the results from an even earlier one, so the run a cache hit points at is often not where the work happened.</p>
+<p>Cache-hit tasks are marked with ⇠ in the tree. Selecting one follows the whole chain in the background, and the details panel shows its lineage first, before the (copy-only) timing:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Cache
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Status: Hit · produced 2 runs back (1 cached in between)
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>◆ this run    885aae9e  02 Oct 14:47  cache hit
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>⇠ 1 run back  5a61ca60  02 Oct 01:10  cache hit
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>✓ 2 runs back 6c4c6332  29 Sep 10:03  ran 6m23s
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>o open producing run  O choose a run
+</span></code></pre></div>
+<ul>
+<li><span class="keys"><kbd class="key-o">O</kbd></span> jumps straight to the <strong>producing run</strong> — the one that executed the task — with the cursor already on it, so <span class="keys"><kbd class="key-1">1</kbd></span>–<span class="keys"><kbd class="key-5">5</kbd></span> show the real inputs, outputs, command, logs and efficiency.</li>
+<li><span class="keys"><kbd class="key-shift">Shift</kbd><span>+</span><kbd class="key-o">O</kbd></span> opens the <strong>lineage</strong> modal to open any run of the chain, intermediate ones included.</li>
+<li>The header reads <strong>Debug › Cache source</strong>, and <span class="keys"><kbd class="key-escape">Esc</kbd></span> returns to the workflow you came from with the tree exactly as you left it.</li>
+</ul>
+<p>If the chain cannot be followed to the end (a source whose metadata was deleted, an unreadable pointer), the lineage shows the runs it reached and why it stopped, and <span class="keys"><kbd class="key-o">O</kbd></span> opens the furthest one. Following cache hits needs a server connection.</p>
 <h2 id="timeline-analysis"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a7 7 0 0 1-7-7 7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7m7.03-12.61 1.42-1.42c-.45-.51-.9-.97-1.41-1.41L17.62 6c-1.55-1.26-3.5-2-5.62-2a9 9 0 0 0-9 9 9 9 0 0 0 9 9c5 0 9-4.03 9-9 0-2.12-.74-4.07-1.97-5.61M11 14h2V8h-2m4-7H9v2h6z"></path></svg></span> Timeline Analysis</h2>
 <p>Press <span class="keys"><kbd class="key-4">4</kbd></span> on a <strong>Workflow</strong> or <strong>SubWorkflow</strong> node to open the timeline modal.</p>
 <p>The timeline shows:</p>
