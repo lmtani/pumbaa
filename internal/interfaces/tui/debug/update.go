@@ -303,11 +303,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case cacheSourceLoadedMsg:
-		return m.handleCacheSourceLoaded(msg)
-
-	case cacheSourceErrorMsg:
-		return m.handleCacheSourceError(msg)
+	case lineageResolvedMsg:
+		return m.handleLineageResolved(msg)
 
 	case chatContextLoadedMsg:
 		return m.handleChatContextLoaded(msg)
@@ -330,7 +327,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateDetailsContent()
 
 	case tea.KeyMsg:
-		return m.handleKeyMsg(msg)
+		model, cmd := m.handleKeyMsg(msg)
+		// Any key may have moved the cursor onto a cache hit: start
+		// following its chain so the details panel can show it.
+		next, ok := model.(Model)
+		if !ok {
+			return model, cmd
+		}
+		return next, tea.Batch(cmd, next.ensureSelectedLineage())
 	}
 
 	return m, cmd

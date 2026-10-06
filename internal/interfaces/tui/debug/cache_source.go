@@ -8,23 +8,33 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	workflowapp "github.com/lmtani/pumbaa/internal/application/workflow"
 	"github.com/lmtani/pumbaa/internal/domain/workflow"
 	"github.com/lmtani/pumbaa/internal/interfaces/tui/common"
 )
 
-// Cache source navigation (o key): a cache-hit call points at the call that
-// actually produced its results. Following it opens that workflow as a new
-// debug screen, with the cursor on the producing call; ESC comes back here.
+// Cache source navigation: a cache-hit call points at the run it copied its
+// results from, which may itself be a cache hit pointing further back. The
+// whole chain (the lineage) is resolved in the background as soon as a cache
+// hit is selected, so the details panel can show it and o can jump straight
+// to the run that actually executed the call. O lists every run of the chain
+// to open any of them. Each jump stacks a debug screen; ESC comes back.
 
-type cacheSourceLoadedMsg struct {
-	workflow *WorkflowMetadata
-	source   workflow.CacheSource
-	from     string // label of the call the jump started from
+// lineageEntry is the resolution state of one cache source.
+type lineageEntry struct {
+	pending bool
+	lineage workflow.CacheLineage
 }
 
-type cacheSourceErrorMsg struct {
-	source workflow.CacheSource
-	err    error
+type lineageResolvedMsg struct {
+	source  workflow.CacheSource
+	lineage workflow.CacheLineage
+}
+
+// SetCacheLineage attaches the resolver that follows cache hits. Optional:
+// without it cache hits are marked but cannot be followed.
+func (m *Model) SetCacheLineage(uc *workflowapp.CacheLineageUseCase) {
+	m.lineageUC = uc
 }
 
 // cacheSourceOf returns where the node's results were copied from, when the
@@ -36,72 +46,154 @@ func cacheSourceOf(node *TreeNode) (workflow.CacheSource, bool) {
 	return workflow.ParseCacheResult(node.CallData.CacheResult)
 }
 
-// openCacheSource starts the jump to the call that produced the selected
-// node's cached results.
-func (m Model) openCacheSource(node *TreeNode) (tea.Model, tea.Cmd) {
+func (m Model) selectedNode() *TreeNode {
+	if m.cursor < len(m.nodes) {
+		return m.nodes[m.cursor]
+	}
+	return nil
+}
+
+// lineageFor returns the resolution state of src, nil when never requested.
+func (m Model) lineageFor(src workflow.CacheSource) *lineageEntry {
+	return m.lineages[src]
+}
+
+// ensureSelectedLineage starts resolving the lineage of the selected node
+// when it is a cache hit not resolved yet.
+func (m *Model) ensureSelectedLineage() tea.Cmd {
+	src, ok := cacheSourceOf(m.selectedNode())
+	if !ok {
+		return nil
+	}
+	return m.resolveLineage(src)
+}
+
+func (m *Model) resolveLineage(src workflow.CacheSource) tea.Cmd {
+	if m.lineageUC == nil || m.lineages[src] != nil {
+		return nil
+	}
+	if m.lineages == nil {
+		m.lineages = make(map[workflow.CacheSource]*lineageEntry)
+	}
+	m.lineages[src] = &lineageEntry{pending: true}
+
+	uc := m.lineageUC
+	return func() tea.Msg {
+		return lineageResolvedMsg{source: src, lineage: uc.Execute(context.Background(), src)}
+	}
+}
+
+func (m Model) handleLineageResolved(msg lineageResolvedMsg) (tea.Model, tea.Cmd) {
+	if m.lineages == nil {
+		m.lineages = make(map[workflow.CacheSource]*lineageEntry)
+	}
+	m.lineages[msg.source] = &lineageEntry{lineage: msg.lineage}
+	if msg.lineage.Err != nil {
+		m.lastError = msg.lineage.Err.Error()
+	}
+	m.updateDetailsContent()
+
+	// o was pressed before the chain was known: finish the jump now
+	if m.lineageOpenPending != nil && *m.lineageOpenPending == msg.source {
+		m.lineageOpenPending = nil
+		m.isLoading = false
+		m.loadingMessage = ""
+		return m.openFurthestHop(msg.source)
+	}
+	return m, nil
+}
+
+// openOriginal (o) jumps to the run that actually executed the selected
+// cache hit, however many runs back it is.
+func (m Model) openOriginal(node *TreeNode) (tea.Model, tea.Cmd) {
 	src, ok := cacheSourceOf(node)
 	if !ok {
 		m.setStatusMessage("Not a cache hit: this task ran here")
 		return m, getClearStatusCmd()
 	}
+	if m.lineageUC == nil {
+		m.setStatusMessage("Following cache hits needs a server connection")
+		return m, getClearStatusCmd()
+	}
 
-	// A source inside this same workflow needs no fetch, only a cursor move.
-	if src.WorkflowID == m.metadata.ID {
-		if !m.FocusCall(src.CallName, src.ShardIndex) {
+	entry := m.lineageFor(src)
+	if entry == nil || entry.pending {
+		cmd := m.resolveLineage(src)
+		m.lineageOpenPending = &src
+		m.startLoading("Following cache hits of " + node.Name + "...")
+		return m, tea.Batch(m.loadingSpinner.Tick, cmd)
+	}
+	return m.openFurthestHop(src)
+}
+
+// openFurthestHop opens the producing run, or the furthest run reached when
+// the chain is broken (saying why).
+func (m Model) openFurthestHop(src workflow.CacheSource) (tea.Model, tea.Cmd) {
+	lineage := m.lineageFor(src).lineage
+	if len(lineage.Hops) == 0 {
+		m.setStatusMessage("Cannot follow cache hit: " + common.Truncate(errText(lineage.Err), 60))
+		return m, getClearStatusCmd()
+	}
+	return m.openHop(src, len(lineage.Hops)-1)
+}
+
+// openHop opens hop idx of src's lineage on a stacked debug screen, with the
+// cursor on the call. A hop in this same workflow only moves the cursor.
+func (m Model) openHop(src workflow.CacheSource, idx int) (tea.Model, tea.Cmd) {
+	lineage := m.lineageFor(src).lineage
+	hop := lineage.Hops[idx]
+	notice := common.IconCached + " " + hopNotice(lineage, idx) + " — esc goes back"
+
+	if hop.Workflow.ID == m.metadata.ID {
+		if !m.FocusCall(hop.Source.CallName, hop.Source.ShardIndex) {
 			m.setStatusMessage("Cache source not found in this workflow")
-			return m, getClearStatusCmd()
+		} else {
+			m.setStatusMessage(common.IconCached + " " + hopNotice(lineage, idx))
 		}
-		m.setStatusMessage("Jumped to the cache source")
 		return m, getClearStatusCmd()
 	}
 
-	if m.fetcher == nil {
-		m.setStatusMessage("Opening the cache source needs a server connection (open with --id)")
-		return m, getClearStatusCmd()
-	}
-
-	m.isLoading = true
-	m.loadingMessage = "Opening cache source " + shortID(src.WorkflowID) + "..."
-	m.loadingStartTime = time.Now()
-	return m, tea.Batch(m.loadingSpinner.Tick, m.fetchCacheSource(src, node.Name))
-}
-
-func (m Model) fetchCacheSource(src workflow.CacheSource, from string) tea.Cmd {
-	return func() tea.Msg {
-		ctx := context.Background()
-		data, err := m.fetcher.GetRawMetadataWithOptions(ctx, src.WorkflowID, false)
-		if err != nil {
-			return cacheSourceErrorMsg{source: src, err: err}
-		}
-		wf, err := m.fetcher.ParseMetadata(data)
-		if err != nil {
-			return cacheSourceErrorMsg{source: src, err: err}
-		}
-		return cacheSourceLoadedMsg{workflow: wf, source: src, from: from}
-	}
-}
-
-// handleCacheSourceLoaded hands the source workflow to the app model, which
-// stacks a new debug screen on top of this one.
-func (m Model) handleCacheSourceLoaded(msg cacheSourceLoadedMsg) (tea.Model, tea.Cmd) {
-	m.isLoading = false
-	m.loadingMessage = ""
 	return m, common.NavigateCmd(common.NavigateToDebugMsg{
-		Workflow: msg.workflow,
-		Focus: &common.CallFocus{
-			CallName: msg.source.CallName,
-			Shard:    msg.source.ShardIndex,
-		},
-		Origin: fmt.Sprintf("%s (%s)", msg.from, m.metadata.Name),
+		Workflow: hop.Workflow,
+		Focus:    &common.CallFocus{CallName: hop.Source.CallName, Shard: hop.Source.ShardIndex},
+		Origin:   fmt.Sprintf("%s in %s", callLabel(src.CallName, src.ShardIndex), shortID(m.metadata.ID)),
+		Notice:   notice,
 	})
 }
 
-func (m Model) handleCacheSourceError(msg cacheSourceErrorMsg) (tea.Model, tea.Cmd) {
-	m.isLoading = false
-	m.loadingMessage = ""
-	m.lastError = msg.err.Error()
-	m.setStatusMessage(fmt.Sprintf("Cannot open cache source %s: %s", shortID(msg.source.WorkflowID), common.Truncate(msg.err.Error(), 50)))
-	return m, getClearStatusCmd()
+// hopNotice describes where a hop sits in the chain, e.g. "Producing run,
+// 2 runs back" or "1 run back, also a cache hit".
+func hopNotice(lineage workflow.CacheLineage, idx int) string {
+	hop := lineage.Hops[idx]
+	back := runsBack(idx + 1)
+	switch {
+	case hop.Ran():
+		return "Producing run, " + back
+	case idx == len(lineage.Hops)-1 && lineage.Err != nil:
+		return "Furthest run reached, " + back + " (chain broken: " + common.Truncate(lineage.Err.Error(), 40) + ")"
+	default:
+		return back + ", also a cache hit"
+	}
+}
+
+func runsBack(n int) string {
+	if n == 1 {
+		return "1 run back"
+	}
+	return fmt.Sprintf("%d runs back", n)
+}
+
+func errText(err error) string {
+	if err == nil {
+		return "unknown reason"
+	}
+	return err.Error()
+}
+
+func (m *Model) startLoading(message string) {
+	m.isLoading = true
+	m.loadingMessage = message
+	m.loadingStartTime = time.Now()
 }
 
 // FocusCall selects the call with the given fully-qualified name and shard,
@@ -129,9 +221,7 @@ func (m *Model) FocusCall(callName string, shard int) bool {
 		p.Expanded = true
 	}
 	// The target must be visible: a search filter could hide it
-	if m.searchQuery != "" {
-		m.searchQuery = ""
-	}
+	m.searchQuery = ""
 	m.updateSearchFilter()
 	for i, node := range m.nodes {
 		if node == target {
@@ -159,16 +249,32 @@ func (m *Model) Suspend() {
 }
 
 // Reactivate resumes what Suspend paused, refreshing right away since the
-// snapshot may be stale.
+// snapshot may be stale. Lineages still pending were answered while another
+// screen was on top, so they are requested again (the resolver memoizes, so
+// this is cheap).
 func (m *Model) Reactivate() tea.Cmd {
-	resume := m.ResumeCmd()
-	if !m.watchSuspended {
-		return resume
+	cmds := []tea.Cmd{m.ResumeCmd()}
+	for src, entry := range m.lineages {
+		if entry.pending {
+			delete(m.lineages, src)
+		}
 	}
-	m.watchSuspended = false
-	m.watchActive = true
-	m.watchRefreshing = true
-	return tea.Batch(resume, m.refreshWorkflowMetadata())
+	m.lineageOpenPending = nil
+	cmds = append(cmds, m.ensureSelectedLineage())
+
+	if m.watchSuspended {
+		m.watchSuspended = false
+		m.watchActive = true
+		m.watchRefreshing = true
+		cmds = append(cmds, m.refreshWorkflowMetadata())
+	}
+	return tea.Batch(cmds...)
+}
+
+// InitialCmd is what a freshly opened screen needs beyond Init once the
+// cursor has been placed (resolving the selected cache hit's lineage).
+func (m *Model) InitialCmd() tea.Cmd {
+	return m.ensureSelectedLineage()
 }
 
 func shortID(id string) string {
@@ -178,15 +284,15 @@ func shortID(id string) string {
 	return id
 }
 
-// cacheSourceCallLabel renders a cache source call as "Task" or
-// "Task · shard N", dropping the workflow prefix of the FQN.
-func cacheSourceCallLabel(src workflow.CacheSource) string {
-	name := src.CallName
+// callLabel renders a call as "Task" or "Task · shard N", dropping the
+// workflow prefix of the FQN.
+func callLabel(fqn string, shard int) string {
+	name := fqn
 	if i := strings.LastIndex(name, "."); i >= 0 {
 		name = name[i+1:]
 	}
-	if src.ShardIndex >= 0 {
-		return fmt.Sprintf("%s · shard %d", name, src.ShardIndex)
+	if shard >= 0 {
+		return fmt.Sprintf("%s · shard %d", name, shard)
 	}
 	return name
 }

@@ -57,6 +57,7 @@ type Container struct {
 	ScaffoldInputsUseCase        *workflow.ScaffoldInputsUseCase
 	MetadataUseCase              *workflow.MetadataUseCase
 	CompareUseCase               *workflow.CompareUseCase
+	CacheLineageUseCase          *workflow.CacheLineageUseCase
 	AbortUseCase                 *workflow.AbortUseCase
 	QueryUseCase                 *workflow.QueryUseCase
 	OutputsUseCase               *workflow.OutputsUseCase
@@ -135,6 +136,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 		&workflow.SubmitHistory{Store: c.RunHistory, Host: c.Config})
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
+	c.CacheLineageUseCase = workflow.NewCacheLineageUseCase(c.CromwellClient)
 	c.AbortUseCase = workflow.NewAbortUseCase(c.CromwellClient)
 	c.QueryUseCase = workflow.NewQueryUseCase(c.CromwellClient)
 	c.OutputsUseCase = workflow.NewOutputsUseCase(c.CromwellClient)
@@ -177,8 +179,8 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.InputsHandler = handler.NewInputsHandler(c.InputsUseCase, c.Presenter)
 	c.ResourceReportHandler = handler.NewResourceReportHandler(c.ResourceReportUseCase, c.Presenter)
 	c.BundleHandler = handler.NewBundleHandler(c.BundleUseCase, c.Presenter)
-	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.RunHistoryUseCase, c.ChatDependencies)
-	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, c.RunHistoryUseCase, version.NewGitHubChecker(githubRepo), c.ActiveHost, appVersion, c.ChatDependencies)
+	c.DebugHandler = handler.NewDebugHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.RunHistoryUseCase, c.CacheLineageUseCase, c.ChatDependencies)
+	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, c.RunHistoryUseCase, c.CacheLineageUseCase, version.NewGitHubChecker(githubRepo), c.ActiveHost, appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
 	c.HistoryHandler = handler.NewHistoryHandler(c.RunHistoryUseCase, c.Presenter)

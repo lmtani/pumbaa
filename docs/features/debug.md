@@ -61,6 +61,7 @@ Inspect workflow execution tree and call-level details.
 | ++"<"++ / ++">"++ | Resize tree/details split |
 | ++a++ | Chat with AI |
 | ++o++ | Open the run that produced a cache hit |
+| ++shift+o++ | Cache lineage: pick any run in the chain |
 | ++esc++ | Close modal / back · ++ctrl+c++ quits |
 
 ## :material-lightning-bolt: Quick Actions
@@ -87,7 +88,8 @@ Quick actions are context-sensitive and depend on the selected node type. Press 
 | ++4++ | **Logs** | Switch to logs view (stdout/stderr/monitoring) |
 | ++5++ | **Efficiency** | Analyze resource usage (requires monitoring script) |
 | ++6++ | **AI Chat** | Open chat with selected context data |
-| ++o++ | **Cache Source** | Open the workflow whose run produced this cache hit (only on cache hits) |
+| ++o++ | **Producing Run** | Open the run that actually executed this cache hit (only on cache hits) |
+| ++shift+o++ | **Lineage** | List every run in the cache chain and open any of them |
 
 !!! tip "Copy to Clipboard"
     In modals, press ++y++ to copy content to clipboard.
@@ -122,11 +124,24 @@ Before starting the chat, you'll be prompted to select which data to include in 
 
 ## :material-cached: Following Cache Hits
 
-A task served from call caching did not run in this workflow: its outputs, logs and command belong to the run that produced them. Cache-hit tasks are marked with ⇠ in the tree, and their details panel names the producing task and workflow.
+A task served from call caching did not run in this workflow: its outputs, logs and command belong to the run that produced them. And that run may itself have reused the results from an even earlier one, so the run a cache hit points at is often not where the work happened.
 
-Press ++o++ on a cache-hit task to open that workflow with the cursor already on the producing task, so ++1++–++5++ show the real inputs, outputs, command, logs and efficiency. The header reads **Debug › Cache source**, and ++esc++ returns to the workflow you came from with the tree exactly as you left it.
+Cache-hit tasks are marked with ⇠ in the tree. Selecting one follows the whole chain in the background, and the details panel shows its lineage first, before the (copy-only) timing:
 
-If the producing task was itself a cache hit, press ++o++ again to keep following the chain; each ++esc++ steps back one hop. Opening a cache source needs a server connection (it is not available when debugging a metadata file offline).
+```
+Cache
+Status: Hit · produced 2 runs back (1 cached in between)
+◆ this run    885aae9e  02 Oct 14:47  cache hit
+⇠ 1 run back  5a61ca60  02 Oct 01:10  cache hit
+✓ 2 runs back 6c4c6332  29 Sep 10:03  ran 6m23s
+o open producing run  O choose a run
+```
+
+- ++o++ jumps straight to the **producing run** — the one that executed the task — with the cursor already on it, so ++1++–++5++ show the real inputs, outputs, command, logs and efficiency.
+- ++shift+o++ opens the **lineage** modal to open any run of the chain, intermediate ones included.
+- The header reads **Debug › Cache source**, and ++esc++ returns to the workflow you came from with the tree exactly as you left it.
+
+If the chain cannot be followed to the end (a source whose metadata was deleted, an unreadable pointer), the lineage shows the runs it reached and why it stopped, and ++o++ opens the furthest one. Following cache hits needs a server connection.
 
 ## :material-timer-outline: Timeline Analysis
 

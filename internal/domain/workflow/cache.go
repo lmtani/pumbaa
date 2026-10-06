@@ -80,3 +80,47 @@ func (w *Workflow) FindCall(name string, shard int) (Call, bool) {
 	}
 	return best, found
 }
+
+// CacheHop is one link of a cache lineage: a run that holds the call a cache
+// hit pointed at.
+type CacheHop struct {
+	Workflow *Workflow   // full metadata of the run holding the call
+	Call     Call        // the pointed-at call (latest attempt)
+	Source   CacheSource // the pointer that led here
+}
+
+// Ran reports whether this hop's call actually executed, i.e. it is where
+// the reused results were produced.
+func (h CacheHop) Ran() bool {
+	return !h.Call.CacheHit
+}
+
+// CacheLineage is the chain of runs behind a cache hit, from the run it
+// copied from directly to the run that actually executed the call. Each hop
+// that was itself a cache hit points at the next one.
+type CacheLineage struct {
+	Hops []CacheHop
+	// Err says why the chain stops short of the producing run (a source
+	// whose metadata is gone, an unreadable pointer, a loop); nil when the
+	// last hop ran.
+	Err error
+}
+
+// Original returns the hop that produced the results, when the chain was
+// followed all the way.
+func (l CacheLineage) Original() (CacheHop, bool) {
+	if len(l.Hops) == 0 || l.Err != nil {
+		return CacheHop{}, false
+	}
+	last := l.Hops[len(l.Hops)-1]
+	return last, last.Ran()
+}
+
+// Furthest returns the last hop reached, which is the original when the
+// chain is complete.
+func (l CacheLineage) Furthest() (CacheHop, bool) {
+	if len(l.Hops) == 0 {
+		return CacheHop{}, false
+	}
+	return l.Hops[len(l.Hops)-1], true
+}

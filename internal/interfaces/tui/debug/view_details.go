@@ -109,6 +109,12 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			sb.WriteString(m.renderTaskFailures(cd.Failures))
 		}
 
+		// A cache hit's timing and logs are the copy, not the work: where the
+		// results really come from is what matters first.
+		if cd.CacheHit {
+			sb.WriteString(m.renderCacheSection(node))
+		}
+
 		// Timing
 		if !cd.Start.IsZero() || !cd.End.IsZero() || !cd.VMStartTime.IsZero() || !cd.VMEndTime.IsZero() {
 			sb.WriteString("\n")
@@ -163,24 +169,9 @@ func (m Model) renderBasicDetailsBody(node *TreeNode) string {
 			}
 		}
 
-		// Cache - only show if has meaningful data
-		if cd.CacheHit || cd.CacheResult != "" {
-			sb.WriteString("\n")
-			sb.WriteString(titleStyle.Render("Cache") + "\n")
-			cacheStatus := "Miss"
-			if cd.CacheHit {
-				cacheStatus = "Hit"
-			}
-			sb.WriteString(labelStyle.Render("Status: ") + valueStyle.Render(cacheStatus) + "\n")
-			if src, ok := cacheSourceOf(node); ok {
-				// Name the producing run in readable parts instead of the raw
-				// "Cache Hit: <id>:<fqn>:<shard>" string.
-				sb.WriteString(labelStyle.Render("Produced by:") + " " + mutedStyle.Render("(o to open)") + "\n")
-				sb.WriteString("  " + valueStyle.Render(cacheSourceCallLabel(src)) + "\n")
-				sb.WriteString("  " + mutedStyle.Render("in workflow "+src.WorkflowID) + "\n")
-			} else if cd.CacheResult != "" {
-				sb.WriteString(labelStyle.Render("Result: ") + valueStyle.Render(cd.CacheResult) + "\n")
-			}
+		// A cache miss is a footnote; a hit leads (see above)
+		if !cd.CacheHit && cd.CacheResult != "" {
+			sb.WriteString(m.renderCacheSection(node))
 		}
 
 		// Cost
@@ -505,7 +496,7 @@ func (m Model) renderActionBar(node *TreeNode) string {
 				actions = append(actions, a)
 			}
 			if _, ok := cacheSourceOf(node); ok {
-				actions = append(actions, formatAction("o", "cache source", true))
+				actions = append(actions, formatAction("o", "producing run", true))
 			}
 		}
 	}

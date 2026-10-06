@@ -70,6 +70,7 @@ func (m Model) renderHelpOverlay() string {
 	content.WriteString(helpLine("5", "Efficiency (inline)"))
 	content.WriteString(helpLine("6", "Chat (AI)"))
 	content.WriteString(helpLine("o", common.IconCached+" Open the run that produced a cache hit"))
+	content.WriteString(helpLine("O", common.IconCached+" Cache lineage: every run in the chain"))
 	content.WriteString("\n")
 
 	// In Modals section

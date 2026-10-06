@@ -100,7 +100,9 @@ Running tasks at `time.Now()`:
   modal/search before emitting `NavigateBackMsg`). Async messages are
   broadcast; KeyMsg/spinner go only to the focused screen.
 - The debug model is reused when returning from chat (tree/watch preserved).
-- `o` on a cache hit opens the source workflow as a **stacked** debug screen
+- Cache hits: selecting one resolves its whole chain in the background
+  (`CacheLineageUseCase`, memoized per source workflow); `o` opens the
+  producing run, `O` lists the chain. Each jump is a **stacked** debug screen
   (`NavigateToDebugMsg.Origin` + `Focus`; `AppModel.debugStack`). Parked
   screens get no broadcasts: they `Suspend` watch and `Reactivate` on ESC,
   and watch messages carry the workflow ID so they never cross screens.

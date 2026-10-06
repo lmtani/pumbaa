@@ -92,6 +92,14 @@ type Model struct {
 	// empty when opened from the dashboard or the command line.
 	origin string
 
+	// Cache lineage (o/O keys): chains resolved per cache source, the source
+	// whose jump waits for its chain, and the lineage modal state.
+	lineageUC          *workflowapp.CacheLineageUseCase
+	lineages           map[workflow.CacheSource]*lineageEntry
+	lineageOpenPending *workflow.CacheSource
+	lineageModalSource workflow.CacheSource
+	lineageModalCursor int
+
 	// Loading state
 	isLoading        bool
 	loadingMessage   string

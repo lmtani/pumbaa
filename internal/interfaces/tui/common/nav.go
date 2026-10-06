@@ -24,6 +24,9 @@ type NavigateToDebugMsg struct {
 	// following a cache hit to its source). The new screen is stacked on top
 	// of the current one, and ESC returns to it with its state intact.
 	Origin string
+
+	// Notice is shown in the footer when the screen opens.
+	Notice string
 }
 
 // CallFocus identifies a call within a workflow: its fully-qualified name and

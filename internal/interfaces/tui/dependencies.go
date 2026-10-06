@@ -30,6 +30,9 @@ type Dependencies struct {
 	// HistoryUC serves the local run history (optional - nil disables the
 	// markers and the note editor).
 	HistoryUC *workflowapp.RunHistoryUseCase
+	// LineageUC follows cache hits to the run that produced them (optional -
+	// nil limits the debug screen to the immediate cache source).
+	LineageUC *workflowapp.CacheLineageUseCase
 
 	// UpdateChecker checks for newer releases (optional - nil disables it)
 	UpdateChecker ports.UpdateChecker
