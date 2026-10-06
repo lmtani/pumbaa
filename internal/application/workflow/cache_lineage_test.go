@@ -46,7 +46,7 @@ func TestCacheLineage_FollowsChainToProducingRun(t *testing.T) {
 		"c": ranRun("c"),
 	}, fetches))
 
-	lineage := uc.Execute(context.Background(), amberIn("b"))
+	lineage := uc.Resolve(context.Background(), amberIn("b"))
 
 	if lineage.Err != nil {
 		t.Fatalf("unexpected error: %v", lineage.Err)
@@ -60,7 +60,7 @@ func TestCacheLineage_FollowsChainToProducingRun(t *testing.T) {
 	}
 
 	// Sources are memoized: a second resolution fetches nothing
-	uc.Execute(context.Background(), amberIn("b"))
+	uc.Resolve(context.Background(), amberIn("b"))
 	if fetches["b"] != 1 || fetches["c"] != 1 {
 		t.Errorf("fetches = %v, want one each", fetches)
 	}
@@ -71,7 +71,7 @@ func TestCacheLineage_KeepsHopsReachedWhenSourceIsGone(t *testing.T) {
 		"b": hitRun("b", "gone"),
 	}, map[string]int{}))
 
-	lineage := uc.Execute(context.Background(), amberIn("b"))
+	lineage := uc.Resolve(context.Background(), amberIn("b"))
 
 	if lineage.Err == nil || !strings.Contains(lineage.Err.Error(), "gone") {
 		t.Fatalf("Err = %v, want it to name the missing workflow", lineage.Err)
@@ -93,7 +93,7 @@ func TestCacheLineage_StopsOnLoop(t *testing.T) {
 		"c": hitRun("c", "b"),
 	}, map[string]int{}))
 
-	lineage := uc.Execute(context.Background(), amberIn("b"))
+	lineage := uc.Resolve(context.Background(), amberIn("b"))
 
 	if lineage.Err == nil || !strings.Contains(lineage.Err.Error(), "loops") {
 		t.Fatalf("Err = %v, want a loop error", lineage.Err)
@@ -108,9 +108,34 @@ func TestCacheLineage_MissingCall(t *testing.T) {
 		"b": {ID: "b", Calls: map[string][]workflow.Call{}},
 	}, map[string]int{}))
 
-	lineage := uc.Execute(context.Background(), amberIn("b"))
+	lineage := uc.Resolve(context.Background(), amberIn("b"))
 
 	if lineage.Err == nil || len(lineage.Hops) != 0 {
 		t.Fatalf("lineage = %+v, want no hops and an error", lineage)
+	}
+}
+
+func TestMemoReader_RetriesFailures(t *testing.T) {
+	calls := 0
+	memo := newMemoReader(&mockWorkflowRepository{
+		getMetadataFunc: func(_ context.Context, id string) (*workflow.Workflow, error) {
+			calls++
+			if calls == 1 {
+				return nil, workflow.ErrConnectionFailed
+			}
+			return &workflow.Workflow{ID: id}, nil
+		},
+	})
+
+	if _, err := memo.GetMetadata(context.Background(), "a"); err == nil {
+		t.Fatal("first fetch should fail")
+	}
+	for i := 0; i < 2; i++ {
+		if wf, err := memo.GetMetadata(context.Background(), "a"); err != nil || wf.ID != "a" {
+			t.Fatalf("fetch %d = %v, %v", i, wf, err)
+		}
+	}
+	if calls != 2 {
+		t.Errorf("reader called %d times, want 2 (failure retried, success memoized)", calls)
 	}
 }

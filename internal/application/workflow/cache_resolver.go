@@ -7,23 +7,20 @@ import (
 	workflow2 "github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
-// maxCacheChainDepth bounds how many cache-hit hops are followed before giving
-// up, so a pathological or cyclic chain cannot loop forever.
-const maxCacheChainDepth = 10
-
 // cacheResolver recovers the real execution metrics of cache-hit calls by
 // following their provenance through the workflows that actually ran them.
 // It performs I/O (fetching source metadata) and therefore lives in the
 // application layer; the domain only consumes the recovered values.
 type cacheResolver struct {
-	reader ports.WorkflowMetadataReader
-	cache  map[string]*workflow2.Workflow // memoized source metadata by workflow ID
+	reader  ports.WorkflowMetadataReader // memoized, shared with lineage
+	lineage *CacheLineageUseCase
 }
 
 func newCacheResolver(reader ports.WorkflowMetadataReader) *cacheResolver {
+	memo := newMemoReader(reader)
 	return &cacheResolver{
-		reader: reader,
-		cache:  make(map[string]*workflow2.Workflow),
+		reader:  memo,
+		lineage: &CacheLineageUseCase{reader: memo},
 	}
 }
 
@@ -49,7 +46,7 @@ func (r *cacheResolver) resolveCall(ctx context.Context, call *workflow2.Call) {
 		if !ok {
 			return
 		}
-		if rec := r.follow(ctx, src, 1); rec != nil {
+		if rec := r.follow(ctx, src); rec != nil {
 			call.Recovery = rec
 		}
 		return
@@ -72,7 +69,7 @@ func (r *cacheResolver) subCalls(ctx context.Context, call *workflow2.Call) map[
 	if call.SubWorkflowMetadata != nil {
 		return call.SubWorkflowMetadata.Calls
 	}
-	sw, err := r.get(ctx, call.SubWorkflowID)
+	sw, err := r.reader.GetMetadata(ctx, call.SubWorkflowID)
 	if err != nil {
 		return nil
 	}
@@ -98,7 +95,7 @@ func (r *cacheResolver) cacheServed(ctx context.Context, calls map[string][]work
 				}
 				total += n
 			case c.SubWorkflowID != "":
-				sw, err := r.get(ctx, c.SubWorkflowID)
+				sw, err := r.reader.GetMetadata(ctx, c.SubWorkflowID)
 				if err != nil {
 					return false, 0
 				}
@@ -118,40 +115,17 @@ func (r *cacheResolver) cacheServed(ctx context.Context, calls map[string][]work
 	return total > 0, total
 }
 
-// follow resolves a cache source to the metrics of the terminal real execution,
-// following chained cache hits up to maxCacheChainDepth. It returns nil when the
-// chain cannot be resolved (source missing, call missing, depth exceeded), which
-// signals the diff to fall back.
-func (r *cacheResolver) follow(ctx context.Context, src workflow2.CacheSource, depth int) *workflow2.CacheRecovery {
-	if depth > maxCacheChainDepth {
-		return nil
-	}
-
-	source, err := r.get(ctx, src.WorkflowID)
-	if err != nil {
-		return nil
-	}
-
-	call, ok := source.FindCall(src.CallName, src.ShardIndex)
+// follow resolves a cache source to the metrics of the terminal real
+// execution, through any chain of cache hits. It returns nil when the chain
+// cannot be followed to the producing run, which signals the diff to fall
+// back. SourceWorkflowID stays the immediate source this run pointed at.
+func (r *cacheResolver) follow(ctx context.Context, src workflow2.CacheSource) *workflow2.CacheRecovery {
+	lineage := r.lineage.Resolve(ctx, src)
+	original, ok := lineage.Original()
 	if !ok {
 		return nil
 	}
-
-	// The source call may itself be a cache hit: follow the chain to the real
-	// execution, but keep the immediate source ID this run pointed at.
-	if call.CacheHit {
-		next, ok := workflow2.ParseCacheResult(call.CacheResult)
-		if !ok {
-			return nil
-		}
-		rec := r.follow(ctx, next, depth+1)
-		if rec == nil {
-			return nil
-		}
-		rec.SourceWorkflowID = src.WorkflowID
-		return rec
-	}
-
+	call := original.Call
 	return &workflow2.CacheRecovery{
 		SourceWorkflowID: src.WorkflowID,
 		Start:            call.Start,
@@ -159,20 +133,7 @@ func (r *cacheResolver) follow(ctx context.Context, src workflow2.CacheSource, d
 		DockerImage:      call.DockerImage,
 		Status:           call.Status,
 		Attempt:          call.Attempt,
-		Depth:            depth,
+		Depth:            len(lineage.Hops),
 	}
 }
 
-// get fetches a source workflow's metadata, memoizing by ID to avoid refetching
-// the same source across many cache-hit calls.
-func (r *cacheResolver) get(ctx context.Context, id string) (*workflow2.Workflow, error) {
-	if w, ok := r.cache[id]; ok {
-		return w, nil
-	}
-	w, err := r.reader.GetMetadata(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	r.cache[id] = w
-	return w, nil
-}

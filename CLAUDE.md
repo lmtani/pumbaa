@@ -101,11 +101,13 @@ Running tasks at `time.Now()`:
   broadcast; KeyMsg/spinner go only to the focused screen.
 - The debug model is reused when returning from chat (tree/watch preserved).
 - Cache hits: selecting one resolves its whole chain in the background
-  (`CacheLineageUseCase`, memoized per source workflow); `o` opens the
-  producing run, `O` lists the chain. Each jump is a **stacked** debug screen
-  (`NavigateToDebugMsg.Origin` + `Focus`; `AppModel.debugStack`). Parked
-  screens get no broadcasts: they `Suspend` watch and `Reactivate` on ESC,
-  and watch messages carry the workflow ID so they never cross screens.
+  (`CacheLineageUseCase.Resolve` — also behind the diff's `cacheResolver`;
+  both share `memoReader`). In debug, `lineageTracker` owns the requests;
+  `o` opens the producing run, `O` lists the chain. Each jump is a
+  **stacked** debug screen (`NavigateToDebugMsg.Origin`; `AppModel.debugStack`).
+  The screen's lifecycle API is `debug/screen.go`: `Arrive` (focus, origin,
+  notice), `Suspend`/`Reactivate` — parked screens get no broadcasts, and
+  watch messages carry the workflow ID so they never cross screens.
 - Screen packages decompose by file: `model.go`, `update.go`, `view*.go`,
   `types.go`, `styles.go`, `modal_*.go` (+ in chat: `stream.go` with the
   agent loop, `sessions.go` with lazy create/resume).

@@ -214,13 +214,7 @@ func (m AppModel) navigateToDebug(msg common.NavigateToDebugMsg) (tea.Model, tea
 		return m, tea.Batch(m.sizeCmd(), m.debug.ResumeCmd())
 	}
 
-	m.debugWorkflow = wf
-	m.debug = newDebugModel(m.deps, wf)
-	if msg.Focus != nil {
-		m.debug.FocusCall(msg.Focus.CallName, msg.Focus.Shard)
-	}
-
-	return m, tea.Batch(m.debug.Init(), m.sizeCmd(), m.debug.InitialCmd())
+	return m.openDebug(msg)
 }
 
 // stackDebug opens a debug screen on top of the current one, which is parked
@@ -236,18 +230,16 @@ func (m AppModel) stackDebug(msg common.NavigateToDebugMsg) (tea.Model, tea.Cmd)
 	m.debugStack = append(m.debugStack, debugFrame{model: m.debug, workflow: m.debugWorkflow})
 	m.stack = append(m.stack, ScreenDebug)
 
+	return m.openDebug(msg)
+}
+
+// openDebug builds the debug screen for msg's workflow and lets it arrive
+// (cursor, origin, notice) as requested.
+func (m AppModel) openDebug(msg common.NavigateToDebugMsg) (tea.Model, tea.Cmd) {
 	m.debugWorkflow = msg.Workflow
 	m.debug = newDebugModel(m.deps, msg.Workflow)
-	m.debug.SetOrigin(msg.Origin)
-	status := msg.Notice
-	if status == "" {
-		status = "Opened from " + msg.Origin + " — esc goes back"
-	}
-	if msg.Focus != nil && !m.debug.FocusCall(msg.Focus.CallName, msg.Focus.Shard) {
-		status = "Source task not found in this workflow"
-	}
-
-	return m, tea.Batch(m.debug.Init(), m.sizeCmd(), m.debug.SetStatus(status), m.debug.InitialCmd())
+	arrive := m.debug.Arrive(msg)
+	return m, tea.Batch(m.debug.Init(), m.sizeCmd(), arrive)
 }
 
 // navigateToChat switches to the chat screen. The chat session is created
@@ -320,7 +312,8 @@ func (m AppModel) navigateBack() (tea.Model, tea.Cmd) {
 		m.debugStack = m.debugStack[:len(m.debugStack)-1]
 		m.debug = frame.model
 		m.debugWorkflow = frame.workflow
-		return m, tea.Batch(m.sizeCmd(), m.debug.Reactivate())
+		reactivate := m.debug.Reactivate() // mutates m.debug: run before returning m
+		return m, tea.Batch(m.sizeCmd(), reactivate)
 	}
 
 	// Returning screens kept their state; they only need the current size

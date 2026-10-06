@@ -334,7 +334,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !ok {
 			return model, cmd
 		}
-		return next, tea.Batch(cmd, next.ensureSelectedLineage())
+		resolve := next.ensureSelectedLineage()
+		return next, tea.Batch(cmd, resolve)
 	}
 
 	return m, cmd

@@ -93,7 +93,7 @@ func run(m Model, cmd tea.Cmd) (Model, *common.NavigateToDebugMsg) {
 
 func focus(t *testing.T, m *Model, name string, shard int) {
 	t.Helper()
-	if !m.FocusCall(name, shard) {
+	if !m.focusCall(name, shard) {
 		t.Fatalf("FocusCall(%s, %d) found nothing", name, shard)
 	}
 }
@@ -108,7 +108,7 @@ func TestFocusCallExpandsAndSelectsShard(t *testing.T) {
 	if !m.findNodeByID(m.tree, "wf.Align").Expanded {
 		t.Error("the scatter holding the shard should be expanded")
 	}
-	if m.FocusCall("wf.Missing", -1) {
+	if m.focusCall("wf.Missing", -1) {
 		t.Error("FocusCall should report a missing call")
 	}
 }
@@ -130,7 +130,7 @@ func TestSelectingCacheHitResolvesAndShowsLineage(t *testing.T) {
 
 	m, _ = run(m, m.ensureSelectedLineage())
 
-	entry := m.lineageFor(workflow.CacheSource{WorkflowID: "mid", CallName: "wf.Amber", ShardIndex: -1})
+	entry := m.lineage.get(workflow.CacheSource{WorkflowID: "mid", CallName: "wf.Amber", ShardIndex: -1})
 	if entry == nil || entry.pending || len(entry.lineage.Hops) != 2 {
 		t.Fatalf("lineage entry = %+v, want 2 resolved hops", entry)
 	}
@@ -174,8 +174,8 @@ func TestLineageModalOpensIntermediateRun(t *testing.T) {
 
 	model, _ := m.openLineageModal(m.selectedNode())
 	m = model.(Model)
-	if m.activeModal != ModalCacheLineage || m.lineageModalCursor != 2 {
-		t.Fatalf("modal %v cursor %d, want lineage modal on the producing run", m.activeModal, m.lineageModalCursor)
+	if m.activeModal != ModalCacheLineage || m.lineageModal.cursor != 2 {
+		t.Fatalf("modal %v cursor %d, want lineage modal on the producing run", m.activeModal, m.lineageModal.cursor)
 	}
 	if view := m.renderLineageModal(); !strings.Contains(view, "original") {
 		t.Errorf("modal should mark the original:\n%s", view)
@@ -223,7 +223,7 @@ func TestBrokenChainShowsReasonAndOpensNothing(t *testing.T) {
 func TestWithoutResolverCacheHitsAreOnlyDescribed(t *testing.T) {
 	wf, _ := lineageFixture()
 	m := NewModel(wf, nil, nil, nil, nil)
-	m.FocusCall("wf.Amber", -1)
+	m.focusCall("wf.Amber", -1)
 
 	if cmd := m.ensureSelectedLineage(); cmd != nil {
 		t.Error("no resolver, nothing to resolve")
@@ -258,7 +258,7 @@ func TestReactivateRetriesLineageAnsweredElsewhere(t *testing.T) {
 	m, _ = run(m, cmd)
 
 	src := workflow.CacheSource{WorkflowID: "mid", CallName: "wf.Amber", ShardIndex: -1}
-	if entry := m.lineageFor(src); entry == nil || entry.pending {
+	if entry := m.lineage.get(src); entry == nil || entry.pending {
 		t.Error("Reactivate should re-request a lineage left pending")
 	}
 }
@@ -298,4 +298,46 @@ func runQuick(c tea.Cmd) tea.Msg {
 	case <-time.After(100 * time.Millisecond):
 		return nil
 	}
+}
+
+func TestMovingOntoCacheHitRequestsLineage(t *testing.T) {
+	m := lineageModel(t)
+	src := workflow.CacheSource{WorkflowID: "mid", CallName: "wf.Amber", ShardIndex: -1}
+
+	for i := 0; i < len(m.nodes) && m.lineage.get(src) == nil; i++ {
+		model, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+		m = model.(Model)
+	}
+
+	if m.lineage.get(src) == nil {
+		t.Fatal("moving the cursor onto a cache hit should request its lineage, and the request must survive in the returned model")
+	}
+}
+
+func TestEscLeavesRightAfterSelectingANode(t *testing.T) {
+	m := lineageModel(t)
+	focus(t, &m, "wf.Amber", -1)
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if !emits[common.NavigateBackMsg](cmd) {
+		t.Error("ESC on a freshly selected node should go back, not switch to an identical view")
+	}
+}
+
+// emits reports whether cmd, or any command batched in it, produces a T.
+func emits[T any](cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	switch msg := runQuick(cmd).(type) {
+	case T:
+		return true
+	case tea.BatchMsg:
+		for _, c := range msg {
+			if emits[T](c) {
+				return true
+			}
+		}
+	}
+	return false
 }
