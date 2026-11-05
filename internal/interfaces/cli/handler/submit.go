@@ -127,6 +127,12 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 	if output.HistoryError != nil {
 		h.presenter.Warning("Could not save this run to the local history: %v", output.HistoryError)
 	}
+	if output.FilesKept {
+		h.presenter.Info("Files kept: pumbaa history export %s writes them back out, ready to submit again.", output.WorkflowID)
+	}
+	if output.FilesSkipped != "" {
+		h.presenter.Warning("Files not kept: %s. An export will read the server, which has no dependencies zip.", output.FilesSkipped)
+	}
 
 	return nil
 }

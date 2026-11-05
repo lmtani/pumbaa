@@ -31,8 +31,8 @@ type RunRef struct {
 
 // RunRecord is what the local store remembers about a run. It deliberately
 // holds what the server cannot answer later — the free-text description and
-// the local files a submission was assembled from — rather than duplicating
-// live state, with one exception: LastStatus, kept so history reads still say
+// the files a submission was assembled from — rather than duplicating live
+// state, with one exception: LastStatus, kept so history reads still say
 // something useful when the server is unreachable or has forgotten the run.
 type RunRecord struct {
 	Host             string
@@ -51,6 +51,45 @@ type RunRecord struct {
 	StatusSyncedAt   time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	// Files are the submitted files kept verbatim, which is what lets a run
+	// be exported and submitted again after the paths above have rotted.
+	// Reads fill in everything but the bytes — a listing needs sizes, not
+	// contents — and RunHistoryReader.Files returns them. On a Record, nil
+	// leaves whatever is already kept alone; anything else replaces it.
+	Files []RunFile
+}
+
+// RunFileKind names one of the files a submission is assembled from.
+type RunFileKind string
+
+const (
+	RunFileWorkflow     RunFileKind = "workflow"
+	RunFileInputs       RunFileKind = "inputs"
+	RunFileOptions      RunFileKind = "options"
+	RunFileDependencies RunFileKind = "dependencies"
+)
+
+// RunFileKinds is every kind, in the order a submission names them, which is
+// the order anything listing kept files should use.
+var RunFileKinds = []RunFileKind{RunFileWorkflow, RunFileInputs, RunFileOptions, RunFileDependencies}
+
+// RunFile is one submitted file, as the server received it. Name is the
+// basename it was read from, kept for recognition only: an export writes
+// fixed names so the printed submit command is always right.
+type RunFile struct {
+	Kind   RunFileKind
+	Name   string
+	SHA256 string
+	Size   int64
+	Data   []byte `json:"Data,omitempty"`
+}
+
+// PruneResult says what a prune removed. Bytes counts the kept files that
+// went with the runs, which is what the person asking to free space wants
+// to hear.
+type PruneResult struct {
+	Runs  int
+	Bytes int64
 }
 
 // Ref returns the record's identity.
@@ -80,13 +119,18 @@ type RunHistoryReader interface {
 	// Lookup answers "which of these runs do we remember" in one query, so a
 	// listing can be annotated without a round trip per row.
 	Lookup(ctx context.Context, host string, workflowIDs []string) (map[string]RunRecord, error)
+	// Files returns the kept files of a run with their bytes, or an empty
+	// slice when nothing was kept. It reports ErrRunNotRemembered when the
+	// run itself is unknown.
+	Files(ctx context.Context, ref RunRef) ([]RunFile, error)
 }
 
 // RunHistoryWriter records and edits the local run history.
 type RunHistoryWriter interface {
 	// Record stores a run, preserving an existing description when the
-	// incoming one is empty: re-recording a run must never silently erase
-	// the note someone wrote about it.
+	// incoming one is empty and the kept files when rec.Files is nil:
+	// re-recording a run must never silently erase the note someone wrote
+	// about it, nor the files only this machine still has.
 	Record(ctx context.Context, rec RunRecord) error
 	// SetDescription edits the note of a run already remembered, reporting
 	// ErrRunNotRemembered otherwise.
@@ -94,8 +138,9 @@ type RunHistoryWriter interface {
 	// SetStatus refreshes the last known status of a remembered run.
 	SetStatus(ctx context.Context, ref RunRef, status string, at time.Time) error
 	Forget(ctx context.Context, ref RunRef) error
-	// Prune drops records submitted before a cutoff, returning how many went.
-	Prune(ctx context.Context, before time.Time) (int, error)
+	// Prune drops records submitted before a cutoff, and their files with
+	// them, returning what went.
+	Prune(ctx context.Context, before time.Time) (PruneResult, error)
 }
 
 // RunHistory is the local, server-independent memory of what was submitted.

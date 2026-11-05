@@ -39,7 +39,9 @@ type actionSpec struct {
 	// requiresHistory marks actions reading the local run history, which
 	// needs both the store and the host records are keyed by.
 	requiresHistory bool
-	build           func(deps Deps) types.Handler
+	// requiresExporter marks the action that writes a run's files back out.
+	requiresExporter bool
+	build            func(deps Deps) types.Handler
 }
 
 // Deps carries the external dependencies handlers can draw from. Any of the
@@ -52,6 +54,7 @@ type Deps struct {
 	FileProvider ports.FileProvider
 	History      ports.RunHistoryReader
 	Host         ports.HostProvider
+	Exporter     history.Exporter
 }
 
 func builtinActions() []actionSpec {
@@ -139,12 +142,22 @@ func builtinActions() []actionSpec {
 		},
 		{
 			name: "history",
-			description: "What was submitted from this machine and why: the description written at submit time, plus the WDL and inputs files each run used. " +
+			description: "What was submitted from this machine and why: the description written at submit time, the WDL and inputs files each run used, and which runs have their files kept (exportable). " +
 				"Answers \"what was this run for?\" and \"what have I been running?\" — a Cromwell server does not keep any of it, and still answers after it forgot the run. " +
 				"Optional: workflow_id (one run), query (keywords matched across the note, name, id, labels and file paths), status, since_days, page_size.",
 			requiresHistory: true,
 			build: func(deps Deps) types.Handler {
 				return history.NewHandler(deps.History, deps.Host)
+			},
+		},
+		{
+			name: "export",
+			description: "Write a run's submitted files into a directory under the working directory — workflow.wdl, inputs.json, options.json, dependencies.zip, labels.json and a manifest.json — ready for `pumbaa workflow submit`, to run it again or hand it to someone. " +
+				"Uses the files kept at submit time; a run nothing was kept for is read from the server, which never has the dependencies zip. " +
+				"Required: workflow_id. Optional: path (relative directory, default <workflow_id>), overwrite.",
+			requiresExporter: true,
+			build: func(deps Deps) types.Handler {
+				return history.NewExportHandler(deps.Exporter)
 			},
 		},
 		{
@@ -205,6 +218,9 @@ func NewDefaultRegistry(deps Deps) *Registry {
 			continue
 		}
 		if spec.requiresHistory && (deps.History == nil || deps.Host == nil) {
+			continue
+		}
+		if spec.requiresExporter && deps.Exporter == nil {
 			continue
 		}
 		r.Register(spec.name, spec.description, spec.build(deps))

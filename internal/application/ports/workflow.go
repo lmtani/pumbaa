@@ -27,6 +27,13 @@ type WorkflowMetadataFetcher interface {
 	ParseMetadata(data []byte) (*workflow.Workflow, error)
 }
 
+// SubmissionReader fetches what a run was submitted with, and nothing else.
+// Used by the export use case, for which the full metadata is both far too
+// much and missing the point.
+type SubmissionReader interface {
+	GetSubmission(ctx context.Context, workflowID string) (*workflow.Submission, error)
+}
+
 // HealthChecker handles server health monitoring.
 // Used by TUI dashboard to display server status.
 type HealthChecker interface {

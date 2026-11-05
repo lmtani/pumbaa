@@ -67,6 +67,7 @@ type Container struct {
 	BatchLogsUseCase             *workflow.GetBatchLogsUseCase
 	BundleUseCase                *bundle.BundleUseCase
 	RunHistoryUseCase            *workflow.RunHistoryUseCase
+	ExportRunUseCase             *workflow.ExportRunUseCase
 	ResourceVisualizationUseCase *workflow.ResourceVisualizationUseCase
 
 	// Handlers
@@ -133,7 +134,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.CacheForecastUseCase = workflow.NewCacheForecastUseCase(c.CromwellClient, c.CromwellClient, c.CromwellClient, fileProvider, presenter.NewProgress())
 	c.ScaffoldInputsUseCase = workflow.NewScaffoldInputsUseCase(fileProvider)
 	c.SubmitUseCase = workflow.NewSubmitUseCase(c.CromwellClient, fileProvider, c.PreflightUseCase,
-		&workflow.SubmitHistory{Store: c.RunHistory, Host: c.Config})
+		&workflow.SubmitHistory{Store: c.RunHistory, Host: c.Config, SkipFiles: !cfg.HistoryKeepFiles})
 	c.MetadataUseCase = workflow.NewMetadataUseCase(c.CromwellClient)
 	c.CompareUseCase = workflow.NewCompareUseCase(c.CromwellClient)
 	c.CacheLineageUseCase = workflow.NewCacheLineageUseCase(c.CromwellClient)
@@ -146,6 +147,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.BatchLogsUseCase = workflow.NewGetBatchLogsUseCase(c.CloudLoggingRepo)
 	c.BundleUseCase = bundle.New()
 	c.RunHistoryUseCase = workflow.NewRunHistoryUseCase(c.RunHistory, c.CromwellClient, c.Config)
+	c.ExportRunUseCase = workflow.NewExportRunUseCase(c.RunHistory, c.CromwellClient, fileProvider, c.Config)
 
 	// Initialize metrics reader for TSV files
 	metricsReader := metrics.NewTSVReader()
@@ -183,7 +185,7 @@ func New(cfg *config.Config, appVersion string) *Container {
 	c.DashboardHandler = handler.NewDashboardHandler(c.CromwellClient, c.TelemetryService, c.MonitoringUseCase, fileProvider, c.BatchLogsUseCase, c.CompareUseCase, c.RunHistoryUseCase, c.CacheLineageUseCase, version.NewGitHubChecker(githubRepo), c.ActiveHost, appVersion, c.ChatDependencies)
 	c.ChatHandler = handler.NewChatHandler(c.Config, c.TelemetryService, c.ChatDependencies, c.SessionStore)
 	c.ConfigHandler = handler.NewConfigHandler()
-	c.HistoryHandler = handler.NewHistoryHandler(c.RunHistoryUseCase, c.Presenter)
+	c.HistoryHandler = handler.NewHistoryHandler(c.RunHistoryUseCase, c.ExportRunUseCase, c.Presenter)
 	c.HostHandler = handler.NewHostHandler(c.Presenter, c.ActiveHost, func(url string) ports.HealthChecker {
 		return cromwell.NewClient(cromwell.Config{Host: url, Timeout: cfg.CromwellTimeout})
 	})
@@ -261,6 +263,7 @@ func (c *Container) ChatDependencies(rebuildWDLIndex bool, extraTools ...tool.To
 		FileProvider: storage.NewFileProvider(),
 		History:      c.RunHistory,
 		Host:         c.Config,
+		Exporter:     c.ExportRunUseCase,
 	}, extraTools...)
 	return &tui.ChatDependencies{LLM: llmModel, Tools: agentTools, SessionSvc: svc}, nil
 }

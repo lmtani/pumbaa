@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,7 +18,19 @@ import (
 type SubmitHistory struct {
 	Store ports.RunHistory
 	Host  ports.HostProvider
+	// SkipFiles records the paths only, as the history did before it kept
+	// the files themselves. Off by default: the kept files are what make a
+	// run exportable after the paths have rotted.
+	SkipFiles bool
+	// MaxFileBytes caps the total size of the files kept for one run; above
+	// it the run is recorded without them. Zero means DefaultMaxKeptBytes.
+	MaxFileBytes int64
 }
+
+// DefaultMaxKeptBytes is the size above which a submission's files are not
+// kept. A WDL bundle is tens of kilobytes; something this large is an inputs
+// JSON with data inlined, not worth a database that grows by it on every run.
+const DefaultMaxKeptBytes = 50 << 20
 
 // SubmitUseCase handles workflow submission.
 type SubmitUseCase struct {
@@ -63,6 +76,12 @@ type SubmitOutput struct {
 	// the submission: the workflow is already running.
 	Remembered   bool
 	HistoryError error
+	// FilesKept reports that the submitted files were kept verbatim with the
+	// record, which is what lets `pumbaa history export` reproduce the run.
+	// FilesSkipped says why they were not when keeping was expected; it is
+	// empty when keeping is simply off.
+	FilesKept    bool
+	FilesSkipped string
 }
 
 // Execute submits a workflow to Cromwell.
@@ -129,7 +148,7 @@ func (uc *SubmitUseCase) Execute(ctx context.Context, input SubmitInput) (*Submi
 		Status:     string(resp.Status),
 		Preflight:  report,
 	}
-	out.Remembered, out.HistoryError = uc.remember(ctx, input, resp, report)
+	uc.remember(ctx, out, input, req, resp, report)
 	return out, nil
 }
 
@@ -147,12 +166,13 @@ func recordablePath(path string) string {
 	return abs
 }
 
-// remember writes the submission to the local run history. The workflow is
-// already running by the time this is called, so its failure is reported to
-// the caller as a warning rather than returned as the outcome of submitting.
-func (uc *SubmitUseCase) remember(ctx context.Context, input SubmitInput, resp *workflow2.SubmitResponse, report *PreflightReport) (bool, error) {
+// remember writes the submission to the local run history, files included.
+// The workflow is already running by the time this is called, so a failure
+// is reported on the output as a warning rather than returned as the outcome
+// of submitting.
+func (uc *SubmitUseCase) remember(ctx context.Context, out *SubmitOutput, input SubmitInput, req workflow2.SubmitRequest, resp *workflow2.SubmitResponse, report *PreflightReport) {
 	if uc.history == nil || uc.history.Store == nil || uc.history.Host == nil {
-		return false, nil
+		return
 	}
 
 	host, alias := uc.history.Host.CurrentHost()
@@ -163,6 +183,7 @@ func (uc *SubmitUseCase) remember(ctx context.Context, input SubmitInput, resp *
 		name = report.WorkflowName
 	}
 
+	files, skipped := uc.history.keptFiles(input, req)
 	err := uc.history.Store.Record(ctx, ports.RunRecord{
 		Host:             host,
 		HostAlias:        alias,
@@ -178,9 +199,61 @@ func (uc *SubmitUseCase) remember(ctx context.Context, input SubmitInput, resp *
 		SubmittedAt:      time.Now().UTC(),
 		LastStatus:       string(resp.Status),
 		StatusSyncedAt:   time.Now().UTC(),
+		Files:            files,
 	})
 	if err != nil {
-		return false, err
+		out.HistoryError = err
+		return
 	}
-	return true, nil
+	out.Remembered = true
+	out.FilesKept = files != nil
+	out.FilesSkipped = skipped
+}
+
+// keptFiles turns the request into the files to keep: the very bytes the
+// server received, not a second read of the paths, so what is kept is what
+// ran. It returns nil — keep nothing — when keeping is off or the files are
+// over the cap, with the reason in the second value for the latter.
+func (h *SubmitHistory) keptFiles(input SubmitInput, req workflow2.SubmitRequest) ([]ports.RunFile, string) {
+	if h.SkipFiles {
+		return nil, ""
+	}
+	limit := h.MaxFileBytes
+	if limit <= 0 {
+		limit = DefaultMaxKeptBytes
+	}
+
+	var files []ports.RunFile
+	var total int64
+	keep := func(kind ports.RunFileKind, path string, data []byte) {
+		if len(data) == 0 {
+			return
+		}
+		files = append(files, ports.RunFile{Kind: kind, Name: filepath.Base(path), Data: data})
+		total += int64(len(data))
+	}
+	keep(ports.RunFileWorkflow, input.WorkflowFile, req.WorkflowSource)
+	keep(ports.RunFileInputs, input.InputsFile, req.WorkflowInputs)
+	keep(ports.RunFileOptions, input.OptionsFile, req.WorkflowOptions)
+	keep(ports.RunFileDependencies, input.DependenciesFile, req.WorkflowDependencies)
+
+	if total > limit {
+		return nil, fmt.Sprintf("the submitted files total %s, above the %s kept per run", FormatBytes(total), FormatBytes(limit))
+	}
+	return files, ""
+}
+
+// FormatBytes renders a size the way a person reads one: 512 B, 1.5 KiB,
+// 50.0 MiB.
+func FormatBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for m := n / unit; m >= unit; m /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }

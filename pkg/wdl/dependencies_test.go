@@ -165,3 +165,28 @@ workflow W {}
 		t.Errorf("duplicate imports of the same file should report once, got %d: %+v", count, report.Findings)
 	}
 }
+
+func TestLocalImportsSkipsRemoteAndDuplicates(t *testing.T) {
+	source := []byte(`version 1.0
+import "tasks/align.wdl" as align
+import "https://raw.githubusercontent.com/org/repo/main/remote.wdl" as remote
+import "tasks/align.wdl" as again
+import 'qc.wdl'
+workflow W {}
+`)
+
+	got := LocalImports(source)
+	want := []string{"tasks/align.wdl", "qc.wdl"}
+	if len(got) != len(want) {
+		t.Fatalf("LocalImports = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("LocalImports[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	if got := LocalImports([]byte("version 1.0\nworkflow W {}\n")); len(got) != 0 {
+		t.Errorf("LocalImports of a workflow without imports = %v, want none", got)
+	}
+}

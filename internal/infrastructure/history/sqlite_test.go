@@ -1,7 +1,11 @@
 package history
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -406,8 +410,8 @@ func TestForgetAndPrune(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prune: %v", err)
 	}
-	if removed != 1 {
-		t.Errorf("pruned %d runs, want 1", removed)
+	if removed.Runs != 1 {
+		t.Errorf("pruned %d runs, want 1", removed.Runs)
 	}
 
 	if err := store.Forget(ctx, recent.Ref()); err != nil {
@@ -458,5 +462,268 @@ func TestCloseWithoutUseDoesNotCreateTheDatabase(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("found %v, want no database created by an unused store", entries)
+	}
+}
+
+// keptFiles are files out of submission order on purpose: reads must put
+// them back in it.
+func keptFiles() []ports.RunFile {
+	return []ports.RunFile{
+		{Kind: ports.RunFileDependencies, Name: "deps.zip", Data: []byte("PK\x03\x04 not really a zip")},
+		{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte("version 1.0\nworkflow HelloWorld {}\n")},
+		{Kind: ports.RunFileInputs, Name: "hello.inputs.json", Data: []byte(`{"HelloWorld.name": "x"}`)},
+	}
+}
+
+func hexDigest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func TestRecordKeepsFilesVerbatim(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	wantOrder := []ports.RunFileKind{ports.RunFileWorkflow, ports.RunFileInputs, ports.RunFileDependencies}
+	if len(got.Files) != len(wantOrder) {
+		t.Fatalf("Get returned %d files, want %d", len(got.Files), len(wantOrder))
+	}
+	for i, f := range got.Files {
+		if f.Kind != wantOrder[i] {
+			t.Errorf("files[%d] = %s, want %s: reads must follow submission order", i, f.Kind, wantOrder[i])
+		}
+		if f.Data != nil {
+			t.Errorf("Get returned the bytes of %s; a listing wants sizes, not contents", f.Kind)
+		}
+	}
+
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("Files returned %d files, want 3", len(files))
+	}
+	wdl := files[0]
+	if wdl.Kind != ports.RunFileWorkflow || wdl.Name != "hello.wdl" {
+		t.Errorf("files[0] = %s %q, want the workflow hello.wdl", wdl.Kind, wdl.Name)
+	}
+	if !bytes.Equal(wdl.Data, keptFiles()[1].Data) {
+		t.Errorf("workflow bytes = %q, want them verbatim", wdl.Data)
+	}
+	if wdl.Size != int64(len(wdl.Data)) || wdl.SHA256 != hexDigest(wdl.Data) {
+		t.Errorf("size/sha = %d/%s, want the store to compute them from the bytes", wdl.Size, wdl.SHA256)
+	}
+	if !bytes.Equal(files[2].Data, keptFiles()[0].Data) {
+		t.Errorf("dependencies bytes = %q, want them verbatim", files[2].Data)
+	}
+}
+
+func TestRecordWithoutFilesKeepsTheExistingOnes(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	// A re-record with nil files — what a note or status refresh sends —
+	// must not erase what only this machine still has.
+	again := sampleRecord("abc-123")
+	again.Files = nil
+	if err := store.Record(ctx, again); err != nil {
+		t.Fatalf("Record again: %v", err)
+	}
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("%d files after a nil re-record, want the 3 kept ones", len(files))
+	}
+
+	// An explicit empty slice is a decision: keep nothing.
+	again.Files = []ports.RunFile{}
+	if err := store.Record(ctx, again); err != nil {
+		t.Fatalf("Record with no files: %v", err)
+	}
+	files, err = store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("%d files after an empty re-record, want none", len(files))
+	}
+}
+
+func TestFilesOfARunWithoutAny(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "ghost"}); !errors.Is(err, ports.ErrRunNotRemembered) {
+		t.Errorf("Files of an unknown run = %v, want ErrRunNotRemembered", err)
+	}
+
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	files, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "abc-123"})
+	if err != nil {
+		t.Fatalf("Files of a run without kept files: %v, want an empty answer", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("Files = %v, want none", files)
+	}
+}
+
+func TestListAndLookupAttachKeptFilesPerRun(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	with := sampleRecord("with-files")
+	with.Files = keptFiles()
+	without := sampleRecord("without-files")
+	for _, rec := range []ports.RunRecord{with, without} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+
+	listed, err := store.List(ctx, ports.RunHistoryFilter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	counts := map[string]int{}
+	for _, rec := range listed {
+		counts[rec.WorkflowID] = len(rec.Files)
+	}
+	if counts["with-files"] != 3 || counts["without-files"] != 0 {
+		t.Errorf("kept files per run = %v, want 3 for with-files and 0 for without-files", counts)
+	}
+
+	found, err := store.Lookup(ctx, testHost, []string{"with-files", "without-files"})
+	if err != nil {
+		t.Fatalf("Lookup: %v", err)
+	}
+	if len(found["with-files"].Files) != 3 || len(found["without-files"].Files) != 0 {
+		t.Errorf("Lookup kept files = %d/%d, want 3/0", len(found["with-files"].Files), len(found["without-files"].Files))
+	}
+}
+
+func TestForgetDropsTheKeptFiles(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	if err := store.Forget(ctx, rec.Ref()); err != nil {
+		t.Fatalf("Forget: %v", err)
+	}
+
+	// The run coming back with nil files must find nothing left behind.
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("%d files survived Forget, want none", len(files))
+	}
+}
+
+func TestPruneCountsTheBytesFreed(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	old := sampleRecord("old-run")
+	old.SubmittedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	old.Files = keptFiles()
+	recent := sampleRecord("recent-run")
+	recent.SubmittedAt = time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	recent.Files = keptFiles()
+	for _, rec := range []ports.RunRecord{old, recent} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+	var wantBytes int64
+	for _, f := range keptFiles() {
+		wantBytes += int64(len(f.Data))
+	}
+
+	removed, err := store.Prune(ctx, time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("Prune: %v", err)
+	}
+	if removed.Runs != 1 || removed.Bytes != wantBytes {
+		t.Errorf("Prune = %+v, want 1 run and %d bytes", removed, wantBytes)
+	}
+	files, err := store.Files(ctx, recent.Ref())
+	if err != nil || len(files) != 3 {
+		t.Errorf("recent run has %d files after prune (err %v), want its 3 untouched", len(files), err)
+	}
+}
+
+func TestMigratesAVersionOneDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	ctx := context.Background()
+
+	// A database as the first release left it: runs only, version 1.
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := raw.Exec(migrations[0]); err != nil {
+		t.Fatalf("v1 schema: %v", err)
+	}
+	if _, err := raw.Exec(`PRAGMA user_version = 1`); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at, description)
+		VALUES (?, ?, ?, ?, ?, ?)`, testHost, "old-run", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "from before files were kept"); err != nil {
+		t.Fatalf("v1 row: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	store := New(path)
+	defer func() { _ = store.Close() }()
+	got, err := store.Get(ctx, ports.RunRef{Host: testHost, WorkflowID: "old-run"})
+	if err != nil {
+		t.Fatalf("Get after migration: %v", err)
+	}
+	if got.Description != "from before files were kept" || len(got.Files) != 0 {
+		t.Errorf("got %+v, want the v1 row intact with no files", got)
+	}
+
+	rec := sampleRecord("new-run")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record with files after migration: %v", err)
+	}
+	db, err := store.open()
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	if version != schemaVersion {
+		t.Errorf("user_version = %d, want %d", version, schemaVersion)
 	}
 }

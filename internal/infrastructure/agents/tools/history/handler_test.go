@@ -33,6 +33,10 @@ func (s *stubStore) Lookup(context.Context, string, []string) (map[string]ports.
 	return nil, nil
 }
 
+func (s *stubStore) Files(context.Context, ports.RunRef) ([]ports.RunFile, error) {
+	return nil, ports.ErrRunNotRemembered
+}
+
 type stubHost struct{}
 
 func (stubHost) CurrentHost() (string, string) { return "http://localhost:8000", "local" }
@@ -174,5 +178,30 @@ func TestViewDropsEmptyFields(t *testing.T) {
 	}
 	if got["remembered"] != string(ports.OriginNote) {
 		t.Errorf("remembered = %v, want how the run came to be known", got["remembered"])
+	}
+}
+
+func TestHandleSaysWhichRunsAreExportable(t *testing.T) {
+	kept := record("run-1")
+	kept.Files = []ports.RunFile{
+		{Kind: ports.RunFileWorkflow, Name: "tso500.wdl", Size: 1200},
+		{Kind: ports.RunFileDependencies, Name: "deps.zip", Size: 54000},
+	}
+	h := NewHandler(&stubStore{records: []ports.RunRecord{kept, record("run-2")}}, stubHost{})
+
+	out, err := h.Handle(context.Background(), types.Input{Action: action})
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	runs := data(t, out)["runs"].([]map[string]any)
+	if runs[0]["exportable"] != true {
+		t.Errorf("run-1 exportable = %v, want true: its files are kept", runs[0]["exportable"])
+	}
+	files, ok := runs[0]["kept_files"].([]map[string]any)
+	if !ok || len(files) != 2 || files[1]["name"] != "deps.zip" {
+		t.Errorf("kept_files = %v, want the two kept files named", runs[0]["kept_files"])
+	}
+	if _, ok := runs[1]["exportable"]; ok {
+		t.Error("run-2 is marked exportable although nothing was kept for it")
 	}
 }
