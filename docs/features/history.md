@@ -81,7 +81,7 @@ already running by then, so a failure is reported as a warning.
 | `--since` | | `7d`, `24h` or `2026-07-01` |
 | `--limit` | `-l` | Maximum rows (default 20) |
 | `--no-refresh` | | Do not ask the server for current statuses |
-| `--json` | | Print the records as JSON |
+| `--json` | | Print the records as JSON; `Exportable` says the files were kept |
 
 ```
 $ pumbaa history
@@ -99,6 +99,8 @@ Run history
 Statuses are refreshed in a single query filtered by run ID. When the server
 cannot be reached the listing still works, from the last known statuses, and
 says so.
+
+`pumbaa history show --json <id>` prints one record the same way, and exits 1 when there is none.
 
 !!! note "Why a run is only marked `*` after a while"
     Cromwell answers `/query` from a summary table filled by a background job,
@@ -153,6 +155,9 @@ gets the same submission.
 | `--out` | `-o` | Directory to write to; the second argument does the same (default: `./<workflow-id>`) |
 | `--force` | | Replace files already in the directory |
 | `--strip-secrets` | | Drop credential options (`user_service_account_json`, tokens) before sharing |
+| `--json` | | Print the manifest instead of the summary, with `dir` and `complete` added |
+
+The exit status is 1 when a file could not be produced. Whatever could be written is still in the directory, and the manifest says what is missing, so a script can tell a partial export from a failed one.
 
 !!! warning "What the server cannot supply"
     A run nothing was kept for — submitted before files were kept, through

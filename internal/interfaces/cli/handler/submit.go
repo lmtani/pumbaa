@@ -32,6 +32,9 @@ func (h *SubmitHandler) Command() *cli.Command {
 		Name:    "submit",
 		Aliases: []string{"s"},
 		Usage:   "Submit a workflow to Cromwell",
+		Description: `The run is recorded in the local history with the very files sent, so
+"pumbaa history" finds it later and "pumbaa history export <workflow-id>"
+writes the files back out, ready to submit again or to hand to someone else.`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "workflow",

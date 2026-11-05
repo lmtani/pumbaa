@@ -36,7 +36,7 @@ func NewHistoryHandler(uc *workflow.RunHistoryUseCase, exporter *workflow.Export
 func (h *HistoryHandler) Command() *cli.Command {
 	return &cli.Command{
 		Name:  "history",
-		Usage: "Browse the local history of submitted runs",
+		Usage: "Browse the runs submitted from here, or export one to submit again",
 		Description: `Runs submitted through pumbaa are remembered locally, with whatever
 description was given at submission time and the files they were submitted
 with. The record outlives the server: it still answers what a run was for
@@ -57,7 +57,13 @@ Notes can be attached to any run, not only to ones submitted from here.`,
 				Name:      "show",
 				Usage:     "Show everything remembered about a run",
 				ArgsUsage: "<workflow-id>",
-				Action:    h.show,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "json",
+						Usage: "[optional] Print the record as JSON; exits 1 when there is none",
+					},
+				},
+				Action: h.show,
 			},
 			{
 				Name:      "note",
@@ -73,7 +79,10 @@ Notes can be attached to any run, not only to ones submitted from here.`,
 options.json and dependencies.zip, with labels.json and a manifest.json saying
 where each came from. A run nothing was kept for is read from the server
 instead — exact for the workflow and inputs, but without the dependencies
-zip, which Cromwell does not keep.`,
+zip, which Cromwell does not keep.
+
+The exit status is 1 when a file could not be produced. Whatever could be
+written is still in the directory, and manifest.json says what is missing.`,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "out",
@@ -87,6 +96,10 @@ zip, which Cromwell does not keep.`,
 					&cli.BoolFlag{
 						Name:  "strip-secrets",
 						Usage: "[optional] Drop credential options (service account JSON, tokens) before sharing",
+					},
+					&cli.BoolFlag{
+						Name:  "json",
+						Usage: "[optional] Print the manifest as JSON instead of the summary",
 					},
 				},
 				Action: h.export,
@@ -169,7 +182,7 @@ func (h *HistoryHandler) list(c *cli.Context) error {
 	}
 
 	if c.Bool("json") {
-		return printJSON(out.Entries)
+		return printJSON(entriesJSON(out.Entries))
 	}
 
 	if len(out.Entries) == 0 {
@@ -234,12 +247,21 @@ func (h *HistoryHandler) show(c *cli.Context) error {
 	out, err := h.useCase.Show(c.Context, id, true)
 	if err != nil {
 		if errors.Is(err, ports.ErrRunNotRemembered) {
+			// A script asking for JSON needs a verdict it can branch on, not a
+			// hint about writing a note.
+			if c.Bool("json") {
+				return cli.Exit(fmt.Sprintf("no local record for %s", id), 1)
+			}
 			h.presenter.Info("No local record for %s.", id)
 			h.presenter.Info("Write one with: pumbaa history note %s \"what it was for\"", id)
 			return nil
 		}
 		h.presenter.Error("Failed to read the local history: %v", err)
 		return err
+	}
+
+	if c.Bool("json") {
+		return printJSON(entryJSON(out.Entry))
 	}
 
 	rec := out.Entry.Record
@@ -319,6 +341,16 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 		return err
 	}
 
+	if c.Bool("json") {
+		if err := printJSON(exportJSON{Dir: out.Dir, Complete: out.Complete(), ExportRunOutput: out}); err != nil {
+			return err
+		}
+		if !out.Complete() {
+			return cli.Exit("", 1)
+		}
+		return nil
+	}
+
 	h.presenter.Success("Exported %s to %s", id, out.Dir)
 	table := h.presenter.NewTable([]string{"File", "Source", "Size", "Note"})
 	for _, f := range out.Files {
@@ -344,6 +376,36 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 		return cli.Exit("", 1)
 	}
 	return nil
+}
+
+// historyEntryJSON is a remembered run as a script reads it: the entry, plus
+// the one answer a script would otherwise have to infer from Files.
+type historyEntryJSON struct {
+	workflow.RunHistoryEntry
+	// Exportable says the submitted files were kept, so an export reproduces
+	// the run exactly, dependencies included, without asking the server.
+	Exportable bool
+}
+
+func entryJSON(entry workflow.RunHistoryEntry) historyEntryJSON {
+	return historyEntryJSON{RunHistoryEntry: entry, Exportable: len(entry.Record.Files) > 0}
+}
+
+func entriesJSON(entries []workflow.RunHistoryEntry) []historyEntryJSON {
+	out := make([]historyEntryJSON, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, entryJSON(entry))
+	}
+	return out
+}
+
+// exportJSON is the manifest plus what the manifest does not say because it
+// lives inside the directory: where that is, and whether the run can be
+// submitted from it as is.
+type exportJSON struct {
+	Dir      string `json:"dir"`
+	Complete bool   `json:"complete"`
+	*workflow.ExportRunOutput
 }
 
 func sourceLabel(source workflow.ExportSource) string {
