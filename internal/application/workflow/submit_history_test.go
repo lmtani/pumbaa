@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
@@ -177,5 +178,83 @@ func TestSubmitWithoutHistoryConfigured(t *testing.T) {
 	}
 	if out.Remembered || out.HistoryError != nil {
 		t.Errorf("Remembered=%v, HistoryError=%v; want a silent no-op", out.Remembered, out.HistoryError)
+	}
+}
+
+func TestSubmitKeepsTheSubmittedBytes(t *testing.T) {
+	repo, fp := submitFixture(t)
+	store := &fakeRunHistory{}
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil),
+		&SubmitHistory{Store: store, Host: fakeHostProvider{url: "http://localhost:8000", alias: "local"}})
+
+	out, err := uc.Execute(context.Background(), SubmitInput{
+		WorkflowFile: "hello.wdl",
+		InputsFile:   "hello.inputs.json",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !out.FilesKept || out.FilesSkipped != "" {
+		t.Fatalf("FilesKept=%v, FilesSkipped=%q; want the files kept", out.FilesKept, out.FilesSkipped)
+	}
+
+	files := store.recorded[0].Files
+	if len(files) != 2 {
+		t.Fatalf("kept %d files, want the workflow and the inputs (no options or zip were given)", len(files))
+	}
+	wdl, inputs := files[0], files[1]
+	if wdl.Kind != ports.RunFileWorkflow || wdl.Name != "hello.wdl" || string(wdl.Data) != "version 1.0\nworkflow HelloWorld {\n}\n" {
+		t.Errorf("workflow file = %s %q %q, want the bytes that were sent, under the basename they were read from", wdl.Kind, wdl.Name, wdl.Data)
+	}
+	if inputs.Kind != ports.RunFileInputs || inputs.Name != "hello.inputs.json" || string(inputs.Data) != "{}" {
+		t.Errorf("inputs file = %s %q %q, want the bytes that were sent", inputs.Kind, inputs.Name, inputs.Data)
+	}
+}
+
+func TestSubmitRecordsWithoutFilesAboveTheCap(t *testing.T) {
+	repo, fp := submitFixture(t)
+	store := &fakeRunHistory{}
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil),
+		&SubmitHistory{Store: store, Host: fakeHostProvider{url: "http://localhost:8000"}, MaxFileBytes: 10})
+
+	out, err := uc.Execute(context.Background(), SubmitInput{WorkflowFile: "hello.wdl", InputsFile: "hello.inputs.json"})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !out.Remembered {
+		t.Fatal("the run must still be recorded when its files are too large to keep")
+	}
+	if out.FilesKept || !strings.Contains(out.FilesSkipped, "above") {
+		t.Errorf("FilesKept=%v, FilesSkipped=%q; want the files skipped with the cap as the reason", out.FilesKept, out.FilesSkipped)
+	}
+	if store.recorded[0].Files != nil {
+		t.Errorf("recorded files = %v, want none", store.recorded[0].Files)
+	}
+}
+
+func TestFormatBytes(t *testing.T) {
+	cases := map[int64]string{0: "0 B", 512: "512 B", 1536: "1.5 KiB", 701 * 2: "1.4 KiB", 50 << 20: "50.0 MiB", 3 << 30: "3.0 GiB"}
+	for n, want := range cases {
+		if got := FormatBytes(n); got != want {
+			t.Errorf("FormatBytes(%d) = %q, want %q", n, got, want)
+		}
+	}
+}
+
+func TestSubmitCanRecordPathsOnly(t *testing.T) {
+	repo, fp := submitFixture(t)
+	store := &fakeRunHistory{}
+	uc := NewSubmitUseCase(repo, fp, NewPreflightUseCase(fp, nil),
+		&SubmitHistory{Store: store, Host: fakeHostProvider{url: "http://localhost:8000"}, SkipFiles: true})
+
+	out, err := uc.Execute(context.Background(), SubmitInput{WorkflowFile: "hello.wdl"})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if out.FilesKept || out.FilesSkipped != "" {
+		t.Errorf("FilesKept=%v, FilesSkipped=%q; keeping files is off, which is not a reason to warn", out.FilesKept, out.FilesSkipped)
+	}
+	if store.recorded[0].Files != nil || store.recorded[0].WorkflowFile == "" {
+		t.Errorf("record = %+v, want the path and no files", store.recorded[0])
 	}
 }

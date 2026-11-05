@@ -33,6 +33,10 @@ type FileConfig struct {
 	GeminiAPIKey string `yaml:"gemini_api_key,omitempty"`
 	GeminiModel  string `yaml:"gemini_model,omitempty"`
 
+	// History. HistoryKeepFiles is a pointer so that "unset" and "false"
+	// can be told apart: the default is to keep.
+	HistoryKeepFiles *bool `yaml:"history_keep_files,omitempty"`
+
 	// Telemetry
 	TelemetryEnabled  *bool  `yaml:"telemetry_enabled,omitempty"`
 	TelemetryEndpoint string `yaml:"telemetry_endpoint,omitempty"`

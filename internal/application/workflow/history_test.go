@@ -14,6 +14,7 @@ import (
 type stubRunHistory struct {
 	ports.RunHistory
 	records   []ports.RunRecord
+	files     map[string][]ports.RunFile
 	statusSet map[string]string
 	lastQuery ports.RunHistoryFilter
 }
@@ -73,6 +74,15 @@ func (s *stubRunHistory) Forget(_ context.Context, ref ports.RunRef) error {
 func (s *stubRunHistory) Record(_ context.Context, rec ports.RunRecord) error {
 	s.records = append(s.records, rec)
 	return nil
+}
+
+func (s *stubRunHistory) Files(_ context.Context, ref ports.RunRef) ([]ports.RunFile, error) {
+	for _, rec := range s.records {
+		if rec.Host == ref.Host && rec.WorkflowID == ref.WorkflowID {
+			return s.files[ref.WorkflowID], nil
+		}
+	}
+	return nil, ports.ErrRunNotRemembered
 }
 
 // historyQuerier answers only about the runs it was given.

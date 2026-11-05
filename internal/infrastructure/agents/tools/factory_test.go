@@ -14,6 +14,7 @@ import (
 	"github.com/lmtani/pumbaa/internal/infrastructure/agents/tools/types"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
+	"github.com/lmtani/pumbaa/internal/application/workflow"
 )
 
 // stubWDLRepo satisfies wdl.Repository for registry construction in tests.
@@ -187,6 +188,10 @@ func (stubRunHistory) Lookup(context.Context, string, []string) (map[string]port
 	return nil, nil
 }
 
+func (stubRunHistory) Files(context.Context, ports.RunRef) ([]ports.RunFile, error) {
+	return nil, ports.ErrRunNotRemembered
+}
+
 type stubHostProvider struct{}
 
 func (stubHostProvider) CurrentHost() (string, string) { return "http://localhost:8000", "local" }
@@ -217,5 +222,20 @@ func TestHistoryActionDispatchesThroughRegistry(t *testing.T) {
 	}
 	if out.Success {
 		t.Error("Success = true for a run with no local record, want the absence reported")
+	}
+}
+
+type stubExporter struct{}
+
+func (stubExporter) Execute(context.Context, workflow.ExportRunInput) (*workflow.ExportRunOutput, error) {
+	return &workflow.ExportRunOutput{}, nil
+}
+
+func TestExportActionNeedsAnExporter(t *testing.T) {
+	if _, ok := NewDefaultRegistry(Deps{}).Get("export"); ok {
+		t.Error("export should be omitted without an exporter")
+	}
+	if _, ok := NewDefaultRegistry(Deps{Exporter: stubExporter{}}).Get("export"); !ok {
+		t.Error("export should be registered once an exporter is wired")
 	}
 }

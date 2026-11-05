@@ -19,6 +19,9 @@ type Config struct {
 	CromwellTimeout   time.Duration
 	SessionDBPath     string
 	HistoryDBPath     string
+	// HistoryKeepFiles keeps the submitted files with each run's record, so
+	// `pumbaa history export` can reproduce the run. On unless turned off.
+	HistoryKeepFiles bool
 
 	// LLM Provider configuration
 	LLMProvider string // "ollama" or "vertex"
@@ -80,6 +83,13 @@ func Load() *Config {
 	if historyDBPath == "" {
 		home, _ := os.UserHomeDir()
 		historyDBPath = filepath.Join(home, ".pumbaa", "history.db")
+	}
+
+	historyKeepFiles := true
+	if os.Getenv("PUMBAA_HISTORY_KEEP_FILES") == "false" {
+		historyKeepFiles = false
+	} else if fileCfg.HistoryKeepFiles != nil && !*fileCfg.HistoryKeepFiles {
+		historyKeepFiles = false
 	}
 
 	// LLM Provider: env > file > default
@@ -206,6 +216,7 @@ func Load() *Config {
 		CromwellTimeout:   30 * time.Second,
 		SessionDBPath:     sessionDBPath,
 		HistoryDBPath:     historyDBPath,
+		HistoryKeepFiles:  historyKeepFiles,
 		LLMProvider:       llmProvider,
 		OllamaHost:        ollamaHost,
 		OllamaModel:       ollamaModel,

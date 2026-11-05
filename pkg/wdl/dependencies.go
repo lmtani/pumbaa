@@ -79,6 +79,23 @@ func CheckDependencies(mainSource, zipData []byte) *DependencyReport {
 	return report
 }
 
+// LocalImports lists the imports of a WDL source that a dependencies zip
+// would have to satisfy — every import that is not a URL — as written in the
+// source, deduplicated, in order of appearance. It answers "does this
+// workflow need a zip at all?" without a zip to check against.
+func LocalImports(source []byte) []string {
+	var imports []string
+	seen := make(map[string]bool)
+	for _, imp := range extractImportPaths(source) {
+		if isRemoteImport(imp) || seen[imp] {
+			continue
+		}
+		seen[imp] = true
+		imports = append(imports, imp)
+	}
+	return imports
+}
+
 // unresolvedImports returns a finding for each non-remote import in source
 // whose target is not among the available files.
 func unresolvedImports(importer string, source []byte, available map[string]bool) []Finding {

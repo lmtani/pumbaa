@@ -8,12 +8,15 @@ package history
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -29,7 +32,7 @@ var _ ports.RunHistory = (*Store)(nil)
 // schemaVersion is bumped whenever migrate gains a step. Unlike the chat
 // store's ignored ALTER TABLEs, migrations here are explicit and recorded in
 // PRAGMA user_version.
-const schemaVersion = 1
+const schemaVersion = 2
 
 // timeLayout stores instants as text so what is written is what is read back,
 // independent of driver date handling.
@@ -89,20 +92,11 @@ func (s *Store) open() (*sql.DB, error) {
 	return s.db, s.err
 }
 
-// migrate brings the schema up to schemaVersion, stepping from whatever
-// version the file is at.
-func migrate(db *sql.DB) error {
-	var version int
-	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
-		return err
-	}
-	if version >= schemaVersion {
-		return nil
-	}
-
-	steps := []string{
-		// v1: the initial runs table.
-		`CREATE TABLE IF NOT EXISTS runs (
+// migrations are the schema steps, one per version: migrations[i] takes a
+// database at version i to version i+1.
+var migrations = []string{
+	// v1: the initial runs table.
+	`CREATE TABLE IF NOT EXISTS runs (
 			host              TEXT NOT NULL,
 			workflow_id       TEXT NOT NULL,
 			host_alias        TEXT NOT NULL DEFAULT '',
@@ -122,10 +116,35 @@ func migrate(db *sql.DB) error {
 			PRIMARY KEY (host, workflow_id)
 		);
 		CREATE INDEX IF NOT EXISTS idx_runs_submitted ON runs(submitted_at DESC);`,
+	// v2: the submitted files, kept verbatim so a run can be exported and
+	// submitted again. One row per kind; the bytes live here rather than
+	// on disk so forgetting a run forgets its files in the same statement
+	// and nothing is ever orphaned.
+	`CREATE TABLE IF NOT EXISTS run_files (
+			host        TEXT NOT NULL,
+			workflow_id TEXT NOT NULL,
+			kind        TEXT NOT NULL,
+			name        TEXT NOT NULL DEFAULT '',
+			sha256      TEXT NOT NULL,
+			size        INTEGER NOT NULL,
+			data        BLOB NOT NULL,
+			PRIMARY KEY (host, workflow_id, kind)
+		);`,
+}
+
+// migrate brings the schema up to schemaVersion, stepping from whatever
+// version the file is at.
+func migrate(db *sql.DB) error {
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return err
+	}
+	if version >= schemaVersion {
+		return nil
 	}
 
 	for i := version; i < schemaVersion; i++ {
-		if _, err := db.Exec(steps[i]); err != nil {
+		if _, err := db.Exec(migrations[i]); err != nil {
 			return fmt.Errorf("migration to v%d failed: %w", i+1, err)
 		}
 	}
@@ -171,7 +190,13 @@ func (s *Store) Record(ctx context.Context, rec ports.RunRecord) error {
 		return fmt.Errorf("history: failed to encode labels: %w", err)
 	}
 
-	_, err = db.ExecContext(ctx, `
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("history: failed to record run: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO runs (
 			host, workflow_id, host_alias, name, description,
 			workflow_file, inputs_file, options_file, dependencies_file,
@@ -199,6 +224,37 @@ func (s *Store) Record(ctx context.Context, rec ports.RunRecord) error {
 	)
 	if err != nil {
 		return fmt.Errorf("history: failed to record run: %w", err)
+	}
+
+	if rec.Files != nil {
+		if err := replaceFiles(ctx, tx, rec.Ref(), rec.Files); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("history: failed to record run: %w", err)
+	}
+	return nil
+}
+
+// replaceFiles makes the kept files of a run exactly the given ones. The
+// digest and size are computed here, from the bytes: the store is the
+// authority on what it holds, and a caller cannot hand it a wrong checksum.
+func replaceFiles(ctx context.Context, tx *sql.Tx, ref ports.RunRef, files []ports.RunFile) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM run_files WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID); err != nil {
+		return fmt.Errorf("history: failed to replace kept files: %w", err)
+	}
+	for _, f := range files {
+		if f.Kind == "" {
+			return fmt.Errorf("history: a kept file needs a kind")
+		}
+		sum := sha256.Sum256(f.Data)
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			ref.Host, ref.WorkflowID, string(f.Kind), f.Name, hex.EncodeToString(sum[:]), len(f.Data), f.Data)
+		if err != nil {
+			return fmt.Errorf("history: failed to keep %s file: %w", f.Kind, err)
+		}
 	}
 	return nil
 }
@@ -242,25 +298,173 @@ func (s *Store) Forget(ctx context.Context, ref ports.RunRef) error {
 	if err != nil {
 		return err
 	}
-	res, err := db.ExecContext(ctx, `DELETE FROM runs WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID)
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("history: failed to forget run: %w", err)
 	}
-	return requireAffected(res, ref)
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM run_files WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID); err != nil {
+		return fmt.Errorf("history: failed to forget run: %w", err)
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM runs WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID)
+	if err != nil {
+		return fmt.Errorf("history: failed to forget run: %w", err)
+	}
+	if err := requireAffected(res, ref); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("history: failed to forget run: %w", err)
+	}
+	return nil
 }
 
-// Prune drops records submitted before the cutoff.
-func (s *Store) Prune(ctx context.Context, before time.Time) (int, error) {
+// Prune drops records submitted before the cutoff, and their kept files with
+// them. SQLite does not return the space of deleted rows on its own, so the
+// file is compacted afterwards when any bytes went.
+func (s *Store) Prune(ctx context.Context, before time.Time) (ports.PruneResult, error) {
 	db, err := s.open()
 	if err != nil {
-		return 0, err
+		return ports.PruneResult{}, err
 	}
-	res, err := db.ExecContext(ctx, `DELETE FROM runs WHERE submitted_at < ?`, formatTime(before.UTC()))
+	cutoff := formatTime(before.UTC())
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("history: failed to prune: %w", err)
+		return ports.PruneResult{}, fmt.Errorf("history: failed to prune: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var result ports.PruneResult
+	err = tx.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(f.size), 0) FROM run_files f
+		WHERE EXISTS (SELECT 1 FROM runs r WHERE r.host = f.host AND r.workflow_id = f.workflow_id AND r.submitted_at < ?)`,
+		cutoff).Scan(&result.Bytes)
+	if err != nil {
+		return ports.PruneResult{}, fmt.Errorf("history: failed to prune: %w", err)
+	}
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM run_files
+		WHERE EXISTS (SELECT 1 FROM runs r WHERE r.host = run_files.host AND r.workflow_id = run_files.workflow_id AND r.submitted_at < ?)`,
+		cutoff)
+	if err != nil {
+		return ports.PruneResult{}, fmt.Errorf("history: failed to prune: %w", err)
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM runs WHERE submitted_at < ?`, cutoff)
+	if err != nil {
+		return ports.PruneResult{}, fmt.Errorf("history: failed to prune: %w", err)
 	}
 	affected, err := res.RowsAffected()
-	return int(affected), err
+	if err != nil {
+		return ports.PruneResult{}, err
+	}
+	result.Runs = int(affected)
+	if err := tx.Commit(); err != nil {
+		return ports.PruneResult{}, fmt.Errorf("history: failed to prune: %w", err)
+	}
+
+	if result.Bytes > 0 {
+		// A failed compaction only costs disk space; the records are gone.
+		_, _ = db.ExecContext(ctx, `VACUUM`)
+	}
+	return result, nil
+}
+
+// Files returns the kept files of a run, bytes included, in submission order.
+func (s *Store) Files(ctx context.Context, ref ports.RunRef) ([]ports.RunFile, error) {
+	db, err := s.open()
+	if err != nil {
+		return nil, err
+	}
+	var exists int
+	err = db.QueryRowContext(ctx, `SELECT 1 FROM runs WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID).Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ports.ErrRunNotRemembered
+	}
+	if err != nil {
+		return nil, fmt.Errorf("history: failed to read run: %w", err)
+	}
+
+	rows, err := db.QueryContext(ctx,
+		`SELECT kind, name, sha256, size, data FROM run_files WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID)
+	if err != nil {
+		return nil, fmt.Errorf("history: failed to read kept files: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	files := []ports.RunFile{}
+	for rows.Next() {
+		var f ports.RunFile
+		var kind string
+		if err := rows.Scan(&kind, &f.Name, &f.SHA256, &f.Size, &f.Data); err != nil {
+			return nil, fmt.Errorf("history: failed to read kept files: %w", err)
+		}
+		f.Kind = ports.RunFileKind(kind)
+		files = append(files, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sortFiles(files)
+	return files, nil
+}
+
+// attachFiles fills in what is kept for each record — everything but the
+// bytes — in one query per host, so a listing learns which runs can be
+// exported without a round trip per row.
+func attachFiles(ctx context.Context, db *sql.DB, records []ports.RunRecord) error {
+	byHost := map[string][]int{}
+	for i, rec := range records {
+		byHost[rec.Host] = append(byHost[rec.Host], i)
+	}
+	for host, indexes := range byHost {
+		args := make([]any, 0, len(indexes)+1)
+		args = append(args, host)
+		placeholders := make([]string, len(indexes))
+		position := make(map[string]int, len(indexes))
+		for n, i := range indexes {
+			placeholders[n] = "?"
+			args = append(args, records[i].WorkflowID)
+			position[records[i].WorkflowID] = i
+		}
+
+		rows, err := db.QueryContext(ctx,
+			`SELECT workflow_id, kind, name, sha256, size FROM run_files WHERE host = ? AND workflow_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+		if err != nil {
+			return fmt.Errorf("history: failed to read kept files: %w", err)
+		}
+		for rows.Next() {
+			var f ports.RunFile
+			var id, kind string
+			if err := rows.Scan(&id, &kind, &f.Name, &f.SHA256, &f.Size); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("history: failed to read kept files: %w", err)
+			}
+			f.Kind = ports.RunFileKind(kind)
+			i := position[id]
+			records[i].Files = append(records[i].Files, f)
+		}
+		err = rows.Err()
+		_ = rows.Close()
+		if err != nil {
+			return err
+		}
+	}
+	for i := range records {
+		sortFiles(records[i].Files)
+	}
+	return nil
+}
+
+// sortFiles puts kept files in submission order: workflow, inputs, options,
+// dependencies.
+func sortFiles(files []ports.RunFile) {
+	rank := make(map[ports.RunFileKind]int, len(ports.RunFileKinds))
+	for i, kind := range ports.RunFileKinds {
+		rank[kind] = i
+	}
+	sort.SliceStable(files, func(i, j int) bool { return rank[files[i].Kind] < rank[files[j].Kind] })
 }
 
 // Get returns a single record, or ErrRunNotRemembered.
@@ -277,7 +481,11 @@ func (s *Store) Get(ctx context.Context, ref ports.RunRef) (ports.RunRecord, err
 	if err != nil {
 		return ports.RunRecord{}, fmt.Errorf("history: failed to read run: %w", err)
 	}
-	return rec, nil
+	records := []ports.RunRecord{rec}
+	if err := attachFiles(ctx, db, records); err != nil {
+		return ports.RunRecord{}, err
+	}
+	return records[0], nil
 }
 
 // List returns matching records, newest submission first.
@@ -331,7 +539,13 @@ func (s *Store) List(ctx context.Context, filter ports.RunHistoryFilter) ([]port
 		}
 		records = append(records, rec)
 	}
-	return records, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := attachFiles(ctx, db, records); err != nil {
+		return nil, err
+	}
+	return records, nil
 }
 
 // Lookup answers which of the given runs are remembered, in one query.
@@ -360,14 +574,24 @@ func (s *Store) Lookup(ctx context.Context, host string, workflowIDs []string) (
 	}
 	defer func() { _ = rows.Close() }()
 
+	var records []ports.RunRecord
 	for rows.Next() {
 		rec, err := scanRun(rows)
 		if err != nil {
 			return nil, fmt.Errorf("history: failed to read run: %w", err)
 		}
+		records = append(records, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := attachFiles(ctx, db, records); err != nil {
+		return nil, err
+	}
+	for _, rec := range records {
 		found[rec.WorkflowID] = rec
 	}
-	return found, rows.Err()
+	return found, nil
 }
 
 // searchable is every field a keyword could plausibly appear in, joined so a

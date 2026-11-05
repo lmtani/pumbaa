@@ -78,6 +78,14 @@ Alias: `pumbaa wf s`
     be tags — and it is what makes a run recognisable weeks later in
     [`pumbaa history`](history.md) and in the dashboard.
 
+!!! tip "The files are kept"
+    Every submission is recorded with the very bytes sent — WDL, inputs,
+    options and the dependency zip — so
+    [`pumbaa history export`](history.md#running-it-again-or-handing-it-over)
+    can write them back out and the run be submitted again, by you or by
+    whoever you hand the directory to. Cromwell keeps the WDL and inputs of a
+    run but not its dependency zip, which is why pumbaa does.
+
 ## :material-file-document: Input File
 
 JSON format matching WDL inputs — generate a template with

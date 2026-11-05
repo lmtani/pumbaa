@@ -16,7 +16,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"workflow_id": map[string]any{
 				"type":        "string",
-				"description": "UUID of the workflow (required for status, metadata, outputs, logs actions; optional for history)",
+				"description": "UUID of the workflow (required for status, metadata, outputs, logs, export actions; optional for history)",
 			},
 			"status": map[string]any{
 				"type":        "string",
@@ -33,7 +33,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"path": map[string]any{
 				"type":        "string",
-				"description": "GCS path (gs://bucket/file) for gcs_download, or relative file path for write_file",
+				"description": "GCS path (gs://bucket/file) for gcs_download, relative file path for write_file, or relative directory for export",
 			},
 			"content": map[string]any{
 				"type":        "string",
@@ -45,7 +45,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"overwrite": map[string]any{
 				"type":        "boolean",
-				"description": "Allow write_file to replace an existing file",
+				"description": "Allow write_file to replace an existing file, or export to replace files already in the directory",
 			},
 			"query": map[string]any{
 				"type":        "string",
