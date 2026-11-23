@@ -436,6 +436,60 @@ task MetaTask {
 	}
 }
 
+// An escaped quote inside a meta string must not end the string: a plain text
+// run used to swallow the backslash, so the quote after it closed the string.
+func TestParseMetaStringWithEscapedQuotes(t *testing.T) {
+	content := `version 1.0
+
+workflow Escapes {
+    input {
+        Boolean cap
+        String sep
+    }
+
+    meta {
+        description: 'it\'s \"quoted\" and \\ kept'
+    }
+
+    parameter_meta {
+        cap: {
+            help: "Caps at \"optimal coverage\". A \\ stays, so does \'this\'.",
+            type: "Boolean"
+        }
+        sep: "a \"short\" form"
+    }
+}
+`
+
+	doc, err := ParseBytes([]byte(content))
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	wf := doc.Workflow
+	if wf == nil {
+		t.Fatal("expected a workflow")
+	}
+
+	// Escape sequences are kept verbatim in the parsed value.
+	if got, want := wf.Meta["description"], `it\'s \"quoted\" and \\ kept`; got != want {
+		t.Errorf("meta description = %q, want %q", got, want)
+	}
+	capMeta, ok := wf.ParameterMeta["cap"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("parameter_meta cap = %#v, want an object", wf.ParameterMeta["cap"])
+	}
+	if got, want := capMeta["help"], `Caps at \"optimal coverage\". A \\ stays, so does \'this\'.`; got != want {
+		t.Errorf("parameter_meta cap.help = %q, want %q", got, want)
+	}
+	if got, want := capMeta["type"], "Boolean"; got != want {
+		t.Errorf("parameter_meta cap.type = %q, want %q", got, want)
+	}
+	if got, want := wf.ParameterMeta["sep"], `a \"short\" form`; got != want {
+		t.Errorf("parameter_meta sep = %q, want %q", got, want)
+	}
+}
+
 func TestAnalyzeDependencies(t *testing.T) {
 	// Create temp directory with test files
 	tmpDir, err := os.MkdirTemp("", "wdl-test-*")

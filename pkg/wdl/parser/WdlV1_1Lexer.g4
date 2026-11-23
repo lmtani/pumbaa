@@ -180,14 +180,14 @@ mode MetaSquoteString;
 MetaSquoteEscapedChar: '\\' . -> type(MetaStringPart);
 MetaSquoteUnicodeEscape: '\\u' (HexDigit (HexDigit (HexDigit HexDigit?)?)?)? -> type(MetaStringPart);
 MetaEndSquote: '\'' ->  popMode, type(MetaSquote), popMode;
-MetaStringPart: ~[\r\n']+;
+MetaStringPart: ~[\r\n'\\]+;
 
 mode MetaDquoteString;
 
 MetaDquoteEscapedChar: '\\' . -> type(MetaStringPart);
 MetaDquoteUnicodeEscape: '\\u' (HexDigit (HexDigit (HexDigit HexDigit?)?)?) -> type(MetaStringPart);
 MetaEndDquote: '"' ->  popMode, type(MetaDquote), popMode;
-MetaDquoteStringPart: ~[\r\n"]+ -> type(MetaStringPart);
+MetaDquoteStringPart: ~[\r\n"\\]+ -> type(MetaStringPart);
 
 mode MetaArray;
 
