@@ -436,6 +436,115 @@ task MetaTask {
 	}
 }
 
+// An escaped quote inside a meta string must not end the string: a plain text
+// run used to swallow the backslash, so the quote after it closed the string.
+func TestParseMetaStringWithEscapedQuotes(t *testing.T) {
+	content := `version 1.0
+
+workflow Escapes {
+    input {
+        Boolean cap
+        String sep
+    }
+
+    meta {
+        description: 'it\'s \"quoted\" and \\ kept'
+    }
+
+    parameter_meta {
+        cap: {
+            help: "Caps at \"optimal coverage\". A \\ stays, so does \'this\'.",
+            type: "Boolean"
+        }
+        sep: "a \"short\" form"
+    }
+}
+`
+
+	doc, err := ParseBytes([]byte(content))
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	wf := doc.Workflow
+	if wf == nil {
+		t.Fatal("expected a workflow")
+	}
+
+	// Escape sequences are kept verbatim in the parsed value.
+	if got, want := wf.Meta["description"], `it\'s \"quoted\" and \\ kept`; got != want {
+		t.Errorf("meta description = %q, want %q", got, want)
+	}
+	capMeta, ok := wf.ParameterMeta["cap"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("parameter_meta cap = %#v, want an object", wf.ParameterMeta["cap"])
+	}
+	if got, want := capMeta["help"], `Caps at \"optimal coverage\". A \\ stays, so does \'this\'.`; got != want {
+		t.Errorf("parameter_meta cap.help = %q, want %q", got, want)
+	}
+	if got, want := capMeta["type"], "Boolean"; got != want {
+		t.Errorf("parameter_meta cap.type = %q, want %q", got, want)
+	}
+	if got, want := wf.ParameterMeta["sep"], `a \"short\" form`; got != want {
+		t.Errorf("parameter_meta sep = %q, want %q", got, want)
+	}
+}
+
+// Placeholder options may have whitespace around '=', as Cromwell and miniwdl
+// accept, and sep/default stay usable as plain identifiers.
+func TestParsePlaceholderOptionsWithWhitespace(t *testing.T) {
+	content := `version 1.0
+
+task Options {
+    input {
+        Array[File] bams
+        String? region
+        String sep="+"
+        String default="d"
+    }
+
+    String joined = "~{sep = ',' bams}"
+
+    command <<<
+        tool -I ~{sep = ' -I ' bams} \
+            --region ~{default = "all" region} \
+            --flag ~{true = "yes" false = "no" defined(region)} \
+            --tight ~{sep=" " bams} ~{default="x" region}
+    >>>
+
+    output {
+        String out = read_string(stdout())
+    }
+}
+
+task Curly {
+    input {
+        Array[String] xs
+    }
+
+    command {
+        echo ${sep = ' ' xs} ~{default = "none" sep}
+    }
+}
+`
+
+	doc, err := ParseBytes([]byte(content))
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	if len(doc.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(doc.Tasks))
+	}
+	var inputs []string
+	for _, in := range doc.Tasks[0].Inputs {
+		inputs = append(inputs, in.Name)
+	}
+	if got, want := strings.Join(inputs, ","), "bams,region,sep,default"; got != want {
+		t.Errorf("inputs = %s, want %s", got, want)
+	}
+}
+
 func TestAnalyzeDependencies(t *testing.T) {
 	// Create temp directory with test files
 	tmpDir, err := os.MkdirTemp("", "wdl-test-*")
