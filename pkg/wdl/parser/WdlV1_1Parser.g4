@@ -45,10 +45,11 @@ number
 
 // Literals
 
+// sep and default are matched as identifiers, so whitespace may surround '='
+// (as Cromwell and miniwdl accept) and both stay usable as declaration names.
 expression_placeholder_option
   : BoolLiteral EQUAL string
-  | DEFAULTEQUAL (string | number)
-  | SEPEQUAL string
+  | Identifier EQUAL (string | number)
   ;
 
 string_part

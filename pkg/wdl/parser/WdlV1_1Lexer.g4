@@ -33,8 +33,6 @@ ARRAY: 'Array';
 MAP: 'Map';
 OBJECT: 'Object';
 OBJECTLITERAL: 'object';
-SEPEQUAL: 'sep=';
-DEFAULTEQUAL: 'default=';
 PAIR: 'Pair';
 AFTER: 'after';
 COMMAND: 'command'-> mode(Command);
