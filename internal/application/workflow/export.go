@@ -124,7 +124,7 @@ type ExportRunOutput struct {
 	HostAlias   string            `json:"host_alias,omitempty"`
 	Name        string            `json:"workflow_name,omitempty"`
 	Description string            `json:"description,omitempty"`
-	SubmittedAt time.Time         `json:"submitted_at,omitempty"`
+	SubmittedAt time.Time         `json:"submitted_at,omitzero"`
 	ExportedAt  time.Time         `json:"exported_at"`
 	Labels      map[string]string `json:"labels,omitempty"`
 	Files       []ExportedFile    `json:"files"`

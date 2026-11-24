@@ -329,6 +329,26 @@ func TestExportSkipsEmptyFilesFromTheServer(t *testing.T) {
 	}
 }
 
+// A run whose submission time the server did not report has none: the
+// manifest must leave the field out rather than claim the year 1.
+func TestManifestOmitsAnUnknownSubmissionTime(t *testing.T) {
+	raw, err := json.Marshal(&ExportRunOutput{WorkflowID: "run-9", ExportedAt: time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "submitted_at") {
+		t.Errorf("manifest = %s, want no submitted_at for an unknown time", raw)
+	}
+
+	raw, err = json.Marshal(&ExportRunOutput{SubmittedAt: time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"submitted_at":"2026-10-01T08:00:00Z"`) {
+		t.Errorf("manifest = %s, want a known submission time kept", raw)
+	}
+}
+
 func TestExportReportsAMissingDependenciesZip(t *testing.T) {
 	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-9", Name: "HelloWorld", Workflow: importingWDL}}
 	dir := filepath.Join(t.TempDir(), "out")
