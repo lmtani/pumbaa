@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -763,12 +764,7 @@ func TestMigratesAVersionOneDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if _, err := raw.Exec(migrations[0]); err != nil {
-		t.Fatalf("v1 schema: %v", err)
-	}
-	if _, err := raw.Exec(`PRAGMA user_version = 1`); err != nil {
-		t.Fatalf("user_version: %v", err)
-	}
+	legacySchema(t, raw, 1)
 	if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at, description)
 		VALUES (?, ?, ?, ?, ?, ?)`, testHost, "old-run", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "from before files were kept"); err != nil {
 		t.Fatalf("v1 row: %v", err)
@@ -796,12 +792,74 @@ func TestMigratesAVersionOneDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	var version int
+	var version, gooseVersion int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		t.Fatalf("user_version: %v", err)
 	}
-	if version != schemaVersion {
-		t.Errorf("user_version = %d, want %d", version, schemaVersion)
+	if err := db.QueryRow(`SELECT MAX(version_id) FROM goose_db_version WHERE is_applied`).Scan(&gooseVersion); err != nil {
+		t.Fatalf("goose version: %v", err)
+	}
+	// user_version stays in step so a binary from before goose finds the
+	// database up to date rather than replaying its steps.
+	if gooseVersion < legacyVersion || version != legacyVersion {
+		t.Errorf("goose version = %d, user_version = %d; want at least %d and %d", gooseVersion, version, legacyVersion, legacyVersion)
+	}
+}
+
+// legacySchema builds a database as the runner before goose left it at
+// version: the same SQL steps, recorded in user_version only. The goose
+// annotations in the files are SQL comments, so they run as they are.
+func legacySchema(t *testing.T, db *sql.DB, version int) {
+	t.Helper()
+	files := []string{"migrations/00001_runs.sql", "migrations/00002_run_files.sql"}
+	for _, name := range files[:min(version, len(files))] {
+		step, err := migrationFiles.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		if _, err := db.Exec(string(step)); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	if version >= 3 {
+		if _, err := db.Exec(`ALTER TABLE run_files ADD COLUMN withheld TEXT NOT NULL DEFAULT ''`); err != nil {
+			t.Fatalf("v3 schema: %v", err)
+		}
+	}
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+}
+
+// The release before goose migrated to user_version 3 with its own runner.
+// Opening that database must adopt the three versions — running v3's ALTER
+// TABLE again would fail and lock the user out of their history.
+func TestAdoptsADatabaseTheOldRunnerMigrated(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	ctx := context.Background()
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	legacySchema(t, raw, 3)
+	if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		testHost, "old-run", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"); err != nil {
+		t.Fatalf("run row: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data, withheld) VALUES (?, ?, 'options', 'o.json', '', 2, '{}', 'refresh_token')`,
+		testHost, "old-run"); err != nil {
+		t.Fatalf("file row: %v", err)
+	}
+	_ = raw.Close()
+
+	store := New(path)
+	defer func() { _ = store.Close() }()
+	files, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "old-run"})
+	if err != nil {
+		t.Fatalf("Files after adopting: %v", err)
+	}
+	if len(files) != 1 || len(files[0].Withheld) != 1 {
+		t.Errorf("files = %+v, want the row the old runner wrote", files)
 	}
 }
 
@@ -839,14 +897,7 @@ func TestMigrationScrubsCredentialsKeptBefore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	for _, step := range migrations[:2] {
-		if _, err := raw.Exec(step); err != nil {
-			t.Fatalf("v2 schema: %v", err)
-		}
-	}
-	if _, err := raw.Exec(`PRAGMA user_version = 2`); err != nil {
-		t.Fatalf("user_version: %v", err)
-	}
+	legacySchema(t, raw, 2)
 	// Large enough to spill into an overflow page, which is what a freed
 	// page left unzeroed would keep.
 	secret := `{"jes_gcs_root": "gs://b/x", "user_service_account_json": "` + marker + strings.Repeat("k", 6000) + `"}`

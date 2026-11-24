@@ -17,8 +17,7 @@ import (
 	"google.golang.org/genai"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
-
-	_ "modernc.org/sqlite"
+	"github.com/lmtani/pumbaa/internal/infrastructure/sqlitedb"
 )
 
 // DefaultAppName and DefaultUserID scope all Pumbaa chat sessions. Every
@@ -133,75 +132,24 @@ func NewSQLiteService(dbPath string) (*SQLiteService, error) {
 		dbPath = filepath.Join(home, ".pumbaa", "sessions.db")
 	}
 
-	// Ensure directory exists
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
-	}
-
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sqlitedb.Open(context.Background(), dbPath, schema())
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("sessions: %w", err)
 	}
 
 	svc := &SQLiteService{db: db}
-	if err := svc.initSchema(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
-	}
-
+	svc.purgeEmptySessions()
 	return svc, nil
 }
 
-func (s *SQLiteService) initSchema() error {
-	schema := `
-	CREATE TABLE IF NOT EXISTS sessions (
-		id TEXT PRIMARY KEY,
-		app_name TEXT NOT NULL,
-		user_id TEXT NOT NULL,
-		state TEXT DEFAULT '{}',
-		input_tokens INTEGER DEFAULT 0,
-		output_tokens INTEGER DEFAULT 0,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS events (
-		id TEXT PRIMARY KEY,
-		session_id TEXT NOT NULL,
-		invocation_id TEXT,
-		branch TEXT,
-		author TEXT,
-		content TEXT NOT NULL,
-		timestamp DATETIME NOT NULL,
-		FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
-	);
-
-	CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
-	CREATE INDEX IF NOT EXISTS idx_sessions_app_user ON sessions(app_name, user_id);
-	`
-	if _, err := s.db.Exec(schema); err != nil {
-		return err
-	}
-
-	// Migration: add token columns if they don't exist (for existing databases)
-	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0`)
-	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0`)
-
-	// Migration: add summary column if it doesn't exist (for existing databases)
-	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN summary TEXT DEFAULT ''`)
-
-	// Migration: add context_label (which workflow ▸ task the chat was
-	// opened for) to support resume-by-task lookups
-	_, _ = s.db.Exec(`ALTER TABLE sessions ADD COLUMN context_label TEXT DEFAULT ''`)
-
-	// Hygiene: purge day-old sessions that never got a single event
-	// (artifacts of sessions being created on screen open, pre-lazy-create)
+// purgeEmptySessions drops day-old sessions that never got a single event,
+// artifacts of sessions being created on screen open before creation became
+// lazy. It is hygiene, not schema, so a failure is not worth refusing to
+// open over.
+func (s *SQLiteService) purgeEmptySessions() {
 	_, _ = s.db.Exec(`DELETE FROM sessions
 		WHERE created_at < datetime('now', '-1 day')
 		  AND id NOT IN (SELECT DISTINCT session_id FROM events)`)
-
-	return nil
 }
 
 // Close closes the database connection.
