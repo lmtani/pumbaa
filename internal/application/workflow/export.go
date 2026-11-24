@@ -87,7 +87,9 @@ type ExportRunInput struct {
 	WorkflowID string
 	// Dir is where the files are written; it is created when missing.
 	Dir string
-	// Overwrite allows replacing files already in Dir.
+	// Overwrite allows replacing a previous export in Dir: files this
+	// export writes are replaced, and export files it does not write are
+	// removed.
 	Overwrite bool
 	// StripSecrets removes credential-carrying keys from the options, for a
 	// directory meant to be handed to someone else.
@@ -183,6 +185,11 @@ func (uc *ExportRunUseCase) Execute(ctx context.Context, input ExportRunInput) (
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, application.NewUseCaseError("export", "failed to create directory", err)
+	}
+	if input.Overwrite {
+		if err := removeStale(dir, names); err != nil {
+			return nil, application.NewUseCaseError("export", "failed to remove a previous export's files", err)
+		}
 	}
 	for _, f := range files {
 		if err := writeExported(filepath.Join(dir, f.Name), f.data, exportMode(f.Kind)); err != nil {
@@ -559,6 +566,31 @@ func writeExported(path string, data []byte, mode os.FileMode) error {
 		return err
 	}
 	return os.Chmod(path, mode)
+}
+
+// exportNames is every file name an export can write besides the manifest,
+// which it always writes.
+var exportNames = []string{ExportWorkflowName, ExportInputsName, ExportOptionsName, ExportDependenciesName, ExportLabelsName}
+
+// removeStale deletes the export files a previous export left in dir that
+// this one does not write. Replacing only the files written would leave,
+// say, another run's dependencies.zip beside a manifest that does not list
+// it, to be submitted as if it belonged to this run. Only the fixed export
+// names are touched: anything else in the directory is not the export's.
+func removeStale(dir string, written []string) error {
+	keep := make(map[string]bool, len(written))
+	for _, name := range written {
+		keep[name] = true
+	}
+	for _, name := range exportNames {
+		if keep[name] {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 func existingFiles(dir string, names []string) []string {

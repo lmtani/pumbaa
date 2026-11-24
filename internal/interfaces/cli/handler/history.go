@@ -91,7 +91,7 @@ written is still in the directory, and manifest.json says what is missing.`,
 					},
 					&cli.BoolFlag{
 						Name:  "force",
-						Usage: "[optional] Replace files already in the directory",
+						Usage: "[optional] Replace a previous export in the directory, removing its files this one does not write",
 					},
 					&cli.BoolFlag{
 						Name:  "strip-secrets",

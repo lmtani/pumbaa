@@ -445,6 +445,38 @@ func TestExportKeepsTheOptionsPrivate(t *testing.T) {
 	}
 }
 
+// --force over a previous export must not leave that export's files behind:
+// another run's dependencies.zip beside this run's workflow would be
+// submitted as if it were this run's.
+func TestExportOverwriteRemovesAPreviousExportsFiles(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{ExportDependenciesName, ExportLabelsName, ExportWorkflowName, "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("previous"), 0o644); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-9", Name: "HelloWorld", Workflow: importingWDL}}
+
+	out, err := newExport(newStubRunHistory(), server, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-9", Dir: dir, Overwrite: true})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if out.Complete() {
+		t.Fatal("the export claims a zip the server cannot supply")
+	}
+	for _, name := range []string{ExportDependenciesName, ExportLabelsName} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s from the previous export is still there (err %v)", name, err)
+		}
+	}
+	if got := readExported(t, dir, "notes.txt"); string(got) != "previous" {
+		t.Error("a file that is not an export file was touched")
+	}
+	if got := readExported(t, dir, ExportWorkflowName); string(got) != importingWDL {
+		t.Error("workflow.wdl was not replaced")
+	}
+}
+
 func TestExportExplainsWhenNothingCanSupplyTheFiles(t *testing.T) {
 	_, err := newExport(newStubRunHistory(), nil, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "ghost", Dir: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "no local record") {

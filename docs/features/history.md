@@ -153,7 +153,7 @@ gets the same submission.
 | Flag | Alias | Description |
 |------|:-----:|-------------|
 | `--out` | `-o` | Directory to write to; the second argument does the same (default: `./<workflow-id>`) |
-| `--force` | | Replace files already in the directory |
+| `--force` | | Replace a previous export in the directory; its export files this one does not write (another run's `dependencies.zip`, say) are removed, anything else is left alone |
 | `--strip-secrets` | | Drop credential options (`user_service_account_json`, tokens) before sharing |
 | `--json` | | Print the manifest instead of the summary, with `dir` and `complete` added |
 
