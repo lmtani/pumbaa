@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,11 +86,14 @@ func Load() *Config {
 		historyDBPath = filepath.Join(home, ".pumbaa", "history.db")
 	}
 
+	// Keep files: env > file > default (on). A value the env var cannot be
+	// read as is ignored, as an unset one would be.
 	historyKeepFiles := true
-	if os.Getenv("PUMBAA_HISTORY_KEEP_FILES") == "false" {
-		historyKeepFiles = false
-	} else if fileCfg.HistoryKeepFiles != nil && !*fileCfg.HistoryKeepFiles {
-		historyKeepFiles = false
+	if fileCfg.HistoryKeepFiles != nil {
+		historyKeepFiles = *fileCfg.HistoryKeepFiles
+	}
+	if env, err := strconv.ParseBool(os.Getenv("PUMBAA_HISTORY_KEEP_FILES")); err == nil {
+		historyKeepFiles = env
 	}
 
 	// LLM Provider: env > file > default

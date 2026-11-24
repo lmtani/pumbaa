@@ -26,6 +26,7 @@ func clearEnvVars(t *testing.T) func() {
 		"PUMBAA_TELEMETRY_ENDPOINT",
 		"PUMBAA_TELEMETRY_KEY",
 		"PUMBAA_CLIENT_ID",
+		"PUMBAA_HISTORY_KEEP_FILES",
 	}
 
 	oldValues := make(map[string]string)
@@ -126,6 +127,44 @@ func TestLoad_TelemetryEnvOverride(t *testing.T) {
 		t.Errorf("expected TelemetryEnabled=false when env is 'false', got %v", cfg.TelemetryEnabled)
 	}
 }
+
+// The documented precedence is env > file > default, in both directions:
+// the env var must be able to turn keeping back on as well as off.
+func TestLoad_HistoryKeepFilesPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		file *bool
+		env  string
+		want bool
+	}{
+		{name: "default", want: true},
+		{name: "file off", file: boolPtr(false), want: false},
+		{name: "env off", env: "false", want: false},
+		{name: "env off, other spelling", env: "0", want: false},
+		{name: "env on overrides file off", file: boolPtr(false), env: "true", want: true},
+		{name: "env off overrides file on", file: boolPtr(true), env: "FALSE", want: false},
+		{name: "unreadable env falls back to file", file: boolPtr(false), env: "nope", want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cleanup := clearEnvVars(t)
+			defer cleanup()
+			if tc.file != nil {
+				if err := SaveFileConfig(&FileConfig{ClientID: "test", HistoryKeepFiles: tc.file}); err != nil {
+					t.Fatalf("SaveFileConfig: %v", err)
+				}
+			}
+			if tc.env != "" {
+				_ = os.Setenv("PUMBAA_HISTORY_KEEP_FILES", tc.env)
+			}
+
+			if got := Load().HistoryKeepFiles; got != tc.want {
+				t.Errorf("HistoryKeepFiles = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
 
 func TestLoad_ClientIDGeneration(t *testing.T) {
 	cleanup := clearEnvVars(t)
