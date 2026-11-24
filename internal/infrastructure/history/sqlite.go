@@ -198,6 +198,9 @@ func (s *Store) Record(ctx context.Context, rec ports.RunRecord) error {
 	if rec.Host == "" || rec.WorkflowID == "" {
 		return fmt.Errorf("history: host and workflow id are required")
 	}
+	if err := checkFileBytes(rec.Files); err != nil {
+		return err
+	}
 
 	now := time.Now().UTC()
 	if rec.CreatedAt.IsZero() {
@@ -258,6 +261,20 @@ func (s *Store) Record(ctx context.Context, rec ports.RunRecord) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("history: failed to record run: %w", err)
+	}
+	return nil
+}
+
+// checkFileBytes refuses kept files without their bytes. Reads return files
+// with sizes only, so a caller that reads a record, edits it and records it
+// again would otherwise replace the only copy of the submitted files with
+// empty blobs. Nothing kept is ever empty — submit skips empty files — so
+// an empty one can only be such a round trip.
+func checkFileBytes(files []ports.RunFile) error {
+	for _, f := range files {
+		if len(f.Data) == 0 {
+			return fmt.Errorf("history: the %s file %q carries no bytes; records read back hold sizes only, so leave Files nil to keep the kept files", f.Kind, f.Name)
+		}
 	}
 	return nil
 }

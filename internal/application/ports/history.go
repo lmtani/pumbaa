@@ -55,7 +55,9 @@ type RunRecord struct {
 	// be exported and submitted again after the paths above have rotted.
 	// Reads fill in everything but the bytes — a listing needs sizes, not
 	// contents — and RunHistoryReader.Files returns them. On a Record, nil
-	// leaves whatever is already kept alone; anything else replaces it.
+	// leaves whatever is already kept alone; anything else replaces it, and
+	// every file must carry its bytes: one read back without them is refused
+	// rather than kept empty.
 	Files []RunFile
 }
 

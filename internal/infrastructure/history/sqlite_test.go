@@ -489,6 +489,39 @@ func TestTheDatabaseIsReadableByItsOwnerOnly(t *testing.T) {
 	}
 }
 
+// Reads return the kept files with sizes but no bytes. Recording such a
+// record back — read, edit, record — must not replace the only copy of the
+// submitted files with empty ones.
+func TestRecordRefusesFilesReadBackWithoutBytes(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = []ports.RunFile{{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte("version 1.0\n")}}
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	got.Name = "Renamed"
+	if err := store.Record(ctx, got); err == nil {
+		t.Fatal("Record accepted kept files without their bytes")
+	}
+
+	kept, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(kept) != 1 || string(kept[0].Data) != "version 1.0\n" {
+		t.Errorf("kept files = %+v, want the original bytes untouched", kept)
+	}
+	if after, _ := store.Get(ctx, rec.Ref()); after.Name == "Renamed" {
+		t.Error("the refused record was partly written")
+	}
+}
+
 func TestCloseWithoutUseDoesNotCreateTheDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history.db")
 	store := New(path)
