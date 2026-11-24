@@ -31,6 +31,7 @@ internal/
 │   ├── recommendation/      # LLM-based resource recommendations
 │   ├── session/             # SQLite (~/.pumbaa/sessions.db)
 │   ├── history/             # SQLite (~/.pumbaa/history.db) — local run history
+│   ├── sqlitedb/            # How both SQLite stores are opened and migrated
 │   ├── wdlindexer/          # WDL index backing the agent tools
 │   ├── storage/ cloudlogging/ metrics/ telemetry/ templates/ version/
 ├── interfaces/
@@ -66,6 +67,12 @@ thousands of runs. `RunHistoryUseCase.Annotate` adopts a run from the server
 rather than inventing one locally.
 
 The submitted files are kept verbatim with the record (`RunRecord.Files`, BLOBs in `history.db`, the bytes that were sent — never a second read of the paths); reads carry sizes only, `RunHistoryReader.Files` the bytes, and a `Record` with `Files == nil` leaves the kept ones alone. **Credential options are never stored or exported**: `workflow.WithoutCredentials` takes them out at submit (`RunFile.Withheld` keeps their names) and again in every export, whatever the source. `ExportRunUseCase` writes them back out under fixed names (`workflow.wdl`, `inputs.json`, ...), falling back to the server's `submittedFiles` (`ports.SubmissionReader`, never the dependencies zip — Cromwell discards it) and marking in the manifest where each file came from.
+
+## SQLite databases and migrations
+
+Two files on purpose, not one: `history.db` is irreplaceable and `sessions.db` disposable, and separate files keep a submit from waiting on a streaming chat's lock (and the history's `VACUUM` from rewriting the chat). Both open through `sqlitedb.Open`, which creates them owner-only (0700/0600, tightening existing ones), sets `busy_timeout` in the DSN (no WAL: it breaks on the network filesystems of HPC homes) and applies goose migrations before anything reads them.
+
+Each store owns its schema in `<store>/migrations/NNNNN_name.sql` (embedded, `-- +goose Up` only, no Down) plus Go steps registered in `<store>/schema.go` for what SQL cannot express (history v3 scrubs credentials; sessions v2 adds columns after checking `pragma_table_info`). To change a schema, add the next number; **never edit a released step**. Each step runs in one transaction with its version row. `history` sets `LegacyVersion = 3`: databases its pre-goose runner migrated (`PRAGMA user_version`) are adopted rather than replayed, and `user_version` is kept in step so an older binary does not replay its steps either. A new migration needs a test that opens a database as the previous version left it.
 
 ## Guided submit
 
