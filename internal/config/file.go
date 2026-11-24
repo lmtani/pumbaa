@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -131,6 +132,11 @@ func (c *FileConfig) GetValue(key string) (string, bool) {
 		return c.GeminiModel, c.GeminiModel != ""
 	case "wdl_directory":
 		return c.WDLDirectory, c.WDLDirectory != ""
+	case "history_keep_files":
+		if c.HistoryKeepFiles == nil {
+			return "", false
+		}
+		return strconv.FormatBool(*c.HistoryKeepFiles), true
 	case "telemetry_enabled":
 		if c.TelemetryEnabled == nil {
 			return "", false
@@ -171,6 +177,12 @@ func (c *FileConfig) SetValue(key, value string) error {
 		c.GeminiModel = value
 	case "wdl_directory":
 		c.WDLDirectory = value
+	case "history_keep_files":
+		val, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("invalid value for history_keep_files: %s (must be true or false)", value)
+		}
+		c.HistoryKeepFiles = &val
 	case "telemetry_enabled":
 		val := value == "true"
 		c.TelemetryEnabled = &val
@@ -194,6 +206,7 @@ func AllKeys() []string {
 		"gemini_api_key",
 		"gemini_model",
 		"wdl_directory",
+		"history_keep_files",
 		"telemetry_enabled",
 		"client_id",
 	}

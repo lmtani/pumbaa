@@ -97,6 +97,7 @@ Every setting can also be provided via environment variable. Env vars override t
 | `PUMBAA_WDL_INDEX` | — (WDL index cache path) | `~/.pumbaa/wdl_index.json` |
 | `PUMBAA_SESSION_DB` | — (chat sessions database) | `~/.pumbaa/sessions.db` |
 | `PUMBAA_HISTORY_DB` | — (local run history database) | `~/.pumbaa/history.db` |
+| `PUMBAA_HISTORY_KEEP_FILES` | `history_keep_files` (keep submitted files for [export](../features/history.md#running-it-again-or-handing-it-over)) | `true` |
 | `PUMBAA_TELEMETRY_ENABLED` | `telemetry_enabled` | `true` |
 
 !!! warning "Prefix inconsistency"
