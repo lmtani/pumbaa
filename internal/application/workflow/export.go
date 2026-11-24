@@ -444,13 +444,38 @@ func submitCommand(out *ExportRunOutput) string {
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		parts = append(parts, fmt.Sprintf("-l %s=%s", key, out.Labels[key]))
+		parts = append(parts, "-l "+shellQuote(key+"="+out.Labels[key]))
 	}
 	if out.Description != "" {
-		parts = append(parts, fmt.Sprintf("-D %q", out.Description))
+		parts = append(parts, "-D "+shellQuote(out.Description))
 	}
 	return strings.Join(parts, " ")
 }
+
+// ResubmitCommand is SubmitCommand runnable from anywhere: it changes into
+// the export directory first. It is meant to be pasted into a shell, so the
+// directory is quoted like every other argument.
+func (o *ExportRunOutput) ResubmitCommand() string {
+	return "cd " + shellQuote(o.Dir) + " && " + o.SubmitCommand
+}
+
+// shellQuote renders s as a single word for a POSIX shell. Labels and
+// descriptions are free text, often written by someone else, and the command
+// is meant to be pasted: a bare `;`, `$` or space in them would run, expand
+// or split. A word with nothing the shell interprets stays bare, for
+// readability; anything else goes in single quotes, the one quoting in which
+// no character is special, with each embedded quote closed, escaped and
+// reopened.
+func shellQuote(s string) string {
+	if s != "" && !strings.HasPrefix(s, "=") && strings.Trim(s, shellSafe) == "" {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// shellSafe are the characters no POSIX shell interprets inside a word. A
+// leading `=` is kept out separately: zsh expands it to a command path.
+const shellSafe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_./=:@,+%"
 
 func exportName(kind ports.RunFileKind) (string, bool) {
 	switch kind {

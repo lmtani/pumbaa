@@ -70,7 +70,7 @@ func (h *ExportHandler) Handle(ctx context.Context, input types.Input) (types.Ou
 		"dir":      out.Dir,
 		"files":    files,
 		"complete": out.Complete(),
-		"submit":   "cd " + out.Dir + " && " + out.SubmitCommand,
+		"submit":   out.ResubmitCommand(),
 	}
 	if len(out.Missing) > 0 {
 		missing := make([]map[string]any, 0, len(out.Missing))

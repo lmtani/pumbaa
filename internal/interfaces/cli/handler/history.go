@@ -371,7 +371,7 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	} else {
 		h.presenter.Info("Once the missing file is in place, submit it again with:")
 	}
-	h.presenter.Print("  cd %s && %s\n", out.Dir, out.SubmitCommand)
+	h.presenter.Print("  %s\n", out.ResubmitCommand())
 	if !out.Complete() {
 		return cli.Exit("", 1)
 	}
