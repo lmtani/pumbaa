@@ -222,7 +222,9 @@ func (uc *ExportRunUseCase) assemble(ctx context.Context, input ExportRunInput) 
 		out.Name = rec.Name
 		out.Description = rec.Description
 		out.SubmittedAt = rec.SubmittedAt
-		out.Labels = rec.Labels
+		// A run adopted through a note carries the labels the server listed,
+		// Cromwell's own among them.
+		out.Labels = withoutCromwellLabel(rec.Labels)
 	}
 
 	var files []exportFile
@@ -246,13 +248,16 @@ func (uc *ExportRunUseCase) assemble(ctx context.Context, input ExportRunInput) 
 
 	if len(out.Labels) > 0 {
 		labels, _ := json.MarshalIndent(out.Labels, "", "  ")
+		// Only a submission from here kept the labels it was given; a run
+		// adopted through a note took them from the server's listing.
+		source := ExportFromServer
+		if remembered && rec.Origin == ports.OriginSubmit {
+			source = ExportFromHistory
+		}
 		files = append(files, exportFile{
-			ExportedFile: ExportedFile{Name: ExportLabelsName, Source: ExportFromHistory},
+			ExportedFile: ExportedFile{Name: ExportLabelsName, Source: source},
 			data:         append(labels, '\n'),
 		})
-		if !remembered {
-			files[len(files)-1].Source = ExportFromServer
-		}
 	}
 
 	for i := range files {

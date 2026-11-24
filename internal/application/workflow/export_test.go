@@ -239,6 +239,34 @@ func TestExportFallsBackToTheServer(t *testing.T) {
 	}
 }
 
+// A run adopted through `history note` was recorded with the labels the
+// server listed, Cromwell's own ID label among them; submitting that again
+// would stamp the new run with the old one's ID.
+func TestExportDropsCromwellsLabelFromAnAnnotatedRun(t *testing.T) {
+	rec := historyRecord(exportHost, "run-1", "Succeeded")
+	rec.Origin = ports.OriginNote
+	rec.Labels = map[string]string{"cromwell-workflow-id": "cromwell-run-1", "sample": "S1"}
+	store := newStubRunHistory(rec)
+	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-1", Name: "HelloWorld", Workflow: "version 1.0\nworkflow HelloWorld {}\n"}}
+	dir := filepath.Join(t.TempDir(), "out")
+
+	out, err := newExport(store, server, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-1", Dir: dir})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if _, ok := out.Labels["cromwell-workflow-id"]; ok || out.Labels["sample"] != "S1" {
+		t.Errorf("labels = %v, want Cromwell's own label dropped and the rest kept", out.Labels)
+	}
+	if strings.Contains(out.SubmitCommand, "cromwell-workflow-id") {
+		t.Errorf("submit command %q carries the old run's ID label", out.SubmitCommand)
+	}
+	for _, f := range out.Files {
+		if f.Name == ExportLabelsName && f.Source != ExportFromServer {
+			t.Errorf("labels.json source = %s, want server: a note never kept labels at submit", f.Source)
+		}
+	}
+}
+
 func TestExportReportsAMissingDependenciesZip(t *testing.T) {
 	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-9", Name: "HelloWorld", Workflow: importingWDL}}
 	dir := filepath.Join(t.TempDir(), "out")
