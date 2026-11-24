@@ -21,19 +21,12 @@ import (
 	"sync"
 	"time"
 
-	_ "modernc.org/sqlite"
-
 	"github.com/lmtani/pumbaa/internal/application/ports"
-	"github.com/lmtani/pumbaa/internal/domain/workflow"
+	"github.com/lmtani/pumbaa/internal/infrastructure/sqlitedb"
 )
 
 // Compile-time check: the store satisfies the port it exists to implement.
 var _ ports.RunHistory = (*Store)(nil)
-
-// schemaVersion is bumped whenever migrate gains a step. Unlike the chat
-// store's ignored ALTER TABLEs, migrations here are explicit and recorded in
-// PRAGMA user_version.
-const schemaVersion = 3
 
 // timeLayout stores instants as text so what is written is what is read back,
 // independent of driver date handling.
@@ -72,200 +65,14 @@ func (s *Store) open() (*sql.DB, error) {
 				return
 			}
 		}
-		if dir := filepath.Dir(path); dir != "" {
-			if err := os.MkdirAll(dir, 0o700); err != nil {
-				s.err = fmt.Errorf("failed to create directory %s: %w", dir, err)
-				return
-			}
-		}
-		if err := restrictToOwner(path); err != nil {
-			s.err = fmt.Errorf("failed to restrict access to the history database: %w", err)
-			return
-		}
-		db, err := sql.Open("sqlite", path)
+		db, err := sqlitedb.Open(context.Background(), path, schema())
 		if err != nil {
-			s.err = fmt.Errorf("failed to open history database: %w", err)
-			return
-		}
-		if err := migrate(db); err != nil {
-			_ = db.Close()
-			s.err = fmt.Errorf("failed to migrate history database: %w", err)
+			s.err = fmt.Errorf("history: %w", err)
 			return
 		}
 		s.db = db
 	})
 	return s.db, s.err
-}
-
-// restrictToOwner makes the database readable by its owner only, creating it
-// that way when missing (an empty file is an empty SQLite database). The
-// history keeps the submitted files verbatim, and an options file carries
-// credentials when a run was submitted with a service account; on a shared
-// machine the default 0644 would hand them to every other user. SQLite gives
-// its journal and WAL files the database's mode, so they follow; the chmod
-// also tightens a database created before files were kept.
-func restrictToOwner(path string) error {
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
-	if err != nil {
-		return err
-	}
-	_ = f.Close()
-	for _, p := range []string{path, path + "-journal", path + "-wal", path + "-shm"} {
-		if err := os.Chmod(p, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-	}
-	return nil
-}
-
-// migrations are the schema steps, one per version: migrations[i] takes a
-// database at version i to version i+1.
-var migrations = []string{
-	// v1: the initial runs table.
-	`CREATE TABLE IF NOT EXISTS runs (
-			host              TEXT NOT NULL,
-			workflow_id       TEXT NOT NULL,
-			host_alias        TEXT NOT NULL DEFAULT '',
-			name              TEXT NOT NULL DEFAULT '',
-			description       TEXT NOT NULL DEFAULT '',
-			workflow_file     TEXT NOT NULL DEFAULT '',
-			inputs_file       TEXT NOT NULL DEFAULT '',
-			options_file      TEXT NOT NULL DEFAULT '',
-			dependencies_file TEXT NOT NULL DEFAULT '',
-			labels            TEXT NOT NULL DEFAULT '{}',
-			origin            TEXT NOT NULL DEFAULT 'note',
-			submitted_at      TEXT NOT NULL,
-			last_status       TEXT NOT NULL DEFAULT '',
-			status_synced_at  TEXT NOT NULL DEFAULT '',
-			created_at        TEXT NOT NULL,
-			updated_at        TEXT NOT NULL,
-			PRIMARY KEY (host, workflow_id)
-		);
-		CREATE INDEX IF NOT EXISTS idx_runs_submitted ON runs(submitted_at DESC);`,
-	// v2: the submitted files, kept verbatim so a run can be exported and
-	// submitted again. One row per kind; the bytes live here rather than
-	// on disk so forgetting a run forgets its files in the same statement
-	// and nothing is ever orphaned.
-	`CREATE TABLE IF NOT EXISTS run_files (
-			host        TEXT NOT NULL,
-			workflow_id TEXT NOT NULL,
-			kind        TEXT NOT NULL,
-			name        TEXT NOT NULL DEFAULT '',
-			sha256      TEXT NOT NULL,
-			size        INTEGER NOT NULL,
-			data        BLOB NOT NULL,
-			PRIMARY KEY (host, workflow_id, kind)
-		);`,
-	// v3: credential options are no longer kept; withheld names the ones
-	// taken out of an options file, comma-separated, so an export can say
-	// which to add back. withholdKeptCredentials scrubs the rows v2 kept.
-	`ALTER TABLE run_files ADD COLUMN withheld TEXT NOT NULL DEFAULT '';`,
-}
-
-// migrationFixups are data steps that SQL alone cannot express, keyed by the
-// version whose schema step they complete. They run in that step's
-// transaction.
-var migrationFixups = map[int]func(*sql.Tx) error{
-	3: withholdKeptCredentials,
-}
-
-// migrate brings the schema up to schemaVersion, stepping from whatever
-// version the file is at.
-func migrate(db *sql.DB) error {
-	var version int
-	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
-		return err
-	}
-	if version >= schemaVersion {
-		return nil
-	}
-
-	for i := version; i < schemaVersion; i++ {
-		if err := migrateStep(db, i+1); err != nil {
-			return fmt.Errorf("migration to v%d failed: %w", i+1, err)
-		}
-	}
-	return nil
-}
-
-// migrateStep takes the database to version to in one transaction — schema,
-// data fixup and version number together — so a step that fails halfway is
-// retried whole on the next open rather than found half applied.
-func migrateStep(db *sql.DB, to int) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	if _, err := tx.Exec(migrations[to-1]); err != nil {
-		return err
-	}
-	if fixup := migrationFixups[to]; fixup != nil {
-		if err := fixup(tx); err != nil {
-			return err
-		}
-	}
-	// PRAGMA does not take a bound parameter.
-	if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", to)); err != nil {
-		return err
-	}
-	return tx.Commit()
-}
-
-// withholdKeptCredentials takes the credential options out of every options
-// file kept before the history stopped keeping them, recording which were
-// there, as a submission does now. Options that cannot be read as an object
-// cannot be vouched for and are dropped, as a submission would not keep
-// them. secure_delete makes SQLite zero the bytes it frees, so the
-// credentials do not linger in the file's free pages.
-func withholdKeptCredentials(tx *sql.Tx) error {
-	if _, err := tx.Exec(`PRAGMA secure_delete = ON`); err != nil {
-		return err
-	}
-	type keptOptions struct {
-		host, workflowID string
-		data             []byte
-	}
-	rows, err := tx.Query(`SELECT host, workflow_id, data FROM run_files WHERE kind = ?`, string(ports.RunFileOptions))
-	if err != nil {
-		return err
-	}
-	var all []keptOptions
-	for rows.Next() {
-		var k keptOptions
-		if err := rows.Scan(&k.host, &k.workflowID, &k.data); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		all = append(all, k)
-	}
-	err = rows.Err()
-	_ = rows.Close()
-	if err != nil {
-		return err
-	}
-
-	for _, k := range all {
-		data, withheld, err := workflow.WithoutCredentials(k.data)
-		if err != nil {
-			if _, err := tx.Exec(`DELETE FROM run_files WHERE host = ? AND workflow_id = ? AND kind = ?`,
-				k.host, k.workflowID, string(ports.RunFileOptions)); err != nil {
-				return err
-			}
-			continue
-		}
-		if len(withheld) == 0 {
-			continue
-		}
-		sum := sha256.Sum256(data)
-		if _, err := tx.Exec(`UPDATE run_files SET data = ?, sha256 = ?, size = ?, withheld = ? WHERE host = ? AND workflow_id = ? AND kind = ?`,
-			data, hex.EncodeToString(sum[:]), len(data), strings.Join(withheld, ","),
-			k.host, k.workflowID, string(ports.RunFileOptions)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Close releases the database if it was ever opened.
