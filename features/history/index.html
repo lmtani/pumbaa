@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -29,10 +29,10 @@
     
     
 
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1028,6 +1028,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#running-it-again-or-handing-it-over" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it again, or handing it over
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#annotating-someone-elses-run" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1554,6 +1565,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#running-it-again-or-handing-it-over" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running it again, or handing it over
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#annotating-someone-elses-run" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1633,6 +1655,10 @@
 <p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75z"></path></svg></span> <strong>Any run, any time</strong></p>
 <p>Notes attach to runs someone else started too</p>
 </li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15l-1.89 1.07L16 8.61l1.96-1.11zM6.04 7.5 12 10.85l1.96-1.1-5.88-3.4zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"></path></svg></span> <strong>Run it again</strong></p>
+<p>The submitted files are kept, and <code>export</code> writes them back out</p>
+</li>
 </ul>
 </div>
 <h2 id="quick-start"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m13.13 22.19-1.63-3.83c1.57-.58 3.04-1.36 4.4-2.27zM5.64 12.5l-3.83-1.63 6.1-2.77C7 9.46 6.22 10.93 5.64 12.5M21.61 2.39S16.66.269 11 5.93c-2.19 2.19-3.5 4.6-4.35 6.71-.28.75-.09 1.57.46 2.13l2.13 2.12c.55.56 1.37.74 2.12.46A19.1 19.1 0 0 0 18.07 13c5.66-5.66 3.54-10.61 3.54-10.61m-7.07 7.07c-.78-.78-.78-2.05 0-2.83s2.05-.78 2.83 0c.77.78.78 2.05 0 2.83s-2.05.78-2.83 0m-5.66 7.07-1.41-1.41zM6.24 22l3.64-3.64c-.34-.09-.67-.24-.97-.45L4.83 22zM2 22h1.41l4.77-4.76-1.42-1.41L2 20.59zm0-2.83 4.09-4.08c-.21-.3-.36-.62-.45-.97L2 17.76z"></path></svg></span> Quick Start</h2>
@@ -1641,6 +1667,7 @@
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pumbaa<span class="w"> </span><span class="nb">history</span><span class="w">                    </span><span class="c1"># what has been submitted, newest first</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pumbaa<span class="w"> </span><span class="nb">history</span><span class="w"> </span>show<span class="w"> </span>&lt;workflow-id&gt;<span class="w"> </span><span class="c1"># everything remembered about one run</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>pumbaa<span class="w"> </span><span class="nb">history</span><span class="w"> </span><span class="nb">export</span><span class="w"> </span>&lt;workflow-id&gt;<span class="w"> </span>./rerun<span class="w">   </span><span class="c1"># the files, ready to submit again</span>
 </span></code></pre></div>
 <h2 id="what-is-kept-and-why"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m15.07 11.25-.9.92C13.45 12.89 13 13.5 13 15h-2v-.5c0-1.11.45-2.11 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41a2 2 0 0 0-2-2 2 2 0 0 0-2 2H8a4 4 0 0 1 4-4 4 4 0 0 1 4 4 3.2 3.2 0 0 1-.93 2.25M13 19h-2v-2h2M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10c0-5.53-4.5-10-10-10"></path></svg></span> What is kept, and why</h2>
 <p>A Cromwell server already answers what a run <em>did</em>. The local history keeps
@@ -1648,9 +1675,7 @@ what it cannot answer later:</p>
 <ul>
 <li>the <strong>description</strong> given at submission time — Cromwell labels are
   constrained and meant to be tags, so free text has nowhere else to live;</li>
-<li>the <strong>local files</strong> a submission was assembled from (WDL, inputs, options,
-  dependency zip), stored as absolute paths so they are still findable a month
-  later;</li>
+<li>the <strong>files</strong> a submission was assembled from — WDL, inputs, options and the dependency zip — kept verbatim, as the very bytes the server received, alongside the absolute paths they were read from. Paths rot: a WDL gets edited, a branch is switched, a directory is deleted. The bytes do not. The one exception is credentials: see below;</li>
 <li>the last known <strong>status</strong>, which is what a listing shows when the server is
   unreachable — or has forgotten the run entirely, as an in-memory Cromwell
   does on every restart.</li>
@@ -1660,8 +1685,11 @@ server. Writing to the history never fails a submission: the workflow is
 already running by then, so a failure is reported as a warning.</p>
 <div class="admonition info">
 <p class="admonition-title">Where it lives</p>
-<p><code>~/.pumbaa/history.db</code> (SQLite), separate from the chat sessions database.
-Override with <code>PUMBAA_HISTORY_DB</code>.</p>
+<p><code>~/.pumbaa/history.db</code> (SQLite), separate from the chat sessions database, readable by its owner only. Override with <code>PUMBAA_HISTORY_DB</code>. The kept files live in the same database, so forgetting a run forgets its files with it and nothing is left behind on disk. A WDL bundle is tens of kilobytes; a submission whose files exceed 50 MB is recorded without them, with a warning. <code>PUMBAA_HISTORY_KEEP_FILES=false</code> (or <code>history_keep_files: false</code> in the config file) records paths only.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Credentials are never kept</p>
+<p>The options keys that carry credentials — <code>user_service_account_json</code>, <code>refresh_token</code> and <code>auth_bearer_token</code> — are taken out of the options before they are kept, and only their names are recorded. The history outlives the submission and travels with the home directory in backups and copies; a service-account key in it would outlive both. <code>submit</code> says when it left any out, and <code>export</code> names them, so they can be added back.</p>
 </div>
 <h2 id="commands"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 19V7H4v12zm0-16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm-7 14v-2h5v2zm-3.42-4L5.57 9H8.4l3.3 3.3c.39.39.39 1.03 0 1.42L8.42 17H5.59z"></path></svg></span> Commands</h2>
 <table>
@@ -1685,12 +1713,16 @@ Override with <code>PUMBAA_HISTORY_DB</code>.</p>
 <td>Write or rewrite a run's description</td>
 </tr>
 <tr>
+<td><code>pumbaa history export &lt;id&gt; [dir]</code></td>
+<td>Write the run's files to a directory, ready to submit again</td>
+</tr>
+<tr>
 <td><code>pumbaa history forget &lt;id&gt;</code></td>
-<td>Drop one run from the history</td>
+<td>Drop one run from the history, kept files included</td>
 </tr>
 <tr>
 <td><code>pumbaa history prune --older-than 90d</code></td>
-<td>Drop everything older than a cutoff (<code>--yes</code> to confirm)</td>
+<td>Drop everything older than a cutoff, kept files included (<code>--yes</code> to confirm)</td>
 </tr>
 </tbody>
 </table>
@@ -1732,7 +1764,7 @@ Override with <code>PUMBAA_HISTORY_DB</code>.</p>
 <tr>
 <td><code>--json</code></td>
 <td style="text-align: center;"></td>
-<td>Print the records as JSON</td>
+<td>Print the records as JSON; <code>Exportable</code> says the files were kept</td>
 </tr>
 </tbody>
 </table>
@@ -1740,15 +1772,17 @@ Override with <code>PUMBAA_HISTORY_DB</code>.</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Run history
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>─────────────────────────────────────────
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a> STATUS      ID                                    NAME          SUBMITTED         DESCRIPTION
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a> Succeeded   fbfd8cce-90f5-4d07-81b0-3504bd0ef98c  HelloHistory  26-09-05 09:53    smoke test after the docker bump
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a> Succeeded*  deadbeef-0000-0000-0000-000000000001  GhostRun      25-03-01 07:00    the server restarted after this
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a> STATUS      ID                                    NAME          SUBMITTED         FILES  DESCRIPTION
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a> Succeeded   fbfd8cce-90f5-4d07-81b0-3504bd0ef98c  HelloHistory  26-09-05 09:53    ✓      smoke test after the docker bump
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a> Succeeded*  deadbeef-0000-0000-0000-000000000001  GhostRun      25-03-01 07:00           the server restarted after this
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>ℹ * the server no longer knows this run — only the local record remains
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>ℹ ✓ files kept: pumbaa history export &lt;workflow-id&gt; writes them out, ready to submit again
 </span></code></pre></div>
 <p>Statuses are refreshed in a single query filtered by run ID. When the server
 cannot be reached the listing still works, from the last known statuses, and
 says so.</p>
+<p><code>pumbaa history show --json &lt;id&gt;</code> prints one record the same way, and exits 1 when there is none.</p>
 <div class="admonition note">
 <p class="admonition-title">Why a run is only marked <code>*</code> after a while</p>
 <p>Cromwell answers <code>/query</code> from a summary table filled by a background job,
@@ -1767,11 +1801,61 @@ options and dependency files.</p>
 </span></code></pre></div>
 <p>Matching is case-insensitive, and <code>%</code> and <code>_</code> are searched for as text rather
 than treated as wildcards.</p>
+<h2 id="running-it-again-or-handing-it-over"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15l-1.89 1.07L16 8.61l1.96-1.11zM6.04 7.5 12 10.85l1.96-1.1-5.88-3.4zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"></path></svg></span> Running it again, or handing it over</h2>
+<p><code>export</code> writes a run back out as the files it was submitted with:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$ pumbaa history export fbfd8cce-90f5-4d07-81b0-3504bd0ef98c ./rerun
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>✓ Exported fbfd8cce-90f5-4d07-81b0-3504bd0ef98c to /home/me/rerun
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a> FILE              SOURCE          SIZE      NOTE
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a> workflow.wdl      kept at submit  1.2 KiB
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a> inputs.json       kept at submit  412 B
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a> options.json      kept at submit  96 B
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a> dependencies.zip  kept at submit  54.1 KiB
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a> labels.json       kept at submit  38 B
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a> manifest.json     pumbaa                    where each file came from
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>ℹ Submit it again with:
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  cd /home/me/rerun &amp;&amp; pumbaa workflow submit -w workflow.wdl -i inputs.json -o options.json -d dependencies.zip -l sample=S001
+</span></code></pre></div>
+<p>The names are fixed so the printed command is always right; the basenames the files were read from are in <code>manifest.json</code>, with the host, the run, the description and the origin and checksum of every file. The directory is the unit to share: a colleague with access to the same server runs the command and gets the same submission.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th style="text-align: center;">Alias</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--out</code></td>
+<td style="text-align: center;"><code>-o</code></td>
+<td>Directory to write to; the second argument does the same (default: <code>./&lt;workflow-id&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td style="text-align: center;"></td>
+<td>Replace a previous export in the directory; its export files this one does not write (another run's <code>dependencies.zip</code>, say) are removed, anything else is left alone</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td style="text-align: center;"></td>
+<td>Print the manifest instead of the summary, with <code>dir</code> and <code>complete</code> added</td>
+</tr>
+</tbody>
+</table>
+<p>Flags go before the workflow id, as in <code>pumbaa history export --force &lt;id&gt; ./share</code>: the command line stops reading flags at the first argument, so a flag written after the id is refused rather than silently ignored.</p>
+<p>The exit status is 1 when a file could not be produced. Whatever could be written is still in the directory, and the manifest says what is missing, so a script can tell a partial export from a failed one.</p>
+<div class="admonition warning">
+<p class="admonition-title">What the server cannot supply</p>
+<p>A run nothing was kept for — submitted before files were kept, through another client, or with keeping turned off — is read from the server's <code>submittedFiles</code> instead: exact for the workflow and the inputs, reformatted for the options. Cromwell discards the <strong>dependencies zip</strong> once a run leaves its workflow store, so for a workflow with imports the export says what is missing and which imports need it. When the history recorded the zip's path and the file is still there, it is used, marked as read now rather than kept then.</p>
+</div>
+<p>An export never carries credentials, so the directory can be handed over as is. When the run was submitted with any, the export names them and whoever submits from it adds their own to <code>options.json</code>; without them the run may still start, under the backend's default identity rather than the one it had. Options read from the server lose them too: Cromwell reports an option it encrypts as the placeholder <code>cleared</code>, which would make the new submission fail, and by default it encrypts none, so what it returns is whoever submitted the run's own credential.</p>
 <h2 id="annotating-someone-elses-run"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.7 7c.4-.4.4-1 0-1.4l-2.3-2.3c-.4-.4-1-.4-1.4 0l-1.8 1.8L19 8.9M3 17.2V21h3.8l11-11.1-3.7-3.8zM7 2v3h3v2H7v3H5V7H2V5h3V2z"></path></svg></span> Annotating someone else's run</h2>
 <p>A note can be attached to any run on the server, not only to ones submitted
 from this machine:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pumbaa<span class="w"> </span><span class="nb">history</span><span class="w"> </span>note<span class="w"> </span>25704b54-4ae6-408d-9c9c-f3b5ed021d2f<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="s2">"the run that produced the reference panel"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pumbaa<span class="w"> </span><span class="nb">history</span><span class="w"> </span>note<span class="w"> </span>25704b54-4ae6-408d-9c9c-f3b5ed021d2f<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="s2">"the run that produced the reference panel"</span>
 </span></code></pre></div>
 <p>The run is looked up on the server first, so its real name and submission time
 are recorded rather than invented. A run that does not exist there is refused.</p>
@@ -1807,13 +1891,14 @@ still exists and <code>n</code> writes a note about any of them.</p>
 <p>The <code>history</code> action gives the agent the same memory, so it can answer what a
 run was for and what has been submitted recently — neither of which the
 Cromwell server knows:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&gt; what was workflow abc-123 for?
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>&gt; what have I been running this week?
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>&gt; what was workflow abc-123 for?
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>&gt; what have I been running this week?
 </span></code></pre></div>
-<p>Besides <code>workflow_id</code> and a keyword <code>query</code>, the action takes <code>status</code> and
-<code>since_days</code>, so "what failed last week" is one call rather than a scan. It
-reads only what this machine remembers — no Cromwell server is contacted, so
-it keeps working offline; live state still comes from the Cromwell actions.</p>
+<p>Besides <code>workflow_id</code> and a keyword <code>query</code>, the action takes <code>status</code> and <code>since_days</code>, so "what failed last week" is one call rather than a scan. It reads only what this machine remembers — no Cromwell server is contacted, so it keeps working offline; live state still comes from the Cromwell actions. Runs whose files are kept come back marked <code>exportable</code>.</p>
+<p>The <code>export</code> action is the same as the command: it writes a run's files into a directory under the one pumbaa was launched from, and answers with the submit command:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>&gt; export run abc-123 so I can send it to Ana
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>&gt; give me the inputs that run used
+</span></code></pre></div>
 <h2 id="see-also"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"></path></svg></span> See also</h2>
 <ul>
 <li><a href="../submit/">Submit workflows</a> — where <code>--describe</code> is given</li>
@@ -1874,10 +1959,10 @@ it keeps working offline; live state still comes from the Cromwell actions.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.code.annotate", "content.images.lightbox"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.code.annotate", "content.images.lightbox"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   
