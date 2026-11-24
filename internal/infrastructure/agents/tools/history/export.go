@@ -84,10 +84,7 @@ func (h *ExportHandler) Handle(ctx context.Context, input types.Input) (types.Ou
 	}
 	if len(out.Secrets) > 0 {
 		data["options_secrets"] = out.Secrets
-		data["note"] = "options.json carries credentials; `pumbaa history export --strip-secrets` drops them before the directory is shared"
-		if out.SecretsStripped {
-			data["note"] = "these credential options were left out of options.json; the user has to add their own before submitting if the run needs them"
-		}
+		data["note"] = "the run was submitted with these credential options, which pumbaa never keeps or exports; the user has to add their own to options.json before submitting if the run needs them"
 	}
 	return types.NewSuccessOutput(exportAction, data), nil
 }

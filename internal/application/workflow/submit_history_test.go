@@ -211,6 +211,39 @@ func TestSubmitKeepsTheSubmittedBytes(t *testing.T) {
 	}
 }
 
+// The history outlives the submission and travels with the home directory:
+// a credential in it would outlive both. Only the names are kept, so an
+// export can say what to add back.
+func TestSubmitNeverKeepsCredentialOptions(t *testing.T) {
+	h := &SubmitHistory{}
+	req := workflow.SubmitRequest{
+		WorkflowSource:  []byte("version 1.0\nworkflow W {}\n"),
+		WorkflowOptions: []byte(`{"jes_gcs_root": "gs://b/x", "user_service_account_json": "{\"private_key\": \"secret\"}", "refresh_token": "1//secret"}`),
+	}
+
+	files, skipped := h.keptFiles(SubmitInput{WorkflowFile: "w.wdl", OptionsFile: "prod.options.json"}, req)
+	if skipped != "" || len(files) != 2 {
+		t.Fatalf("files = %+v, skipped = %q; want the workflow and the options kept", files, skipped)
+	}
+	options := files[1]
+	if options.Kind != ports.RunFileOptions || strings.Contains(string(options.Data), "secret") {
+		t.Errorf("kept options = %s, want the credentials taken out", options.Data)
+	}
+	if strings.Join(options.Withheld, ",") != "user_service_account_json,refresh_token" {
+		t.Errorf("Withheld = %v, want the credential names recorded", options.Withheld)
+	}
+	if !strings.Contains(string(options.Data), `"jes_gcs_root": "gs://b/x"`) {
+		t.Errorf("kept options = %s, want the other options kept", options.Data)
+	}
+
+	// Options without credentials are kept byte for byte.
+	req.WorkflowOptions = []byte(`{"read_from_cache":false}`)
+	files, _ = h.keptFiles(SubmitInput{WorkflowFile: "w.wdl", OptionsFile: "o.json"}, req)
+	if len(files) != 2 || string(files[1].Data) != `{"read_from_cache":false}` || files[1].Withheld != nil {
+		t.Errorf("kept options = %+v, want them verbatim with nothing withheld", files[1])
+	}
+}
+
 func TestSubmitRecordsWithoutFilesAboveTheCap(t *testing.T) {
 	repo, fp := submitFixture(t)
 	store := &fakeRunHistory{}

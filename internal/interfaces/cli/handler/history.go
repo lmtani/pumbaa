@@ -81,6 +81,9 @@ where each came from. A run nothing was kept for is read from the server
 instead — exact for the workflow and inputs, but without the dependencies
 zip, which Cromwell does not keep.
 
+Credential options (service-account key, tokens) are never kept or exported;
+when the run used any, the summary names them, to be added back.
+
 The exit status is 1 when a file could not be produced. Whatever could be
 written is still in the directory, and manifest.json says what is missing.`,
 				Flags: []cli.Flag{
@@ -92,10 +95,6 @@ written is still in the directory, and manifest.json says what is missing.`,
 					&cli.BoolFlag{
 						Name:  "force",
 						Usage: "[optional] Replace a previous export in the directory, removing its files this one does not write",
-					},
-					&cli.BoolFlag{
-						Name:  "strip-secrets",
-						Usage: "[optional] Drop credential options (service account JSON, tokens) before sharing",
 					},
 					&cli.BoolFlag{
 						Name:  "json",
@@ -312,7 +311,7 @@ func (h *HistoryHandler) show(c *cli.Context) error {
 
 // exportUsage is the export's synopsis, flags first: that is the only place
 // they are read.
-const exportUsage = "pumbaa history export [--force] [--strip-secrets] [--json] <workflow-id> [dir]"
+const exportUsage = "pumbaa history export [--force] [--json] [--out dir] <workflow-id> [dir]"
 
 func (h *HistoryHandler) export(c *cli.Context) error {
 	if c.NArg() < 1 {
@@ -320,8 +319,8 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	}
 	// Flag parsing stops at the first argument, so a flag written after the
 	// id arrives here as an argument: --force would become the directory and
-	// --strip-secrets would be dropped without a word, leaving credentials in
-	// a directory meant to be shared. Refuse rather than guess.
+	// --json would be dropped without a word, leaving a script to parse the
+	// summary. Refuse rather than guess.
 	for _, arg := range c.Args().Tail() {
 		if strings.HasPrefix(arg, "-") {
 			return fmt.Errorf("%s after the workflow id is not read as a flag; put flags first: %s", arg, exportUsage)
@@ -342,10 +341,9 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	}
 
 	out, err := h.exporter.Execute(c.Context, workflow.ExportRunInput{
-		WorkflowID:   id,
-		Dir:          dir,
-		Overwrite:    c.Bool("force"),
-		StripSecrets: c.Bool("strip-secrets"),
+		WorkflowID: id,
+		Dir:        dir,
+		Overwrite:  c.Bool("force"),
 	})
 	if err != nil {
 		if errors.Is(err, workflow.ErrExportWouldOverwrite) {
@@ -379,11 +377,8 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	for _, m := range out.Missing {
 		h.presenter.Warning("No %s: %s.", m.Kind, m.Reason)
 	}
-	switch {
-	case len(out.Secrets) > 0 && !out.SecretsStripped:
-		h.presenter.Warning("options.json carries credentials (%s). Re-run with --strip-secrets before handing the directory to someone else.", strings.Join(out.Secrets, ", "))
-	case out.SecretsStripped && optionsFromServer(out):
-		h.presenter.Warning("The server does not return credentials usable, so %s were left out of options.json. Add your own before submitting if the run needs them.", strings.Join(out.Secrets, ", "))
+	if len(out.Secrets) > 0 {
+		h.presenter.Warning("The run was submitted with credential options (%s), which pumbaa never keeps or exports. Add your own to options.json before submitting if the run needs them.", strings.Join(out.Secrets, ", "))
 	}
 	if out.Complete() {
 		h.presenter.Info("Submit it again with:")
@@ -425,17 +420,6 @@ type exportJSON struct {
 	Dir      string `json:"dir"`
 	Complete bool   `json:"complete"`
 	*workflow.ExportRunOutput
-}
-
-// optionsFromServer reports whether the exported options were read from
-// the server rather than kept at submit.
-func optionsFromServer(out *workflow.ExportRunOutput) bool {
-	for _, f := range out.Files {
-		if f.Kind == ports.RunFileOptions {
-			return f.Source == workflow.ExportFromServer
-		}
-	}
-	return false
 }
 
 func sourceLabel(source workflow.ExportSource) string {

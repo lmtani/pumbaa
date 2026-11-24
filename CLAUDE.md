@@ -65,7 +65,7 @@ stay a single ID-filtered query** (`QueryFilter.IDs`) — a real server has
 thousands of runs. `RunHistoryUseCase.Annotate` adopts a run from the server
 rather than inventing one locally.
 
-The submitted files are kept verbatim with the record (`RunRecord.Files`, BLOBs in `history.db`, the bytes that were sent — never a second read of the paths); reads carry sizes only, `RunHistoryReader.Files` the bytes, and a `Record` with `Files == nil` leaves the kept ones alone. `ExportRunUseCase` writes them back out under fixed names (`workflow.wdl`, `inputs.json`, ...), falling back to the server's `submittedFiles` (`ports.SubmissionReader`, never the dependencies zip — Cromwell discards it) and marking in the manifest where each file came from.
+The submitted files are kept verbatim with the record (`RunRecord.Files`, BLOBs in `history.db`, the bytes that were sent — never a second read of the paths); reads carry sizes only, `RunHistoryReader.Files` the bytes, and a `Record` with `Files == nil` leaves the kept ones alone. **Credential options are never stored or exported**: `workflow.WithoutCredentials` takes them out at submit (`RunFile.Withheld` keeps their names) and again in every export, whatever the source. `ExportRunUseCase` writes them back out under fixed names (`workflow.wdl`, `inputs.json`, ...), falling back to the server's `submittedFiles` (`ports.SubmissionReader`, never the dependencies zip — Cromwell discards it) and marking in the manifest where each file came from.
 
 ## Guided submit
 

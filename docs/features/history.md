@@ -40,7 +40,7 @@ what it cannot answer later:
 
 - the **description** given at submission time — Cromwell labels are
   constrained and meant to be tags, so free text has nowhere else to live;
-- the **files** a submission was assembled from — WDL, inputs, options and the dependency zip — kept verbatim, as the very bytes the server received, alongside the absolute paths they were read from. Paths rot: a WDL gets edited, a branch is switched, a directory is deleted. The bytes do not;
+- the **files** a submission was assembled from — WDL, inputs, options and the dependency zip — kept verbatim, as the very bytes the server received, alongside the absolute paths they were read from. Paths rot: a WDL gets edited, a branch is switched, a directory is deleted. The bytes do not. The one exception is credentials: see below;
 - the last known **status**, which is what a listing shows when the server is
   unreachable — or has forgotten the run entirely, as an in-memory Cromwell
   does on every restart.
@@ -50,7 +50,10 @@ server. Writing to the history never fails a submission: the workflow is
 already running by then, so a failure is reported as a warning.
 
 !!! info "Where it lives"
-    `~/.pumbaa/history.db` (SQLite), separate from the chat sessions database. Override with `PUMBAA_HISTORY_DB`. The kept files live in the same database, so forgetting a run forgets its files with it and nothing is left behind on disk. A WDL bundle is tens of kilobytes; a submission whose files exceed 50 MB is recorded without them, with a warning. `PUMBAA_HISTORY_KEEP_FILES=false` (or `history_keep_files: false` in the config file) records paths only.
+    `~/.pumbaa/history.db` (SQLite), separate from the chat sessions database, readable by its owner only. Override with `PUMBAA_HISTORY_DB`. The kept files live in the same database, so forgetting a run forgets its files with it and nothing is left behind on disk. A WDL bundle is tens of kilobytes; a submission whose files exceed 50 MB is recorded without them, with a warning. `PUMBAA_HISTORY_KEEP_FILES=false` (or `history_keep_files: false` in the config file) records paths only.
+
+!!! warning "Credentials are never kept"
+    The options keys that carry credentials — `user_service_account_json`, `refresh_token` and `auth_bearer_token` — are taken out of the options before they are kept, and only their names are recorded. The history outlives the submission and travels with the home directory in backups and copies; a service-account key in it would outlive both. `submit` says when it left any out, and `export` names them, so they can be added back.
 
 ## :material-console: Commands
 
@@ -141,19 +144,16 @@ The names are fixed so the printed command is always right; the basenames the fi
 |------|:-----:|-------------|
 | `--out` | `-o` | Directory to write to; the second argument does the same (default: `./<workflow-id>`) |
 | `--force` | | Replace a previous export in the directory; its export files this one does not write (another run's `dependencies.zip`, say) are removed, anything else is left alone |
-| `--strip-secrets` | | Drop credential options (`user_service_account_json`, tokens) before sharing |
 | `--json` | | Print the manifest instead of the summary, with `dir` and `complete` added |
 
-Flags go before the workflow id, as in `pumbaa history export --strip-secrets <id> ./share`: the command line stops reading flags at the first argument, so a flag written after the id is refused rather than silently ignored.
+Flags go before the workflow id, as in `pumbaa history export --force <id> ./share`: the command line stops reading flags at the first argument, so a flag written after the id is refused rather than silently ignored.
 
 The exit status is 1 when a file could not be produced. Whatever could be written is still in the directory, and the manifest says what is missing, so a script can tell a partial export from a failed one.
 
 !!! warning "What the server cannot supply"
     A run nothing was kept for — submitted before files were kept, through another client, or with keeping turned off — is read from the server's `submittedFiles` instead: exact for the workflow and the inputs, reformatted for the options. Cromwell discards the **dependencies zip** once a run leaves its workflow store, so for a workflow with imports the export says what is missing and which imports need it. When the history recorded the zip's path and the file is still there, it is used, marked as read now rather than kept then.
 
-Credentials in the options — a service-account JSON, a refresh token — are reported, and `--strip-secrets` removes them: whoever receives the directory submits with their own.
-
-Options read from the server lose their credentials regardless of `--strip-secrets`: Cromwell reports an option it encrypts as the placeholder `cleared`, which would make the new submission fail, and one it does not encrypt belongs to whoever submitted the run. The export says which were left out, so they can be added back before submitting.
+An export never carries credentials, so the directory can be handed over as is. When the run was submitted with any, the export names them and whoever submits from it adds their own to `options.json`; without them the run may still start, under the backend's default identity rather than the one it had. Options read from the server lose them too: Cromwell reports an option it encrypts as the placeholder `cleared`, which would make the new submission fail, and by default it encrypts none, so what it returns is whoever submitted the run's own credential.
 
 ## :material-pencil-plus: Annotating someone else's run
 

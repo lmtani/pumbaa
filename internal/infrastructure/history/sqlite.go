@@ -24,6 +24,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/lmtani/pumbaa/internal/application/ports"
+	"github.com/lmtani/pumbaa/internal/domain/workflow"
 )
 
 // Compile-time check: the store satisfies the port it exists to implement.
@@ -32,7 +33,7 @@ var _ ports.RunHistory = (*Store)(nil)
 // schemaVersion is bumped whenever migrate gains a step. Unlike the chat
 // store's ignored ALTER TABLEs, migrations here are explicit and recorded in
 // PRAGMA user_version.
-const schemaVersion = 2
+const schemaVersion = 3
 
 // timeLayout stores instants as text so what is written is what is read back,
 // independent of driver date handling.
@@ -155,6 +156,17 @@ var migrations = []string{
 			data        BLOB NOT NULL,
 			PRIMARY KEY (host, workflow_id, kind)
 		);`,
+	// v3: credential options are no longer kept; withheld names the ones
+	// taken out of an options file, comma-separated, so an export can say
+	// which to add back. withholdKeptCredentials scrubs the rows v2 kept.
+	`ALTER TABLE run_files ADD COLUMN withheld TEXT NOT NULL DEFAULT '';`,
+}
+
+// migrationFixups are data steps that SQL alone cannot express, keyed by the
+// version whose schema step they complete. They run in that step's
+// transaction.
+var migrationFixups = map[int]func(*sql.Tx) error{
+	3: withholdKeptCredentials,
 }
 
 // migrate brings the schema up to schemaVersion, stepping from whatever
@@ -169,13 +181,89 @@ func migrate(db *sql.DB) error {
 	}
 
 	for i := version; i < schemaVersion; i++ {
-		if _, err := db.Exec(migrations[i]); err != nil {
+		if err := migrateStep(db, i+1); err != nil {
 			return fmt.Errorf("migration to v%d failed: %w", i+1, err)
 		}
 	}
-	// PRAGMA does not take a bound parameter.
-	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
+	return nil
+}
+
+// migrateStep takes the database to version to in one transaction — schema,
+// data fixup and version number together — so a step that fails halfway is
+// retried whole on the next open rather than found half applied.
+func migrateStep(db *sql.DB, to int) error {
+	tx, err := db.Begin()
+	if err != nil {
 		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(migrations[to-1]); err != nil {
+		return err
+	}
+	if fixup := migrationFixups[to]; fixup != nil {
+		if err := fixup(tx); err != nil {
+			return err
+		}
+	}
+	// PRAGMA does not take a bound parameter.
+	if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", to)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// withholdKeptCredentials takes the credential options out of every options
+// file kept before the history stopped keeping them, recording which were
+// there, as a submission does now. Options that cannot be read as an object
+// cannot be vouched for and are dropped, as a submission would not keep
+// them. secure_delete makes SQLite zero the bytes it frees, so the
+// credentials do not linger in the file's free pages.
+func withholdKeptCredentials(tx *sql.Tx) error {
+	if _, err := tx.Exec(`PRAGMA secure_delete = ON`); err != nil {
+		return err
+	}
+	type keptOptions struct {
+		host, workflowID string
+		data             []byte
+	}
+	rows, err := tx.Query(`SELECT host, workflow_id, data FROM run_files WHERE kind = ?`, string(ports.RunFileOptions))
+	if err != nil {
+		return err
+	}
+	var all []keptOptions
+	for rows.Next() {
+		var k keptOptions
+		if err := rows.Scan(&k.host, &k.workflowID, &k.data); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		all = append(all, k)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return err
+	}
+
+	for _, k := range all {
+		data, withheld, err := workflow.WithoutCredentials(k.data)
+		if err != nil {
+			if _, err := tx.Exec(`DELETE FROM run_files WHERE host = ? AND workflow_id = ? AND kind = ?`,
+				k.host, k.workflowID, string(ports.RunFileOptions)); err != nil {
+				return err
+			}
+			continue
+		}
+		if len(withheld) == 0 {
+			continue
+		}
+		sum := sha256.Sum256(data)
+		if _, err := tx.Exec(`UPDATE run_files SET data = ?, sha256 = ?, size = ?, withheld = ? WHERE host = ? AND workflow_id = ? AND kind = ?`,
+			data, hex.EncodeToString(sum[:]), len(data), strings.Join(withheld, ","),
+			k.host, k.workflowID, string(ports.RunFileOptions)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -292,8 +380,8 @@ func replaceFiles(ctx context.Context, tx *sql.Tx, ref ports.RunRef, files []por
 		}
 		sum := sha256.Sum256(f.Data)
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			ref.Host, ref.WorkflowID, string(f.Kind), f.Name, hex.EncodeToString(sum[:]), len(f.Data), f.Data)
+			`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data, withheld) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			ref.Host, ref.WorkflowID, string(f.Kind), f.Name, hex.EncodeToString(sum[:]), len(f.Data), f.Data, strings.Join(f.Withheld, ","))
 		if err != nil {
 			return fmt.Errorf("history: failed to keep %s file: %w", f.Kind, err)
 		}
@@ -429,7 +517,7 @@ func (s *Store) Files(ctx context.Context, ref ports.RunRef) ([]ports.RunFile, e
 	}
 
 	rows, err := db.QueryContext(ctx,
-		`SELECT kind, name, sha256, size, data FROM run_files WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID)
+		`SELECT kind, name, sha256, size, data, withheld FROM run_files WHERE host = ? AND workflow_id = ?`, ref.Host, ref.WorkflowID)
 	if err != nil {
 		return nil, fmt.Errorf("history: failed to read kept files: %w", err)
 	}
@@ -438,11 +526,12 @@ func (s *Store) Files(ctx context.Context, ref ports.RunRef) ([]ports.RunFile, e
 	files := []ports.RunFile{}
 	for rows.Next() {
 		var f ports.RunFile
-		var kind string
-		if err := rows.Scan(&kind, &f.Name, &f.SHA256, &f.Size, &f.Data); err != nil {
+		var kind, withheld string
+		if err := rows.Scan(&kind, &f.Name, &f.SHA256, &f.Size, &f.Data, &withheld); err != nil {
 			return nil, fmt.Errorf("history: failed to read kept files: %w", err)
 		}
 		f.Kind = ports.RunFileKind(kind)
+		f.Withheld = splitWithheld(withheld)
 		files = append(files, f)
 	}
 	if err := rows.Err(); err != nil {
@@ -472,18 +561,19 @@ func attachFiles(ctx context.Context, db *sql.DB, records []ports.RunRecord) err
 		}
 
 		rows, err := db.QueryContext(ctx,
-			`SELECT workflow_id, kind, name, sha256, size FROM run_files WHERE host = ? AND workflow_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
+			`SELECT workflow_id, kind, name, sha256, size, withheld FROM run_files WHERE host = ? AND workflow_id IN (`+strings.Join(placeholders, ",")+`)`, args...)
 		if err != nil {
 			return fmt.Errorf("history: failed to read kept files: %w", err)
 		}
 		for rows.Next() {
 			var f ports.RunFile
-			var id, kind string
-			if err := rows.Scan(&id, &kind, &f.Name, &f.SHA256, &f.Size); err != nil {
+			var id, kind, withheld string
+			if err := rows.Scan(&id, &kind, &f.Name, &f.SHA256, &f.Size, &withheld); err != nil {
 				_ = rows.Close()
 				return fmt.Errorf("history: failed to read kept files: %w", err)
 			}
 			f.Kind = ports.RunFileKind(kind)
+			f.Withheld = splitWithheld(withheld)
 			i := position[id]
 			records[i].Files = append(records[i].Files, f)
 		}
@@ -501,6 +591,15 @@ func attachFiles(ctx context.Context, db *sql.DB, records []ports.RunRecord) err
 
 // sortFiles puts kept files in submission order: workflow, inputs, options,
 // dependencies.
+// splitWithheld reads the withheld column back: comma-separated names, empty
+// for none.
+func splitWithheld(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
+
 func sortFiles(files []ports.RunFile) {
 	rank := make(map[ports.RunFileKind]int, len(ports.RunFileKinds))
 	for i, kind := range ports.RunFileKinds {

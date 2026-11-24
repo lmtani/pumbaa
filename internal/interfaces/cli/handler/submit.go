@@ -132,6 +132,9 @@ func (h *SubmitHandler) handle(c *cli.Context) error {
 	}
 	if output.FilesKept {
 		h.presenter.Info("Files kept: pumbaa history export %s writes them back out, ready to submit again.", output.WorkflowID)
+		if len(output.CredentialsWithheld) > 0 {
+			h.presenter.Info("Credential options (%s) are never kept: an export will need them added back.", strings.Join(output.CredentialsWithheld, ", "))
+		}
 	}
 	if output.FilesSkipped != "" {
 		h.presenter.Warning("Files not kept: %s. An export will read the server, which has no dependencies zip.", output.FilesSkipped)

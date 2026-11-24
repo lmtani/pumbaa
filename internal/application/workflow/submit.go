@@ -82,6 +82,10 @@ type SubmitOutput struct {
 	// empty when keeping is simply off.
 	FilesKept    bool
 	FilesSkipped string
+	// CredentialsWithheld names the credential options left out of the kept
+	// options: the history never holds them, so an export needs them added
+	// back.
+	CredentialsWithheld []string
 }
 
 // Execute submits a workflow to Cromwell.
@@ -208,12 +212,19 @@ func (uc *SubmitUseCase) remember(ctx context.Context, out *SubmitOutput, input 
 	out.Remembered = true
 	out.FilesKept = files != nil
 	out.FilesSkipped = skipped
+	for _, f := range files {
+		out.CredentialsWithheld = append(out.CredentialsWithheld, f.Withheld...)
+	}
 }
 
 // keptFiles turns the request into the files to keep: the very bytes the
 // server received, not a second read of the paths, so what is kept is what
-// ran. It returns nil — keep nothing — when keeping is off or the files are
-// over the cap, with the reason in the second value for the latter.
+// ran — with one exception: the credential options are taken out of the
+// options before they are kept, and only their names are recorded. The
+// history outlives the submission and gets copied with the home directory;
+// a service-account key in it would outlive both. It returns nil — keep
+// nothing — when keeping is off or the files are over the cap, with the
+// reason in the second value for the latter.
 func (h *SubmitHistory) keptFiles(input SubmitInput, req workflow2.SubmitRequest) ([]ports.RunFile, string) {
 	if h.SkipFiles {
 		return nil, ""
@@ -225,17 +236,23 @@ func (h *SubmitHistory) keptFiles(input SubmitInput, req workflow2.SubmitRequest
 
 	var files []ports.RunFile
 	var total int64
-	keep := func(kind ports.RunFileKind, path string, data []byte) {
-		if len(data) == 0 {
+	keep := func(file ports.RunFile, path string) {
+		if len(file.Data) == 0 {
 			return
 		}
-		files = append(files, ports.RunFile{Kind: kind, Name: filepath.Base(path), Data: data})
-		total += int64(len(data))
+		file.Name = filepath.Base(path)
+		files = append(files, file)
+		total += int64(len(file.Data))
 	}
-	keep(ports.RunFileWorkflow, input.WorkflowFile, req.WorkflowSource)
-	keep(ports.RunFileInputs, input.InputsFile, req.WorkflowInputs)
-	keep(ports.RunFileOptions, input.OptionsFile, req.WorkflowOptions)
-	keep(ports.RunFileDependencies, input.DependenciesFile, req.WorkflowDependencies)
+	keep(ports.RunFile{Kind: ports.RunFileWorkflow, Data: req.WorkflowSource}, input.WorkflowFile)
+	keep(ports.RunFile{Kind: ports.RunFileInputs, Data: req.WorkflowInputs}, input.InputsFile)
+	// Options that cannot be read as an object cannot be vouched for, so
+	// they are not kept. Cromwell refuses such options, so a run that got
+	// this far should never have them.
+	if options, withheld, err := workflow2.WithoutCredentials(req.WorkflowOptions); err == nil {
+		keep(ports.RunFile{Kind: ports.RunFileOptions, Data: options, Withheld: withheld}, input.OptionsFile)
+	}
+	keep(ports.RunFile{Kind: ports.RunFileDependencies, Data: req.WorkflowDependencies}, input.DependenciesFile)
 
 	if total > limit {
 		return nil, fmt.Sprintf("the submitted files total %s, above the %s kept per run", FormatBytes(total), FormatBytes(limit))

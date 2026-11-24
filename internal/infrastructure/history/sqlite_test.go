@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -801,5 +802,101 @@ func TestMigratesAVersionOneDatabase(t *testing.T) {
 	}
 	if version != schemaVersion {
 		t.Errorf("user_version = %d, want %d", version, schemaVersion)
+	}
+}
+
+func TestWithheldCredentialNamesRoundTrip(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = []ports.RunFile{{Kind: ports.RunFileOptions, Name: "o.json", Data: []byte(`{"jes_gcs_root": "gs://b"}`), Withheld: []string{"user_service_account_json", "refresh_token"}}}
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil || len(files) != 1 {
+		t.Fatalf("Files = %+v (%v)", files, err)
+	}
+	if got := files[0].Withheld; len(got) != 2 || got[0] != "user_service_account_json" || got[1] != "refresh_token" {
+		t.Errorf("Files withheld = %v, want both names back", got)
+	}
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil || len(got.Files) != 1 || len(got.Files[0].Withheld) != 2 {
+		t.Errorf("Get files = %+v (%v), want the withheld names in a read without bytes too", got.Files, err)
+	}
+}
+
+// A database kept by a build that stored the options verbatim holds the
+// credentials themselves. The migration must take them out, record their
+// names, and leave no copy of the bytes anywhere in the file.
+func TestMigrationScrubsCredentialsKeptBefore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	ctx := context.Background()
+	const marker = "SECRET-MARKER-7f3a"
+
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	for _, step := range migrations[:2] {
+		if _, err := raw.Exec(step); err != nil {
+			t.Fatalf("v2 schema: %v", err)
+		}
+	}
+	if _, err := raw.Exec(`PRAGMA user_version = 2`); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	// Large enough to spill into an overflow page, which is what a freed
+	// page left unzeroed would keep.
+	secret := `{"jes_gcs_root": "gs://b/x", "user_service_account_json": "` + marker + strings.Repeat("k", 6000) + `"}`
+	for _, row := range []struct{ id, data string }{{"with-secret", secret}, {"unreadable", "not json " + marker}, {"clean", `{"read_from_cache": false}`}} {
+		if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			testHost, row.id, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"); err != nil {
+			t.Fatalf("run row: %v", err)
+		}
+		if _, err := raw.Exec(`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data) VALUES (?, ?, 'options', 'o.json', ?, ?, ?)`,
+			testHost, row.id, hexDigest([]byte(row.data)), len(row.data), []byte(row.data)); err != nil {
+			t.Fatalf("file row: %v", err)
+		}
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	store := New(path)
+	files, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "with-secret"})
+	if err != nil || len(files) != 1 {
+		t.Fatalf("Files = %+v (%v)", files, err)
+	}
+	f := files[0]
+	if strings.Contains(string(f.Data), marker) || !strings.Contains(string(f.Data), "gs://b/x") {
+		t.Errorf("options = %s, want the credential gone and the rest kept", f.Data)
+	}
+	if len(f.Withheld) != 1 || f.Withheld[0] != "user_service_account_json" {
+		t.Errorf("Withheld = %v, want the credential's name", f.Withheld)
+	}
+	if f.SHA256 != hexDigest(f.Data) || f.Size != int64(len(f.Data)) {
+		t.Errorf("digest/size = %s/%d, want them recomputed for the scrubbed bytes", f.SHA256, f.Size)
+	}
+	if files, _ := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "unreadable"}); len(files) != 0 {
+		t.Errorf("options that cannot be checked were kept: %+v", files)
+	}
+	if files, _ := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "clean"}); len(files) != 1 || string(files[0].Data) != `{"read_from_cache": false}` {
+		t.Errorf("options without credentials = %+v, want them untouched", files)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	matches, _ := filepath.Glob(path + "*")
+	for _, p := range matches {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		if bytes.Contains(data, []byte(marker)) {
+			t.Errorf("%s still holds the credential's bytes", filepath.Base(p))
+		}
 	}
 }

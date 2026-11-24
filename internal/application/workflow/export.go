@@ -39,10 +39,6 @@ const (
 // something the submitter gave, and submitting it again would be wrong.
 const cromwellIDLabel = "cromwell-workflow-id"
 
-// secretOptionKeys are the workflow options that carry credentials. An
-// export meant for someone else should not travel with them.
-var secretOptionKeys = []string{"user_service_account_json", "refresh_token", "auth_bearer_token"}
-
 // ErrExportWouldOverwrite reports files already in the target directory.
 var ErrExportWouldOverwrite = errors.New("export would overwrite existing files")
 
@@ -91,9 +87,6 @@ type ExportRunInput struct {
 	// export writes are replaced, and export files it does not write are
 	// removed.
 	Overwrite bool
-	// StripSecrets removes credential-carrying keys from the options, for a
-	// directory meant to be handed to someone else.
-	StripSecrets bool
 }
 
 // ExportedFile is one file written by an export.
@@ -131,10 +124,9 @@ type ExportRunOutput struct {
 	// Missing lists what could not be produced and why — typically the
 	// dependencies zip of a run whose files were not kept.
 	Missing []MissingFile `json:"missing,omitempty"`
-	// Secrets names option keys that carry credentials; SecretsStripped
-	// says whether they were removed from the exported options.
-	Secrets         []string `json:"options_secrets,omitempty"`
-	SecretsStripped bool     `json:"secrets_stripped,omitempty"`
+	// Secrets names the credential options the run was submitted with. An
+	// export never carries them: whoever submits from it adds their own.
+	Secrets []string `json:"options_secrets,omitempty"`
 	// SubmitCommand reproduces the run from the export directory.
 	SubmitCommand string `json:"submit"`
 	Dir           string `json:"-"`
@@ -150,6 +142,9 @@ func (o *ExportRunOutput) Complete() bool {
 type exportFile struct {
 	ExportedFile
 	data []byte
+	// withheld names the credential options the history took out of a kept
+	// options file.
+	withheld []string
 }
 
 // Execute assembles the run's files and writes them, manifest included.
@@ -251,7 +246,7 @@ func (uc *ExportRunUseCase) assemble(ctx context.Context, input ExportRunInput) 
 	}
 
 	files = uc.completeDependencies(ctx, out, files, remembered, rec)
-	files = uc.handleSecrets(out, files, input.StripSecrets)
+	files = withoutCredentials(out, files)
 
 	if len(out.Labels) > 0 {
 		labels, _ := json.MarshalIndent(out.Labels, "", "  ")
@@ -287,6 +282,7 @@ func fromHistory(kept []ports.RunFile) []exportFile {
 		files = append(files, exportFile{
 			ExportedFile: ExportedFile{Kind: f.Kind, Name: name, Source: ExportFromHistory, OriginalName: f.Name},
 			data:         f.Data,
+			withheld:     f.Withheld,
 		})
 	}
 	return files
@@ -402,47 +398,48 @@ func localImports(source []byte) []string {
 	return wdl.LocalImports(source)
 }
 
-// handleSecrets reports the credential-carrying option keys, and removes
-// them when asked. Options that are not a JSON object are left as they are.
-//
-// Options read from the server lose them regardless. Cromwell reports an
-// option it encrypts as the placeholder "cleared", which would make the new
-// submission fail to authenticate; one it does not encrypt is whoever
-// submitted the run's own credential, not something to pass on unasked.
-// Either way the resubmitter has to supply their own.
-func (uc *ExportRunUseCase) handleSecrets(out *ExportRunOutput, files []exportFile, strip bool) []exportFile {
+// withoutCredentials makes sure no credential option leaves in an export,
+// whatever the options' source, and names the ones the run had. A kept file
+// already lost them at submit and says which in withheld. Options read from
+// the server still hold them: Cromwell reports an option it encrypts as the
+// placeholder "cleared", which would make the new submission fail to
+// authenticate, and one it does not encrypt is whoever submitted the run's
+// own credential. Either way the resubmitter supplies their own.
+func withoutCredentials(out *ExportRunOutput, files []exportFile) []exportFile {
 	for i := range files {
 		if files[i].Kind != ports.RunFileOptions {
 			continue
 		}
-		var options map[string]json.RawMessage
-		if err := json.Unmarshal(files[i].data, &options); err != nil {
-			return files
+		found := map[string]bool{}
+		for _, key := range files[i].withheld {
+			found[key] = true
 		}
-		fromServer := files[i].Source == ExportFromServer
-		drop := strip || fromServer
-		for _, key := range secretOptionKeys {
-			if _, ok := options[key]; ok {
+		data, removed, err := workflow2.WithoutCredentials(files[i].data)
+		if err != nil {
+			files[i].Warning = joinWarning(files[i].Warning, "not a JSON object, so it could not be checked for credentials")
+			continue
+		}
+		files[i].data = data
+		for _, key := range removed {
+			found[key] = true
+		}
+		for _, key := range workflow2.CredentialOptionKeys {
+			if found[key] {
 				out.Secrets = append(out.Secrets, key)
-				if drop {
-					delete(options, key)
-				}
 			}
 		}
-		if drop && len(out.Secrets) > 0 {
-			out.SecretsStripped = true
-			data, err := json.MarshalIndent(options, "", "  ")
-			if err == nil {
-				files[i].data = append(data, '\n')
-				note := "credential options removed: " + strings.Join(out.Secrets, ", ")
-				if fromServer {
-					note = files[i].Warning + "; " + note + " (the server does not return them usable: add your own before submitting)"
-				}
-				files[i].Warning = note
-			}
+		if len(out.Secrets) > 0 {
+			files[i].Warning = joinWarning(files[i].Warning, "credential options left out ("+strings.Join(out.Secrets, ", ")+"): add your own before submitting")
 		}
 	}
 	return files
+}
+
+func joinWarning(warning, more string) string {
+	if warning == "" {
+		return more
+	}
+	return warning + "; " + more
 }
 
 // submitCommand is the invocation that reproduces the run from the export

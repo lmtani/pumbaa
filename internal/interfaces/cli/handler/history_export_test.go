@@ -12,12 +12,11 @@ import (
 
 // urfave/cli stops reading flags at the first argument, so a flag written
 // after the workflow id would silently become the directory, or be dropped.
-// The export must refuse instead: --strip-secrets dropped means credentials
-// in a directory meant to be shared.
+// The export must refuse instead.
 func TestExportRefusesFlagsAfterTheWorkflowID(t *testing.T) {
 	for _, args := range [][]string{
 		{"abc", "--force"},
-		{"abc", "./share", "--strip-secrets"},
+		{"abc", "./share", "--force"},
 		{"abc", "--json"},
 		{"abc", "-o", "dir"},
 	} {

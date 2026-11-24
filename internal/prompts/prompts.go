@@ -98,8 +98,9 @@ forgotten the run.
   a previous export, choose another path, or give the user the
   "pumbaa history export --force" command it suggests.
   Report the directory and the submit command it returns. When
-  options_secrets is present, say that options.json carries credentials and
-  that "pumbaa history export --strip-secrets" drops them before sharing.
+  options_secrets is present, say that the run used those credential
+  options, which pumbaa never keeps or exports, so the user has to add
+  their own to options.json before submitting.
 
 Only runs submitted through pumbaa, or annotated with
 "pumbaa history note <id> <text>", are remembered. Statuses it returns are the

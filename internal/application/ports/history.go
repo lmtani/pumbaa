@@ -75,15 +75,20 @@ const (
 // the order anything listing kept files should use.
 var RunFileKinds = []RunFileKind{RunFileWorkflow, RunFileInputs, RunFileOptions, RunFileDependencies}
 
-// RunFile is one submitted file, as the server received it. Name is the
-// basename it was read from, kept for recognition only: an export writes
-// fixed names so the printed submit command is always right.
+// RunFile is one submitted file, as the server received it — credential
+// options aside, see Withheld. Name is the basename it was read from, kept
+// for recognition only: an export writes fixed names so the printed submit
+// command is always right.
 type RunFile struct {
 	Kind   RunFileKind
 	Name   string
 	SHA256 string
 	Size   int64
 	Data   []byte `json:"Data,omitempty"`
+	// Withheld names the credential options taken out of an options file
+	// before it was kept: the history never holds them, only that they were
+	// there.
+	Withheld []string `json:"Withheld,omitempty"`
 }
 
 // PruneResult says what a prune removed. Bytes counts the kept files that

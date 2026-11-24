@@ -70,7 +70,8 @@ func keptSet(t *testing.T) []ports.RunFile {
 	return []ports.RunFile{
 		{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte(importingWDL)},
 		{Kind: ports.RunFileInputs, Name: "hello.inputs.json", Data: []byte(`{"HelloWorld.name": "x"}`)},
-		{Kind: ports.RunFileOptions, Name: "prod.options.json", Data: []byte(`{"jes_gcs_root": "gs://b/x", "user_service_account_json": "{\"k\":1}"}`)},
+		// As submit keeps it: the credential taken out, its name withheld.
+		{Kind: ports.RunFileOptions, Name: "prod.options.json", Data: []byte(`{"jes_gcs_root": "gs://b/x"}`), Withheld: []string{"user_service_account_json"}},
 		{Kind: ports.RunFileDependencies, Name: "deps.zip", Data: zipWith(t, map[string]string{"lib/tasks.wdl": "version 1.0\ntask hello { command {} }\n"})},
 	}
 }
@@ -137,8 +138,8 @@ func TestExportWritesTheKeptFilesVerbatim(t *testing.T) {
 		t.Errorf("submit command = %q, want %q", out.SubmitCommand, want)
 	}
 
-	if len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" || out.SecretsStripped {
-		t.Errorf("Secrets = %v stripped=%v, want the credential key reported and left in place", out.Secrets, out.SecretsStripped)
+	if len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" {
+		t.Errorf("Secrets = %v, want the withheld credential reported so it can be added back", out.Secrets)
 	}
 }
 
@@ -178,26 +179,35 @@ func TestShellQuote(t *testing.T) {
 	}
 }
 
-func TestExportStripsSecretsOnRequest(t *testing.T) {
-	store, _ := exportRecord(keptSet(t)...)
+// Options kept before the history stopped keeping credentials still hold
+// them until the migration scrubs them; whatever the store returns, the
+// export never writes a credential.
+func TestExportNeverCarriesCredentials(t *testing.T) {
+	store, _ := exportRecord(
+		ports.RunFile{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte("version 1.0\nworkflow HelloWorld {}\n")},
+		ports.RunFile{Kind: ports.RunFileOptions, Name: "prod.options.json", Data: []byte(`{"jes_gcs_root": "gs://b/x", "refresh_token": "1//secret"}`), Withheld: []string{"user_service_account_json"}},
+	)
 	dir := filepath.Join(t.TempDir(), "out")
 
-	out, err := newExport(store, nil, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-1", Dir: dir, StripSecrets: true})
+	out, err := newExport(store, nil, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-1", Dir: dir})
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if !out.SecretsStripped {
-		t.Error("SecretsStripped = false, want the credential removed")
+	if want := []string{"user_service_account_json", "refresh_token"}; strings.Join(out.Secrets, ",") != strings.Join(want, ",") {
+		t.Errorf("Secrets = %v, want %v: the withheld one and the one found", out.Secrets, want)
+	}
+	raw := readExported(t, dir, ExportOptionsName)
+	if strings.Contains(string(raw), "secret") {
+		t.Errorf("options.json = %s, want the credential gone", raw)
 	}
 	var options map[string]any
-	if err := json.Unmarshal(readExported(t, dir, ExportOptionsName), &options); err != nil {
-		t.Fatalf("options.json: %v", err)
+	if err := json.Unmarshal(raw, &options); err != nil || options["jes_gcs_root"] != "gs://b/x" {
+		t.Errorf("options.json = %v (%v), want the other options untouched", options, err)
 	}
-	if _, ok := options["user_service_account_json"]; ok {
-		t.Error("options.json still carries user_service_account_json")
-	}
-	if options["jes_gcs_root"] != "gs://b/x" {
-		t.Errorf("options.json = %v, want the other options untouched", options)
+	for _, f := range out.Files {
+		if f.Kind == ports.RunFileOptions && !strings.Contains(f.Warning, "add your own") {
+			t.Errorf("options warning = %q, want it to say credentials must be supplied again", f.Warning)
+		}
 	}
 }
 
@@ -283,8 +293,8 @@ func TestExportDropsCredentialsReadFromTheServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	if !out.SecretsStripped || len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" {
-		t.Errorf("Secrets = %v stripped=%v, want the placeholder dropped without --strip-secrets", out.Secrets, out.SecretsStripped)
+	if len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" {
+		t.Errorf("Secrets = %v, want the placeholder reported as left out", out.Secrets)
 	}
 	var options map[string]any
 	if err := json.Unmarshal(readExported(t, dir, ExportOptionsName), &options); err != nil {
