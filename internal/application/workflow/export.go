@@ -320,13 +320,13 @@ func (uc *ExportRunUseCase) fromServer(ctx context.Context, out *ExportRunOutput
 		ExportedFile: ExportedFile{Kind: ports.RunFileWorkflow, Name: ExportWorkflowName, Source: ExportFromServer, OriginalName: filepath.Base(rec.WorkflowFile)},
 		data:         []byte(sub.Workflow),
 	}}
-	if sub.Inputs != "" && sub.Inputs != "{}" {
+	if !isEmptyJSONObject(sub.Inputs) {
 		files = append(files, exportFile{
 			ExportedFile: ExportedFile{Kind: ports.RunFileInputs, Name: ExportInputsName, Source: ExportFromServer, OriginalName: filepath.Base(rec.InputsFile)},
 			data:         []byte(sub.Inputs),
 		})
 	}
-	if sub.Options != "" && strings.TrimSpace(sub.Options) != "{}" {
+	if !isEmptyJSONObject(sub.Options) {
 		files = append(files, exportFile{
 			ExportedFile: ExportedFile{Kind: ports.RunFileOptions, Name: ExportOptionsName, Source: ExportFromServer, OriginalName: filepath.Base(rec.OptionsFile),
 				Warning: "reformatted by the server"},
@@ -506,6 +506,18 @@ func exportName(kind ports.RunFileKind) (string, bool) {
 		return ExportDependenciesName, true
 	}
 	return "", false
+}
+
+// isEmptyJSONObject reports whether a submitted file the server returned
+// holds nothing to submit: blank, or an object without keys however it is
+// spaced. Cromwell pretty-prints an empty options object as "{\n\n}", so
+// comparing against "{}" missed it.
+func isEmptyJSONObject(s string) bool {
+	if strings.TrimSpace(s) == "" {
+		return true
+	}
+	var obj map[string]json.RawMessage
+	return json.Unmarshal([]byte(s), &obj) == nil && len(obj) == 0
 }
 
 func withoutCromwellLabel(labels map[string]string) map[string]string {

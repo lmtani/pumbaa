@@ -300,6 +300,35 @@ func TestExportDropsCredentialsReadFromTheServer(t *testing.T) {
 	}
 }
 
+// Cromwell pretty-prints an empty options object as "{\n\n}" — every run
+// submitted without options reads that way. It is no file to export.
+func TestExportSkipsEmptyFilesFromTheServer(t *testing.T) {
+	server := &stubSubmissionReader{sub: &workflow.Submission{
+		ID:       "run-9",
+		Name:     "HelloWorld",
+		Workflow: "version 1.0\nworkflow HelloWorld {}\n",
+		Inputs:   "{ }",
+		Options:  "{\n\n}",
+	}}
+	dir := filepath.Join(t.TempDir(), "out")
+
+	out, err := newExport(newStubRunHistory(), server, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-9", Dir: dir})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if len(out.Files) != 1 || out.Files[0].Kind != ports.RunFileWorkflow {
+		t.Errorf("files = %+v, want the workflow alone", out.Files)
+	}
+	if strings.Contains(out.SubmitCommand, "-o ") || strings.Contains(out.SubmitCommand, "-i ") {
+		t.Errorf("submit command = %q, want no empty inputs or options passed", out.SubmitCommand)
+	}
+	for _, name := range []string{ExportInputsName, ExportOptionsName} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s exists (err %v), want nothing written for an empty object", name, err)
+		}
+	}
+}
+
 func TestExportReportsAMissingDependenciesZip(t *testing.T) {
 	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-9", Name: "HelloWorld", Workflow: importingWDL}}
 	dir := filepath.Join(t.TempDir(), "out")
