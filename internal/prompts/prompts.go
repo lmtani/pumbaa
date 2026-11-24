@@ -76,7 +76,8 @@ forgotten the run.
 
 - action="history"
   What was submitted from this machine and why: the description written at
-  submit time, plus the WDL and inputs files each run used.
+  submit time, plus the WDL and inputs files each run used. Runs whose files
+  were kept at submit time come back with kept_files and exportable=true.
   Optional: workflow_id (one run), query, status, since_days, page_size
 
   query takes keywords, not a phrase: each term is matched independently and
@@ -84,6 +85,22 @@ forgotten the run.
   workflow name, the id, the labels, or the WDL/inputs file paths. So
   "tso500 reference" finds a run described as "rerun of the TSO500 panel with
   the rebuilt reference", and "hg38" finds runs whose inputs path mentions it.
+
+- action="export"
+  Write a run's submitted files into a directory under the working directory
+  (workflow.wdl, inputs.json, options.json, dependencies.zip, labels.json and
+  manifest.json), ready for "pumbaa workflow submit" — to run it again, or to hand to a
+  colleague. Uses the files kept at submit time; a run nothing was kept for is
+  read from the server, which never has the dependencies zip (then reported
+  under "missing", with the imports that need it).
+  Required: workflow_id. Optional: path (relative directory, default the
+  workflow id). It never replaces existing files: when the directory holds
+  a previous export, choose another path, or give the user the
+  "pumbaa history export --force" command it suggests.
+  Report the directory and the submit command it returns. When
+  options_secrets is present, say that the run used those credential
+  options, which pumbaa never keeps or exports, so the user has to add
+  their own to options.json before submitting.
 
 Only runs submitted through pumbaa, or annotated with
 "pumbaa history note <id> <text>", are remembered. Statuses it returns are the
@@ -163,6 +180,8 @@ Use **only** to understand or explain WDL definitions.
 - “Why is it expensive / how many preemptions?” → cost / preemption
 - “What was this run for / what did I run this week?” → history
   (this week → since_days=7; “what failed last week” → status="Failed")
+- “Give me the files of run X / run it again / share it with a colleague” →
+  export (history first when it is unclear which run is meant)
 - “What inputs does this workflow need / how do I run it?” → scaffold, then preflight
 - Failure debugging:
   1. failures (grouped root causes + stderr paths)

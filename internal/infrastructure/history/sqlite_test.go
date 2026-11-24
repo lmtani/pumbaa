@@ -1,9 +1,16 @@
 package history
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -406,8 +413,8 @@ func TestForgetAndPrune(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prune: %v", err)
 	}
-	if removed != 1 {
-		t.Errorf("pruned %d runs, want 1", removed)
+	if removed.Runs != 1 {
+		t.Errorf("pruned %d runs, want 1", removed.Runs)
 	}
 
 	if err := store.Forget(ctx, recent.Ref()); err != nil {
@@ -442,6 +449,80 @@ func TestMigrationIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestTheDatabaseIsReadableByItsOwnerOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	ctx := context.Background()
+	dir := filepath.Join(t.TempDir(), "pumbaa")
+	path := filepath.Join(dir, "history.db")
+
+	store := New(path)
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	_ = store.Close()
+	for p, want := range map[string]os.FileMode{dir: 0o700, path: 0o600} {
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("stat %s: %v", p, err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s mode = %o, want %o", filepath.Base(p), got, want)
+		}
+	}
+
+	// A database created before files were kept is tightened on open.
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	reopened := New(path)
+	defer func() { _ = reopened.Close() }()
+	if _, err := reopened.Get(ctx, ports.RunRef{Host: testHost, WorkflowID: "abc-123"}); err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Errorf("mode after reopening = %o, want 600", got)
+	}
+}
+
+// Reads return the kept files with sizes but no bytes. Recording such a
+// record back — read, edit, record — must not replace the only copy of the
+// submitted files with empty ones.
+func TestRecordRefusesFilesReadBackWithoutBytes(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = []ports.RunFile{{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte("version 1.0\n")}}
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	got.Name = "Renamed"
+	if err := store.Record(ctx, got); err == nil {
+		t.Fatal("Record accepted kept files without their bytes")
+	}
+
+	kept, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(kept) != 1 || string(kept[0].Data) != "version 1.0\n" {
+		t.Errorf("kept files = %+v, want the original bytes untouched", kept)
+	}
+	if after, _ := store.Get(ctx, rec.Ref()); after.Name == "Renamed" {
+		t.Error("the refused record was partly written")
+	}
+}
+
 func TestCloseWithoutUseDoesNotCreateTheDatabase(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history.db")
 	store := New(path)
@@ -458,5 +539,364 @@ func TestCloseWithoutUseDoesNotCreateTheDatabase(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Errorf("found %v, want no database created by an unused store", entries)
+	}
+}
+
+// keptFiles are files out of submission order on purpose: reads must put
+// them back in it.
+func keptFiles() []ports.RunFile {
+	return []ports.RunFile{
+		{Kind: ports.RunFileDependencies, Name: "deps.zip", Data: []byte("PK\x03\x04 not really a zip")},
+		{Kind: ports.RunFileWorkflow, Name: "hello.wdl", Data: []byte("version 1.0\nworkflow HelloWorld {}\n")},
+		{Kind: ports.RunFileInputs, Name: "hello.inputs.json", Data: []byte(`{"HelloWorld.name": "x"}`)},
+	}
+}
+
+func hexDigest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func TestRecordKeepsFilesVerbatim(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	wantOrder := []ports.RunFileKind{ports.RunFileWorkflow, ports.RunFileInputs, ports.RunFileDependencies}
+	if len(got.Files) != len(wantOrder) {
+		t.Fatalf("Get returned %d files, want %d", len(got.Files), len(wantOrder))
+	}
+	for i, f := range got.Files {
+		if f.Kind != wantOrder[i] {
+			t.Errorf("files[%d] = %s, want %s: reads must follow submission order", i, f.Kind, wantOrder[i])
+		}
+		if f.Data != nil {
+			t.Errorf("Get returned the bytes of %s; a listing wants sizes, not contents", f.Kind)
+		}
+	}
+
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("Files returned %d files, want 3", len(files))
+	}
+	wdl := files[0]
+	if wdl.Kind != ports.RunFileWorkflow || wdl.Name != "hello.wdl" {
+		t.Errorf("files[0] = %s %q, want the workflow hello.wdl", wdl.Kind, wdl.Name)
+	}
+	if !bytes.Equal(wdl.Data, keptFiles()[1].Data) {
+		t.Errorf("workflow bytes = %q, want them verbatim", wdl.Data)
+	}
+	if wdl.Size != int64(len(wdl.Data)) || wdl.SHA256 != hexDigest(wdl.Data) {
+		t.Errorf("size/sha = %d/%s, want the store to compute them from the bytes", wdl.Size, wdl.SHA256)
+	}
+	if !bytes.Equal(files[2].Data, keptFiles()[0].Data) {
+		t.Errorf("dependencies bytes = %q, want them verbatim", files[2].Data)
+	}
+}
+
+func TestRecordWithoutFilesKeepsTheExistingOnes(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	// A re-record with nil files — what a note or status refresh sends —
+	// must not erase what only this machine still has.
+	again := sampleRecord("abc-123")
+	again.Files = nil
+	if err := store.Record(ctx, again); err != nil {
+		t.Fatalf("Record again: %v", err)
+	}
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 3 {
+		t.Fatalf("%d files after a nil re-record, want the 3 kept ones", len(files))
+	}
+
+	// An explicit empty slice is a decision: keep nothing.
+	again.Files = []ports.RunFile{}
+	if err := store.Record(ctx, again); err != nil {
+		t.Fatalf("Record with no files: %v", err)
+	}
+	files, err = store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("%d files after an empty re-record, want none", len(files))
+	}
+}
+
+func TestFilesOfARunWithoutAny(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "ghost"}); !errors.Is(err, ports.ErrRunNotRemembered) {
+		t.Errorf("Files of an unknown run = %v, want ErrRunNotRemembered", err)
+	}
+
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	files, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "abc-123"})
+	if err != nil {
+		t.Fatalf("Files of a run without kept files: %v, want an empty answer", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("Files = %v, want none", files)
+	}
+}
+
+func TestListAndLookupAttachKeptFilesPerRun(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	with := sampleRecord("with-files")
+	with.Files = keptFiles()
+	without := sampleRecord("without-files")
+	for _, rec := range []ports.RunRecord{with, without} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+
+	listed, err := store.List(ctx, ports.RunHistoryFilter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	counts := map[string]int{}
+	for _, rec := range listed {
+		counts[rec.WorkflowID] = len(rec.Files)
+	}
+	if counts["with-files"] != 3 || counts["without-files"] != 0 {
+		t.Errorf("kept files per run = %v, want 3 for with-files and 0 for without-files", counts)
+	}
+
+	found, err := store.Lookup(ctx, testHost, []string{"with-files", "without-files"})
+	if err != nil {
+		t.Fatalf("Lookup: %v", err)
+	}
+	if len(found["with-files"].Files) != 3 || len(found["without-files"].Files) != 0 {
+		t.Errorf("Lookup kept files = %d/%d, want 3/0", len(found["with-files"].Files), len(found["without-files"].Files))
+	}
+}
+
+func TestForgetDropsTheKeptFiles(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	if err := store.Forget(ctx, rec.Ref()); err != nil {
+		t.Fatalf("Forget: %v", err)
+	}
+
+	// The run coming back with nil files must find nothing left behind.
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("%d files survived Forget, want none", len(files))
+	}
+}
+
+func TestPruneCountsTheBytesFreed(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	old := sampleRecord("old-run")
+	old.SubmittedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	old.Files = keptFiles()
+	recent := sampleRecord("recent-run")
+	recent.SubmittedAt = time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
+	recent.Files = keptFiles()
+	for _, rec := range []ports.RunRecord{old, recent} {
+		if err := store.Record(ctx, rec); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+	var wantBytes int64
+	for _, f := range keptFiles() {
+		wantBytes += int64(len(f.Data))
+	}
+
+	removed, err := store.Prune(ctx, time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("Prune: %v", err)
+	}
+	if removed.Runs != 1 || removed.Bytes != wantBytes {
+		t.Errorf("Prune = %+v, want 1 run and %d bytes", removed, wantBytes)
+	}
+	files, err := store.Files(ctx, recent.Ref())
+	if err != nil || len(files) != 3 {
+		t.Errorf("recent run has %d files after prune (err %v), want its 3 untouched", len(files), err)
+	}
+}
+
+func TestMigratesAVersionOneDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	ctx := context.Background()
+
+	// A database as the first release left it: runs only, version 1.
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := raw.Exec(migrations[0]); err != nil {
+		t.Fatalf("v1 schema: %v", err)
+	}
+	if _, err := raw.Exec(`PRAGMA user_version = 1`); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at, description)
+		VALUES (?, ?, ?, ?, ?, ?)`, testHost, "old-run", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "from before files were kept"); err != nil {
+		t.Fatalf("v1 row: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	store := New(path)
+	defer func() { _ = store.Close() }()
+	got, err := store.Get(ctx, ports.RunRef{Host: testHost, WorkflowID: "old-run"})
+	if err != nil {
+		t.Fatalf("Get after migration: %v", err)
+	}
+	if got.Description != "from before files were kept" || len(got.Files) != 0 {
+		t.Errorf("got %+v, want the v1 row intact with no files", got)
+	}
+
+	rec := sampleRecord("new-run")
+	rec.Files = keptFiles()
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record with files after migration: %v", err)
+	}
+	db, err := store.open()
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	if version != schemaVersion {
+		t.Errorf("user_version = %d, want %d", version, schemaVersion)
+	}
+}
+
+func TestWithheldCredentialNamesRoundTrip(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	rec := sampleRecord("abc-123")
+	rec.Files = []ports.RunFile{{Kind: ports.RunFileOptions, Name: "o.json", Data: []byte(`{"jes_gcs_root": "gs://b"}`), Withheld: []string{"user_service_account_json", "refresh_token"}}}
+	if err := store.Record(ctx, rec); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+
+	files, err := store.Files(ctx, rec.Ref())
+	if err != nil || len(files) != 1 {
+		t.Fatalf("Files = %+v (%v)", files, err)
+	}
+	if got := files[0].Withheld; len(got) != 2 || got[0] != "user_service_account_json" || got[1] != "refresh_token" {
+		t.Errorf("Files withheld = %v, want both names back", got)
+	}
+	got, err := store.Get(ctx, rec.Ref())
+	if err != nil || len(got.Files) != 1 || len(got.Files[0].Withheld) != 2 {
+		t.Errorf("Get files = %+v (%v), want the withheld names in a read without bytes too", got.Files, err)
+	}
+}
+
+// A database kept by a build that stored the options verbatim holds the
+// credentials themselves. The migration must take them out, record their
+// names, and leave no copy of the bytes anywhere in the file.
+func TestMigrationScrubsCredentialsKeptBefore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	ctx := context.Background()
+	const marker = "SECRET-MARKER-7f3a"
+
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	for _, step := range migrations[:2] {
+		if _, err := raw.Exec(step); err != nil {
+			t.Fatalf("v2 schema: %v", err)
+		}
+	}
+	if _, err := raw.Exec(`PRAGMA user_version = 2`); err != nil {
+		t.Fatalf("user_version: %v", err)
+	}
+	// Large enough to spill into an overflow page, which is what a freed
+	// page left unzeroed would keep.
+	secret := `{"jes_gcs_root": "gs://b/x", "user_service_account_json": "` + marker + strings.Repeat("k", 6000) + `"}`
+	for _, row := range []struct{ id, data string }{{"with-secret", secret}, {"unreadable", "not json " + marker}, {"clean", `{"read_from_cache": false}`}} {
+		if _, err := raw.Exec(`INSERT INTO runs (host, workflow_id, submitted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			testHost, row.id, "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"); err != nil {
+			t.Fatalf("run row: %v", err)
+		}
+		if _, err := raw.Exec(`INSERT INTO run_files (host, workflow_id, kind, name, sha256, size, data) VALUES (?, ?, 'options', 'o.json', ?, ?, ?)`,
+			testHost, row.id, hexDigest([]byte(row.data)), len(row.data), []byte(row.data)); err != nil {
+			t.Fatalf("file row: %v", err)
+		}
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	store := New(path)
+	files, err := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "with-secret"})
+	if err != nil || len(files) != 1 {
+		t.Fatalf("Files = %+v (%v)", files, err)
+	}
+	f := files[0]
+	if strings.Contains(string(f.Data), marker) || !strings.Contains(string(f.Data), "gs://b/x") {
+		t.Errorf("options = %s, want the credential gone and the rest kept", f.Data)
+	}
+	if len(f.Withheld) != 1 || f.Withheld[0] != "user_service_account_json" {
+		t.Errorf("Withheld = %v, want the credential's name", f.Withheld)
+	}
+	if f.SHA256 != hexDigest(f.Data) || f.Size != int64(len(f.Data)) {
+		t.Errorf("digest/size = %s/%d, want them recomputed for the scrubbed bytes", f.SHA256, f.Size)
+	}
+	if files, _ := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "unreadable"}); len(files) != 0 {
+		t.Errorf("options that cannot be checked were kept: %+v", files)
+	}
+	if files, _ := store.Files(ctx, ports.RunRef{Host: testHost, WorkflowID: "clean"}); len(files) != 1 || string(files[0].Data) != `{"read_from_cache": false}` {
+		t.Errorf("options without credentials = %+v, want them untouched", files)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	matches, _ := filepath.Glob(path + "*")
+	for _, p := range matches {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		if bytes.Contains(data, []byte(marker)) {
+			t.Errorf("%s still holds the credential's bytes", filepath.Base(p))
+		}
 	}
 }

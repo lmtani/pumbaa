@@ -169,6 +169,27 @@ func TestFileConfig_SetValue(t *testing.T) {
 	}
 }
 
+// history_keep_files is documented as a config setting, so `pumbaa config
+// set/get` must know it, and must not store a value it cannot read back.
+func TestFileConfig_HistoryKeepFiles(t *testing.T) {
+	cfg := &FileConfig{}
+	if _, ok := cfg.GetValue("history_keep_files"); ok {
+		t.Error("an unset history_keep_files reads as set")
+	}
+	if err := cfg.SetValue("history_keep_files", "false"); err != nil {
+		t.Fatalf("SetValue: %v", err)
+	}
+	if got, ok := cfg.GetValue("history_keep_files"); !ok || got != "false" {
+		t.Errorf("GetValue = %q, %v; want false, true", got, ok)
+	}
+	if err := cfg.SetValue("history_keep_files", "nope"); err == nil {
+		t.Error("SetValue accepted a value that is not a boolean")
+	}
+	if *cfg.HistoryKeepFiles {
+		t.Error("a rejected value changed the setting")
+	}
+}
+
 func TestAllKeys(t *testing.T) {
 	keys := AllKeys()
 	if len(keys) == 0 {
@@ -176,7 +197,7 @@ func TestAllKeys(t *testing.T) {
 	}
 
 	// Check some expected keys are present
-	expectedKeys := []string{"llm_provider", "cromwell_host", "telemetry_enabled"}
+	expectedKeys := []string{"llm_provider", "cromwell_host", "history_keep_files", "telemetry_enabled"}
 	for _, expected := range expectedKeys {
 		found := false
 		for _, k := range keys {

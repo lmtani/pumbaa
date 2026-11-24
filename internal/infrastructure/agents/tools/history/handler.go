@@ -111,6 +111,15 @@ func view(rec ports.RunRecord) map[string]any {
 	if len(rec.Labels) > 0 {
 		out["labels"] = rec.Labels
 	}
+	if len(rec.Files) > 0 {
+		files := make([]map[string]any, 0, len(rec.Files))
+		for _, f := range rec.Files {
+			files = append(files, map[string]any{"kind": string(f.Kind), "name": f.Name, "size": f.Size})
+		}
+		out["kept_files"] = files
+		// Spelled out, so the model offers the export rather than infers it.
+		out["exportable"] = true
+	}
 	return out
 }
 

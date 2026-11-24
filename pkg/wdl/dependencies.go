@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -79,6 +80,23 @@ func CheckDependencies(mainSource, zipData []byte) *DependencyReport {
 	return report
 }
 
+// LocalImports lists the imports of a WDL source that a dependencies zip
+// would have to satisfy — every import that is not a URL — as written in the
+// source, deduplicated, in order of appearance. It answers "does this
+// workflow need a zip at all?" without a zip to check against.
+func LocalImports(source []byte) []string {
+	var imports []string
+	seen := make(map[string]bool)
+	for _, imp := range extractImportPaths(source) {
+		if isRemoteImport(imp) || seen[imp] {
+			continue
+		}
+		seen[imp] = true
+		imports = append(imports, imp)
+	}
+	return imports
+}
+
 // unresolvedImports returns a finding for each non-remote import in source
 // whose target is not among the available files.
 func unresolvedImports(importer string, source []byte, available map[string]bool) []Finding {
@@ -101,10 +119,17 @@ func unresolvedImports(importer string, source []byte, available map[string]bool
 	return findings
 }
 
-// extractImportPaths pulls the import targets out of WDL source with the same
-// regex the bundler uses, so it is robust to WDL this parser cannot fully read.
+// importStatementRegex matches an import statement: `import` opening a line
+// (after indentation, or a byte-order mark on the first one). Anchoring is
+// what keeps a commented-out `# import "old.wdl"` from counting, and with it
+// an import named inside a string or a command block.
+var importStatementRegex = regexp.MustCompile(`(?m)^\x{FEFF}?[ \t]*import\s+["']([^"']+)["']`)
+
+// extractImportPaths pulls the import targets out of WDL source with a
+// regex rather than the parser, so it is robust to WDL this parser cannot
+// fully read.
 func extractImportPaths(source []byte) []string {
-	matches := importRegex.FindAllStringSubmatch(string(source), -1)
+	matches := importStatementRegex.FindAllStringSubmatch(string(source), -1)
 	paths := make([]string, 0, len(matches))
 	for _, m := range matches {
 		if len(m) >= 2 {

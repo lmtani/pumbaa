@@ -191,8 +191,9 @@ func (uc *RunHistoryUseCase) Forget(ctx context.Context, workflowID string) erro
 	return uc.store.Forget(ctx, ports.RunRef{Host: host, WorkflowID: workflowID})
 }
 
-// Prune drops every run submitted before the cutoff, across all hosts.
-func (uc *RunHistoryUseCase) Prune(ctx context.Context, before time.Time) (int, error) {
+// Prune drops every run submitted before the cutoff, across all hosts, and
+// the files kept for them.
+func (uc *RunHistoryUseCase) Prune(ctx context.Context, before time.Time) (ports.PruneResult, error) {
 	return uc.store.Prune(ctx, before)
 }
 

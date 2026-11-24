@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,9 @@ type Config struct {
 	CromwellTimeout   time.Duration
 	SessionDBPath     string
 	HistoryDBPath     string
+	// HistoryKeepFiles keeps the submitted files with each run's record, so
+	// `pumbaa history export` can reproduce the run. On unless turned off.
+	HistoryKeepFiles bool
 
 	// LLM Provider configuration
 	LLMProvider string // "ollama" or "vertex"
@@ -80,6 +84,16 @@ func Load() *Config {
 	if historyDBPath == "" {
 		home, _ := os.UserHomeDir()
 		historyDBPath = filepath.Join(home, ".pumbaa", "history.db")
+	}
+
+	// Keep files: env > file > default (on). A value the env var cannot be
+	// read as is ignored, as an unset one would be.
+	historyKeepFiles := true
+	if fileCfg.HistoryKeepFiles != nil {
+		historyKeepFiles = *fileCfg.HistoryKeepFiles
+	}
+	if env, err := strconv.ParseBool(os.Getenv("PUMBAA_HISTORY_KEEP_FILES")); err == nil {
+		historyKeepFiles = env
 	}
 
 	// LLM Provider: env > file > default
@@ -206,6 +220,7 @@ func Load() *Config {
 		CromwellTimeout:   30 * time.Second,
 		SessionDBPath:     sessionDBPath,
 		HistoryDBPath:     historyDBPath,
+		HistoryKeepFiles:  historyKeepFiles,
 		LLMProvider:       llmProvider,
 		OllamaHost:        ollamaHost,
 		OllamaModel:       ollamaModel,
