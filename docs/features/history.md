@@ -40,10 +40,7 @@ what it cannot answer later:
 
 - the **description** given at submission time — Cromwell labels are
   constrained and meant to be tags, so free text has nowhere else to live;
-- the **files** a submission was assembled from — WDL, inputs, options and
-  the dependency zip — kept verbatim, as the very bytes the server received,
-  alongside the absolute paths they were read from. Paths rot: a WDL gets
-  edited, a branch is switched, a directory is deleted. The bytes do not;
+- the **files** a submission was assembled from — WDL, inputs, options and the dependency zip — kept verbatim, as the very bytes the server received, alongside the absolute paths they were read from. Paths rot: a WDL gets edited, a branch is switched, a directory is deleted. The bytes do not;
 - the last known **status**, which is what a listing shows when the server is
   unreachable — or has forgotten the run entirely, as an in-memory Cromwell
   does on every restart.
@@ -53,13 +50,7 @@ server. Writing to the history never fails a submission: the workflow is
 already running by then, so a failure is reported as a warning.
 
 !!! info "Where it lives"
-    `~/.pumbaa/history.db` (SQLite), separate from the chat sessions database.
-    Override with `PUMBAA_HISTORY_DB`. The kept files live in the same
-    database, so forgetting a run forgets its files with it and nothing is
-    left behind on disk. A WDL bundle is tens of kilobytes; a submission
-    whose files exceed 50 MB is recorded without them, with a warning.
-    `PUMBAA_HISTORY_KEEP_FILES=false` (or `history_keep_files: false` in the
-    config file) records paths only.
+    `~/.pumbaa/history.db` (SQLite), separate from the chat sessions database. Override with `PUMBAA_HISTORY_DB`. The kept files live in the same database, so forgetting a run forgets its files with it and nothing is left behind on disk. A WDL bundle is tens of kilobytes; a submission whose files exceed 50 MB is recorded without them, with a warning. `PUMBAA_HISTORY_KEEP_FILES=false` (or `history_keep_files: false` in the config file) records paths only.
 
 ## :material-console: Commands
 
@@ -144,11 +135,7 @@ $ pumbaa history export fbfd8cce-90f5-4d07-81b0-3504bd0ef98c ./rerun
   cd /home/me/rerun && pumbaa workflow submit -w workflow.wdl -i inputs.json -o options.json -d dependencies.zip -l sample=S001
 ```
 
-The names are fixed so the printed command is always right; the basenames the
-files were read from are in `manifest.json`, with the host, the run, the
-description and the origin and checksum of every file. The directory is the
-unit to share: a colleague with access to the same server runs the command and
-gets the same submission.
+The names are fixed so the printed command is always right; the basenames the files were read from are in `manifest.json`, with the host, the run, the description and the origin and checksum of every file. The directory is the unit to share: a colleague with access to the same server runs the command and gets the same submission.
 
 | Flag | Alias | Description |
 |------|:-----:|-------------|
@@ -162,18 +149,9 @@ Flags go before the workflow id, as in `pumbaa history export --strip-secrets <i
 The exit status is 1 when a file could not be produced. Whatever could be written is still in the directory, and the manifest says what is missing, so a script can tell a partial export from a failed one.
 
 !!! warning "What the server cannot supply"
-    A run nothing was kept for — submitted before files were kept, through
-    another client, or with keeping turned off — is read from the server's
-    `submittedFiles` instead: exact for the workflow and the inputs,
-    reformatted for the options. Cromwell discards the **dependencies zip**
-    once a run leaves its workflow store, so for a workflow with imports the
-    export says what is missing and which imports need it. When the history
-    recorded the zip's path and the file is still there, it is used, marked
-    as read now rather than kept then.
+    A run nothing was kept for — submitted before files were kept, through another client, or with keeping turned off — is read from the server's `submittedFiles` instead: exact for the workflow and the inputs, reformatted for the options. Cromwell discards the **dependencies zip** once a run leaves its workflow store, so for a workflow with imports the export says what is missing and which imports need it. When the history recorded the zip's path and the file is still there, it is used, marked as read now rather than kept then.
 
-Credentials in the options — a service-account JSON, a refresh token — are
-reported, and `--strip-secrets` removes them: whoever receives the directory
-submits with their own.
+Credentials in the options — a service-account JSON, a refresh token — are reported, and `--strip-secrets` removes them: whoever receives the directory submits with their own.
 
 Options read from the server lose their credentials regardless of `--strip-secrets`: Cromwell reports an option it encrypts as the placeholder `cleared`, which would make the new submission fail, and one it does not encrypt belongs to whoever submitted the run. The export says which were left out, so they can be added back before submitting.
 
@@ -220,15 +198,9 @@ Cromwell server knows:
 > what have I been running this week?
 ```
 
-Besides `workflow_id` and a keyword `query`, the action takes `status` and
-`since_days`, so "what failed last week" is one call rather than a scan. It
-reads only what this machine remembers — no Cromwell server is contacted, so
-it keeps working offline; live state still comes from the Cromwell actions.
-Runs whose files are kept come back marked `exportable`.
+Besides `workflow_id` and a keyword `query`, the action takes `status` and `since_days`, so "what failed last week" is one call rather than a scan. It reads only what this machine remembers — no Cromwell server is contacted, so it keeps working offline; live state still comes from the Cromwell actions. Runs whose files are kept come back marked `exportable`.
 
-The `export` action is the same as the command: it writes a run's files into
-a directory under the one pumbaa was launched from, and answers with the
-submit command:
+The `export` action is the same as the command: it writes a run's files into a directory under the one pumbaa was launched from, and answers with the submit command:
 
 ```
 > export run abc-123 so I can send it to Ana
