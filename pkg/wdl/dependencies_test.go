@@ -190,3 +190,20 @@ workflow W {}
 		t.Errorf("LocalImports of a workflow without imports = %v, want none", got)
 	}
 }
+
+// A commented-out import is not an import: counting it would make a
+// workflow that needs no zip look like one missing its dependencies.
+func TestImportsIgnoreCommentsAndStrings(t *testing.T) {
+	source := []byte("\uFEFFimport \"first.wdl\"\nversion 1.0\n# import \"old_tasks.wdl\"\n  #import \"older.wdl\"\n\timport \"indented.wdl\" as ind\nworkflow W {\n  String note = \"we import 'nothing.wdl' here\"\n}\n")
+
+	got := LocalImports(source)
+	want := []string{"first.wdl", "indented.wdl"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("LocalImports = %v, want %v", got, want)
+	}
+
+	zipData := makeZip(t, map[string]string{"first.wdl": "version 1.0\n", "indented.wdl": "version 1.0\n"})
+	if report := CheckDependencies(source, zipData); report.HasErrors() {
+		t.Errorf("commented-out imports reported as missing: %+v", report.Findings)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -118,10 +119,17 @@ func unresolvedImports(importer string, source []byte, available map[string]bool
 	return findings
 }
 
-// extractImportPaths pulls the import targets out of WDL source with the same
-// regex the bundler uses, so it is robust to WDL this parser cannot fully read.
+// importStatementRegex matches an import statement: `import` opening a line
+// (after indentation, or a byte-order mark on the first one). Anchoring is
+// what keeps a commented-out `# import "old.wdl"` from counting, and with it
+// an import named inside a string or a command block.
+var importStatementRegex = regexp.MustCompile(`(?m)^\x{FEFF}?[ \t]*import\s+["']([^"']+)["']`)
+
+// extractImportPaths pulls the import targets out of WDL source with a
+// regex rather than the parser, so it is robust to WDL this parser cannot
+// fully read.
 func extractImportPaths(source []byte) []string {
-	matches := importRegex.FindAllStringSubmatch(string(source), -1)
+	matches := importStatementRegex.FindAllStringSubmatch(string(source), -1)
 	paths := make([]string, 0, len(matches))
 	for _, m := range matches {
 		if len(m) >= 2 {
