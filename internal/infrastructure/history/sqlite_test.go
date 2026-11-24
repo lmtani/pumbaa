@@ -7,7 +7,9 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -443,6 +445,47 @@ func TestMigrationIsIdempotent(t *testing.T) {
 	}
 	if got.Description != "smoke test" {
 		t.Errorf("description = %q, want the record to survive reopening", got.Description)
+	}
+}
+
+func TestTheDatabaseIsReadableByItsOwnerOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	ctx := context.Background()
+	dir := filepath.Join(t.TempDir(), "pumbaa")
+	path := filepath.Join(dir, "history.db")
+
+	store := New(path)
+	if err := store.Record(ctx, sampleRecord("abc-123")); err != nil {
+		t.Fatalf("Record: %v", err)
+	}
+	_ = store.Close()
+	for p, want := range map[string]os.FileMode{dir: 0o700, path: 0o600} {
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("stat %s: %v", p, err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s mode = %o, want %o", filepath.Base(p), got, want)
+		}
+	}
+
+	// A database created before files were kept is tightened on open.
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	reopened := New(path)
+	defer func() { _ = reopened.Close() }()
+	if _, err := reopened.Get(ctx, ports.RunRef{Host: testHost, WorkflowID: "abc-123"}); err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Errorf("mode after reopening = %o, want 600", got)
 	}
 }
 

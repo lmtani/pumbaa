@@ -72,10 +72,14 @@ func (s *Store) open() (*sql.DB, error) {
 			}
 		}
 		if dir := filepath.Dir(path); dir != "" {
-			if err := os.MkdirAll(dir, 0o755); err != nil {
+			if err := os.MkdirAll(dir, 0o700); err != nil {
 				s.err = fmt.Errorf("failed to create directory %s: %w", dir, err)
 				return
 			}
+		}
+		if err := restrictToOwner(path); err != nil {
+			s.err = fmt.Errorf("failed to restrict access to the history database: %w", err)
+			return
 		}
 		db, err := sql.Open("sqlite", path)
 		if err != nil {
@@ -90,6 +94,27 @@ func (s *Store) open() (*sql.DB, error) {
 		s.db = db
 	})
 	return s.db, s.err
+}
+
+// restrictToOwner makes the database readable by its owner only, creating it
+// that way when missing (an empty file is an empty SQLite database). The
+// history keeps the submitted files verbatim, and an options file carries
+// credentials when a run was submitted with a service account; on a shared
+// machine the default 0644 would hand them to every other user. SQLite gives
+// its journal and WAL files the database's mode, so they follow; the chmod
+// also tightens a database created before files were kept.
+func restrictToOwner(path string) error {
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	_ = f.Close()
+	for _, p := range []string{path, path + "-journal", path + "-wal", path + "-shm"} {
+		if err := os.Chmod(p, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 // migrations are the schema steps, one per version: migrations[i] takes a

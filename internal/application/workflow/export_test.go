@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -325,6 +326,32 @@ func TestExportRefusesToOverwrite(t *testing.T) {
 	}
 	if got := readExported(t, dir, ExportWorkflowName); string(got) != importingWDL {
 		t.Error("Overwrite did not replace the file")
+	}
+}
+
+func TestExportKeepsTheOptionsPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	store, _ := exportRecord(keptSet(t)...)
+	dir := t.TempDir()
+	// A previous options.json left world-readable must not stay that way
+	// when the export replaces it.
+	if err := os.WriteFile(filepath.Join(dir, ExportOptionsName), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if _, err := newExport(store, nil, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-1", Dir: dir, Overwrite: true}); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	for name, want := range map[string]os.FileMode{ExportOptionsName: 0o600, ExportWorkflowName: 0o644} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatalf("stat %s: %v", name, err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Errorf("%s mode = %o, want %o", name, got, want)
+		}
 	}
 }
 

@@ -185,7 +185,7 @@ func (uc *ExportRunUseCase) Execute(ctx context.Context, input ExportRunInput) (
 		return nil, application.NewUseCaseError("export", "failed to create directory", err)
 	}
 	for _, f := range files {
-		if err := os.WriteFile(filepath.Join(dir, f.Name), f.data, 0o644); err != nil {
+		if err := writeExported(filepath.Join(dir, f.Name), f.data, exportMode(f.Kind)); err != nil {
 			return nil, application.NewUseCaseError("export", "failed to write "+f.Name, err)
 		}
 	}
@@ -510,6 +510,26 @@ func withoutCromwellLabel(labels map[string]string) map[string]string {
 func digest(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
+}
+
+// exportMode is the permission an exported file is written with. The
+// options may carry credentials, so they are the owner's alone; the rest is
+// what the submitter shared with the server anyway.
+func exportMode(kind ports.RunFileKind) os.FileMode {
+	if kind == ports.RunFileOptions {
+		return 0o600
+	}
+	return 0o644
+}
+
+// writeExported writes a file with the given mode, also when it replaces one
+// that existed: os.WriteFile keeps an existing file's mode, which would leave
+// an overwritten options.json as readable as it was before.
+func writeExported(path string, data []byte, mode os.FileMode) error {
+	if err := os.WriteFile(path, data, mode); err != nil {
+		return err
+	}
+	return os.Chmod(path, mode)
 }
 
 func existingFiles(dir string, names []string) []string {
