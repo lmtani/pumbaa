@@ -157,6 +157,8 @@ gets the same submission.
 | `--strip-secrets` | | Drop credential options (`user_service_account_json`, tokens) before sharing |
 | `--json` | | Print the manifest instead of the summary, with `dir` and `complete` added |
 
+Flags go before the workflow id, as in `pumbaa history export --strip-secrets <id> ./share`: the command line stops reading flags at the first argument, so a flag written after the id is refused rather than silently ignored.
+
 The exit status is 1 when a file could not be produced. Whatever could be written is still in the directory, and the manifest says what is missing, so a script can tell a partial export from a failed one.
 
 !!! warning "What the server cannot supply"

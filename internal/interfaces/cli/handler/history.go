@@ -310,13 +310,29 @@ func (h *HistoryHandler) show(c *cli.Context) error {
 	return nil
 }
 
+// exportUsage is the export's synopsis, flags first: that is the only place
+// they are read.
+const exportUsage = "pumbaa history export [--force] [--strip-secrets] [--json] <workflow-id> [dir]"
+
 func (h *HistoryHandler) export(c *cli.Context) error {
 	if c.NArg() < 1 {
-		return fmt.Errorf("usage: pumbaa history export <workflow-id> [dir]")
+		return fmt.Errorf("usage: %s", exportUsage)
+	}
+	// Flag parsing stops at the first argument, so a flag written after the
+	// id arrives here as an argument: --force would become the directory and
+	// --strip-secrets would be dropped without a word, leaving credentials in
+	// a directory meant to be shared. Refuse rather than guess.
+	for _, arg := range c.Args().Tail() {
+		if strings.HasPrefix(arg, "-") {
+			return fmt.Errorf("%s after the workflow id is not read as a flag; put flags first: %s", arg, exportUsage)
+		}
+	}
+	if c.NArg() > 2 {
+		return fmt.Errorf("too many arguments; usage: %s", exportUsage)
 	}
 	id := c.Args().First()
-	// The directory reads naturally after the id, where a flag would not be
-	// parsed any more; --out stays for the flags-first habit.
+	// The directory reads naturally after the id; --out stays for the
+	// flags-first habit.
 	dir := c.Args().Get(1)
 	if dir == "" {
 		dir = c.String("out")
@@ -334,7 +350,7 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	if err != nil {
 		if errors.Is(err, workflow.ErrExportWouldOverwrite) {
 			h.presenter.Error("%v", err)
-			h.presenter.Info("Re-run with --force to replace them, or choose another --out directory.")
+			h.presenter.Info("Replace them by putting --force before the workflow id (%s), or choose another directory.", exportUsage)
 			return cli.Exit("", 1)
 		}
 		h.presenter.Error("Failed to export the run: %v", err)
