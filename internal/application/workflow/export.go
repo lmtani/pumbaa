@@ -329,7 +329,7 @@ func (uc *ExportRunUseCase) fromServer(ctx context.Context, out *ExportRunOutput
 	if sub.Options != "" && strings.TrimSpace(sub.Options) != "{}" {
 		files = append(files, exportFile{
 			ExportedFile: ExportedFile{Kind: ports.RunFileOptions, Name: ExportOptionsName, Source: ExportFromServer, OriginalName: filepath.Base(rec.OptionsFile),
-				Warning: "reformatted by the server; option values it encrypts, if any, are blank"},
+				Warning: "reformatted by the server"},
 			data: []byte(sub.Options),
 		})
 	}
@@ -397,6 +397,12 @@ func localImports(source []byte) []string {
 
 // handleSecrets reports the credential-carrying option keys, and removes
 // them when asked. Options that are not a JSON object are left as they are.
+//
+// Options read from the server lose them regardless. Cromwell reports an
+// option it encrypts as the placeholder "cleared", which would make the new
+// submission fail to authenticate; one it does not encrypt is whoever
+// submitted the run's own credential, not something to pass on unasked.
+// Either way the resubmitter has to supply their own.
 func (uc *ExportRunUseCase) handleSecrets(out *ExportRunOutput, files []exportFile, strip bool) []exportFile {
 	for i := range files {
 		if files[i].Kind != ports.RunFileOptions {
@@ -406,20 +412,26 @@ func (uc *ExportRunUseCase) handleSecrets(out *ExportRunOutput, files []exportFi
 		if err := json.Unmarshal(files[i].data, &options); err != nil {
 			return files
 		}
+		fromServer := files[i].Source == ExportFromServer
+		drop := strip || fromServer
 		for _, key := range secretOptionKeys {
 			if _, ok := options[key]; ok {
 				out.Secrets = append(out.Secrets, key)
-				if strip {
+				if drop {
 					delete(options, key)
 				}
 			}
 		}
-		if strip && len(out.Secrets) > 0 {
+		if drop && len(out.Secrets) > 0 {
 			out.SecretsStripped = true
 			data, err := json.MarshalIndent(options, "", "  ")
 			if err == nil {
 				files[i].data = append(data, '\n')
-				files[i].Warning = "credential options removed: " + strings.Join(out.Secrets, ", ")
+				note := "credential options removed: " + strings.Join(out.Secrets, ", ")
+				if fromServer {
+					note = files[i].Warning + "; " + note + " (the server does not return them usable: add your own before submitting)"
+				}
+				files[i].Warning = note
 			}
 		}
 	}

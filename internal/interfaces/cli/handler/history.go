@@ -379,8 +379,11 @@ func (h *HistoryHandler) export(c *cli.Context) error {
 	for _, m := range out.Missing {
 		h.presenter.Warning("No %s: %s.", m.Kind, m.Reason)
 	}
-	if len(out.Secrets) > 0 && !out.SecretsStripped {
+	switch {
+	case len(out.Secrets) > 0 && !out.SecretsStripped:
 		h.presenter.Warning("options.json carries credentials (%s). Re-run with --strip-secrets before handing the directory to someone else.", strings.Join(out.Secrets, ", "))
+	case out.SecretsStripped && optionsFromServer(out):
+		h.presenter.Warning("The server does not return credentials usable, so %s were left out of options.json. Add your own before submitting if the run needs them.", strings.Join(out.Secrets, ", "))
 	}
 	if out.Complete() {
 		h.presenter.Info("Submit it again with:")
@@ -422,6 +425,17 @@ type exportJSON struct {
 	Dir      string `json:"dir"`
 	Complete bool   `json:"complete"`
 	*workflow.ExportRunOutput
+}
+
+// optionsFromServer reports whether the exported options were read from
+// the server rather than kept at submit.
+func optionsFromServer(out *workflow.ExportRunOutput) bool {
+	for _, f := range out.Files {
+		if f.Kind == ports.RunFileOptions {
+			return f.Source == workflow.ExportFromServer
+		}
+	}
+	return false
 }
 
 func sourceLabel(source workflow.ExportSource) string {

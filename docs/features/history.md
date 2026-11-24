@@ -175,6 +175,8 @@ Credentials in the options — a service-account JSON, a refresh token — are
 reported, and `--strip-secrets` removes them: whoever receives the directory
 submits with their own.
 
+Options read from the server lose their credentials regardless of `--strip-secrets`: Cromwell reports an option it encrypts as the placeholder `cleared`, which would make the new submission fail, and one it does not encrypt belongs to whoever submitted the run. The export says which were left out, so they can be added back before submitting.
+
 ## :material-pencil-plus: Annotating someone else's run
 
 A note can be attached to any run on the server, not only to ones submitted

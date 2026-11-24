@@ -267,6 +267,39 @@ func TestExportDropsCromwellsLabelFromAnAnnotatedRun(t *testing.T) {
 	}
 }
 
+// Cromwell reports an option it encrypts as the placeholder "cleared"; one
+// it does not encrypt is the original submitter's own credential. Neither
+// belongs in a submission made from the export, asked or not.
+func TestExportDropsCredentialsReadFromTheServer(t *testing.T) {
+	server := &stubSubmissionReader{sub: &workflow.Submission{
+		ID:       "run-9",
+		Name:     "HelloWorld",
+		Workflow: "version 1.0\nworkflow HelloWorld {}\n",
+		Options:  "{\n  \"jes_gcs_root\": \"gs://b/x\",\n  \"user_service_account_json\": \"cleared\"\n}",
+	}}
+	dir := filepath.Join(t.TempDir(), "out")
+
+	out, err := newExport(newStubRunHistory(), server, nil).Execute(context.Background(), ExportRunInput{WorkflowID: "run-9", Dir: dir})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !out.SecretsStripped || len(out.Secrets) != 1 || out.Secrets[0] != "user_service_account_json" {
+		t.Errorf("Secrets = %v stripped=%v, want the placeholder dropped without --strip-secrets", out.Secrets, out.SecretsStripped)
+	}
+	var options map[string]any
+	if err := json.Unmarshal(readExported(t, dir, ExportOptionsName), &options); err != nil {
+		t.Fatalf("options.json: %v", err)
+	}
+	if _, ok := options["user_service_account_json"]; ok || options["jes_gcs_root"] != "gs://b/x" {
+		t.Errorf("options.json = %v, want the credential gone and the rest kept", options)
+	}
+	for _, f := range out.Files {
+		if f.Kind == ports.RunFileOptions && !strings.Contains(f.Warning, "add your own") {
+			t.Errorf("options warning = %q, want it to say credentials must be supplied again", f.Warning)
+		}
+	}
+}
+
 func TestExportReportsAMissingDependenciesZip(t *testing.T) {
 	server := &stubSubmissionReader{sub: &workflow.Submission{ID: "run-9", Name: "HelloWorld", Workflow: importingWDL}}
 	dir := filepath.Join(t.TempDir(), "out")
