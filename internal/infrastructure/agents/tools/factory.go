@@ -154,7 +154,7 @@ func builtinActions() []actionSpec {
 			name: "export",
 			description: "Write a run's submitted files into a directory under the working directory — workflow.wdl, inputs.json, options.json, dependencies.zip, labels.json and a manifest.json — ready for `pumbaa workflow submit`, to run it again or hand it to someone. " +
 				"Uses the files kept at submit time; a run nothing was kept for is read from the server, which never has the dependencies zip. " +
-				"Required: workflow_id. Optional: path (relative directory, default <workflow_id>), overwrite.",
+				"Required: workflow_id. Optional: path (relative directory, default <workflow_id>). Never replaces existing files.",
 			requiresExporter: true,
 			build: func(deps Deps) types.Handler {
 				return history.NewExportHandler(deps.Exporter)

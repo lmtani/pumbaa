@@ -94,7 +94,9 @@ forgotten the run.
   read from the server, which never has the dependencies zip (then reported
   under "missing", with the imports that need it).
   Required: workflow_id. Optional: path (relative directory, default the
-  workflow id), overwrite.
+  workflow id). It never replaces existing files: when the directory holds
+  a previous export, choose another path, or give the user the
+  "pumbaa history export --force" command it suggests.
   Report the directory and the submit command it returns. When
   options_secrets is present, say that options.json carries credentials and
   that "pumbaa history export --strip-secrets" drops them before sharing.

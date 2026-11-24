@@ -22,6 +22,10 @@ type Exporter interface {
 // ExportHandler answers the "export" action: a run's submitted files written
 // into a directory under the working directory, ready to submit again. Like
 // write_file, it never writes outside the directory pumbaa was launched from.
+// Unlike write_file, it never replaces anything: the chat has no way to ask
+// the user first, and what an export replaces (a workflow.wdl, an
+// inputs.json) is the user's own work. Replacing is left to the CLI's
+// --force.
 type ExportHandler struct {
 	exporter Exporter
 }
@@ -48,11 +52,10 @@ func (h *ExportHandler) Handle(ctx context.Context, input types.Input) (types.Ou
 	out, err := h.exporter.Execute(ctx, workflow.ExportRunInput{
 		WorkflowID: input.WorkflowID,
 		Dir:        fullPath,
-		Overwrite:  input.Overwrite,
 	})
 	if errors.Is(err, workflow.ErrExportWouldOverwrite) {
 		return types.NewErrorOutput(exportAction, fmt.Sprintf(
-			"%v. Pass overwrite=true to replace them, or another path.", err)), nil
+			"%v. Use another path; to replace them, the user can run `pumbaa history export --force %s %s`.", err, input.WorkflowID, dir)), nil
 	}
 	if err != nil {
 		return types.NewErrorOutput(exportAction, err.Error()), nil

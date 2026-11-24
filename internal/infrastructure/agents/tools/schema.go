@@ -45,7 +45,7 @@ func GetParametersSchema() map[string]any {
 			},
 			"overwrite": map[string]any{
 				"type":        "boolean",
-				"description": "Allow write_file to replace an existing file, or export to replace files already in the directory",
+				"description": "Allow write_file to replace an existing file",
 			},
 			"query": map[string]any{
 				"type":        "string",

@@ -70,7 +70,9 @@ func TestExportWritesUnderTheWorkingDirectory(t *testing.T) {
 	}
 }
 
-func TestExportHonoursPathAndOverwrite(t *testing.T) {
+// The chat cannot ask before replacing the user's files, so the action never
+// overwrites, whatever the model passes.
+func TestExportHonoursPathAndNeverOverwrites(t *testing.T) {
 	t.Chdir(t.TempDir())
 	exporter := &stubExporter{out: exported()}
 	h := NewExportHandler(exporter)
@@ -78,8 +80,8 @@ func TestExportHonoursPathAndOverwrite(t *testing.T) {
 	if _, err := h.Handle(context.Background(), types.Input{Action: exportAction, WorkflowID: "run-1", Path: "repro/run-1", Overwrite: true}); err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if !strings.HasSuffix(exporter.lastInput.Dir, filepath.Join("repro", "run-1")) || !exporter.lastInput.Overwrite {
-		t.Errorf("input = %+v, want the relative path resolved and overwrite passed through", exporter.lastInput)
+	if !strings.HasSuffix(exporter.lastInput.Dir, filepath.Join("repro", "run-1")) || exporter.lastInput.Overwrite {
+		t.Errorf("input = %+v, want the relative path resolved and overwrite never passed", exporter.lastInput)
 	}
 
 	out, err := h.Handle(context.Background(), types.Input{Action: exportAction, WorkflowID: "run-1", Path: "/etc/run-1"})
@@ -108,7 +110,7 @@ func TestExportExplainsRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Handle: %v", err)
 	}
-	if out.Success || !strings.Contains(out.Error, "overwrite=true") {
+	if out.Success || !strings.Contains(out.Error, "another path") || !strings.Contains(out.Error, "--force run-1") {
 		t.Errorf("an overwrite refusal does not say how to proceed: %+v", out)
 	}
 }
